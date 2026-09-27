@@ -1,72 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="90dp"
     android:layout_margin="5dp">
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-            <ImageView
-                android:id="@+id/download_cover"
-                android:layout_width="96dp"
-                android:layout_height="72dp"
-                android:scaleType="centerCrop"
-                android:contentDescription="@string/web_import_cover" />
-            <TextView
-                android:id="@+id/download_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="12dp"
-                android:alpha="0.5"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-        <TextView
-            android:id="@+id/download_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="14sp" />
+        android:layout_height="match_parent">
+        <ImageView
+            android:id="@+id/download_cover"
+            android:layout_width="120dp"
+            android:layout_height="match_parent"
+            android:layout_alignParentStart="true"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/web_import_cover" />
+        <ImageButton
+            android:id="@+id/download_action"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="4dp"
+            android:src="@drawable/ic_download_pause"
+            android:contentDescription="@string/web_import_pause" />
+        <ImageButton
+            android:id="@+id/download_remove"
+            android:layout_width="32dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_below="@id/download_action"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="4dp"
+            android:src="@drawable/ic_download_remove"
+            android:contentDescription="@string/web_import_remove"
+            android:visibility="gone" />
         <ProgressBar
             android:id="@+id/download_progress"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="4dp"
+            android:layout_toEndOf="@id/download_cover"
+            android:layout_toStartOf="@id/download_action"
+            android:layout_alignParentBottom="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="8dp"
             android:max="100" />
         <TextView
-            android:id="@+id/download_transfer"
+            android:id="@+id/download_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/download_cover"
+            android:layout_toStartOf="@id/download_action"
+            android:layout_above="@id/download_progress"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="2dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="@color/colorBrowserSubTitlePortrait"
             android:textSize="12sp" />
-        <LinearLayout
+        <TextView
+            android:id="@+id/download_title"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            style="?android:attr/buttonBarStyle"
-            android:orientation="horizontal">
-            <Button
-                android:id="@+id/download_remove"
-                style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:text="@string/web_import_remove"
-                android:visibility="gone" />
-            <Button
-                android:id="@+id/download_action"
-                style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:text="@string/web_import_pause" />
-        </LinearLayout>
-    </LinearLayout>
+            android:layout_height="match_parent"
+            android:layout_toEndOf="@id/download_cover"
+            android:layout_toStartOf="@id/download_action"
+            android:layout_alignParentTop="true"
+            android:layout_above="@id/download_status"
+            android:padding="4dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:alpha="0.5"
+            android:textColor="@color/colorBrowserTitlePortrait"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
 </androidx.cardview.widget.CardView>

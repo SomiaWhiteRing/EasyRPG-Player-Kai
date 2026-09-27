@@ -3,13 +3,14 @@ package org.easyrpg.player.imports;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.GridLayoutManager;
 
 import org.easyrpg.player.R;
 import org.easyrpg.player.imports.WebImportClient.Stage;
@@ -36,7 +37,17 @@ public final class WebImportAdapter extends RecyclerView.Adapter<WebImportAdapte
     @Override public int getItemCount() { return downloads.size(); }
 
     @NonNull @Override public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.browser_download_card, parent, false));
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.browser_download_card, parent, false);
+        RecyclerView.LayoutManager manager = ((RecyclerView) parent).getLayoutManager();
+        if (manager instanceof GridLayoutManager && ((GridLayoutManager) manager).getSpanCount() > 1) {
+            // Match browser_game_card_landscape in the multi-column game grid.
+            float density = parent.getResources().getDisplayMetrics().density;
+            ViewGroup.LayoutParams params = view.getLayoutParams();
+            params.width = Math.round(280 * density);
+            params.height = Math.round(210 * density);
+            view.setLayoutParams(params);
+        }
+        return new Holder(view);
     }
 
     @Override public void onBindViewHolder(@NonNull Holder holder, int position) {
@@ -48,14 +59,20 @@ public final class WebImportAdapter extends RecyclerView.Adapter<WebImportAdapte
         holder.cover.setAlpha(0.5f);
         holder.cover.setImageBitmap(download.cover);
         if (download.cover == null) holder.cover.setImageResource(R.drawable.ic_gamepad_black);
-        holder.status.setText(download.message);
+        String status = context.getString(download.message);
+        String info = download.stage == Stage.DOWNLOADING ? download.transferText(context)
+                : download.resumable() ? status + " \u00b7 " + download.transferText(context) : status;
+        holder.status.setText(info);
+        holder.status.setContentDescription(info);
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(holder.status, info);
         holder.progress.setIndeterminate(download.indeterminate());
         holder.progress.setProgress(download.percent);
-        holder.transfer.setVisibility(download.preparing() ? View.GONE : View.VISIBLE);
-        holder.transfer.setText(download.transferText(context));
         holder.action.setEnabled(download.stage != Stage.PAUSING && download.stage != Stage.REMOVING);
-        holder.action.setText(download.stage == Stage.ERROR ? R.string.web_import_retry :
-                download.stage == Stage.PAUSED ? R.string.web_import_resume : R.string.web_import_pause);
+        holder.action.setContentDescription(context.getString(download.stage == Stage.ERROR ? R.string.web_import_retry :
+                download.stage == Stage.PAUSED ? R.string.web_import_resume : R.string.web_import_pause));
+        holder.action.setImageResource(download.stage == Stage.ERROR ? R.drawable.ic_download_retry :
+                download.stage == Stage.PAUSED ? R.drawable.ic_download_resume : R.drawable.ic_download_pause);
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(holder.action, holder.action.getContentDescription());
         holder.remove.setVisibility(download.resumable() ? View.VISIBLE : View.GONE);
         holder.remove.setOnClickListener(v -> WebImportDownloads.get(context).remove(download.id));
         holder.action.setOnClickListener(v -> {
@@ -68,15 +85,14 @@ public final class WebImportAdapter extends RecyclerView.Adapter<WebImportAdapte
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
-        final TextView title, status, transfer;
+        final TextView title, status;
         final ImageView cover;
         final ProgressBar progress;
-        final Button action, remove;
+        final ImageButton action, remove;
         Holder(View view) {
             super(view);
             title = view.findViewById(R.id.download_title);
             status = view.findViewById(R.id.download_status);
-            transfer = view.findViewById(R.id.download_transfer);
             cover = view.findViewById(R.id.download_cover);
             progress = view.findViewById(R.id.download_progress);
             action = view.findViewById(R.id.download_action);
