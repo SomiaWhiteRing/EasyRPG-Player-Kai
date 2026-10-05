@@ -153,7 +153,13 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   listen(document, 'keydown', keyEvent); listen(document, 'keyup', keyEvent);
   // The site's touch controls live outside the iframe, but belong to the same player.
   const focus = () => send({type: 'focus', focused: !page.document.hidden && page.document.hasFocus(), fullscreen: !!page.document.fullscreenElement});
-  listen(page, 'focus', focus); listen(page, 'blur', focus); listen(page.document, 'visibilitychange', focus);
+  // Firefox's blur precedes the settled focus state when entering the iframe.
+  // Focus can also return directly to the iframe after switching tabs.
+  const scheduleFocus = () => queueMicrotask(focus);
+  for (const target of new Set([page, window])) {
+    listen(target, 'focus', scheduleFocus); listen(target, 'blur', scheduleFocus);
+  }
+  listen(page.document, 'visibilitychange', focus);
   listen(page.document, 'fullscreenchange', focus);
   listen(canvas, 'pointerleave', () => send({type: 'mouse', x: -1, y: -1, focus: false}));
   listen(canvas, 'wheel', event => {
