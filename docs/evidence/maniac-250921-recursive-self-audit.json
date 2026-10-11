@@ -1,0 +1,17 @@
+{
+  "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "113ec10e57c546881507855f2f6b1ecd22232ad94382c3921b7ee300b7cebe1b",
+  "trace_sha256": "47eef00d94ec4e2e0938f0869a8abef56a07da2a51be11afd76f87ce7eedf836",
+  "sample_count": 12,
+  "transitions": [
+    {
+      "input_enter_count": 0,
+      "stage": "before_call"
+    },
+    {
+      "input_enter_count": 1,
+      "stage": "inner_read_42_outer_read_43"
+    }
+  ],
+  "scope": "Same common event reenters once; inner frame reads 42 and writes 43, outer frame reads 43"
+}

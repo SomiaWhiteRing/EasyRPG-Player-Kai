@@ -1,0 +1,199 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "unwind_registered_function_count": 6839,
+  "flag_rvas": [
+    "0x278fb9",
+    "0x278fba",
+    "0x278fbb"
+  ],
+  "direct_references": [
+    {
+      "rva": "0x5a4dd",
+      "function_rva": "0x59cf0",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov word ptr [rip + 0x21ead5], 0",
+      "category": "clear"
+    },
+    {
+      "rva": "0x5a4e6",
+      "function_rva": "0x59cf0",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0x21eacd], 0",
+      "category": "clear"
+    },
+    {
+      "rva": "0x1816cd",
+      "function_rva": "0x181650",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov word ptr [rip + 0xf78e7], si",
+      "category": "clear"
+    },
+    {
+      "rva": "0x1816d4",
+      "function_rva": "0x181650",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0xf78df], sil",
+      "category": "clear"
+    },
+    {
+      "rva": "0x18217b",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fb9",
+      "instruction": "cmp byte ptr [rip + 0xf6e37], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x182184",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fba",
+      "instruction": "cmp byte ptr [rip + 0xf6e2f], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x18218d",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fbb",
+      "instruction": "cmp byte ptr [rip + 0xf6e27], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x1821c5",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fb9",
+      "instruction": "cmp byte ptr [rip + 0xf6ded], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x1821ce",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fba",
+      "instruction": "cmp byte ptr [rip + 0xf6de5], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x1821db",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fbb",
+      "instruction": "cmp byte ptr [rip + 0xf6dd9], 0",
+      "category": "check"
+    },
+    {
+      "rva": "0x18222d",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov byte ptr [rip + 0xf6d87], 0",
+      "category": "clear"
+    },
+    {
+      "rva": "0x18224d",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fb9",
+      "instruction": "mov byte ptr [rip + 0xf6d65], 0",
+      "category": "clear"
+    },
+    {
+      "rva": "0x182270",
+      "function_rva": "0x1820b0",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0xf6d43], 0",
+      "category": "clear"
+    },
+    {
+      "rva": "0x1fc59e",
+      "function_rva": "0x1fc570",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov byte ptr [rip + 0x7ca16], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc5cc",
+      "function_rva": "0x1fc570",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0x7c9e7], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc5fa",
+      "function_rva": "0x1fc570",
+      "flag_rva": "0x278fb9",
+      "instruction": "mov byte ptr [rip + 0x7c9b8], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc684",
+      "function_rva": "0x1fc65c",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov byte ptr [rip + 0x7c930], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc6af",
+      "function_rva": "0x1fc65c",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0x7c904], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc6da",
+      "function_rva": "0x1fc65c",
+      "flag_rva": "0x278fb9",
+      "instruction": "mov byte ptr [rip + 0x7c8d8], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc7a8",
+      "function_rva": "0x1fc780",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov byte ptr [rip + 0x7c80c], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc7d3",
+      "function_rva": "0x1fc780",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0x7c7e0], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc7fe",
+      "function_rva": "0x1fc780",
+      "flag_rva": "0x278fb9",
+      "instruction": "mov byte ptr [rip + 0x7c7b4], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc8a6",
+      "function_rva": "0x1fc878",
+      "flag_rva": "0x278fbb",
+      "instruction": "mov byte ptr [rip + 0x7c70e], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc8d4",
+      "function_rva": "0x1fc878",
+      "flag_rva": "0x278fba",
+      "instruction": "mov byte ptr [rip + 0x7c6df], 1",
+      "category": "set"
+    },
+    {
+      "rva": "0x1fc902",
+      "function_rva": "0x1fc878",
+      "flag_rva": "0x278fb9",
+      "instruction": "mov byte ptr [rip + 0x7c6b0], 1",
+      "category": "set"
+    }
+  ],
+  "overlapping_word_clear_references": [
+    {
+      "rva": "0x5a4d4",
+      "instruction": "mov word ptr [rip + 0x21eadb], 0",
+      "covered_flag_rva": "0x278fb9"
+    },
+    {
+      "rva": "0x1816c6",
+      "instruction": "mov word ptr [rip + 0xf78eb], si",
+      "covered_flag_rva": "0x278fb9"
+    }
+  ],
+  "scope": "Direct RIP references in 250921 unwind-registered functions plus two overlapping word clears of flag 0x278fb9. Four grouped functions set all three control flags; initializer/teardown and 3030 evaluator clear or inspect them. Leaf functions outside the unwind table, exception throw origins, catch linkage and runtime lifecycle are not established."
+}

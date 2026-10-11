@@ -57,6 +57,8 @@ public:
 
 	void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) override;
 	void SE_Stop() override;
+	bool SetManiacVolume(int volume) override;
+	int GetManiacVolume() const override;
 	virtual void Update() override;
 
 	void vGetConfig(Game_ConfigAudio&) const override {}

@@ -111,6 +111,14 @@ void Game_ConfigGame::LoadFromArgs(CmdlineParser& cp) {
 			patch_override = true;
 			continue;
 		}
+		if (cp.ParseNext(arg, 1, "--maniac-version")) {
+			if (arg.NumValues() == 1 && (arg.Value(0) == "241028" || arg.Value(0) == "250921")) {
+				maniac_version.Set(arg.Value(0) == "241028" ? 241028 : 250921);
+			} else {
+				Output::Warning("Invalid Maniac version: expected 241028 or 250921");
+			}
+			continue;
+		}
 		if (cp.ParseNext(arg, 0, {"--patch-common-this", "--no-patch-common-this"})) {
 			patch_common_this_event.Set(arg.ArgIsOn());
 			patch_override = true;
@@ -205,6 +213,10 @@ void Game_ConfigGame::LoadFromStream(Filesystem_Stream::InputStream& is) {
 	if (patch_maniac.FromIni(ini)) {
 		patch_override = true;
 	}
+	if (maniac_version.FromIni(ini) && maniac_version.Get() != 241028 && maniac_version.Get() != 250921) {
+		Output::Warning("Invalid ManiacVersion in EasyRPG.ini: expected 241028 or 250921");
+		maniac_version.Set(0);
+	}
 
 	if (patch_common_this_event.FromIni(ini)) {
 		patch_override = true;
@@ -255,6 +267,7 @@ void Game_ConfigGame::PrintActivePatches() {
 	};
 
 	add_int(patch_maniac);
+	add_int(maniac_version);
 	add_int(patch_anti_lag_switch);
 	add_int(patch_direct_menu);
 

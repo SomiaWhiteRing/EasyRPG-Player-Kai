@@ -79,14 +79,6 @@ if (-not (Test-Path (Join-Path $tripletDir "share\sdl2\SDL2Config.cmake"))) {
 Get-ChildItem (Join-Path $BuildscriptsDir "windows\vcpkg\installed") -Directory |
 	Select-Object -ExpandProperty Name
 
-Write-Host "==> Cloning liblcf"
-$libDir = Join-Path $repoRoot "lib"
-$liblcfDir = Join-Path $libDir "liblcf"
-
-New-Item -ItemType Directory -Force -Path $libDir | Out-Null
-Remove-Item $liblcfDir -Recurse -Force -ErrorAction SilentlyContinue
-git clone --depth 1 --branch my-feature-stable https://github.com/SomiaWhiteRing/liblcf.git $liblcfDir
-
 Write-Host "==> Configuring Windows build"
 $versionSuffix = "(nightly, $(Get-Date -AsUTC -Format 'yyyy-MM-dd'))"
 $versionArg = "-DPLAYER_VERSION_APPEND=$versionSuffix"
@@ -97,8 +89,6 @@ $configureOutput = & $cmakePath -S $repoRoot -B $BuildDir `
 	-DCMAKE_TOOLCHAIN_FILE="$toolchainFile" `
 	$tripletArg `
 	-DPLAYER_BUILD_LIBLCF=ON `
-	-DPLAYER_BUILD_LIBLCF_GIT=https://github.com/SomiaWhiteRing/liblcf.git `
-	-DPLAYER_BUILD_LIBLCF_BRANCH=my-feature-stable `
 	-DPLAYER_ENABLE_TESTS=OFF `
 	$versionArg 2>&1
 $configureExit = $LASTEXITCODE

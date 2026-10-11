@@ -51,6 +51,13 @@
 #include "player.h"
 #include "compiler.h"
 
+#if defined(_WIN32) && defined(HAVE_FREETYPE)
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>
+#endif
+
 // Static variables.
 namespace {
 	template <typename T>
@@ -657,6 +664,65 @@ FontRef Font::CreateFtFont(Filesystem_Stream::InputStream is, int size, bool bol
 #endif
 }
 
+FontRef Font::CreateSystemFont(std::string_view name, int size, bool bold, bool italic) {
+#if defined(_WIN32) && defined(HAVE_FREETYPE)
+	const auto family = Utils::ToWideString(name);
+	if (family.empty() || family.size() >= LF_FACESIZE) {
+		return nullptr;
+	}
+	const std::string stream_name = "system-font:" + ToString(name);
+	const std::string key = stream_name + ":" + std::to_string(size) + ":" + (bold ? "T" : "F") + (italic ? "T" : "F");
+	FreeFontMemory();
+	if (auto it = ft_cache.find(key); it != ft_cache.end()) {
+		it->second.last_access = Game_Clock::GetFrameTime();
+		return it->second.font;
+	}
+
+	LOGFONTW description = {};
+	description.lfHeight = -std::max(1, size);
+	description.lfWeight = bold ? FW_BOLD : FW_NORMAL;
+	description.lfItalic = italic;
+	description.lfCharSet = DEFAULT_CHARSET;
+	description.lfOutPrecision = OUT_TT_ONLY_PRECIS;
+	std::copy(family.begin(), family.end(), description.lfFaceName);
+	auto native_font = CreateFontIndirectW(&description);
+	if (!native_font) {
+		return nullptr;
+	}
+	auto font_guard = lcf::makeScopeGuard([&] { DeleteObject(native_font); });
+	auto dc = CreateCompatibleDC(nullptr);
+	if (!dc) {
+		return nullptr;
+	}
+	auto dc_guard = lcf::makeScopeGuard([&] { DeleteDC(dc); });
+	auto previous = SelectObject(dc, native_font);
+	if (!previous || previous == HGDI_ERROR) {
+		return nullptr;
+	}
+	auto selection_guard = lcf::makeScopeGuard([&] { SelectObject(dc, previous); });
+	const auto bytes = GetFontData(dc, 0, 0, nullptr, 0);
+	if (bytes == GDI_ERROR || bytes == 0) {
+		return nullptr;
+	}
+	std::vector<uint8_t> buffer(bytes);
+	if (GetFontData(dc, 0, 0, buffer.data(), bytes) != bytes) {
+		return nullptr;
+	}
+	Filesystem_Stream::InputStream stream(new Filesystem_Stream::InputMemoryStreamBuf(std::move(buffer)), stream_name);
+	auto font = CreateFtFont(std::move(stream), size, bold, italic);
+	if (font) {
+		// System fonts such as Arial may not contain the game's CJK glyphs.
+		font->SetFallbackFont(Default());
+		wchar_t resolved[LF_FACESIZE] = {};
+		GetTextFaceW(dc, LF_FACESIZE, resolved);
+		Output::Debug("System font: {} -> {} (bold={}, italic={})", name, Utils::FromWideString(resolved), bold, italic);
+	}
+	return font;
+#else
+	return nullptr;
+#endif
+}
+
 void Font::ResetDefault() {
 	SetDefault(nullptr, true);
 	SetDefault(nullptr, false);
@@ -726,20 +792,38 @@ Rect Font::GetSize(const ShapeRet& shape_ret) const {
 	return {0, 0, width, height};
 }
 
-Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, char32_t glyph) const {
+Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, char32_t glyph, const Point* color_cell) const {
 	if (EP_UNLIKELY(Utils::IsControlCharacter(glyph))) {
 		return {};
 	}
 
 	auto gret = vRender(glyph);
 
-	if (EP_UNLIKELY(!RenderImpl(dest, x, y, sys, color, gret))) {
+	if (EP_UNLIKELY(!RenderImpl(dest, x, y, sys, color, gret, color_cell))) {
 		return {};
 	}
 
 	gret.advance.x += current_style.letter_spacing;
 
 	return gret.advance;
+}
+
+Point Font::RenderExfontCell(Bitmap& dest, int x, int y, const Bitmap& sys, const Rect& source, const Point* color_cell) const {
+	const auto image = Cache::Exfont();
+	const Point advance{12 + current_style.letter_spacing, 0};
+	if (source.x < 0 || source.y < 0 || static_cast<int64_t>(source.x) + 12 > image->GetWidth()
+		|| static_cast<int64_t>(source.y) + 12 > image->GetHeight()) return advance;
+	auto bitmap = Bitmap::Create(12, 12, true);
+	bitmap->Blit(0, 0, *image, source, Opacity::Opaque());
+	for (int iy = 0; iy < 12; ++iy) {
+		for (int ix = 0; ix < 12; ++ix) {
+			// The native icon mask tests nonzero alpha rather than blending fractional coverage.
+			bitmap->SetColorAt(ix, iy, Color(255, 255, 255, bitmap->GetColorAt(ix, iy).alpha ? 255 : 0));
+		}
+	}
+	const GlyphRet glyph{bitmap, {12, 0}, {0, 0}, false};
+	RenderImpl(dest, x, y, sys, 0, glyph, color_cell);
+	return advance;
 }
 
 Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const Font::ShapeRet& shape) const {
@@ -749,7 +833,7 @@ Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, in
 
 	auto gret = vRenderShaped(shape.code);
 
-	if (EP_UNLIKELY(!RenderImpl(dest, x, y, sys, color, gret))) {
+	if (EP_UNLIKELY(!RenderImpl(dest, x, y, sys, color, gret, nullptr))) {
 		return {};
 	}
 
@@ -757,7 +841,7 @@ Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, in
 	return advance;
 }
 
-bool Font::RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const GlyphRet& gret) const {
+bool Font::RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const GlyphRet& gret, const Point* color_cell) const {
 	if (EP_UNLIKELY(gret.bitmap == nullptr)) {
 		return false;
 	}
@@ -775,6 +859,8 @@ bool Font::RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys,
 	unsigned src_y = 0;
 
 	int glyph_height = gret.bitmap->height() - gret.offset.y;
+	const int mask_x = color_cell ? color_cell->x : color % 10 * 16;
+	const int mask_y = color_cell ? color_cell->y : color / 10 * 16 + 48;
 
 	// Adjust how the mask is applied depending on the glyph size to prevent that
 	// pixels from outside of the mask color are read
@@ -785,7 +871,7 @@ bool Font::RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys,
 		// The mask is too small and the system graphic must be resized
 		// This is usually an exception and requires a custom font
 		const Rect shadow_color_rect = { 16, 32, 16, 16 };
-		const Rect mask_color_rect = { color % 10 * 16, color / 10 * 16 + 48, 16, 16 };
+		const Rect mask_color_rect = { mask_x, mask_y, 16, 16 };
 		auto sys_large = Bitmap::Create(current_style.size * 2, current_style.size, false);
 		double zoom = current_style.size / 16.0;
 		// Left half of the image is the shadow, right half the mask
@@ -831,8 +917,8 @@ bool Font::RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys,
 			dest.MaskedBlit(shadow_rect, *gret.bitmap, 0, 0, sys, 16, 32);
 		}
 
-		src_x = color % 10 * 16 + 2;
-		src_y = color / 10 * 16 + 48 + 16 - 12 - gret.offset.y;
+		src_x = mask_x + 2;
+		src_y = mask_y + 16 - 12 - gret.offset.y;
 	} else {
 		// When the color is the shadow color do not render twice
 		src_x = 16;

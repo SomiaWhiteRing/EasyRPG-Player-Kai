@@ -19,10 +19,12 @@
 #define EP_GAME_MESSAGE_H
 
 #include <cstdint>
+#include <array>
 #include <vector>
 #include <bitset>
 #include <string>
 #include <functional>
+#include <optional>
 #include "string_view.h"
 #include "pending_message.h"
 #include "message_history.h"
@@ -30,6 +32,7 @@
 
 class Window_Message;
 class AsyncOp;
+class Game_BaseInterpreterContext;
 
 namespace Game_Message {
 
@@ -58,7 +61,23 @@ namespace Game_Message {
 	 *
 	 * @param pm - the pending message text
 	 */
-	void SetPendingMessage(PendingMessage&& pm);
+	AsyncOp SetPendingMessage(PendingMessage&& pm, const Game_BaseInterpreterContext* caller = nullptr);
+
+	struct ManiacHookCaller {
+		int scope = 0;
+		int map_id = 0;
+		int event_id = 0;
+	};
+	bool RunManiacSystemHook(ManiacHookCaller caller, const int32_t* packet, size_t count,
+		const std::string* text, AsyncOp& operation);
+	int32_t ReadManiacHookResult(ManiacHookCaller caller, uint32_t offset, int32_t fallback);
+	const char* ParseManiacNumbers(const char* iter, const char* end, ManiacHookCaller caller,
+		std::array<int32_t, 2>& numbers, bool evaluate = true);
+	const char* ManiacIconEnd(const char* iter, const char* end);
+	const char* ParseManiacFace(const char* iter, const char* end, ManiacHookCaller caller,
+		std::array<int32_t, 2>& numbers, std::optional<std::string>& name);
+	const char* ProcessManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller,
+		std::array<int32_t, 8>& packet, AsyncOp& operation);
 
 	/** Callback type for WordWrap function */
 	using WordWrapCallback = const std::function<void(std::string_view line)>;
@@ -99,6 +118,7 @@ namespace Game_Message {
 
 	/** The command code parser for the message box */
 	std::optional<std::string> CommandCodeInserter(char ch, const char** iter, const char* end, uint32_t escape_char);
+	PendingMessage::CommandInserter MakeCommandCodeInserter(const Game_BaseInterpreterContext& caller);
 
 	// EasyRPG extension allowing more recursive variables \v[\v[...]]
 	static constexpr int easyrpg_default_max_recursion = 8;
@@ -114,6 +134,9 @@ namespace Game_Message {
 		/** value that was parsed */
 		int value = 0;
 	};
+
+	/** Parse a Maniac numeric parameter using the project syntax and message caller. */
+	ParseParamResult ParseManiacNumber(const char* iter, const char* end, ManiacHookCaller caller);
 
 	/** Struct returned by parameter parsing methods */
 	struct ParseParamStringResult {

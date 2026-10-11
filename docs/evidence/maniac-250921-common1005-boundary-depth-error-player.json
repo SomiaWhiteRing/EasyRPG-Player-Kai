@@ -1,0 +1,22 @@
+{
+  "case": "depth-error",
+  "runtime": "player",
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921",
+    "--log-file",
+    "common1005-boundary.log"
+  ],
+  "manifest_sha256": "ad40c5dccdec888e7d7b35184c7c01a7cb36fb0c5af9965029eb54cc34edfd45",
+  "native": null,
+  "save_exists": false,
+  "process_exit_code": null,
+  "error_lines": [
+    "\u001b[1m\u001b[31mError:\u001b[0m \u001b[31mCall Event limit (8192) has been exceeded\u001b[0m"
+  ],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed."
+}

@@ -84,6 +84,7 @@ public:
 	void UpdateMovement();
 
 protected:
+	static Rect GetMessageFaceRect(const Bitmap& faceset);
 	void OnFaceReady(FileRequestResult* result, int face_index, int cx, int cy, bool flip);
 
 	std::vector<FileRequestBinding> face_request_ids;

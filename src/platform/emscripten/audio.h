@@ -22,6 +22,8 @@ public:
   std::string BGM_GetType() const override;
   void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) override;
   void SE_Stop() override;
+  bool SetManiacVolume(int volume) override;
+  int GetManiacVolume() const override;
   void Update() override;
   void vGetConfig(Game_ConfigAudio&) const override {}
   void SetFluidsynthSoundfont(std::string_view sf) override;

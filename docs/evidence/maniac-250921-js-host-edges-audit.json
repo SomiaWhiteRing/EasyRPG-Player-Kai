@@ -1,0 +1,17 @@
+{
+  "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "source_sha256": "acb0ce3f2cd06c4b67a76dd9add6e90a0573f599844119ffbd3fd06e09ea9ebf",
+  "main_manifest_sha256": "fea1f4633bc4c8a3bcaa9c63747ae6cb17c5115fa7eca3d10ff6515698557aff",
+  "main_trace_sha256": "7dede2dad6f7a540d3449869e3d3c15bec909410408da3f843893bfbd248118d",
+  "main_save_sha256": "0392f8597010f0ffafb5206c7a970e6fc6f4b715318a825cf9dbf13b324eb30c",
+  "expected_results_sha256": "15c10e6ce02ee25db13ca42bf9d1efcb548954cc46c915ad358723b6c74b5341",
+  "main_cases": 78,
+  "scalar_cases": 45,
+  "array_proxy_order_error_cases": 33,
+  "native_fault_dialogs": {
+    "number": "Rm2k3+MP Uncontrollable Error\rMessage: Invalid Variable Access [4294967298]",
+    "switch": "Rm2k3+MP Uncontrollable Error\rMessage: Invalid Switch Access [4294967298]",
+    "string": "Rm2k3+MP Uncontrollable Error\rMessage: Invalid Strvar Access [4294967298]"
+  },
+  "scope": "Fixed 250921 original getv/gets/gett and setv/sets/sett JS host cases establish scalar coercion, array endpoint/count reads, array/Proxy element access and conversion/error write order. Three ID-Proxy-get faults reach native dialogs. This is original evidence, not Player JS feature validation; neither fault continuation nor broader host behavior is asserted."
+}

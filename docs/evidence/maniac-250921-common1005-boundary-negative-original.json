@@ -1,0 +1,36 @@
+{
+  "case": "negative",
+  "runtime": "original",
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "manifest_sha256": "79c17a00ff9699b4498cb4175e110c41a0f4a163c9609f26ebb64c4a2bf4ac99",
+  "native": {
+    "calls": 1,
+    "appended": 1,
+    "max_depth_before": 1,
+    "max_depth_after": 2,
+    "returned": 0,
+    "error": {
+      "kind": "invalid-id",
+      "frame": {
+        "depth": 2,
+        "common_id": -1,
+        "kind": 37
+      },
+      "variables": [
+        0,
+        0,
+        0
+      ]
+    },
+    "last_append": {
+      "depth": 2,
+      "common_id": -1,
+      "kind": 37
+    }
+  },
+  "save_exists": false,
+  "process_exit_code": null,
+  "error_lines": [],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed."
+}

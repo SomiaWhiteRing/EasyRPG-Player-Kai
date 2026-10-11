@@ -1,0 +1,35 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "manifest_sha256": "6ccf85f4e8d3ba5fc189cb59a7c831913ba48fc58d3642fba7805ac7a136e052",
+  "map_sha256": "85fcb6fb45a191b7e65cc1eeb89a42242f7814d4bd8ed3b00122f75ba75b96e5",
+  "reviewed_dispatch_report_sha256": "814c2de1cd7447bfe7427578359375031aecf225e6226814a4241af42d1b72a7",
+  "dispatcher_success_instructions": {
+    "0x47d01": "mov al, 1",
+    "0x47d03": "jmp 0x140046ef3"
+  },
+  "effective_branch_ids": [
+    "3034:standalone-explicit-success-no-payload"
+  ],
+  "applicable_context_candidates": [
+    "map autostart",
+    "map parallel",
+    "common event",
+    "battle event"
+  ],
+  "results": {
+    "original": {
+      "trace_sha256": "d3f70f9b05182f23310d8dff7718f8433aaf14d87b2e12afb307988690e1c1d2",
+      "save_sha256": "a8d525708b3e4649f99ee63a836a37724cab9009af76ad43b41667fcaca91004",
+      "save_observed_after_enter": 1,
+      "global_numeric_id_1": 99
+    },
+    "player": {
+      "trace_sha256": "18451fb35f91dd7dc3b60317b41b0a4694648da6e8ff95c38b4b135bcafc85df",
+      "save_sha256": "d02648e21f5957966a9721c423f874f70d2d1a2a8031ad458f3dce889456f2b3",
+      "save_observed_after_enter": 1,
+      "global_numeric_id_1": 99
+    }
+  },
+  "scope": "250921 Windows original and Player map-autostart events both execute standalone 3034 with nonempty Args/Text, then reach variable 1 marker 99 and Save01. Reviewed dispatcher maps 3034 to an immediate success exit with no command payload read. Yield timing and parallel/common/battle scheduling remain separate Player feature work; this audit does not prove those contexts."
+}

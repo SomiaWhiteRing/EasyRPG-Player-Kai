@@ -1,0 +1,18 @@
+{
+  "runtime": "original",
+  "stage": 2,
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "fixture_manifest_sha256": "e3e5c03f845be24cea075ffd703ca38a653914a688e6e9d4b99d2a87e5906bec",
+  "input_save_sha256": "fbd1e40b040849bc79f529b5acc43576176da87ca2af6901fdcd830f2b275f41",
+  "saved_slots": {
+    "3": {
+      "sha256": "6b78355b49bd1b6715e949d3a539db56705e6f8499177c5b54026d98a5102e4f",
+      "length": 3804,
+      "source_mtime_ns": 1790431148433809600
+    }
+  },
+  "original_native_events": [],
+  "unexpected_post_restart_slots": [],
+  "observation": "Fresh hidden process, no input; frozen saves after target unchanged for one second; process terminated."
+}

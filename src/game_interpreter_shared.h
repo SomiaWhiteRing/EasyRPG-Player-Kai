@@ -97,8 +97,8 @@ namespace Game_Interpreter_Shared {
 	template<bool validate_patches = true, bool support_indirect_and_switch = true, bool support_scopes = false, bool support_named = false>
 	int ValueOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter);
 
-	std::string_view CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx);
-	std::string_view CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx);
+	std::string_view CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx, Game_BaseInterpreterContext const& interpreter);
+	std::string_view CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter);
 
 	bool CheckOperator(int val, int val2, int op);
 
@@ -162,6 +162,15 @@ public:
 
 	virtual const lcf::rpg::SaveEventExecState& GetState() const = 0;
 	virtual const lcf::rpg::SaveEventExecFrame& GetFrame() const = 0;
+	virtual int32_t ReadVariable(int id) const = 0;
+	virtual int ReadSwitch(int id) const = 0;
+	virtual std::string_view ReadString(int id) const = 0;
+	int32_t ResolveVariableIndirectAddress(int id) const {
+		const int32_t value = ReadVariable(id);
+		if (id >= 0) return value;
+		return static_cast<int32_t>(value < 0 ? static_cast<int64_t>(value) : -static_cast<int64_t>(value));
+	}
+	int32_t ReadVariableIndirect(int id) const { return ReadVariable(ResolveVariableIndirectAddress(id)); }
 
 #ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
 	inline std::optional<bool> GetRuntimeFlag(Game_Interpreter_Shared::StateRuntimeFlagRef const field_on, Game_Interpreter_Shared::StateRuntimeFlagRef const field_off) const {
@@ -170,6 +179,12 @@ public:
 #endif
 
 protected:
+	std::string_view CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx) const {
+		return Game_Interpreter_Shared::CommandStringOrVariable(com, mode_idx, val_idx, *this);
+	}
+	std::string_view CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx) const {
+		return Game_Interpreter_Shared::CommandStringOrVariableBitfield(com, mode_idx, shift, val_idx, *this);
+	}
 	template<bool validate_patches, bool support_range_indirect, bool support_expressions, bool support_bitmask, bool support_scopes, bool support_named = false>
 	inline bool DecodeTargetEvaluationMode(lcf::rpg::EventCommand const& com, int& id_0, int& id_1) const {
 		return Game_Interpreter_Shared::DecodeTargetEvaluationMode<validate_patches, support_range_indirect, support_expressions, support_bitmask, support_scopes, support_named>(com, id_0, id_1, *this);

@@ -43,6 +43,7 @@ namespace Game_Battle {
 	std::string background_name;
 
 	std::unique_ptr<Game_Interpreter_Battle> interpreter;
+	Game_Interpreter_Battle* maniac_active_interpreter = nullptr;
 	/** Contains battle related sprites */
 	std::unique_ptr<Spriteset_Battle> spriteset;
 
@@ -206,17 +207,26 @@ void Game_Battle::UpdateAtbGauges() {
 	sum_agi *= 100;
 
 	const int max_atb = Game_Battler::GetMaxAtbGauge();
+	const bool native_maniac = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
 
 	for (auto* bat: battlers) {
 		// RPG_RT always updates atb for non-hidden enemies, even if they can't act.
 		// We don't update ATB for battlers with a pending battle algo
 		if (!bat->GetBattleAlgorithm() && bat->Exists() && (bat->CanAct() || bat->GetType() == Game_Battler::Type_Enemy))
 		{
+			if (native_maniac) {
+				// 250921 limits only the upper bound before the hook sees the gauge.
+				bat->SetManiacAtbGauge(std::min(bat->GetAtbGauge(), max_atb));
+			}
 			const auto agi = bat->GetAgi();
 			auto increment = max_atb / (sum_agi / (agi + 1));
 			if (use_2k3e_algo) {
 				const auto cur_atb = bat->GetAtbGauge();
-				const auto multiplier = std::max(1.0, static_cast<double>(275000 - cur_atb) / 55000.0);
+				const int distance = native_maniac
+					? static_cast<int32_t>(uint32_t{275000} - static_cast<uint32_t>(cur_atb))
+					: 275000 - cur_atb;
+				const auto multiplier = std::max(1.0, static_cast<double>(distance) / 55000.0);
 				increment = Utils::RoundTo<int>(multiplier * increment);
 			}
 
@@ -225,17 +235,22 @@ void Game_Battle::UpdateAtbGauges() {
 				bat->GetType() == Game_Battler::Type_Enemy,
 				bat->GetPartyIndex(),
 				bat->GetAtbGauge(),
-				increment
+				increment, 0, 0, &increment
 			);
 
-			bat->IncrementAtbGauge(increment);
+			if (native_maniac) {
+				bat->SetManiacAtbGauge(static_cast<int32_t>(
+					static_cast<uint32_t>(bat->GetAtbGauge()) + static_cast<uint32_t>(increment)));
+			} else {
+				bat->IncrementAtbGauge(increment);
+			}
 		}
 	}
 }
 
-bool Game_Battle::ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4, int var5, int var6) {
+bool Game_Battle::ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4, int var5, int var6, int* hook_result) {
 	if (Player::IsPatchManiac() && interpreter) {
-		return interpreter->ManiacBattleHook(hook_type, var1, var2, var3, var4, var5, var6);
+		return GetInterpreterBattle().ManiacBattleHook(hook_type, var1, var2, var3, var4, var5, var6, hook_result);
 	} else {
 		return false;
 	}
@@ -273,7 +288,21 @@ Game_Interpreter& Game_Battle::GetInterpreter() {
 
 Game_Interpreter_Battle& Game_Battle::GetInterpreterBattle() {
 	assert(interpreter);
+	if (maniac_active_interpreter) return *maniac_active_interpreter;
 	return *interpreter;
+}
+
+Game_Interpreter_Battle& Game_Battle::GetPrimaryInterpreterBattle() {
+	assert(interpreter);
+	return *interpreter;
+}
+
+Game_Interpreter_Battle* Game_Battle::SetManiacActiveInterpreter(Game_Interpreter_Battle* active) {
+	return std::exchange(maniac_active_interpreter, active);
+}
+
+bool Game_Battle::IsManiacHookPumping() {
+	return maniac_active_interpreter != nullptr;
 }
 
 void Game_Battle::SetTerrainId(int id) {

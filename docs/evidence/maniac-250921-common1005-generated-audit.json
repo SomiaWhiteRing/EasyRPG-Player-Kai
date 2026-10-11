@@ -1,0 +1,72 @@
+{
+  "runner_sha256": "e714677882f3c45be7202de3e14f3ea54ddd9516755fd7048f45b40db80a7757",
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "cases": [
+    {
+      "variant": "common1005-generated-auto",
+      "runtime": "original",
+      "trace_sha256": "9f338465dbeec34c418683b78913ee1279accee0f30a79e698af59c015446dee",
+      "save_sha256": "a4e8b3d776d03598b7444c837480ed889bb3dd40f357d593ac8861aa40f502e5",
+      "consumer_calls": 62,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-auto",
+      "runtime": "player",
+      "trace_sha256": "280e8624867c8d1e6690bd4bf15990bd9a81dde583957b1e5fde79151c6f8f6d",
+      "save_sha256": "611dc7a0b5a14ea5bb81631dbc732e07b47c7cbf73c4b85279cabc7c30369a28",
+      "consumer_calls": 62,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-parallel",
+      "runtime": "original",
+      "trace_sha256": "29892e93d18715336ff6e26f342b992fda7aaff005168e75b27a55988525a226",
+      "save_sha256": "9f47e3e9be57a8afe0340903583b0188cb1e353d7eb14bc97c1af651ab81a26a",
+      "consumer_calls": 62,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-parallel",
+      "runtime": "player",
+      "trace_sha256": "9f24fa0ab1bea8e73585d8f4b5208922653e9b85ddfc1511129867ac0ab5e42d",
+      "save_sha256": "bc99b9275067e0f7c77341566e743eaa8f116efc4ec9b0148680e5f773daf721",
+      "consumer_calls": 62,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-nested",
+      "runtime": "original",
+      "trace_sha256": "b8f5c5b4adcf38f4f787e060c7d46cb6ca2c2e68a242f32f1e7bc9dc154f07eb",
+      "save_sha256": "d5a429456c72cf5a73e3e95a5a6c504d84a8469f9fbe18f1ee37a8b9a2e648d2",
+      "consumer_calls": 63,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-nested",
+      "runtime": "player",
+      "trace_sha256": "863e2aca37573ade3e0693e33d43396bb2ff0a141714472d83234a3b3d628ccc",
+      "save_sha256": "9eb2491fc5400020c2fa15286253a78fcf56b8fdbc8b6e51a5bbf9f3130188a9",
+      "consumer_calls": 63,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-battle",
+      "runtime": "original",
+      "trace_sha256": "8abf88d490d5a2586f767d213bcbaad08284f2fb87dec8b59b297f2ccc6433d3",
+      "save_sha256": "39f220d0d99045db680448aa30416f16aef6bd153e80035024eddc0554ee3dd4",
+      "consumer_calls": 63,
+      "variable_checksum": 106
+    },
+    {
+      "variant": "common1005-generated-battle",
+      "runtime": "player",
+      "trace_sha256": "84c9f88fcce064af25e38f8cb73037be1ff0b93e2349233e7d237a023aeb8daf",
+      "save_sha256": "46ee2ada3d5b714adc79bbadd8a6ca825a79995d27a6a6ab45bf4dc869498e49",
+      "consumer_calls": 63,
+      "variable_checksum": 106
+    }
+  ],
+  "scope": "250921 Windows opcode 3019 inline literal production of 1005 across map autostart, map parallel, called common and battle lists. Native hook confirms generated parameter arrays enter the real 1005 consumer and append kind-37 frames; actual original/Player saves compare each call's cumulative outcome. This does not validate 3019's other construction modes or 1005 save/restart lifecycle."
+}

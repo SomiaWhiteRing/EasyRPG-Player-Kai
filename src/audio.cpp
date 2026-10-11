@@ -22,6 +22,80 @@
 #include "baseui.h"
 #include "player.h"
 #include "game_clock.h"
+#include <algorithm>
+#ifdef _WIN32
+#include <mmdeviceapi.h>
+#include <audiopolicy.h>
+#include <mmsystem.h>
+#include <lcf/scope_guard.h>
+
+namespace {
+int ManiacMixerVolume(int* requested) {
+	HMIXER mixer = nullptr;
+	if (mixerOpen(&mixer, 0, 0, 0, 0) != MMSYSERR_NOERROR) return -1;
+	const auto cleanup = lcf::makeScopeGuard([&]() { mixerClose(mixer); });
+	const auto object = reinterpret_cast<HMIXEROBJ>(mixer);
+	MIXERLINEW line{};
+	line.cbStruct = sizeof(line);
+	line.dwComponentType = MIXERLINE_COMPONENTTYPE_SRC_WAVEOUT;
+	if (mixerGetLineInfoW(object, &line, MIXER_GETLINEINFOF_COMPONENTTYPE) != MMSYSERR_NOERROR) return -1;
+	MIXERCONTROLW control{};
+	MIXERLINECONTROLSW controls{};
+	controls.cbStruct = sizeof(controls);
+	controls.dwLineID = line.dwLineID;
+	controls.dwControlType = MIXERCONTROL_CONTROLTYPE_VOLUME;
+	controls.cControls = 1;
+	// 250921 passes the ANSI size to the W API. Preserve its failure behavior.
+	controls.cbmxctrl = sizeof(MIXERCONTROLA);
+	controls.pamxctrl = &control;
+	if (mixerGetLineControlsW(object, &controls, MIXER_GETLINECONTROLSF_ONEBYTYPE) != MMSYSERR_NOERROR) return -1;
+	MIXERCONTROLDETAILS_UNSIGNED value{};
+	MIXERCONTROLDETAILS details{};
+	details.cbStruct = sizeof(details);
+	// The fixed getter uses its zero-initialized ID; only the setter uses the
+	// control returned above. Ordinary Windows rejects the preceding size.
+	details.dwControlID = requested ? control.dwControlID : 0;
+	details.cChannels = 1;
+	details.cbDetails = sizeof(value);
+	details.paDetails = &value;
+	if (requested) {
+		value.dwValue = static_cast<DWORD>(std::clamp(*requested, 0, 1000) * (65535.0 / 1000));
+		return mixerSetControlDetails(object, &details, MIXER_SETCONTROLDETAILSF_VALUE) == MMSYSERR_NOERROR ? 0 : -1;
+	}
+	if (mixerGetControlDetailsW(object, &details, MIXER_GETCONTROLDETAILSF_VALUE) != MMSYSERR_NOERROR) return -1;
+	return static_cast<int>(value.dwValue * (1000.0 / 65535) / 10);
+}
+
+int ManiacSessionVolume(int* requested) {
+	const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+	if (FAILED(initialized)) return ManiacMixerVolume(requested);
+	IMMDeviceEnumerator* enumerator = nullptr;
+	IMMDevice* device = nullptr;
+	IAudioSessionManager* manager = nullptr;
+	ISimpleAudioVolume* volume = nullptr;
+	const auto cleanup = lcf::makeScopeGuard([&]() {
+		if (volume) volume->Release();
+		if (manager) manager->Release();
+		if (device) device->Release();
+		if (enumerator) enumerator->Release();
+		if (SUCCEEDED(initialized)) CoUninitialize();
+	});
+	if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+		__uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&enumerator)))
+		|| FAILED(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device))
+		|| FAILED(device->Activate(__uuidof(IAudioSessionManager), CLSCTX_ALL, nullptr,
+			reinterpret_cast<void**>(&manager)))
+		|| FAILED(manager->GetSimpleAudioVolume(nullptr, 0, &volume))) return ManiacMixerVolume(requested);
+	if (requested) {
+		const float gain = static_cast<float>(std::clamp(*requested, 0, 1000) * 0.01);
+		return SUCCEEDED(volume->SetMasterVolume(gain, nullptr)) ? 0 : -1;
+	}
+	float gain = 0;
+	if (FAILED(volume->GetMasterVolume(&gain))) return -1;
+	return static_cast<int>(static_cast<double>(gain) * 100);
+}
+}
+#endif
 #ifdef EMSCRIPTEN
 #include "platform/emscripten/audio.h"
 #endif
@@ -115,6 +189,22 @@ int AudioInterface::SE_GetGlobalVolume() const {
 
 void AudioInterface::SE_SetGlobalVolume(int volume) {
 	cfg.sound_volume.Set(volume);
+}
+
+bool AudioInterface::SetManiacVolume(int volume) {
+#ifdef _WIN32
+	return ManiacSessionVolume(&volume) == 0;
+#else
+	return false;
+#endif
+}
+
+int AudioInterface::GetManiacVolume() const {
+#ifdef _WIN32
+	return ManiacSessionVolume(nullptr);
+#else
+	return -1;
+#endif
 }
 
 bool AudioInterface::GetFluidsynthEnabled() const {

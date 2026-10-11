@@ -24,6 +24,9 @@
 #include "game_message.h"
 #include "game_strings.h"
 #include "game_switches.h"
+#include "game_interpreter_shared.h"
+#include <cctype>
+#include <cstring>
 #include "game_variables.h"
 #include "output.h"
 #include "player.h"
@@ -67,13 +70,12 @@ std::string_view Game_Strings::Cat(Str_Params params, std::string_view string) {
 		return {};
 	}
 
-	auto it = _strings.find(params.string_id);
-	if (it == _strings.end()) {
+	if (!IsPresent(params.string_id)) {
 		Set(params, string);
 		return Get(params.string_id);
 	}
-	it->second += ToString(string);
-	return it->second;
+	*_strings[params.string_id - 1] += ToString(string);
+	return *_strings[params.string_id - 1];
 }
 
 int Game_Strings::ToNum(Str_Params params, int var_id, Game_Variables& variables) {
@@ -81,16 +83,15 @@ int Game_Strings::ToNum(Str_Params params, int var_id, Game_Variables& variables
 		return -1;
 	}
 
-	auto it = _strings.find(params.string_id);
-	if (it == _strings.end()) {
+	if (!IsPresent(params.string_id)) {
 		return 0;
 	}
 
 	int num;
 	if (params.hex)
-		num = static_cast<int>(std::strtol(it->second.c_str(), nullptr, 16));
+		num = static_cast<int>(std::strtol(_strings[params.string_id - 1]->c_str(), nullptr, 16));
 	else
-		num = static_cast<int>(std::strtol(it->second.c_str(), nullptr, 0));
+		num = static_cast<int>(std::strtol(_strings[params.string_id - 1]->c_str(), nullptr, 10));
 
 	variables.Set(var_id, num);
 
@@ -192,6 +193,11 @@ int Game_Strings::Split(Str_Params params, const std::string& delimiter, int str
 
 std::string Game_Strings::FromFile(std::string_view filename, int encoding, bool& do_yield) {
 	do_yield = false;
+	const bool native250921 = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
+	if (native250921 && (encoding < 0 || encoding > 2)) {
+		return {};
+	}
 
 	Filesystem_Stream::InputStream is = FileFinder::OpenText(filename);
 	if (!is) {
@@ -206,11 +212,27 @@ std::string Game_Strings::FromFile(std::string_view filename, int encoding, bool
 
 	auto vec = Utils::ReadStream(is);
 	std::string file_content(vec.begin(), vec.end());
+	const bool native_utf8 = native250921 && encoding == 1;
+	if (native250921) {
+		// Native filesystem text mode handles CRLF and DOS EOF before the
+		// terminated ANSI/UTF8 conversion. Standalone CR and BOM are retained.
+		const size_t zero = std::min(file_content.find('\0'), file_content.find('\x1a'));
+		if (zero != std::string::npos) file_content.resize(zero);
+		file_content = Utils::ReplaceAll(file_content, "\r\n", "\n");
+	}
+	if (native250921 && encoding == 2) {
+		// The fixed runtime's ordinary wide stream uses the C locale facet:
+		// each unsigned input byte becomes one wide unit after CRT text handling.
+		std::u16string units;
+		units.reserve(file_content.size());
+		for (unsigned char byte : file_content) units.push_back(byte);
+		return Utils::EncodeUTF(units, true);
+	}
 
 	if (encoding == 0) {
 		lcf::Encoder enc(Player::encoding);
 		enc.Encode(file_content);
-	} else {
+	} else if (!native_utf8) {
 		// UTF-8: Remove Byte Order Mask
 		if (file_content.size() >= 3 && file_content[0] == '\xEF' && file_content[1] == '\xBB' && file_content[2] == '\xBF') {
 			file_content.erase(0, 3);
@@ -226,12 +248,31 @@ bool Game_Strings::ToFile(Str_Params params, std::string filename, int encoding)
 	if (params.extract) {
 		filename = Extract(filename, params.hex);
 	}
+	return ToFile(str, std::move(filename), encoding);
+}
+
+bool Game_Strings::ToFile(std::string_view text, std::string filename, int encoding) {
+	Output::BeginManiacFileOutput();
+	const bool native250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	std::string str = ToString(text);
+	if (native250921 && encoding == 1) {
+		// WideCharToMultiByte UTF8 consumes a terminated UTF16 string. This
+		// also combines pairs formed across the collected input strings.
+		str = Utils::EncodeUTF(Utils::DecodeUTF16(text.substr(0, text.find('\0')), true));
+	} else if (native250921 && encoding == 2) {
+		const auto units = Utils::DecodeUTF16(text, true);
+		str.resize(units.size() * 2);
+		for (size_t i = 0; i < units.size(); ++i) {
+			str[i * 2] = static_cast<char>(units[i] & 0xFF);
+			str[i * 2 + 1] = static_cast<char>(units[i] >> 8);
+		}
+	}
 
 	// Maniacs forces the File in Text/ folder with .txt extension
 	filename = "Text/" + filename;
 
 	// EasyRPG Extension: When "*" is at the end of filename, ".txt" is not appended
-	if (Player::HasEasyRpgExtensions() && filename.back() == '*') {
+	if (!native250921 && Player::HasEasyRpgExtensions() && filename.back() == '*') {
 		filename.pop_back();
 	} else {
 		filename += ".txt";
@@ -241,7 +282,9 @@ bool Game_Strings::ToFile(Str_Params params, std::string filename, int encoding)
 	auto txt_dir = FileFinder::GetPathAndFilename(filename).first;
 
 	if (!txt_out) {
-		if (!FileFinder::Save().MakeDirectory(txt_dir, false)) {
+		// Android's app view can expose /data/user/0 as a directory link.
+		// Native text output must create its parent under the selected save root.
+		if (!FileFinder::Save().MakeDirectory(txt_dir, native250921)) {
 			Output::Warning("Maniac String Op ToFile failed. Cannot create directory {}", txt_dir);
 			return false;
 		}
@@ -254,8 +297,16 @@ bool Game_Strings::ToFile(Str_Params params, std::string filename, int encoding)
 	}
 
 	if (encoding == 0) {
+		if (native250921) {
+			str.resize(str.find('\0') == std::string::npos ? str.size() : str.find('\0'));
+		}
 		lcf::Encoder enc(Player::encoding);
 		enc.Decode(str);
+		if (native250921) {
+			// Native writes twice the converted byte count, including its NUL.
+			// Zero-fill safely instead of reproducing its uninitialized overread.
+			str.resize((str.size() + 1) * 2, '\0');
+		}
 	}
 
 	txt_out << str;
@@ -272,16 +323,21 @@ std::string_view Game_Strings::PopLine(Str_Params params, int offset, int string
 		return {};
 	}
 
+	const std::string source = ToString(Get(params.string_id));
 	std::string result;
-	std::string_view str = Get(params.string_id);
-
-	std::stringstream ss(ToString(str));
-
-	while (offset >= 0 && Utils::ReadLine(ss, result)) { offset--; }
-
-	offset = ss.rdbuf()->in_avail();
-
-	Set(params, ss.str().substr(str.length() - offset));
+	size_t position = 0;
+	while (offset >= 0) {
+		const size_t newline = source.find('\n', position);
+		if (newline == std::string::npos) {
+			result = source.substr(position);
+			position = source.size();
+			break;
+		}
+		result = source.substr(position, newline - position);
+		position = newline + 1;
+		--offset;
+	}
+	Set(params, source.substr(position));
 
 	// the maniacs implementation is to always preserve the mutated base string
 	// so in the case where the out_id matches the base string id, the popped line is discarded.
@@ -327,14 +383,14 @@ std::string_view Game_Strings::ExMatch(Str_Params params, std::string expr, int 
 	return {};
 }
 
-const Game_Strings::Strings_t& Game_Strings::RangeOp(Str_Params params, int string_id_1, std::string string, int op, int args[], Game_Variables& variables) {
+void Game_Strings::RangeOp(Str_Params params, int string_id_1, std::string string, int op, int args[], Game_Variables& variables) {
 	if (EP_UNLIKELY(ShouldWarn(params.string_id))) {
 		WarnGet(params.string_id);
 	}
 	if (EP_UNLIKELY(ShouldWarn(string_id_1))) {
 		WarnGet(string_id_1);
 	}
-	if (params.string_id <= 0 && string_id_1 <= 0) { return GetData(); }
+	if (params.string_id <= 0 && string_id_1 <= 0) { return; }
 
 	// maniacs just ignores if only one of the params is <= 0
 	if (params.string_id <= 0) { params.string_id = 1; }
@@ -358,7 +414,6 @@ const Game_Strings::Strings_t& Game_Strings::RangeOp(Str_Params params, int stri
 		case 10: ExMatch(params, string, args[1] + (params.string_id - start), args[2], args[3], variables); break;
 		}
 	}
-	return GetData();
 }
 
 std::string Game_Strings::PrependMin(std::string_view string, int min_size, char c) {
@@ -379,8 +434,63 @@ std::string Game_Strings::PrependMin(std::string_view string, int min_size, char
 	return ToString(string);
 }
 
-std::string Game_Strings::Extract(std::string_view string, bool as_hex) {
+std::string Game_Strings::Extract(std::string_view string, bool as_hex, const Game_BaseInterpreterContext* context) {
 	PendingMessage::CommandInserter cmd_fn;
+	if (context) {
+		Game_Message::ManiacHookCaller caller;
+		if (!context->GetState().stack.empty()) {
+			const auto& frame = context->GetFrame();
+			caller = {frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
+		}
+		auto fallback = Game_Message::MakeCommandCodeInserter(*context);
+		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+		cmd_fn = [context, caller, as_hex, fallback, native250921](char ch, const char** iter, const char* end, uint32_t escape) {
+			char type = std::toupper(static_cast<unsigned char>(ch));
+			bool self = false;
+			if (type == 'S' && end - *iter >= 4
+				&& std::toupper(static_cast<unsigned char>((*iter)[0])) == 'E'
+				&& std::toupper(static_cast<unsigned char>((*iter)[1])) == 'L'
+				&& std::toupper(static_cast<unsigned char>((*iter)[2])) == 'F') {
+				const char kind = std::toupper(static_cast<unsigned char>((*iter)[3]));
+				if (kind == 'V' || kind == 'T' || kind == 'S') {
+					type = kind;
+					self = kind != 'S' || !native250921;
+					*iter += 4;
+					if (kind == 'S' && native250921) {
+						// Native SELFS detection returns3, then the ordinary S branch
+						// still advances two UTF16 units and does not negate the ID.
+						for (int units = 2; units > 0 && *iter != end; ) {
+							const auto next = Utils::UTF8Next(*iter, end);
+							*iter = next.next;
+							if (next.ch > 0xFFFF && units == 1) {
+								// The cursor is left on the low surrogate: number parsing
+								// yields0 and the outer scan copies that remaining unit.
+								const char16_t low = 0xDC00 + ((next.ch - 0x10000) & 0x3FF);
+								return std::optional<std::string>("OFF" + Utils::EncodeUTF(std::u16string(1, low), true));
+							}
+							units -= next.ch > 0xFFFF ? 2 : 1;
+						}
+					}
+				}
+			}
+			if (type != 'V' && type != 'S' && type != 'T') return fallback(ch, iter, end, escape);
+			const auto parsed = Game_Message::ParseManiacNumber(*iter, end, caller);
+			*iter = parsed.next;
+			int32_t id = parsed.value;
+			if (self) {
+				const uint32_t bits = 0u - static_cast<uint32_t>(id);
+				std::memcpy(&id, &bits, sizeof(id));
+			}
+			if (type == 'S') return std::optional<std::string>(context->ReadSwitch(id) ? "ON" : "OFF");
+			if (type == 'T') {
+				const auto value = context->ReadString(id);
+				return std::optional<std::string>(value.substr(0, value.find('\0')));
+			}
+			const int32_t value = context->ReadVariable(id);
+			return std::optional<std::string>(as_hex ? fmt::format("{:x}", static_cast<uint32_t>(value)) : std::to_string(value));
+		};
+		return PendingMessage::ApplyTextInsertingCommands(ToString(string), Player::escape_char, cmd_fn);
+	}
 
 	if (as_hex) {
 		cmd_fn = ManiacsCommandInserterHex;
@@ -454,6 +564,62 @@ std::string Game_Strings::Erase(std::string_view source, int begin, int length) 
 	return ret;
 }
 
+namespace {
+	std::wstring ManiacRegexUnits(std::string_view text) {
+		const auto units = Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
+		// Native regex consumes UTF16 units, including separate surrogate halves.
+		// wchar_t is 32-bit on Web/Android, so ToWideString would change the units.
+		return std::wstring(units.begin(), units.end());
+	}
+
+	std::string ManiacRegexText(std::wstring_view units) {
+		return Utils::EncodeUTF(std::u16string(units.begin(), units.end()), true);
+	}
+}
+
+std::string Game_Strings::ManiacRegExReplace(std::string_view str, std::string_view search, std::string_view replace, std::regex_constants::match_flag_type flags) {
+	try {
+		const std::wregex expression(ManiacRegexUnits(search), std::regex_constants::ECMAScript);
+		const auto replacement = ManiacRegexUnits(replace);
+		std::wstring format;
+		for (size_t index = 0; index < replacement.size(); ++index) {
+			format += replacement[index];
+			if (replacement[index] != L'$' || index + 1 == replacement.size()) continue;
+			const auto next = replacement[++index];
+			// Native keeps $0/$00 literal; libc++ formats group0 instead.
+			// Consume whole dollar tokens so an escaped $$0 is never rewritten.
+			if (next == L'0' && (index + 1 == replacement.size() || replacement[index + 1] < L'1' || replacement[index + 1] > L'9')) format += L'$';
+			format += next;
+			if (next >= L'0' && next <= L'9' && index + 1 < replacement.size()
+				&& replacement[index + 1] >= L'0' && replacement[index + 1] <= L'9') format += replacement[++index];
+		}
+		return ManiacRegexText(std::regex_replace(ManiacRegexUnits(str), expression, format, flags));
+	} catch (const std::regex_error&) {
+		return {};
+	}
+}
+
+int Game_Strings::ManiacRegExSearch(std::string_view str, std::string_view search, int begin, std::vector<std::string>* captures) {
+	try {
+		const std::wregex expression(ManiacRegexUnits(search), std::regex_constants::ECMAScript);
+		const auto units = ManiacRegexUnits(str);
+		const auto offset = static_cast<size_t>(std::clamp<int64_t>(begin, 0, units.size()));
+		const auto suffix = units.substr(offset);
+		std::wsmatch match;
+		if (!std::regex_search(suffix, match, expression)) {
+			if (captures) captures->emplace_back();
+			return -1;
+		}
+		if (captures) {
+			for (const auto& capture : match) captures->push_back(ManiacRegexText(capture.str()));
+		}
+		return static_cast<int>(offset + match.position());
+	} catch (const std::regex_error&) {
+		// Unlike an ordinary miss, malformed regex contributes no capture slot.
+		return -1;
+	}
+}
+
 std::string Game_Strings::RegExReplace(std::string_view str, std::string_view search, std::string_view replace, std::regex_constants::match_flag_type flags) {
 	// std::regex only works with char and wchar, not char32
 	// For full Unicode support requires the w-API, even on non-Windows systems
@@ -513,16 +679,7 @@ std::optional<std::string> Game_Strings::ManiacsCommandInserterHex(char ch, cons
 };
 
 int Game_Strings::GetSizeWithLimit() {
-	if (_size < 0) {
-		_size = 0;
-		for (auto& [index, value] : _strings) {
-			assert(index > 0);
-			if (index > _size) {
-				_size = index;
-			}
-		}
-	}
-	return std::max(_size, static_cast<int>(lcf::Data::maniac_string_variables.size()));
+	return static_cast<int>(std::min<size_t>(std::max(_strings.size(), lcf::Data::maniac_string_variables.size()), std::numeric_limits<int>::max()));
 }
 
 std::string_view Game_Strings::GetName(int id) const {

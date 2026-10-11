@@ -47,6 +47,7 @@ public:
 	using Cmd = lcf::rpg::EventCommand::Code;
 
 	static Game_Interpreter& GetForegroundInterpreter();
+	static AsyncOp RunManiacMessageHook(int common_event_id);
 
 	Game_Interpreter(bool _main_flag = false);
 #ifndef EMSCRIPTEN
@@ -102,6 +103,10 @@ public:
 
 	/** @return the event_id used by "ThisEvent" in commands */
 	int GetThisEventId() const override;
+	int32_t ReadVariable(int id) const override;
+	int ReadSwitch(int id) const override;
+	std::string_view ReadString(int id) const override;
+	bool IsManiacStringPresent(int id) const;
 
 	/** @return the event_id of the event at the base of the call stack */
 	int GetOriginalEventId() const;
@@ -125,6 +130,7 @@ protected:
 	static constexpr int loop_limit = 10000;
 	static constexpr int call_stack_limit = 1000;
 	static constexpr int subcommand_sentinel = 255;
+	static void NormalizeSerializedManiacText(std::vector<lcf::rpg::EventCommand>& commands);
 
 	const lcf::rpg::SaveEventExecFrame& GetFrame() const override;
 	lcf::rpg::SaveEventExecFrame& GetFrame();
@@ -132,6 +138,7 @@ protected:
 	lcf::rpg::SaveEventExecFrame* GetFramePtr();
 
 	bool main_flag;
+	bool maniac_message_hook = false;
 
 	int loop_count = 0;
 
@@ -186,7 +193,7 @@ protected:
 	/**
 	 * When current frame finishes executing we pop the stack
 	 */
-	bool OnFinishStackFrame();
+	virtual bool OnFinishStackFrame();
 
 	/**
 	 * Triggers a game over when all party members are dead.
@@ -271,10 +278,13 @@ protected:
 	bool CommandEndBranch(lcf::rpg::EventCommand const& com);
 	bool CommandJumpToLabel(lcf::rpg::EventCommand const& com);
 	bool CommandLoop(lcf::rpg::EventCommand const& com);
+	bool CommandManiacLoop(lcf::rpg::EventCommand const& com, bool end);
 	bool CommandBreakLoop(lcf::rpg::EventCommand const& com);
 	bool CommandEndLoop(lcf::rpg::EventCommand const& com);
 	bool CommandEraseEvent(lcf::rpg::EventCommand const& com);
 	bool CommandCallEvent(lcf::rpg::EventCommand const& com);
+	bool CommandManiacCallCommonEvent(lcf::rpg::EventCommand const& com);
+	bool CommandManiacSelfvar(lcf::rpg::EventCommand const& com);
 	bool CommandReturnToTitleScreen(lcf::rpg::EventCommand const& com);
 	bool CommandChangeClass(lcf::rpg::EventCommand const& com);
 	bool CommandChangeBattleCommands(lcf::rpg::EventCommand const& com);
@@ -294,6 +304,15 @@ protected:
 	bool CommandManiacRewriteMap(lcf::rpg::EventCommand const& com);
 	bool CommandManiacControlGlobalSave(lcf::rpg::EventCommand const& com);
 	bool CommandManiacChangePictureId(lcf::rpg::EventCommand const& com);
+	bool CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand const& com);
+	bool CommandManiacEditPicture(lcf::rpg::EventCommand const& com);
+	bool CommandManiacWritePicture(lcf::rpg::EventCommand const& com);
+	bool CommandManiacControlTextProcessing(lcf::rpg::EventCommand const& com);
+	bool CommandManiacZoomScreen(lcf::rpg::EventCommand const& com);
+	bool CommandManiacJavaScript(lcf::rpg::EventCommand const& com);
+	bool CommandManiacConsole(lcf::rpg::EventCommand const& com);
+	bool CommandManiacChangeTroopMember(lcf::rpg::EventCommand const& com);
+	bool CommandManiacControlMediaOption(lcf::rpg::EventCommand const& com);
 	bool CommandManiacSetGameOption(lcf::rpg::EventCommand const& com);
 	bool CommandManiacControlStrings(lcf::rpg::EventCommand const& com);
 	bool CommandManiacCallCommand(lcf::rpg::EventCommand const& com);

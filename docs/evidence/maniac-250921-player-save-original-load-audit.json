@@ -1,0 +1,30 @@
+{
+  "player_save_sha256": "9d26177c81c90fa3fc3651a1b1170884576826edc53c0d276414fcbf6de739c6",
+  "player_save_length": 6955,
+  "root_0x74_sha256": "527a7729d0f5b66ca8c4f66fa2cd3ebb84e0d92328e915470e4a66a461c53f1e",
+  "saved_map_event_numeric_bank": [
+    {
+      "map_id": 1,
+      "events": [
+        {
+          "event_id": 1,
+          "numbers_positive_slots": [
+            42,
+            0
+          ]
+        }
+      ],
+      "other_map_fields_hex": {}
+    }
+  ],
+  "original_load_fixture_manifest_sha256": "2774ad6b66345dcf7d23ce3ce67958b42ab74d6670f8c674352e44732159bff4",
+  "original_load_trace_sha256": "c805240784c28e9141d40f64ce0f33d52be9e44b536fa7f4ae03360febc2fba8",
+  "original_after_player_save_load_physical_numeric_slots": [
+    0,
+    7,
+    0,
+    42,
+    42
+  ],
+  "scope": "One Player.exe Maniac 3002 save loaded by the original 250921 runtime with one map self numeric continuation; other versions and states remain unverified"
+}

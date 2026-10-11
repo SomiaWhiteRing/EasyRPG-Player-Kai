@@ -25,6 +25,8 @@
 #include "window_shop.h"
 #include "bitmap.h"
 #include "font.h"
+#include "cache.h"
+#include "player.h"
 
 Window_Shop::Window_Shop(int shop_type, int ix, int iy, int iwidth, int iheight) :
 	Window_Base(ix, iy, iwidth, iheight) {
@@ -84,9 +86,9 @@ void Window_Shop::UpdateCursorRect() {
 	int width = contents->GetWidth() - 8;
 	if (!Main_Data::game_system->GetMessageFaceName().empty()) {
 		if (!Main_Data::game_system->IsMessageFaceRightPosition()) {
-			x += LeftMargin + FaceSize + RightFaceMargin;
+			x += LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
 		}
-		width -= LeftMargin + FaceSize + RightFaceMargin;
+		width -= LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
 	}
 
 	Rect rect;
@@ -103,17 +105,43 @@ void Window_Shop::UpdateCursorRect() {
 	SetCursorRect(rect);
 }
 
+void Window_Shop::OnManiacFaceReady(FileRequestResult* result) {
+	maniac_faceset = Cache::Faceset(result->file);
+}
+
+void Window_Shop::DrawContents(Bitmap& dst) {
+	Window_Base::DrawContents(dst);
+	if (!Player::IsPatchManiac() || !maniac_faceset || IsOpeningOrClosing() || contents_opacity <= 0) return;
+	auto& system = *Main_Data::game_system;
+	const int face_width = system.GetMessageFaceWidth();
+	const int face_height = system.GetMessageFaceHeight();
+	const int margin_x = std::max(0, 16 - (face_width - 48) / 2);
+	const int margin_y = std::max(0, 16 - (face_height - 48) / 2);
+	const int face_x = system.IsMessageFaceRightPosition() ? width - face_width - margin_x : margin_x;
+	dst.FlipBlit(x + face_x, y + margin_y, *maniac_faceset, GetMessageFaceRect(*maniac_faceset),
+		Main_Data::game_system->IsMessageFaceFlipped(), false, contents_opacity);
+}
+
 void Window_Shop::Refresh() {
 	contents->Clear();
+	if (Player::IsPatchManiac()) {
+		face_request_ids.clear(); maniac_faceset.reset();
+		if (!Main_Data::game_system->GetMessageFaceName().empty()) {
+			auto* request = AsyncHandler::RequestFile("FaceSet", Main_Data::game_system->GetMessageFaceName());
+			request->SetGraphicFile(true);
+			face_request_ids.push_back(request->Bind(&Window_Shop::OnManiacFaceReady, this));
+			request->Start();
+		}
+	}
 
 	int x = 0;
 	if (!Main_Data::game_system->GetMessageFaceName().empty()) {
 		if (!Main_Data::game_system->IsMessageFaceRightPosition()) {
-			x += LeftMargin + FaceSize + RightFaceMargin;
-			DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), LeftMargin, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
+			x += LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
+			if (!Player::IsPatchManiac()) DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), LeftMargin, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
 		}
 		else {
-			DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), 248, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
+			if (!Player::IsPatchManiac()) DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), 248, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
 		}
 	}
 

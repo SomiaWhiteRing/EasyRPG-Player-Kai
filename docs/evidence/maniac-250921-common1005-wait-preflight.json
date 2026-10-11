@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-26",
+  "scope": "W02-028 preparation; failed attempts never counted as passing",
+  "attempts": [
+    {
+      "context": "auto",
+      "runtime": "original",
+      "stage": 2,
+      "timeout_seconds": 45,
+      "result": "no stable Save02 on first scripted preparation attempt; same checkpoint later resumed, final bounded capture succeeded"
+    },
+    {
+      "context": "parallel",
+      "runtime": "original",
+      "stage": 1,
+      "attempt_count": 3,
+      "timeout_seconds_each": 45,
+      "result": "no stable Save01 before fixture event ID order was sorted; corrected fixture later captured and verified"
+    },
+    {
+      "context": "battle",
+      "runtime": "original and player",
+      "stage": 1,
+      "result": "first fixture let the troop page retrigger and overwrite Save01; rejected after saved child/parent counts were already 1; page now clears trigger before common call"
+    },
+    {
+      "context": "battle",
+      "runtime": "original and player",
+      "stage": 1,
+      "result": "second fixture cleared trigger only after common return and still overwrote Save01; rejected; final fixture clears trigger before call and has one native call trace"
+    }
+  ]
+}

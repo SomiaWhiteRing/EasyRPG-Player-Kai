@@ -198,9 +198,9 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplySpEffect() {
 		Game_Battle::ManiacBattleHook(
 			Game_Interpreter_Battle::ManiacBattleHookType::StatChange,
 			target->GetType() == Game_Battler::Type_Enemy,
-			target->GetPartyIndex(),
-			target->GetDisplayX(),
-			target->GetDisplayY(),
+			target->GetManiacHookIndex(),
+			target->GetManiacParamHookPosition().x,
+			target->GetManiacParamHookPosition().y,
 			3,
 			sp
 		);
@@ -222,9 +222,9 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyAtkEffect() {
 		Game_Battle::ManiacBattleHook(
 			Game_Interpreter_Battle::ManiacBattleHookType::StatChange,
 			target->GetType() == Game_Battler::Type_Enemy,
-			target->GetPartyIndex(),
-			target->GetDisplayX(),
-			target->GetDisplayY(),
+			target->GetManiacHookIndex(),
+			target->GetManiacParamHookPosition().x,
+			target->GetManiacParamHookPosition().y,
 			4,
 			atk
 		);
@@ -245,9 +245,9 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyDefEffect() {
 		Game_Battle::ManiacBattleHook(
 			Game_Interpreter_Battle::ManiacBattleHookType::StatChange,
 			target->GetType() == Game_Battler::Type_Enemy,
-			target->GetPartyIndex(),
-			target->GetDisplayX(),
-			target->GetDisplayY(),
+			target->GetManiacHookIndex(),
+			target->GetManiacParamHookPosition().x,
+			target->GetManiacParamHookPosition().y,
 			5,
 			def
 		);
@@ -268,9 +268,9 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplySpiEffect() {
 		Game_Battle::ManiacBattleHook(
 			Game_Interpreter_Battle::ManiacBattleHookType::StatChange,
 			target->GetType() == Game_Battler::Type_Enemy,
-			target->GetPartyIndex(),
-			target->GetDisplayX(),
-			target->GetDisplayY(),
+			target->GetManiacHookIndex(),
+			target->GetManiacParamHookPosition().x,
+			target->GetManiacParamHookPosition().y,
 			6,
 			spi
 		);
@@ -291,9 +291,9 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyAgiEffect() {
 		Game_Battle::ManiacBattleHook(
 			Game_Interpreter_Battle::ManiacBattleHookType::StatChange,
 			target->GetType() == Game_Battler::Type_Enemy,
-			target->GetPartyIndex(),
-			target->GetDisplayX(),
-			target->GetDisplayY(),
+			target->GetManiacHookIndex(),
+			target->GetManiacParamHookPosition().x,
+			target->GetManiacParamHookPosition().y,
 			7,
 			agi
 		);
@@ -435,6 +435,12 @@ void Game_BattleAlgorithm::AlgorithmBase::Start() {
 	source->SetCharged(false);
 }
 
+void Game_BattleAlgorithm::AlgorithmBase::SetOriginalSingleTarget(Game_Battler* target) {
+	assert(!party_target && num_original_targets == 1);
+	targets.front() = target;
+	current_target = targets.end();
+}
+
 bool Game_BattleAlgorithm::AlgorithmBase::vStart() {
 	return true;
 }
@@ -497,7 +503,8 @@ bool Game_BattleAlgorithm::AlgorithmBase::IsCurrentTargetValid() const {
 	if (current_target == targets.end()) {
 		return false;
 	}
-	return IsTargetValid(**current_target);
+	const auto& target = **current_target;
+	return (target.GetType() != Game_Battler::Type_Enemy || target.IsInParty()) && IsTargetValid(target);
 }
 
 bool Game_BattleAlgorithm::AlgorithmBase::TargetNextInternal() {

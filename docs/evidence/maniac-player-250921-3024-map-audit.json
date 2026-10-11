@@ -1,0 +1,16 @@
+{
+  "fixture_manifest_sha256": "3724a59e54122798304b4740377674daf35e8a8272ab534a2a8588b7ee9edd79",
+  "original_scope_audit_sha256": "8dad7c644ec5babb8126c5ced26bf11970d5143f34df1f9eccfd6258abdd1195",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "player_trace_sha256": "39327983722ff061161d419d336e04d885910435a89fa38f760cbbc1e66433c0",
+  "player_save_sha256": "92ddc222db5838065e58fea26ca2e5412c2934c89c9aae61c06165718cf25538",
+  "player_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921"
+  ],
+  "player_marker_global_numeric_id_1": 99,
+  "scope": "Player 250921 Windows map-autostart event executes independent 3024 with nonempty Args/Text, reaches the later ControlVars 99 marker and Maniac_Save. This matches the bounded original observable marker; timing and parallel/common/battle contexts remain open under W02-012."
+}

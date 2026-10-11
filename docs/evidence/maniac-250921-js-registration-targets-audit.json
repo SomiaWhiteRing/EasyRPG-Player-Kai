@@ -1,0 +1,6687 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "79e6d89dbaaf2578a001c74d8546fda62c11f5b097d7a036f8c7ed5f5398ecef",
+  "trace_sha256": "391d85a491750d02dca9017fb26d5d69aaec6d40a6c66ba2f342439550bc991a",
+  "prior_registration_audit_sha256": "7f595672a458160fcb40af5a5ff383ec7035544256f5e72c2cbfca189ff2cb71",
+  "alternate_path_audit_sha256": "1558a9c6837019bb6acb4ee3a705ede19dbae8fe0bad22ddd5c3a9d2b8cfc6c8",
+  "lazy_registration_trace_sha256": "de3dba025cc3c202453b0f9b40e20836ca5af1da339e1a0915cc4fe53576d6a4",
+  "observed_property_calls": 421,
+  "observed_native_results": 96,
+  "observed_call_sites": 155,
+  "target_object_count": 52,
+  "target_objects": [
+    {
+      "identity_token": "object-1",
+      "labels": [
+        "runtime.class_prototype[3]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x16fecd",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x140f80"
+        },
+        {
+          "call_site_rva": "0x16ff1e",
+          "helper_rva": "0x139db0",
+          "name": "name",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x22f4b8",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x16ff6f",
+          "helper_rva": "0x139db0",
+          "name": "message",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x214220",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-2",
+      "labels": [
+        "native_function['Object']@0x1705bb"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "create",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b230"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "getPrototypeOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b370"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "setPrototypeOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b470"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "defineProperty",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b500"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "defineProperties",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b650"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "getOwnPropertyNames",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cb60"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "getOwnPropertySymbols",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cba0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "keys",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cbe0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "values",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cbe0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "entries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cbe0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "isExtensible",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cc20"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "preventExtensions",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13ccc0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "getOwnPropertyDescriptor",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b960"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "getOwnPropertyDescriptors",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13c1d0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "is",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13e470"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "assign",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d450"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "seal",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d640"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "freeze",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d640"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "isSealed",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d9e0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "isFrozen",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d9e0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "__getClass",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13e3d0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "fromEntries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13dcd0"
+        },
+        {
+          "call_site_rva": "0x170791",
+          "helper_rva": "0x139db0",
+          "name": "hasOwn",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cf60"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-3",
+      "labels": [
+        "runtime.class_prototype[1]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d110"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d410"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13d0e0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "hasOwnProperty",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13cdf0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "isPrototypeOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13e8e0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "propertyIsEnumerable",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13eba0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "__proto__",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x13e6f0",
+          "callback_or_setter_rva": "0x13e820"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "__defineGetter__",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b6e0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "__defineSetter__",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13b6e0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "__lookupGetter__",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13eda0"
+        },
+        {
+          "call_site_rva": "0x170801",
+          "helper_rva": "0x139db0",
+          "name": "__lookupSetter__",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13eda0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-4",
+      "labels": [
+        "runtime.class_prototype[13]",
+        "native_function['']@0x16fe3a"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17085f",
+          "helper_rva": "0x139db0",
+          "name": "call",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13fd20"
+        },
+        {
+          "call_site_rva": "0x1708b3",
+          "helper_rva": "0x139db0",
+          "name": "apply",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13fad0"
+        },
+        {
+          "call_site_rva": "0x170907",
+          "helper_rva": "0x139db0",
+          "name": "bind",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13fdf0"
+        },
+        {
+          "call_site_rva": "0x17095b",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x140430"
+        },
+        {
+          "call_site_rva": "0x1709af",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.hasInstance]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1405f0"
+        },
+        {
+          "call_site_rva": "0x170a03",
+          "helper_rva": "0x139db0",
+          "name": "fileName",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x10e8f0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x170a57",
+          "helper_rva": "0x139db0",
+          "name": "lineNumber",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x10e960",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-5",
+      "labels": [
+        "runtime.IteratorPrototype"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x170ffe",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1426b0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-6",
+      "labels": [
+        "runtime.class_prototype[2]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "concat",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142a70"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "every",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "some",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "forEach",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "map",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "filter",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "reduce",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x143a70"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "reduceRight",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x143a70"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "fill",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1441e0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "find",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x144b70"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "findIndex",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x144b70"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "indexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1446f0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "lastIndexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x144960"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "includes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1443b0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "join",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1452c0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x145080"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1452c0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "pop",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1456d0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "push",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x145ad0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "shift",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1456d0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "unshift",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x145ad0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "reverse",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x145d20"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "sort",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1472d0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "slice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x146100"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "splice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x146100"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "copyWithin",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1467d0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "flatMap",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x146de0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "flat",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x146de0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "values",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1479c0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f218",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "keys",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1479c0"
+        },
+        {
+          "call_site_rva": "0x171061",
+          "helper_rva": "0x139db0",
+          "name": "entries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1479c0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-7",
+      "labels": [
+        "native_function['Array']@0x1710d8"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1712ab",
+          "helper_rva": "0x139db0",
+          "name": "isArray",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1425e0"
+        },
+        {
+          "call_site_rva": "0x1712ff",
+          "helper_rva": "0x139db0",
+          "name": "from",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1419a0"
+        },
+        {
+          "call_site_rva": "0x171353",
+          "helper_rva": "0x139db0",
+          "name": "of",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1423d0"
+        },
+        {
+          "call_site_rva": "0x1713a7",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-8",
+      "labels": [
+        "runtime.class_prototype[44]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x171624",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c00",
+          "callback_or_setter_rva": "0x147b80"
+        },
+        {
+          "call_site_rva": "0x171678",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x22f640",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-9",
+      "labels": [
+        "global"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "parseInt",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148d50"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "parseFloat",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148ec0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "isNaN",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13a540"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "isFinite",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x13a5c0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "decodeURI",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1661a0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "decodeURIComponent",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1661a0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "encodeURI",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1665d0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "encodeURIComponent",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1665d0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "escape",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1668f0"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "unescape",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x166a90"
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "Infinity",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "NaN",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "undefined",
+          "descriptor_type": 7,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1716e1",
+          "helper_rva": "0x139db0",
+          "name": "__date_clock",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14f030"
+        },
+        {
+          "call_site_rva": "0x1726ca",
+          "helper_rva": "0x139db0",
+          "name": "Math",
+          "descriptor_type": 8,
+          "getter_or_value_rva": "0x25c3f0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x172722",
+          "helper_rva": "0x139db0",
+          "name": "Reflect",
+          "descriptor_type": 8,
+          "getter_or_value_rva": "0x25af50",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1817bd",
+          "helper_rva": "0x139db0",
+          "name": "JSON",
+          "descriptor_type": 8,
+          "getter_or_value_rva": "0x25d050",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17bb89",
+          "helper_rva": "0x139db0",
+          "name": "Atomics",
+          "descriptor_type": 8,
+          "getter_or_value_rva": "0x25b310",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x181953",
+          "helper_rva": "0x101790",
+          "atom": 474
+        },
+        {
+          "call_site_rva": "0x18071c",
+          "helper_rva": "0x101790",
+          "atom": 475
+        },
+        {
+          "call_site_rva": "0x1807c7",
+          "helper_rva": "0x139db0",
+          "name": "getv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ede0"
+        },
+        {
+          "call_site_rva": "0x180816",
+          "helper_rva": "0x139db0",
+          "name": "gets",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ede0"
+        },
+        {
+          "call_site_rva": "0x180865",
+          "helper_rva": "0x139db0",
+          "name": "gett",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ede0"
+        },
+        {
+          "call_site_rva": "0x1808b4",
+          "helper_rva": "0x139db0",
+          "name": "setv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17f510"
+        },
+        {
+          "call_site_rva": "0x180903",
+          "helper_rva": "0x139db0",
+          "name": "sets",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17f510"
+        },
+        {
+          "call_site_rva": "0x180952",
+          "helper_rva": "0x139db0",
+          "name": "sett",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17f510"
+        },
+        {
+          "call_site_rva": "0x180c3f",
+          "helper_rva": "0x101790",
+          "atom": 484
+        }
+      ]
+    },
+    {
+      "identity_token": "object-10",
+      "labels": [
+        "runtime.class_prototype[4]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x171899",
+          "helper_rva": "0x139db0",
+          "name": "toExponential",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148960"
+        },
+        {
+          "call_site_rva": "0x1718ed",
+          "helper_rva": "0x139db0",
+          "name": "toFixed",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148790"
+        },
+        {
+          "call_site_rva": "0x171941",
+          "helper_rva": "0x139db0",
+          "name": "toPrecision",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148b40"
+        },
+        {
+          "call_site_rva": "0x171995",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1485a0"
+        },
+        {
+          "call_site_rva": "0x1719e9",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1485a0"
+        },
+        {
+          "call_site_rva": "0x171a3d",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148510"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-11",
+      "labels": [
+        "native_function['Number']@0x171aae"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "parseInt",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f618",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "parseFloat",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f680",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "isNaN",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148250"
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "isFinite",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1482f0"
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "isInteger",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1483a0"
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "isSafeInteger",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x148470"
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "MAX_VALUE",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "MIN_VALUE",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "NaN",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "NEGATIVE_INFINITY",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "POSITIVE_INFINITY",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "EPSILON",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "MAX_SAFE_INTEGER",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x171c81",
+          "helper_rva": "0x139db0",
+          "name": "MIN_SAFE_INTEGER",
+          "descriptor_type": 6,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-12",
+      "labels": [
+        "runtime.class_prototype[6]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x171e36",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x149140"
+        },
+        {
+          "call_site_rva": "0x171e8a",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x149200"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-13",
+      "labels": [
+        "native_function['String']@0x172278"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17243f",
+          "helper_rva": "0x139db0",
+          "name": "fromCharCode",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1497c0"
+        },
+        {
+          "call_site_rva": "0x172493",
+          "helper_rva": "0x139db0",
+          "name": "fromCodePoint",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1498c0"
+        },
+        {
+          "call_site_rva": "0x1724e7",
+          "helper_rva": "0x139db0",
+          "name": "raw",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x149a90"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-14",
+      "labels": [
+        "runtime.class_prototype[5]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "length",
+          "descriptor_type": 4,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "charCodeAt",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x149f70"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "charAt",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14a0f0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "concat",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14a460"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "codePointAt",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14a290"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "indexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14a740"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "lastIndexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14a740"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "includes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14aa30"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "endsWith",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14aa30"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "startsWith",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14aa30"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "match",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14af60"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "matchAll",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14af60"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "search",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14af60"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "split",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14c240"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "substring",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14c810"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "substr",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14ca60"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "slice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14ccb0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "repeat",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d310"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "replace",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14ba40"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "replaceAll",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14ba40"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "padEnd",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14cf10"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "padStart",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14cf10"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "trim",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d580"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "trimEnd",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d580"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "trimRight",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f9b0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "trimStart",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d580"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "trimLeft",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f9f8",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e2e0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e2e0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "__quote",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d7a0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "localeCompare",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14d950"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "toLowerCase",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14db00"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "toUpperCase",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14db00"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleLowerCase",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14db00"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleUpperCase",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14db00"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1479c0"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "anchor",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "big",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "blink",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "bold",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "fixed",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "fontcolor",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "fontsize",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "italics",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "link",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "small",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "strike",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "sub",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x172551",
+          "helper_rva": "0x139db0",
+          "name": "sup",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14e520"
+        },
+        {
+          "call_site_rva": "0x181763",
+          "helper_rva": "0x139db0",
+          "name": "normalize",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14dfa0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-15",
+      "labels": [
+        "runtime.class_prototype[45]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1725ea",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c00",
+          "callback_or_setter_rva": "0x14e350"
+        },
+        {
+          "call_site_rva": "0x17263e",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x22fa80",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-16",
+      "labels": [
+        "runtime.class_prototype[7]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1727ad",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15d700"
+        },
+        {
+          "call_site_rva": "0x172801",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15d850"
+        },
+        {
+          "call_site_rva": "0x172855",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toPrimitive]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15d850"
+        },
+        {
+          "call_site_rva": "0x1728a9",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x23012c",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1728fd",
+          "helper_rva": "0x139db0",
+          "name": "description",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x15d8c0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-17",
+      "labels": [
+        "native_function['Symbol']@0x17296b"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x172b32",
+          "helper_rva": "0x139db0",
+          "name": "for",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15da40"
+        },
+        {
+          "call_site_rva": "0x172b86",
+          "helper_rva": "0x139db0",
+          "name": "keyFor",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15dac0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-18",
+      "labels": [
+        "runtime.class_prototype[47]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x172c9d",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c01",
+          "callback_or_setter_rva": "0x118650"
+        },
+        {
+          "call_site_rva": "0x172cf1",
+          "helper_rva": "0x139db0",
+          "name": "return",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c01",
+          "callback_or_setter_rva": "0x118650"
+        },
+        {
+          "call_site_rva": "0x172d45",
+          "helper_rva": "0x139db0",
+          "name": "throw",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c01",
+          "callback_or_setter_rva": "0x118650"
+        },
+        {
+          "call_site_rva": "0x172d99",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301f8",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-19",
+      "labels": [
+        "runtime.class_prototype[16]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x172e6f",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301a8",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-20",
+      "labels": [
+        "runtime.class_prototype[10]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169470"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toPrimitive]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169270"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toUTCString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toGMTString",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x230550",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toISOString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toDateString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toTimeString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleDateString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleTimeString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167ae0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getTimezoneOffset",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169390"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getTime",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169470"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getFullYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCFullYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getMonth",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCMonth",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getDate",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCDate",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getHours",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCHours",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getMinutes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCMinutes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getSeconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCSeconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getMilliseconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCMilliseconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getDay",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "getUTCDay",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167810"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setTime",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169560"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setMilliseconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCMilliseconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setSeconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCSeconds",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setMinutes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCMinutes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setHours",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCHours",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setDate",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCDate",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setMonth",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCMonth",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1696a0"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setFullYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "setUTCFullYear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x167920"
+        },
+        {
+          "call_site_rva": "0x169c9f",
+          "helper_rva": "0x139db0",
+          "name": "toJSON",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x169870"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-21",
+      "labels": [
+        "native_function['Date']@0x169d16"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x169ed7",
+          "helper_rva": "0x139db0",
+          "name": "now",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1691e0"
+        },
+        {
+          "call_site_rva": "0x169f2e",
+          "helper_rva": "0x139db0",
+          "name": "parse",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x168800"
+        },
+        {
+          "call_site_rva": "0x169f80",
+          "helper_rva": "0x139db0",
+          "name": "UTC",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1683f0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-22",
+      "labels": [
+        "runtime.class_prototype[18]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "flags",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x150440",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "source",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x14ff50",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "global",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "ignoreCase",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "multiline",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "dotAll",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "unicode",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "sticky",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x150300",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "exec",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x150ab0"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "compile",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x14fc50"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "test",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x151c30"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1508c0"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.replace]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x153310"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.match]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x151cf0"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.matchAll]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x152990"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.search]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x154700"
+        },
+        {
+          "call_site_rva": "0x1557bf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.split]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x154bf0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-23",
+      "labels": [
+        "native_function['RegExp']@0x155836"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x155a07",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-24",
+      "labels": [
+        "runtime.class_prototype[46]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x155a8d",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c00",
+          "callback_or_setter_rva": "0x152510"
+        },
+        {
+          "call_site_rva": "0x155adb",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x22fd28",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-25",
+      "labels": [
+        "native_function['Proxy']@0x15d4a3"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15d4e5",
+          "helper_rva": "0x139db0",
+          "name": "revocable",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15d0b0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-26",
+      "labels": [
+        "runtime.class_prototype[38]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "set",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eab0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "get",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eda0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "has",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eeb0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "delete",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15efa0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "clear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f0b0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "size",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x15f1b0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "forEach",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f270"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "values",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f890"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "keys",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f890"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "entries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f890"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f210",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301a0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-27",
+      "labels": [
+        "native_function['Map']@0x15fe10"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fe48",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-28",
+      "labels": [
+        "runtime.class_prototype[39]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "add",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eab0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "has",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eeb0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "delete",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15efa0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "clear",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f0b0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "size",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x15f1b0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "forEach",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f270"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "values",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f890"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "keys",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f218",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f218",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "entries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15f890"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230184",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-29",
+      "labels": [
+        "native_function['Set']@0x15fe10"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fe48",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-30",
+      "labels": [
+        "runtime.class_prototype[40]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "set",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eab0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "get",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eda0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "has",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eeb0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "delete",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15efa0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301c8",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-31",
+      "labels": [
+        "runtime.class_prototype[41]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "add",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eab0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "has",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15eeb0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "delete",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x15efa0"
+        },
+        {
+          "call_site_rva": "0x15fda2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301c0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-32",
+      "labels": [
+        "runtime.class_prototype[42]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15ffbf",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c00",
+          "callback_or_setter_rva": "0x15fa40"
+        },
+        {
+          "call_site_rva": "0x15ffbf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230190",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-33",
+      "labels": [
+        "runtime.class_prototype[43]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x15ffbf",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": "0x1f0c00",
+          "callback_or_setter_rva": "0x15fa40"
+        },
+        {
+          "call_site_rva": "0x15ffbf",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2301d0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-34",
+      "labels": [
+        "runtime.class_prototype[19]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17abd0",
+          "helper_rva": "0x139db0",
+          "name": "byteLength",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x1736a0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17ac21",
+          "helper_rva": "0x139db0",
+          "name": "slice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x173760"
+        },
+        {
+          "call_site_rva": "0x17ac72",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230d20",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-35",
+      "labels": [
+        "native_function['ArrayBuffer']@0x17ace6"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17ae9d",
+          "helper_rva": "0x139db0",
+          "name": "isView",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x173660"
+        },
+        {
+          "call_site_rva": "0x17aeee",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-36",
+      "labels": [
+        "runtime.class_prototype[20]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17af7d",
+          "helper_rva": "0x139db0",
+          "name": "byteLength",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x1736a0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17afce",
+          "helper_rva": "0x139db0",
+          "name": "slice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x173760"
+        },
+        {
+          "call_site_rva": "0x17b01f",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230d08",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-37",
+      "labels": [
+        "native_function['SharedArrayBuffer']@0x17b090"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17b24d",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-38",
+      "labels": [
+        "runtime.TypedArrayPrototype"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "length",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x173c80",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "buffer",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173d00",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "byteLength",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173db0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "byteOffset",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173e90",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "set",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x174420"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "values",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x174490"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.iterator]",
+          "descriptor_type": 9,
+          "getter_or_value_rva": "0x22f218",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "keys",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x174490"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "entries",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x174490"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x173f70",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "copyWithin",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1753d0"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "every",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "some",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "forEach",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "map",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "filter",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x142f50"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "reduce",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x143a70"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "reduceRight",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x143a70"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "fill",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175680"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "find",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175a90"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "findIndex",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175a90"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "reverse",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1768f0"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "slice",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x176ab0"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "subarray",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x176f60"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "sort",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1777f0"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "join",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x176500"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "toLocaleString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x176500"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "indexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175e20"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "lastIndexOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175e20"
+        },
+        {
+          "call_site_rva": "0x17b2d2",
+          "helper_rva": "0x139db0",
+          "name": "includes",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175e20"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-39",
+      "labels": [
+        "native_function['TypedArray']@0x17b40f"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17b443",
+          "helper_rva": "0x139db0",
+          "name": "from",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x174910"
+        },
+        {
+          "call_site_rva": "0x17b495",
+          "helper_rva": "0x139db0",
+          "name": "of",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x175210"
+        },
+        {
+          "call_site_rva": "0x17b4e7",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-40",
+      "labels": [
+        "runtime.class_prototype[32]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "buffer",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173d00",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "byteLength",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173db0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "byteOffset",
+          "descriptor_type": 2,
+          "getter_or_value_rva": "0x173e90",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getInt8",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getUint8",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getInt16",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getUint16",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getInt32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getUint32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getBigInt64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getBigUint64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getFloat32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "getFloat64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179210"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setInt8",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setUint8",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setInt16",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setUint16",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setInt32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setUint32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setBigInt64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setBigUint64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setFloat32",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "setFloat64",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x179660"
+        },
+        {
+          "call_site_rva": "0x17b951",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230da0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-41",
+      "labels": [
+        "runtime.class_prototype[49]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x1654dd",
+          "helper_rva": "0x139db0",
+          "name": "then",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x163e70"
+        },
+        {
+          "call_site_rva": "0x16552f",
+          "helper_rva": "0x139db0",
+          "name": "catch",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1640a0"
+        },
+        {
+          "call_site_rva": "0x165581",
+          "helper_rva": "0x139db0",
+          "name": "finally",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x164480"
+        },
+        {
+          "call_site_rva": "0x1655d3",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2302e8",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-42",
+      "labels": [
+        "native_function['Promise']@0x165639"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165680",
+          "helper_rva": "0x139db0",
+          "name": "resolve",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x161b40"
+        },
+        {
+          "call_site_rva": "0x1656d2",
+          "helper_rva": "0x139db0",
+          "name": "reject",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x161b40"
+        },
+        {
+          "call_site_rva": "0x165724",
+          "helper_rva": "0x139db0",
+          "name": "all",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x162530"
+        },
+        {
+          "call_site_rva": "0x165776",
+          "helper_rva": "0x139db0",
+          "name": "allSettled",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x162530"
+        },
+        {
+          "call_site_rva": "0x1657c8",
+          "helper_rva": "0x139db0",
+          "name": "any",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x162530"
+        },
+        {
+          "call_site_rva": "0x16581a",
+          "helper_rva": "0x139db0",
+          "name": "race",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x163310"
+        },
+        {
+          "call_site_rva": "0x16586c",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.species]",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x1426b0",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-43",
+      "labels": [
+        "runtime.class_prototype[52]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165acc",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x2302d8",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-44",
+      "labels": [
+        "runtime.AsyncIteratorPrototype"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165ba7",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.asyncIterator]",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x1426b0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-45",
+      "labels": [
+        "runtime.class_prototype[55]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165c31",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x164b80"
+        },
+        {
+          "call_site_rva": "0x165c83",
+          "helper_rva": "0x139db0",
+          "name": "return",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x164b80"
+        },
+        {
+          "call_site_rva": "0x165cd5",
+          "helper_rva": "0x139db0",
+          "name": "throw",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x164b80"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-46",
+      "labels": [
+        "runtime.class_prototype[57]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165d62",
+          "helper_rva": "0x139db0",
+          "name": "next",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x11a660"
+        },
+        {
+          "call_site_rva": "0x165db4",
+          "helper_rva": "0x139db0",
+          "name": "return",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x11a660"
+        },
+        {
+          "call_site_rva": "0x165e06",
+          "helper_rva": "0x139db0",
+          "name": "throw",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x11a660"
+        },
+        {
+          "call_site_rva": "0x165e58",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230310",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-47",
+      "labels": [
+        "runtime.class_prototype[56]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x165f28",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230320",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-48",
+      "labels": [
+        "runtime.class_prototype[33]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x16c597",
+          "helper_rva": "0x139db0",
+          "name": "toString",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b3b0"
+        },
+        {
+          "call_site_rva": "0x16c5e6",
+          "helper_rva": "0x139db0",
+          "name": "valueOf",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b570"
+        },
+        {
+          "call_site_rva": "0x16c635",
+          "helper_rva": "0x139db0",
+          "name": "[Symbol.toStringTag]",
+          "descriptor_type": 3,
+          "getter_or_value_rva": "0x230978",
+          "callback_or_setter_rva": null
+        }
+      ]
+    },
+    {
+      "identity_token": "object-49",
+      "labels": [
+        "native_function['BigInt']@0x16c6a6"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "asUintN",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16c060"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "asIntN",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16c060"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "tdiv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "fdiv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "cdiv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "ediv",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "tdivrem",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "fdivrem",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "cdivrem",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "edivrem",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16b5e0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "sqrt",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16baf0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "sqrtrem",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16baf0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "floorLog2",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16bee0"
+        },
+        {
+          "call_site_rva": "0x16c85f",
+          "helper_rva": "0x139db0",
+          "name": "ctz",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x16bee0"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-50",
+      "labels": [
+        "global.rm2k3"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x180771",
+          "helper_rva": "0x139db0",
+          "name": "getPicture",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x180e20"
+        }
+      ]
+    },
+    {
+      "identity_token": "object-51",
+      "labels": [
+        "global.console"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x180a7e",
+          "helper_rva": "0x101790",
+          "atom": 483
+        },
+        {
+          "call_site_rva": "0x180b7e",
+          "helper_rva": "0x101790",
+          "atom": 88
+        }
+      ]
+    },
+    {
+      "identity_token": "object-52",
+      "labels": [
+        "runtime.class_prototype[58]"
+      ],
+      "properties": [
+        {
+          "call_site_rva": "0x17e358",
+          "helper_rva": "0x139db0",
+          "name": "id",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x17e5d0",
+          "callback_or_setter_rva": null
+        },
+        {
+          "call_site_rva": "0x17e3a7",
+          "helper_rva": "0x139db0",
+          "name": "file",
+          "descriptor_type": 1,
+          "getter_or_value_rva": "0x17e6f0",
+          "callback_or_setter_rva": "0x17e8f0"
+        },
+        {
+          "call_site_rva": "0x17e3f6",
+          "helper_rva": "0x139db0",
+          "name": "scale",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ea80"
+        },
+        {
+          "call_site_rva": "0x17e445",
+          "helper_rva": "0x139db0",
+          "name": "show",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ebd0"
+        },
+        {
+          "call_site_rva": "0x17e494",
+          "helper_rva": "0x139db0",
+          "name": "move",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17ed10"
+        },
+        {
+          "call_site_rva": "0x17e4e3",
+          "helper_rva": "0x139db0",
+          "name": "erase",
+          "descriptor_type": 0,
+          "getter_or_value_rva": null,
+          "callback_or_setter_rva": "0x17edb0"
+        }
+      ]
+    }
+  ],
+  "lazy_builtin_tables": {
+    "Math": {
+      "table_rva": "0x25c3f0",
+      "count": 44,
+      "table_sha256": "ba40eb392c4651f64f6a70ffb3b986da6c96e0f4bb599e0faf9e0140501f0c1e",
+      "descriptors": [
+        {
+          "name": "min",
+          "type": 0,
+          "callback_rva": "0x14e930"
+        },
+        {
+          "name": "max",
+          "type": 0,
+          "callback_rva": "0x14e930"
+        },
+        {
+          "name": "abs",
+          "type": 0,
+          "callback_rva": "0x1e0684"
+        },
+        {
+          "name": "floor",
+          "type": 0,
+          "callback_rva": "0x1dc09c"
+        },
+        {
+          "name": "ceil",
+          "type": 0,
+          "callback_rva": "0x1dba5c"
+        },
+        {
+          "name": "round",
+          "type": 0,
+          "callback_rva": "0x14ec40"
+        },
+        {
+          "name": "sqrt",
+          "type": 0,
+          "callback_rva": "0x1e26c0"
+        },
+        {
+          "name": "acos",
+          "type": 0,
+          "callback_rva": "0x1e03e0"
+        },
+        {
+          "name": "asin",
+          "type": 0,
+          "callback_rva": "0x1dfb0c"
+        },
+        {
+          "name": "atan",
+          "type": 0,
+          "callback_rva": "0x1dad20"
+        },
+        {
+          "name": "atan2",
+          "type": 0,
+          "callback_rva": "0x1e13fc"
+        },
+        {
+          "name": "cos",
+          "type": 0,
+          "callback_rva": "0x1dbb20"
+        },
+        {
+          "name": "exp",
+          "type": 0,
+          "callback_rva": "0x1e1c10"
+        },
+        {
+          "name": "log",
+          "type": 0,
+          "callback_rva": "0x1e0e70"
+        },
+        {
+          "name": "pow",
+          "type": 0,
+          "callback_rva": "0x108a30"
+        },
+        {
+          "name": "sin",
+          "type": 0,
+          "callback_rva": "0x1daf40"
+        },
+        {
+          "name": "tan",
+          "type": 0,
+          "callback_rva": "0x1e0690"
+        },
+        {
+          "name": "trunc",
+          "type": 0,
+          "callback_rva": "0x1d72fc"
+        },
+        {
+          "name": "sign",
+          "type": 0,
+          "callback_rva": "0x14ec10"
+        },
+        {
+          "name": "cosh",
+          "type": 0,
+          "callback_rva": "0x1e2908"
+        },
+        {
+          "name": "sinh",
+          "type": 0,
+          "callback_rva": "0x1df63c"
+        },
+        {
+          "name": "tanh",
+          "type": 0,
+          "callback_rva": "0x1e21fc"
+        },
+        {
+          "name": "acosh",
+          "type": 0,
+          "callback_rva": "0x1e1ae4"
+        },
+        {
+          "name": "asinh",
+          "type": 0,
+          "callback_rva": "0x1e2d9c"
+        },
+        {
+          "name": "atanh",
+          "type": 0,
+          "callback_rva": "0x1e0128"
+        },
+        {
+          "name": "expm1",
+          "type": 0,
+          "callback_rva": "0x1e01e8"
+        },
+        {
+          "name": "log1p",
+          "type": 0,
+          "callback_rva": "0x1e030c"
+        },
+        {
+          "name": "log2",
+          "type": 0,
+          "callback_rva": "0x1dfd98"
+        },
+        {
+          "name": "log10",
+          "type": 0,
+          "callback_rva": "0x1db4b0"
+        },
+        {
+          "name": "cbrt",
+          "type": 0,
+          "callback_rva": "0x1e278c"
+        },
+        {
+          "name": "hypot",
+          "type": 0,
+          "callback_rva": "0x14ed00"
+        },
+        {
+          "name": "random",
+          "type": 0,
+          "callback_rva": "0x14efc0"
+        },
+        {
+          "name": "fround",
+          "type": 0,
+          "callback_rva": "0x14ee70"
+        },
+        {
+          "name": "imul",
+          "type": 0,
+          "callback_rva": "0x14ee80"
+        },
+        {
+          "name": "clz32",
+          "type": 0,
+          "callback_rva": "0x14ef40"
+        },
+        {
+          "name": "[Symbol.toStringTag]",
+          "type": 3,
+          "callback_rva": null
+        },
+        {
+          "name": "E",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "LN10",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "LN2",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "LOG2E",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "LOG10E",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "PI",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "SQRT1_2",
+          "type": 6,
+          "callback_rva": null
+        },
+        {
+          "name": "SQRT2",
+          "type": 6,
+          "callback_rva": null
+        }
+      ]
+    },
+    "Reflect": {
+      "table_rva": "0x25af50",
+      "count": 14,
+      "table_sha256": "aae12110b8ec36e17d93cca0f9a2ce2c6cec7325576d8bea1090b3c62ffdb17e",
+      "descriptors": [
+        {
+          "name": "apply",
+          "type": 0,
+          "callback_rva": "0x158c10"
+        },
+        {
+          "name": "construct",
+          "type": 0,
+          "callback_rva": "0x158c60"
+        },
+        {
+          "name": "defineProperty",
+          "type": 0,
+          "callback_rva": "0x13b500"
+        },
+        {
+          "name": "deleteProperty",
+          "type": 0,
+          "callback_rva": "0x158dd0"
+        },
+        {
+          "name": "get",
+          "type": 0,
+          "callback_rva": "0x158f30"
+        },
+        {
+          "name": "getOwnPropertyDescriptor",
+          "type": 0,
+          "callback_rva": "0x13b960"
+        },
+        {
+          "name": "getPrototypeOf",
+          "type": 0,
+          "callback_rva": "0x13b370"
+        },
+        {
+          "name": "has",
+          "type": 0,
+          "callback_rva": "0x159040"
+        },
+        {
+          "name": "isExtensible",
+          "type": 0,
+          "callback_rva": "0x13cc20"
+        },
+        {
+          "name": "ownKeys",
+          "type": 0,
+          "callback_rva": "0x159360"
+        },
+        {
+          "name": "preventExtensions",
+          "type": 0,
+          "callback_rva": "0x13ccc0"
+        },
+        {
+          "name": "set",
+          "type": 0,
+          "callback_rva": "0x159140"
+        },
+        {
+          "name": "setPrototypeOf",
+          "type": 0,
+          "callback_rva": "0x1592e0"
+        },
+        {
+          "name": "[Symbol.toStringTag]",
+          "type": 3,
+          "callback_rva": null
+        }
+      ]
+    },
+    "JSON": {
+      "table_rva": "0x25d050",
+      "count": 3,
+      "table_sha256": "441e74e2c9b56dbf4fa21664e62d806361e76d3187dda2bfebb19e0261eb9228",
+      "descriptors": [
+        {
+          "name": "parse",
+          "type": 0,
+          "callback_rva": "0x156600"
+        },
+        {
+          "name": "stringify",
+          "type": 0,
+          "callback_rva": "0x158bc0"
+        },
+        {
+          "name": "[Symbol.toStringTag]",
+          "type": 3,
+          "callback_rva": null
+        }
+      ]
+    },
+    "Atomics": {
+      "table_rva": "0x25b310",
+      "count": 13,
+      "table_sha256": "4fc6eecd8c21a61d2a4fa86521038aeed58c6d83f81013661549a79f0a85e629",
+      "descriptors": [
+        {
+          "name": "add",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "and",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "or",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "sub",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "xor",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "exchange",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "compareExchange",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "load",
+          "type": 0,
+          "callback_rva": "0x179ab0"
+        },
+        {
+          "name": "store",
+          "type": 0,
+          "callback_rva": "0x17a140"
+        },
+        {
+          "name": "isLockFree",
+          "type": 0,
+          "callback_rva": "0x17a430"
+        },
+        {
+          "name": "wait",
+          "type": 0,
+          "callback_rva": "0x17a4c0"
+        },
+        {
+          "name": "notify",
+          "type": 0,
+          "callback_rva": "0x17a860"
+        },
+        {
+          "name": "[Symbol.toStringTag]",
+          "type": 3,
+          "callback_rva": null
+        }
+      ]
+    }
+  },
+  "static_direct_helper_sites": 190,
+  "realized_lazy_registrations": [
+    {
+      "name": "values",
+      "descriptor_type": 0,
+      "callback_rva": "0x1479c0"
+    },
+    {
+      "name": "parseInt",
+      "descriptor_type": 0,
+      "callback_rva": "0x148d50"
+    },
+    {
+      "name": "parseFloat",
+      "descriptor_type": 0,
+      "callback_rva": "0x148ec0"
+    },
+    {
+      "name": "trimEnd",
+      "descriptor_type": 0,
+      "callback_rva": "0x14d580"
+    },
+    {
+      "name": "trimStart",
+      "descriptor_type": 0,
+      "callback_rva": "0x14d580"
+    },
+    {
+      "name": "toUTCString",
+      "descriptor_type": 0,
+      "callback_rva": "0x167ae0"
+    },
+    {
+      "name": "entries",
+      "descriptor_type": 0,
+      "callback_rva": "0x15f890"
+    },
+    {
+      "name": "values",
+      "descriptor_type": 0,
+      "callback_rva": "0x15f890"
+    },
+    {
+      "name": "values",
+      "descriptor_type": 0,
+      "callback_rva": "0x174490"
+    },
+    {
+      "name": "toString",
+      "descriptor_type": 0,
+      "callback_rva": "0x145080"
+    },
+    {
+      "name": "getPicture",
+      "descriptor_type": 0,
+      "callback_rva": "0x180e20"
+    },
+    {
+      "name": "getPrototypeOf",
+      "descriptor_type": 0,
+      "callback_rva": "0x13b370"
+    },
+    {
+      "name": "getv",
+      "descriptor_type": 0,
+      "callback_rva": "0x17ede0"
+    },
+    {
+      "name": "gets",
+      "descriptor_type": 0,
+      "callback_rva": "0x17ede0"
+    },
+    {
+      "name": "gett",
+      "descriptor_type": 0,
+      "callback_rva": "0x17ede0"
+    },
+    {
+      "name": "setv",
+      "descriptor_type": 0,
+      "callback_rva": "0x17f510"
+    },
+    {
+      "name": "sets",
+      "descriptor_type": 0,
+      "callback_rva": "0x17f510"
+    },
+    {
+      "name": "sett",
+      "descriptor_type": 0,
+      "callback_rva": "0x17f510"
+    },
+    {
+      "name": "JSON",
+      "descriptor_type": 8,
+      "count": 3
+    },
+    {
+      "name": "stringify",
+      "descriptor_type": 0,
+      "callback_rva": "0x158bc0"
+    },
+    {
+      "name": "map",
+      "descriptor_type": 0,
+      "callback_rva": "0x142f50"
+    },
+    {
+      "name": "next",
+      "descriptor_type": 0,
+      "callback_rva": "0x147b80"
+    },
+    {
+      "name": "Reflect",
+      "descriptor_type": 8,
+      "count": 14
+    },
+    {
+      "name": "ownKeys",
+      "descriptor_type": 0,
+      "callback_rva": "0x159360"
+    },
+    {
+      "name": "sort",
+      "descriptor_type": 0,
+      "callback_rva": "0x1472d0"
+    }
+  ],
+  "native_function_results": [
+    {
+      "call_site_rva": "0x16fe3a",
+      "callback_rva": "0x13f120",
+      "name": ""
+    },
+    {
+      "call_site_rva": "0x170358",
+      "callback_rva": "0x10e850",
+      "name": null
+    },
+    {
+      "call_site_rva": "0x1703a0",
+      "callback_rva": "0x10e870",
+      "name": null
+    },
+    {
+      "call_site_rva": "0x1705bb",
+      "callback_rva": "0x13b160",
+      "name": "Object"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x13e6f0",
+      "name": "get __proto__"
+    },
+    {
+      "call_site_rva": "0x13a077",
+      "callback_rva": "0x13e820",
+      "name": "set __proto__"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x10e8f0",
+      "name": "get fileName"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x10e960",
+      "name": "get lineNumber"
+    },
+    {
+      "call_site_rva": "0x170ac0",
+      "callback_rva": "0x13f140",
+      "name": "Function"
+    },
+    {
+      "call_site_rva": "0x170cd7",
+      "callback_rva": "0x140b10",
+      "name": "Error"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "EvalError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "RangeError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "ReferenceError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "SyntaxError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "TypeError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "URIError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "InternalError"
+    },
+    {
+      "call_site_rva": "0x170eee",
+      "callback_rva": "0x140b10",
+      "name": "AggregateError"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x1479c0",
+      "name": "values"
+    },
+    {
+      "call_site_rva": "0x1710d8",
+      "callback_rva": "0x141750",
+      "name": "Array"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x171aae",
+      "callback_rva": "0x147f90",
+      "name": "Number"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x148d50",
+      "name": "parseInt"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x148ec0",
+      "name": "parseFloat"
+    },
+    {
+      "call_site_rva": "0x171efb",
+      "callback_rva": "0x148fa0",
+      "name": "Boolean"
+    },
+    {
+      "call_site_rva": "0x172278",
+      "callback_rva": "0x1494c0",
+      "name": "String"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x14d580",
+      "name": "trimEnd"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x14d580",
+      "name": "trimStart"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x15d8c0",
+      "name": "get description"
+    },
+    {
+      "call_site_rva": "0x17296b",
+      "callback_rva": "0x15d650",
+      "name": "Symbol"
+    },
+    {
+      "call_site_rva": "0x172e36",
+      "callback_rva": "0x13f140",
+      "name": "GeneratorFunction"
+    },
+    {
+      "call_site_rva": "0x172f77",
+      "callback_rva": "0x13a4f0",
+      "name": "eval"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x167ae0",
+      "name": "toUTCString"
+    },
+    {
+      "call_site_rva": "0x169d16",
+      "callback_rva": "0x167f70",
+      "name": "Date"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150440",
+      "name": "get flags"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x14ff50",
+      "name": "get source"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get global"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get ignoreCase"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get multiline"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get dotAll"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get unicode"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x150300",
+      "name": "get sticky"
+    },
+    {
+      "call_site_rva": "0x155836",
+      "callback_rva": "0x14f680",
+      "name": "RegExp"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x15d4a3",
+      "callback_rva": "0x15cdc0",
+      "name": "Proxy"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x15f1b0",
+      "name": "get size"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x15f890",
+      "name": "entries"
+    },
+    {
+      "call_site_rva": "0x15fe10",
+      "callback_rva": "0x15db40",
+      "name": "Map"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x15f1b0",
+      "name": "get size"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x15f890",
+      "name": "values"
+    },
+    {
+      "call_site_rva": "0x15fe10",
+      "callback_rva": "0x15db40",
+      "name": "Set"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x15fe10",
+      "callback_rva": "0x15db40",
+      "name": "WeakMap"
+    },
+    {
+      "call_site_rva": "0x15fe10",
+      "callback_rva": "0x15db40",
+      "name": "WeakSet"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1736a0",
+      "name": "get byteLength"
+    },
+    {
+      "call_site_rva": "0x17ace6",
+      "callback_rva": "0x173450",
+      "name": "ArrayBuffer"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1736a0",
+      "name": "get byteLength"
+    },
+    {
+      "call_site_rva": "0x17b090",
+      "callback_rva": "0x173520",
+      "name": "SharedArrayBuffer"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173c80",
+      "name": "get length"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173d00",
+      "name": "get buffer"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173db0",
+      "name": "get byteLength"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173e90",
+      "name": "get byteOffset"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x174490",
+      "name": "values"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173f70",
+      "name": "get [Symbol.toStringTag]"
+    },
+    {
+      "call_site_rva": "0x139d7b",
+      "callback_rva": "0x145080",
+      "name": "toString"
+    },
+    {
+      "call_site_rva": "0x17b40f",
+      "callback_rva": "0x177de0",
+      "name": "TypedArray"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Uint8ClampedArray"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Int8Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Uint8Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Int16Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Uint16Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Int32Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Uint32Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "BigInt64Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "BigUint64Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Float32Array"
+    },
+    {
+      "call_site_rva": "0x17b6d3",
+      "callback_rva": "0x178a20",
+      "name": "Float64Array"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173d00",
+      "name": "get buffer"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173db0",
+      "name": "get byteLength"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x173e90",
+      "name": "get byteOffset"
+    },
+    {
+      "call_site_rva": "0x17b9c7",
+      "callback_rva": "0x178ee0",
+      "name": "DataView"
+    },
+    {
+      "call_site_rva": "0x165639",
+      "callback_rva": "0x161310",
+      "name": "Promise"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x1426b0",
+      "name": "get [Symbol.species]"
+    },
+    {
+      "call_site_rva": "0x165a92",
+      "callback_rva": "0x13f140",
+      "name": "AsyncFunction"
+    },
+    {
+      "call_site_rva": "0x165eee",
+      "callback_rva": "0x13f140",
+      "name": "AsyncGeneratorFunction"
+    },
+    {
+      "call_site_rva": "0x16c6a6",
+      "callback_rva": "0x16b350",
+      "name": "BigInt"
+    },
+    {
+      "call_site_rva": "0x1818b4",
+      "callback_rva": "0x1812f0",
+      "name": "include"
+    },
+    {
+      "call_site_rva": "0x1809d6",
+      "callback_rva": "0x17ffc0",
+      "name": "log"
+    },
+    {
+      "call_site_rva": "0x180ade",
+      "callback_rva": "0x1801d0",
+      "name": "input"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x17e5d0",
+      "name": "get id"
+    },
+    {
+      "call_site_rva": "0x139ff6",
+      "callback_rva": "0x17e6f0",
+      "name": "get file"
+    },
+    {
+      "call_site_rva": "0x13a077",
+      "callback_rva": "0x17e8f0",
+      "name": "set file"
+    }
+  ],
+  "unobserved_direct_helper_sites": [
+    {
+      "call_site_rva": "0x102a2e",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x102630",
+      "function_end_rva": "0x102abe",
+      "function_sha256": "96dbe5c63317091ca38d61b0f908c644cd4d2e56b1d4f8c0aa9398a1740d9e95",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x1029fc",
+          "instruction": "movsd qword ptr [rcx + rdi*8], xmm0"
+        },
+        {
+          "rva": "0x102a01",
+          "instruction": "mov eax, 1"
+        },
+        {
+          "rva": "0x102a06",
+          "instruction": "jmp 0x140102a57"
+        },
+        {
+          "rva": "0x102a08",
+          "instruction": "movups xmm0, xmmword ptr [r14]"
+        },
+        {
+          "rva": "0x102a0c",
+          "instruction": "mov eax, dword ptr [rbp + 0x7f]"
+        },
+        {
+          "rva": "0x102a0f",
+          "instruction": "lea r9, [rbp - 0x41]"
+        },
+        {
+          "rva": "0x102a13",
+          "instruction": "movups xmm1, xmmword ptr [r12]"
+        },
+        {
+          "rva": "0x102a18",
+          "instruction": "mov r8d, ebx"
+        },
+        {
+          "rva": "0x102a1b",
+          "instruction": "lea rdx, [rbp - 0x31]"
+        },
+        {
+          "rva": "0x102a1f",
+          "instruction": "mov rcx, rsi"
+        },
+        {
+          "rva": "0x102a22",
+          "instruction": "movaps xmmword ptr [rbp - 0x41], xmm0"
+        },
+        {
+          "rva": "0x102a26",
+          "instruction": "movaps xmmword ptr [rbp - 0x31], xmm1"
+        },
+        {
+          "rva": "0x102a2a",
+          "instruction": "mov dword ptr [rsp + 0x20], eax"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x102ba7",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x102ac0",
+      "function_end_rva": "0x102be8",
+      "function_sha256": "469b2324bccb4e3dcfaf6478282b8ca99d719d0de2a16f4364616051f5a406fa",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x102b6d",
+          "instruction": "movaps xmmword ptr [rsp + 0x50], xmm1"
+        },
+        {
+          "rva": "0x102b72",
+          "instruction": "call 0x1400fbd80"
+        },
+        {
+          "rva": "0x102b77",
+          "instruction": "mov eax, 0xffffffff"
+        },
+        {
+          "rva": "0x102b7c",
+          "instruction": "jmp 0x140102bd0"
+        },
+        {
+          "rva": "0x102b7e",
+          "instruction": "movups xmm0, xmmword ptr [rsi]"
+        },
+        {
+          "rva": "0x102b81",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x102b86",
+          "instruction": "mov r8d, edi"
+        },
+        {
+          "rva": "0x102b89",
+          "instruction": "movups xmm1, xmmword ptr [rbp]"
+        },
+        {
+          "rva": "0x102b8d",
+          "instruction": "lea rdx, [rsp + 0x40]"
+        },
+        {
+          "rva": "0x102b92",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x102b95",
+          "instruction": "movaps xmmword ptr [rsp + 0x50], xmm0"
+        },
+        {
+          "rva": "0x102b9a",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x102b9f",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x105151",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1050a0",
+      "function_end_rva": "0x10529f",
+      "function_sha256": "ba5a8e3ccde341446a651dc59d21493c047938c4278875ee714f02a5fc915803",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x105118",
+          "instruction": "test byte ptr [rcx + 0x44], 1"
+        },
+        {
+          "rva": "0x10511c",
+          "instruction": "mov eax, 0x18000"
+        },
+        {
+          "rva": "0x105121",
+          "instruction": "jne 0x140105128"
+        },
+        {
+          "rva": "0x105123",
+          "instruction": "mov eax, 0x8000"
+        },
+        {
+          "rva": "0x105128",
+          "instruction": "movups xmm0, xmmword ptr [r8]"
+        },
+        {
+          "rva": "0x10512c",
+          "instruction": "lea r9, [rsp + 0x30]"
+        },
+        {
+          "rva": "0x105131",
+          "instruction": "mov r8d, esi"
+        },
+        {
+          "rva": "0x105134",
+          "instruction": "movups xmm1, xmmword ptr [rdi + 0x170]"
+        },
+        {
+          "rva": "0x10513b",
+          "instruction": "lea rdx, [rsp + 0x40]"
+        },
+        {
+          "rva": "0x105140",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x105143",
+          "instruction": "movaps xmmword ptr [rsp + 0x30], xmm0"
+        },
+        {
+          "rva": "0x105148",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x10514d",
+          "instruction": "mov dword ptr [rsp + 0x20], eax"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x10fa2e",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x10f9bb",
+      "function_end_rva": "0x10fa92",
+      "function_sha256": "805e19ec5fdd7549e4f60a027a28c6a64b4f3e849a1e433fe7e284d6227d8b21",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x10f9ef",
+          "instruction": "xor r12d, r12d"
+        },
+        {
+          "rva": "0x10f9f2",
+          "instruction": "nop dword ptr [rax]"
+        },
+        {
+          "rva": "0x10f9f6",
+          "instruction": "nop word ptr [rax + rax]"
+        },
+        {
+          "rva": "0x10fa00",
+          "instruction": "mov r8d, dword ptr [rbx]"
+        },
+        {
+          "rva": "0x10fa03",
+          "instruction": "lea r9, [rbp - 0x49]"
+        },
+        {
+          "rva": "0x10fa07",
+          "instruction": "mov qword ptr [rbp - 0x79], r12"
+        },
+        {
+          "rva": "0x10fa0b",
+          "instruction": "lea rdx, [rbp - 0x59]"
+        },
+        {
+          "rva": "0x10fa0f",
+          "instruction": "mov qword ptr [rbp - 0x71], 2"
+        },
+        {
+          "rva": "0x10fa17",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x10fa1a",
+          "instruction": "movaps xmm0, xmmword ptr [rbp - 0x79]"
+        },
+        {
+          "rva": "0x10fa1e",
+          "instruction": "movdqa xmmword ptr [rbp - 0x49], xmm0"
+        },
+        {
+          "rva": "0x10fa23",
+          "instruction": "movdqa xmmword ptr [rbp - 0x59], xmm8"
+        },
+        {
+          "rva": "0x10fa29",
+          "instruction": "mov dword ptr [rsp + 0x20], r12d"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x11123c",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x111010",
+      "function_end_rva": "0x111332",
+      "function_sha256": "4624b9414a60fec13da3ec34ed18e0c26db131ac62b3ad80d0d1efa85287d618",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x111204",
+          "instruction": "je 0x1401112e4"
+        },
+        {
+          "rva": "0x11120a",
+          "instruction": "cmp dword ptr [rbp + 0x7f], 0"
+        },
+        {
+          "rva": "0x11120e",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x111211",
+          "instruction": "movups xmm0, xmmword ptr [rax]"
+        },
+        {
+          "rva": "0x111214",
+          "instruction": "mov rax, qword ptr [rbp - 0x61]"
+        },
+        {
+          "rva": "0x111218",
+          "instruction": "mov r8d, dword ptr [r15 + rdi*8 + 4]"
+        },
+        {
+          "rva": "0x11121d",
+          "instruction": "movups xmm1, xmmword ptr [rax]"
+        },
+        {
+          "rva": "0x111220",
+          "instruction": "je 0x140111243"
+        },
+        {
+          "rva": "0x111222",
+          "instruction": "lea r9, [rsp + 0x30]"
+        },
+        {
+          "rva": "0x111227",
+          "instruction": "movaps xmmword ptr [rsp + 0x30], xmm0"
+        },
+        {
+          "rva": "0x11122c",
+          "instruction": "lea rdx, [rbp - 0x51]"
+        },
+        {
+          "rva": "0x111230",
+          "instruction": "movaps xmmword ptr [rbp - 0x51], xmm1"
+        },
+        {
+          "rva": "0x111234",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x115496",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x112930",
+      "function_end_rva": "0x117a24",
+      "function_sha256": "517c137313206fd6f67bd8c757f4a559fb9b09a85cad92ec4bedb7f118a0ab94",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x11545b",
+          "instruction": "call 0x1400f4be0"
+        },
+        {
+          "rva": "0x115460",
+          "instruction": "movups xmm0, xmmword ptr [rsi - 0x10]"
+        },
+        {
+          "rva": "0x115464",
+          "instruction": "lea rcx, [rsi - 0x20]"
+        },
+        {
+          "rva": "0x115468",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x8000"
+        },
+        {
+          "rva": "0x115470",
+          "instruction": "mov rsi, rcx"
+        },
+        {
+          "rva": "0x115473",
+          "instruction": "lea r9, [rbp + 0x10]"
+        },
+        {
+          "rva": "0x115477",
+          "instruction": "movaps xmmword ptr [rbp + 0x10], xmm0"
+        },
+        {
+          "rva": "0x11547b",
+          "instruction": "lea rdx, [rbp + 0xd10]"
+        },
+        {
+          "rva": "0x115482",
+          "instruction": "movups xmm0, xmmword ptr [rcx]"
+        },
+        {
+          "rva": "0x115485",
+          "instruction": "mov r8d, eax"
+        },
+        {
+          "rva": "0x115488",
+          "instruction": "mov rcx, r14"
+        },
+        {
+          "rva": "0x11548b",
+          "instruction": "add r13, 4"
+        },
+        {
+          "rva": "0x11548f",
+          "instruction": "movaps xmmword ptr [rbp + 0xd10], xmm0"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x116d78",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x112930",
+      "function_end_rva": "0x117a24",
+      "function_sha256": "517c137313206fd6f67bd8c757f4a559fb9b09a85cad92ec4bedb7f118a0ab94",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x116d3d",
+          "instruction": "add r12, 9"
+        },
+        {
+          "rva": "0x116d41",
+          "instruction": "movsxd r13, eax"
+        },
+        {
+          "rva": "0x116d44",
+          "instruction": "add r13, r12"
+        },
+        {
+          "rva": "0x116d47",
+          "instruction": "xor r10d, r10d"
+        },
+        {
+          "rva": "0x116d4a",
+          "instruction": "jmp 0x14011309b"
+        },
+        {
+          "rva": "0x116d4f",
+          "instruction": "movups xmm0, xmmword ptr [rsi - 0x20]"
+        },
+        {
+          "rva": "0x116d53",
+          "instruction": "lea r9, [rbp + 0x10]"
+        },
+        {
+          "rva": "0x116d57",
+          "instruction": "mov r8d, ebx"
+        },
+        {
+          "rva": "0x116d5a",
+          "instruction": "lea rdx, [rbp + 0xd10]"
+        },
+        {
+          "rva": "0x116d61",
+          "instruction": "movdqa xmmword ptr [rbp + 0xd10], xmm6"
+        },
+        {
+          "rva": "0x116d69",
+          "instruction": "mov rcx, r14"
+        },
+        {
+          "rva": "0x116d6c",
+          "instruction": "movaps xmmword ptr [rbp + 0x10], xmm0"
+        },
+        {
+          "rva": "0x116d70",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x8000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x139c81",
+      "helper_rva": "0x139db0",
+      "function_begin_rva": "0x139c50",
+      "function_end_rva": "0x139cbd",
+      "function_sha256": "de4090c9df908afeea1f96fc1842c64f49188bbb93ed33c88a0a696710e67a7c",
+      "classification": "lazy-type8-descriptor-table-loop",
+      "target_property": "new object receiving Math/Reflect/JSON/Atomics descriptor entries",
+      "remaining_question": null
+    },
+    {
+      "call_site_rva": "0x14186a",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1417a0",
+      "function_end_rva": "0x141892",
+      "function_sha256": "00d1bbc45df6a78628cbebeb9ec3574b32bec6ce7dd6419ae53631b375dacfa6",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x14182b",
+          "instruction": "mov qword ptr [rbp - 0x19], 7"
+        },
+        {
+          "rva": "0x141833",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x141836",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x21]"
+        },
+        {
+          "rva": "0x14183a",
+          "instruction": "cvtsi2sd xmm0, rax"
+        },
+        {
+          "rva": "0x14183f",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x141843",
+          "instruction": "movaps xmmword ptr [rbp - 0x21], xmm1"
+        },
+        {
+          "rva": "0x141847",
+          "instruction": "lea r9, [rbp - 0x21]"
+        },
+        {
+          "rva": "0x14184b",
+          "instruction": "movdqa xmmword ptr [rbp - 0x21], xmm1"
+        },
+        {
+          "rva": "0x141850",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x141856",
+          "instruction": "movdqa xmmword ptr [rbp - 0x31], xmm6"
+        },
+        {
+          "rva": "0x14185b",
+          "instruction": "lea rdx, [rbp - 0x31]"
+        },
+        {
+          "rva": "0x14185f",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x141867",
+          "instruction": "mov rcx, r15"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x1423a6",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x141d10",
+      "function_end_rva": "0x1423c5",
+      "function_sha256": "ebd46dca0911e1240caffec596a86ea0a06213ba504e6d73262e5fdeb44f2c56",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x142369",
+          "instruction": "movaps xmm1, xmmword ptr [rsp + 0x40]"
+        },
+        {
+          "rva": "0x14236e",
+          "instruction": "mov eax, edi"
+        },
+        {
+          "rva": "0x142370",
+          "instruction": "cvtsi2sd xmm0, rax"
+        },
+        {
+          "rva": "0x142375",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x142379",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x14237e",
+          "instruction": "movups xmm0, xmmword ptr [r14]"
+        },
+        {
+          "rva": "0x142382",
+          "instruction": "lea r9, [rbp - 0x80]"
+        },
+        {
+          "rva": "0x142386",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x14238c",
+          "instruction": "lea rdx, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x142391",
+          "instruction": "movdqa xmmword ptr [rbp - 0x80], xmm1"
+        },
+        {
+          "rva": "0x142396",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x142399",
+          "instruction": "movaps xmmword ptr [rsp + 0x50], xmm0"
+        },
+        {
+          "rva": "0x14239e",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x14255f",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1424b4",
+      "function_end_rva": "0x1425ae",
+      "function_sha256": "8c23f9ac833a5ac7cd7fcf60cc53d1aa514b77767df2e5a497d1a3e8d0a3be57",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x142520",
+          "instruction": "mov qword ptr [rbp - 0x39], 7"
+        },
+        {
+          "rva": "0x142528",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x14252b",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x41]"
+        },
+        {
+          "rva": "0x14252f",
+          "instruction": "cvtsi2sd xmm0, rsi"
+        },
+        {
+          "rva": "0x142534",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x142538",
+          "instruction": "movaps xmmword ptr [rbp - 0x41], xmm1"
+        },
+        {
+          "rva": "0x14253c",
+          "instruction": "lea r9, [rbp - 0x31]"
+        },
+        {
+          "rva": "0x142540",
+          "instruction": "movdqa xmmword ptr [rbp - 0x31], xmm1"
+        },
+        {
+          "rva": "0x142545",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x14254b",
+          "instruction": "movdqa xmmword ptr [rbp - 0x21], xmm6"
+        },
+        {
+          "rva": "0x142550",
+          "instruction": "lea rdx, [rbp - 0x21]"
+        },
+        {
+          "rva": "0x142554",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x14255c",
+          "instruction": "mov rcx, r15"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x142efd",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x142a70",
+      "function_end_rva": "0x142f4a",
+      "function_sha256": "12db20e2797b51625ba4135b5a15e78bdd1259e1ec3cce882ef44bf90a5aa167",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x142ebc",
+          "instruction": "ret "
+        },
+        {
+          "rva": "0x142ebd",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x142ec0",
+          "instruction": "mov qword ptr [rbp - 0x59], 7"
+        },
+        {
+          "rva": "0x142ec8",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x61]"
+        },
+        {
+          "rva": "0x142ecc",
+          "instruction": "cvtsi2sd xmm0, rsi"
+        },
+        {
+          "rva": "0x142ed1",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x142ed5",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x142eda",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm1"
+        },
+        {
+          "rva": "0x142ee0",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x142ee6",
+          "instruction": "movdqa xmmword ptr [rsp + 0x30], xmm8"
+        },
+        {
+          "rva": "0x142eed",
+          "instruction": "lea rdx, [rsp + 0x30]"
+        },
+        {
+          "rva": "0x142ef2",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x142efa",
+          "instruction": "mov rcx, r14"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x145a91",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1456d0",
+      "function_end_rva": "0x145ac6",
+      "function_sha256": "64f5e9395d56e9961c55ee5890605ccc80217e1a7ed3bed8919abc2d65762659",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x145a52",
+          "instruction": "mov qword ptr [rbp - 0x21], 7"
+        },
+        {
+          "rva": "0x145a5a",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x145a5d",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x29]"
+        },
+        {
+          "rva": "0x145a61",
+          "instruction": "cvtsi2sd xmm0, rdi"
+        },
+        {
+          "rva": "0x145a66",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x145a6a",
+          "instruction": "movaps xmmword ptr [rbp - 0x29], xmm1"
+        },
+        {
+          "rva": "0x145a6e",
+          "instruction": "lea r9, [rbp - 9]"
+        },
+        {
+          "rva": "0x145a72",
+          "instruction": "movdqa xmmword ptr [rbp - 9], xmm1"
+        },
+        {
+          "rva": "0x145a77",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x145a7d",
+          "instruction": "movdqa xmmword ptr [rbp - 0x19], xmm7"
+        },
+        {
+          "rva": "0x145a82",
+          "instruction": "lea rdx, [rbp - 0x19]"
+        },
+        {
+          "rva": "0x145a86",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x145a8e",
+          "instruction": "mov rcx, rsi"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x145ca2",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x145ad0",
+      "function_end_rva": "0x145d16",
+      "function_sha256": "ffbfadc392c9ef162397c012a00ac7a7db9a54ecdbac150e6735a6f9bad2e6e4",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x145c63",
+          "instruction": "mov qword ptr [rbp - 0x28], 7"
+        },
+        {
+          "rva": "0x145c6b",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x145c6e",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x30]"
+        },
+        {
+          "rva": "0x145c72",
+          "instruction": "cvtsi2sd xmm0, r14"
+        },
+        {
+          "rva": "0x145c77",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x145c7b",
+          "instruction": "movaps xmmword ptr [rbp - 0x30], xmm1"
+        },
+        {
+          "rva": "0x145c7f",
+          "instruction": "lea r9, [rbp - 0x20]"
+        },
+        {
+          "rva": "0x145c83",
+          "instruction": "movdqa xmmword ptr [rbp - 0x20], xmm1"
+        },
+        {
+          "rva": "0x145c88",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x145c8e",
+          "instruction": "movdqa xmmword ptr [rbp - 0x30], xmm6"
+        },
+        {
+          "rva": "0x145c93",
+          "instruction": "lea rdx, [rbp - 0x30]"
+        },
+        {
+          "rva": "0x145c97",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x145c9f",
+          "instruction": "mov rcx, r13"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x14651a",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x146100",
+      "function_end_rva": "0x1467c5",
+      "function_sha256": "e40f8960eda1a5c3a1ca2c0eac4e085e1f7e3adde4a37592ff910696d95496f4",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x1464db",
+          "instruction": "mov qword ptr [rbp - 0x71], 7"
+        },
+        {
+          "rva": "0x1464e3",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x1464e6",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x79]"
+        },
+        {
+          "rva": "0x1464ea",
+          "instruction": "cvtsi2sd xmm0, rdi"
+        },
+        {
+          "rva": "0x1464ef",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x1464f3",
+          "instruction": "movaps xmmword ptr [rbp - 0x79], xmm1"
+        },
+        {
+          "rva": "0x1464f7",
+          "instruction": "lea r9, [rbp - 0x59]"
+        },
+        {
+          "rva": "0x1464fb",
+          "instruction": "movdqa xmmword ptr [rbp - 0x59], xmm1"
+        },
+        {
+          "rva": "0x146500",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x146506",
+          "instruction": "movdqa xmmword ptr [rbp - 0x19], xmm6"
+        },
+        {
+          "rva": "0x14650b",
+          "instruction": "lea rdx, [rbp - 0x19]"
+        },
+        {
+          "rva": "0x14650f",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x146517",
+          "instruction": "mov rcx, r14"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x1466e3",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x146100",
+      "function_end_rva": "0x1467c5",
+      "function_sha256": "e40f8960eda1a5c3a1ca2c0eac4e085e1f7e3adde4a37592ff910696d95496f4",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x1466a4",
+          "instruction": "mov qword ptr [rbp - 0x71], 7"
+        },
+        {
+          "rva": "0x1466ac",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x1466af",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x79]"
+        },
+        {
+          "rva": "0x1466b3",
+          "instruction": "cvtsi2sd xmm0, r15"
+        },
+        {
+          "rva": "0x1466b8",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x1466bc",
+          "instruction": "movaps xmmword ptr [rbp - 0x79], xmm1"
+        },
+        {
+          "rva": "0x1466c0",
+          "instruction": "lea r9, [rbp - 0x59]"
+        },
+        {
+          "rva": "0x1466c4",
+          "instruction": "movdqa xmmword ptr [rbp - 0x59], xmm1"
+        },
+        {
+          "rva": "0x1466c9",
+          "instruction": "mov r8d, 0x30"
+        },
+        {
+          "rva": "0x1466cf",
+          "instruction": "movdqa xmmword ptr [rbp - 0x19], xmm7"
+        },
+        {
+          "rva": "0x1466d4",
+          "instruction": "lea rdx, [rbp - 0x19]"
+        },
+        {
+          "rva": "0x1466d8",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x1466e0",
+          "instruction": "mov rcx, r14"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x14fe81",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x14fd38",
+      "function_end_rva": "0x14ff06",
+      "function_sha256": "15a9888d3801aa4916f3c8f41bcbe65111ead7deefe9b51a23f9b024a923c73a",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x14fe44",
+          "instruction": "movups xmm1, xmmword ptr [r15]"
+        },
+        {
+          "rva": "0x14fe48",
+          "instruction": "mov qword ptr [rbp - 0x21], rsi"
+        },
+        {
+          "rva": "0x14fe4c",
+          "instruction": "lea r9, [rbp - 0x11]"
+        },
+        {
+          "rva": "0x14fe50",
+          "instruction": "mov qword ptr [rbp - 0x19], rsi"
+        },
+        {
+          "rva": "0x14fe54",
+          "instruction": "lea rdx, [rbp - 0x21]"
+        },
+        {
+          "rva": "0x14fe58",
+          "instruction": "movaps xmm0, xmmword ptr [rbp - 0x21]"
+        },
+        {
+          "rva": "0x14fe5c",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x14fe62",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x14fe65",
+          "instruction": "movaps xmmword ptr [rbp - 0x21], xmm1"
+        },
+        {
+          "rva": "0x14fe69",
+          "instruction": "movq qword ptr [r14], xmm6"
+        },
+        {
+          "rva": "0x14fe6e",
+          "instruction": "movq qword ptr [r14 + 8], xmm7"
+        },
+        {
+          "rva": "0x14fe74",
+          "instruction": "movdqa xmmword ptr [rbp - 0x11], xmm0"
+        },
+        {
+          "rva": "0x14fe79",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x150e04",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x150d42",
+      "function_end_rva": "0x150e60",
+      "function_sha256": "3832b32663685b6c297884e371774808259b1ffb765a669efb5d69e3a042964b",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x150dc7",
+          "instruction": "test r14d, r14d"
+        },
+        {
+          "rva": "0x150dca",
+          "instruction": "je 0x140150e11"
+        },
+        {
+          "rva": "0x150dcc",
+          "instruction": "movups xmm1, xmmword ptr [r12]"
+        },
+        {
+          "rva": "0x150dd1",
+          "instruction": "mov qword ptr [rsp + 0x50], rdi"
+        },
+        {
+          "rva": "0x150dd6",
+          "instruction": "lea r9, [rbp - 0x70]"
+        },
+        {
+          "rva": "0x150dda",
+          "instruction": "mov qword ptr [rsp + 0x58], rdi"
+        },
+        {
+          "rva": "0x150ddf",
+          "instruction": "lea rdx, [rsp + 0x40]"
+        },
+        {
+          "rva": "0x150de4",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x50]"
+        },
+        {
+          "rva": "0x150de9",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x150def",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x150df2",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x150df7",
+          "instruction": "movdqa xmmword ptr [rbp - 0x70], xmm0"
+        },
+        {
+          "rva": "0x150dfc",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x150fd4",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x150e9d",
+      "function_end_rva": "0x1513e7",
+      "function_sha256": "6962796da1e5a99fa44dd62b8ee22aaec899dc6e0fb868785826428290cc47bc",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x150f9a",
+          "instruction": "mov qword ptr [rsp + 0x68], rdi"
+        },
+        {
+          "rva": "0x150f9f",
+          "instruction": "mov ecx, edx"
+        },
+        {
+          "rva": "0x150fa1",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x150fa9",
+          "instruction": "sar rax, cl"
+        },
+        {
+          "rva": "0x150fac",
+          "instruction": "lea rdx, [rsp + 0x60]"
+        },
+        {
+          "rva": "0x150fb1",
+          "instruction": "mov dword ptr [rsp + 0x60], eax"
+        },
+        {
+          "rva": "0x150fb5",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x150fbb",
+          "instruction": "xor eax, eax"
+        },
+        {
+          "rva": "0x150fbd",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x150fc0",
+          "instruction": "mov dword ptr [rsp + 0x64], eax"
+        },
+        {
+          "rva": "0x150fc4",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x60]"
+        },
+        {
+          "rva": "0x150fc9",
+          "instruction": "movdqa xmmword ptr [rsp + 0x40], xmm0"
+        },
+        {
+          "rva": "0x150fcf",
+          "instruction": "movaps xmmword ptr [rsp + 0x60], xmm1"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x1518b5",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1516d5",
+      "function_end_rva": "0x1519c4",
+      "function_sha256": "d6b01972563e20d29dd951e4d93f3bd0bdbb3455f6aca2c407542b3c5e5e77db",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x151871",
+          "instruction": "je 0x1401518c2"
+        },
+        {
+          "rva": "0x151873",
+          "instruction": "mov rax, qword ptr [rbp - 0x70]"
+        },
+        {
+          "rva": "0x151877",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x15187c",
+          "instruction": "mov qword ptr [rsp + 0x60], 0"
+        },
+        {
+          "rva": "0x151885",
+          "instruction": "lea rdx, [rbp - 0x60]"
+        },
+        {
+          "rva": "0x151889",
+          "instruction": "mov qword ptr [rsp + 0x68], 0"
+        },
+        {
+          "rva": "0x151892",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x151898",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x60]"
+        },
+        {
+          "rva": "0x15189d",
+          "instruction": "mov rcx, r14"
+        },
+        {
+          "rva": "0x1518a0",
+          "instruction": "movups xmm1, xmmword ptr [rax]"
+        },
+        {
+          "rva": "0x1518a3",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x1518ab",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm0"
+        },
+        {
+          "rva": "0x1518b1",
+          "instruction": "movaps xmmword ptr [rbp - 0x60], xmm1"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x151937",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1516d5",
+      "function_end_rva": "0x1519c4",
+      "function_sha256": "d6b01972563e20d29dd951e4d93f3bd0bdbb3455f6aca2c407542b3c5e5e77db",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x1518fa",
+          "instruction": "mov dword ptr [rsp + 0x60], ebx"
+        },
+        {
+          "rva": "0x1518fe",
+          "instruction": "mov dword ptr [rsp + 0x64], eax"
+        },
+        {
+          "rva": "0x151902",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x151907",
+          "instruction": "mov qword ptr [rsp + 0x68], rax"
+        },
+        {
+          "rva": "0x15190c",
+          "instruction": "lea rdx, [rbp - 0x60]"
+        },
+        {
+          "rva": "0x151910",
+          "instruction": "mov rax, qword ptr [rbp - 0x70]"
+        },
+        {
+          "rva": "0x151914",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x15191a",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x60]"
+        },
+        {
+          "rva": "0x15191f",
+          "instruction": "mov rcx, r14"
+        },
+        {
+          "rva": "0x151922",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm0"
+        },
+        {
+          "rva": "0x151928",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x151930",
+          "instruction": "movups xmm1, xmmword ptr [rax]"
+        },
+        {
+          "rva": "0x151933",
+          "instruction": "movaps xmmword ptr [rbp - 0x60], xmm1"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x151f06",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x151d4b",
+      "function_end_rva": "0x152369",
+      "function_sha256": "6e1407f32648b774ca604b4c6eea57087141e000774f90b796acf13c3012cc30",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x151ec5",
+          "instruction": "test eax, eax"
+        },
+        {
+          "rva": "0x151ec7",
+          "instruction": "js 0x140152264"
+        },
+        {
+          "rva": "0x151ecd",
+          "instruction": "movups xmm1, xmmword ptr [r15]"
+        },
+        {
+          "rva": "0x151ed1",
+          "instruction": "mov qword ptr [rsp + 0x60], rsi"
+        },
+        {
+          "rva": "0x151ed6",
+          "instruction": "lea r9, [rsp + 0x30]"
+        },
+        {
+          "rva": "0x151edb",
+          "instruction": "mov qword ptr [rsp + 0x68], rsi"
+        },
+        {
+          "rva": "0x151ee0",
+          "instruction": "lea rdx, [rsp + 0x40]"
+        },
+        {
+          "rva": "0x151ee5",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x60]"
+        },
+        {
+          "rva": "0x151eea",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x151ef0",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x151ef3",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x151ef8",
+          "instruction": "movdqa xmmword ptr [rsp + 0x30], xmm0"
+        },
+        {
+          "rva": "0x151efe",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x152251",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x151d4b",
+      "function_end_rva": "0x152369",
+      "function_sha256": "6e1407f32648b774ca604b4c6eea57087141e000774f90b796acf13c3012cc30",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x152214",
+          "instruction": "movaps xmm1, xmmword ptr [rsp + 0x40]"
+        },
+        {
+          "rva": "0x152219",
+          "instruction": "xor esi, esi"
+        },
+        {
+          "rva": "0x15221b",
+          "instruction": "cvtsi2sd xmm0, rbx"
+        },
+        {
+          "rva": "0x152220",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x152224",
+          "instruction": "movups xmm0, xmmword ptr [r15]"
+        },
+        {
+          "rva": "0x152228",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x15222d",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x152233",
+          "instruction": "lea rdx, [rbp - 0x80]"
+        },
+        {
+          "rva": "0x152237",
+          "instruction": "movaps xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x15223c",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x15223f",
+          "instruction": "movaps xmmword ptr [rbp - 0x80], xmm0"
+        },
+        {
+          "rva": "0x152243",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm1"
+        },
+        {
+          "rva": "0x152249",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x152878",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1527af",
+      "function_end_rva": "0x152983",
+      "function_sha256": "8dc4f049a56fe558a4de6c3583ec02175dd2cba9b33782195dd112e5a8b1dff7",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x15283e",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x152841",
+          "instruction": "movaps xmm1, xmmword ptr [rbp - 0x61]"
+        },
+        {
+          "rva": "0x152845",
+          "instruction": "cvtsi2sd xmm0, rbx"
+        },
+        {
+          "rva": "0x15284a",
+          "instruction": "xor ebx, ebx"
+        },
+        {
+          "rva": "0x15284c",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x152850",
+          "instruction": "movaps xmmword ptr [rbp - 0x61], xmm1"
+        },
+        {
+          "rva": "0x152854",
+          "instruction": "lea r9, [rbp - 0x41]"
+        },
+        {
+          "rva": "0x152858",
+          "instruction": "movdqa xmmword ptr [rbp - 0x41], xmm1"
+        },
+        {
+          "rva": "0x15285d",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x152863",
+          "instruction": "movdqa xmmword ptr [rbp - 0x51], xmm10"
+        },
+        {
+          "rva": "0x152869",
+          "instruction": "lea rdx, [rbp - 0x51]"
+        },
+        {
+          "rva": "0x15286d",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x152875",
+          "instruction": "mov rcx, rsi"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x152d0c",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1529e9",
+      "function_end_rva": "0x152efd",
+      "function_sha256": "2bb90d207312c1677d7730f14fb492b83843c0897ce68ebc04a97cb9ff5ccb39",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x152cc6",
+          "instruction": "mov qword ptr [rsp + 0x68], 7"
+        },
+        {
+          "rva": "0x152ccf",
+          "instruction": "xorps xmm0, xmm0"
+        },
+        {
+          "rva": "0x152cd2",
+          "instruction": "movaps xmm1, xmmword ptr [rsp + 0x60]"
+        },
+        {
+          "rva": "0x152cd7",
+          "instruction": "cvtsi2sd xmm0, rdi"
+        },
+        {
+          "rva": "0x152cdc",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x152ce0",
+          "instruction": "movaps xmmword ptr [rsp + 0x60], xmm1"
+        },
+        {
+          "rva": "0x152ce5",
+          "instruction": "lea r9, [rsp + 0x40]"
+        },
+        {
+          "rva": "0x152cea",
+          "instruction": "movdqa xmmword ptr [rsp + 0x40], xmm1"
+        },
+        {
+          "rva": "0x152cf0",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x152cf6",
+          "instruction": "movdqa xmmword ptr [rsp + 0x60], xmm7"
+        },
+        {
+          "rva": "0x152cfc",
+          "instruction": "lea rdx, [rsp + 0x60]"
+        },
+        {
+          "rva": "0x152d01",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        },
+        {
+          "rva": "0x152d09",
+          "instruction": "mov rcx, rbx"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x153677",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x153371",
+      "function_end_rva": "0x154310",
+      "function_sha256": "9f131946de041fba54bd1263ed8273c639ffd40310bf20aa966cfb7643530d06",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x153637",
+          "instruction": "test eax, eax"
+        },
+        {
+          "rva": "0x153639",
+          "instruction": "js 0x140153bc4"
+        },
+        {
+          "rva": "0x15363f",
+          "instruction": "movups xmm1, xmmword ptr [r13]"
+        },
+        {
+          "rva": "0x153644",
+          "instruction": "mov qword ptr [rsp + 0x30], r14"
+        },
+        {
+          "rva": "0x153649",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x15364e",
+          "instruction": "mov qword ptr [rsp + 0x38], r14"
+        },
+        {
+          "rva": "0x153653",
+          "instruction": "lea rdx, [rbp - 0x70]"
+        },
+        {
+          "rva": "0x153657",
+          "instruction": "movaps xmm0, xmmword ptr [rsp + 0x30]"
+        },
+        {
+          "rva": "0x15365c",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x153662",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x153665",
+          "instruction": "movaps xmmword ptr [rbp - 0x70], xmm1"
+        },
+        {
+          "rva": "0x153669",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm0"
+        },
+        {
+          "rva": "0x15366f",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x153b88",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x153371",
+      "function_end_rva": "0x154310",
+      "function_sha256": "9f131946de041fba54bd1263ed8273c639ffd40310bf20aa966cfb7643530d06",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x153b4a",
+          "instruction": "movaps xmm1, xmmword ptr [rbp]"
+        },
+        {
+          "rva": "0x153b4e",
+          "instruction": "cvtsi2sd xmm0, rbx"
+        },
+        {
+          "rva": "0x153b53",
+          "instruction": "movsd xmm1, xmm0"
+        },
+        {
+          "rva": "0x153b57",
+          "instruction": "movups xmm0, xmmword ptr [r13]"
+        },
+        {
+          "rva": "0x153b5c",
+          "instruction": "lea r9, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x153b61",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x153b67",
+          "instruction": "lea rdx, [rbp - 0x70]"
+        },
+        {
+          "rva": "0x153b6b",
+          "instruction": "movaps xmmword ptr [rbp], xmm1"
+        },
+        {
+          "rva": "0x153b6f",
+          "instruction": "mov rcx, rdi"
+        },
+        {
+          "rva": "0x153b72",
+          "instruction": "movaps xmmword ptr [rbp - 0x70], xmm0"
+        },
+        {
+          "rva": "0x153b76",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm1"
+        },
+        {
+          "rva": "0x153b7c",
+          "instruction": "mov qword ptr [rbp - 0x40], r12"
+        },
+        {
+          "rva": "0x153b80",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x1548b9",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x154746",
+      "function_end_rva": "0x154b85",
+      "function_sha256": "a97203c42a8826863b9f12270f01e186dc1fc994844d5ae37dce2371596eb5e2",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x154883",
+          "instruction": "test eax, eax"
+        },
+        {
+          "rva": "0x154885",
+          "instruction": "jne 0x1401548c6"
+        },
+        {
+          "rva": "0x154887",
+          "instruction": "movups xmm1, xmmword ptr [r15]"
+        },
+        {
+          "rva": "0x15488b",
+          "instruction": "mov qword ptr [rbp - 0x31], r14"
+        },
+        {
+          "rva": "0x15488f",
+          "instruction": "lea r9, [rbp - 0x21]"
+        },
+        {
+          "rva": "0x154893",
+          "instruction": "mov qword ptr [rbp - 0x29], r14"
+        },
+        {
+          "rva": "0x154897",
+          "instruction": "lea rdx, [rbp - 0x31]"
+        },
+        {
+          "rva": "0x15489b",
+          "instruction": "movaps xmm0, xmmword ptr [rbp - 0x31]"
+        },
+        {
+          "rva": "0x15489f",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x1548a5",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x1548a8",
+          "instruction": "movaps xmmword ptr [rbp - 0x31], xmm1"
+        },
+        {
+          "rva": "0x1548ac",
+          "instruction": "movdqa xmmword ptr [rbp - 0x21], xmm0"
+        },
+        {
+          "rva": "0x1548b1",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x154a4e",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x154746",
+      "function_end_rva": "0x154b85",
+      "function_sha256": "a97203c42a8826863b9f12270f01e186dc1fc994844d5ae37dce2371596eb5e2",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x154a14",
+          "instruction": "xor eax, eax"
+        },
+        {
+          "rva": "0x154a16",
+          "instruction": "mov dword ptr [rdi], 0xffffffff"
+        },
+        {
+          "rva": "0x154a1c",
+          "instruction": "mov dword ptr [rdi + 4], eax"
+        },
+        {
+          "rva": "0x154a1f",
+          "instruction": "mov qword ptr [rdi + 8], rax"
+        },
+        {
+          "rva": "0x154a23",
+          "instruction": "jmp 0x140154b39"
+        },
+        {
+          "rva": "0x154a28",
+          "instruction": "movups xmm0, xmmword ptr [r15]"
+        },
+        {
+          "rva": "0x154a2c",
+          "instruction": "lea r9, [rbp - 0x21]"
+        },
+        {
+          "rva": "0x154a30",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x154a36",
+          "instruction": "lea rdx, [rbp - 0x31]"
+        },
+        {
+          "rva": "0x154a3a",
+          "instruction": "movdqa xmmword ptr [rbp - 0x21], xmm7"
+        },
+        {
+          "rva": "0x154a3f",
+          "instruction": "mov rcx, rbx"
+        },
+        {
+          "rva": "0x154a42",
+          "instruction": "movaps xmmword ptr [rbp - 0x31], xmm0"
+        },
+        {
+          "rva": "0x154a46",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x155096",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x154c41",
+      "function_end_rva": "0x1555d6",
+      "function_sha256": "2e08abfbec790dfac01637f86d9b4e5ccd59f21ab28a42f72f15d7c80d48594a",
+      "classification": "generic-atom-property-operation",
+      "argument_setup": [
+        {
+          "rva": "0x15505c",
+          "instruction": "nop dword ptr [rax]"
+        },
+        {
+          "rva": "0x155060",
+          "instruction": "xor eax, eax"
+        },
+        {
+          "rva": "0x155062",
+          "instruction": "mov dword ptr [rbp - 0x20], ebx"
+        },
+        {
+          "rva": "0x155065",
+          "instruction": "mov dword ptr [rbp - 0x1c], eax"
+        },
+        {
+          "rva": "0x155068",
+          "instruction": "lea r9, [rbp - 0x40]"
+        },
+        {
+          "rva": "0x15506c",
+          "instruction": "mov qword ptr [rbp - 0x18], rax"
+        },
+        {
+          "rva": "0x155070",
+          "instruction": "lea rdx, [rsp + 0x50]"
+        },
+        {
+          "rva": "0x155075",
+          "instruction": "movaps xmm0, xmmword ptr [rbp - 0x20]"
+        },
+        {
+          "rva": "0x155079",
+          "instruction": "mov r8d, 0x55"
+        },
+        {
+          "rva": "0x15507f",
+          "instruction": "mov rcx, rsi"
+        },
+        {
+          "rva": "0x155082",
+          "instruction": "movdqa xmmword ptr [rbp - 0x40], xmm0"
+        },
+        {
+          "rva": "0x155087",
+          "instruction": "movdqa xmmword ptr [rsp + 0x50], xmm9"
+        },
+        {
+          "rva": "0x15508e",
+          "instruction": "mov dword ptr [rsp + 0x20], 0x4000"
+        }
+      ],
+      "remaining_question": "Trace parameter-supplied target/value source and initialization reachability; no fixed callback registration inferred"
+    },
+    {
+      "call_site_rva": "0x1806e5",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1803e0",
+      "function_end_rva": "0x180cfb",
+      "function_sha256": "4386bf45b441e644e2d7ec55b4a4e5d90615939fb45d8e0edc60537dfa6ff472",
+      "classification": "named-host-type6-alternate",
+      "target_property": "global.rm2k3",
+      "remaining_question": null
+    },
+    {
+      "call_site_rva": "0x180a47",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1803e0",
+      "function_end_rva": "0x180cfb",
+      "function_sha256": "4386bf45b441e644e2d7ec55b4a4e5d90615939fb45d8e0edc60537dfa6ff472",
+      "classification": "named-host-type6-alternate",
+      "target_property": "console.log",
+      "remaining_question": null
+    },
+    {
+      "call_site_rva": "0x180b4b",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1803e0",
+      "function_end_rva": "0x180cfb",
+      "function_sha256": "4386bf45b441e644e2d7ec55b4a4e5d90615939fb45d8e0edc60537dfa6ff472",
+      "classification": "named-host-type6-alternate",
+      "target_property": "console.input",
+      "remaining_question": null
+    },
+    {
+      "call_site_rva": "0x180c0c",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x1803e0",
+      "function_end_rva": "0x180cfb",
+      "function_sha256": "4386bf45b441e644e2d7ec55b4a4e5d90615939fb45d8e0edc60537dfa6ff472",
+      "classification": "named-host-type6-alternate",
+      "target_property": "global.console",
+      "remaining_question": null
+    },
+    {
+      "call_site_rva": "0x181920",
+      "helper_rva": "0x101790",
+      "function_begin_rva": "0x181856",
+      "function_end_rva": "0x18199c",
+      "function_sha256": "7de43b45d1a4bfce76c860d8c8a9263a2d0c8e899ebde428466cb32244ebd2c3",
+      "classification": "named-host-type6-alternate",
+      "target_property": "global.include",
+      "remaining_question": null
+    }
+  ],
+  "remaining_questions": [
+    "29 generic atom-property sites still need initialization reachability and target/value source attribution"
+  ],
+  "scope": "All 52 target objects observed in one fixed startup are attributed to global/host roots, class prototype slots, iterator roots, TypedArray shared prototype creation or native function results. Four delayed builtin tables contain 74 PE-bound descriptors and callbacks; the fixed symbol fixture dynamically realizes JSON and Reflect with matching target objects and all 17 child descriptors. Type-8 table pointers/counts and the shared consumer loop are statically bound for all four tables. Full direct-helper candidate scan identifies 190 sites, including 35 not reached at startup. Five host alternates and one delayed descriptor loop are attributed; 29 generic property operations remain explicit. M0-028 remains open; this is original evidence only, not Player functionality."
+}

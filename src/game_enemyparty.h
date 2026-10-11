@@ -19,6 +19,7 @@
 #define EP_GAME_ENEMYPARTY_H
 
 #include <vector>
+#include <memory>
 #include <lcf/rpg/troop.h>
 #include "game_enemy.h"
 #include "game_party_base.h"
@@ -90,8 +91,14 @@ public:
 	 */
 	int GetEnemyPositionInParty(const Game_Enemy* enemy) const;
 
+	int GetNextTroopMemberId() const;
+	void InsertEnemy(int index, std::unique_ptr<Game_Enemy> enemy);
+	void ReplaceEnemy(int index, std::unique_ptr<Game_Enemy> enemy);
+	void RemoveEnemies(int index, int count);
+
 private:
-	std::vector<Game_Enemy> enemies;
+	std::vector<std::unique_ptr<Game_Enemy>> enemies;
+	std::vector<std::unique_ptr<Game_Enemy>> retired_enemies;
 };
 
 #endif

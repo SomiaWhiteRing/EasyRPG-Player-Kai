@@ -21,15 +21,18 @@
 
 #include <array>
 #include <cstdint>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include "span.h"
-
-#include "game_strings.h"
 
 class Game_BaseInterpreterContext;
 
 namespace ManiacPatch {
+	int32_t GetGeneratedCommonNameCache();
+	void SetGeneratedCommonNameCache(int32_t value);
 	int32_t ParseExpression(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter);
+	std::pair<int32_t, int32_t> ParseExpressionPair(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter);
 	std::vector<int32_t> ParseExpressions(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter);
 
 
@@ -39,8 +42,8 @@ namespace ManiacPatch {
 
 	bool CheckString(std::string_view str_l, std::string_view str_r, int op, bool ignore_case);
 
-	std::string_view GetLcfName(int data_type, int id, bool is_dynamic);
-	std::string_view GetLcfDescription(int data_type, int id, bool is_dynamic);
+	std::string_view GetLcfName(int data_type, int id, bool is_dynamic, bool* present = nullptr);
+	std::string_view GetLcfDescription(int data_type, int id, bool is_dynamic, bool* present = nullptr);
 }
 
 #endif

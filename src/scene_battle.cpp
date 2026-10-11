@@ -37,12 +37,17 @@
 #include "battle_animation.h"
 #include <lcf/reader_util.h>
 #include "scene_battle.h"
+#include "scene_map.h"
 #include "scene_battle_rpg2k.h"
 #include "scene_battle_rpg2k3.h"
 #include "scene_gameover.h"
 #include "scene_settings.h"
+#include "scene_save.h"
 #include "scene_debug.h"
 #include "game_interpreter.h"
+#include "game_maniac_self_variables.h"
+#include "game_variables.h"
+#include "game_map.h"
 #include "rand.h"
 #include "autobattle.h"
 #include "enemyai.h"
@@ -191,11 +196,21 @@ void Scene_Battle::DrawBackground(Bitmap& dst) {
 
 void Scene_Battle::CreateOptions() {
 	std::vector<std::string> commands;
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const int previous_index = options_window ? options_window->GetIndex() : 0;
 
 	battle_options.clear();
 
-	for (auto option : lcf::Data::system.easyrpg_battle_options) {
-		battle_options.push_back((BattleOptionType)option);
+	if (native_250921) {
+		for (int option = Battle; option <= Lose && battle_options.size() < 4; ++option) {
+			if (((maniac_party_options & (1 << option)) != 0) == (option > Escape)) {
+				battle_options.push_back(static_cast<BattleOptionType>(option));
+			}
+		}
+	} else {
+		for (auto option : lcf::Data::system.easyrpg_battle_options) {
+			battle_options.push_back((BattleOptionType)option);
+		}
 	}
 
 	// Add all menu items
@@ -219,10 +234,32 @@ void Scene_Battle::CreateOptions() {
 		}
 	}
 
-	options_window.reset(new Window_Command(commands, option_command_mov));
-	options_window->SetHeight(80);
-	options_window->SetX(Player::menu_offset_x);
-	options_window->SetY(Player::menu_offset_y + MENU_HEIGHT - 80);
+	if (native_250921 && options_window) {
+		options_window->ReplaceCommands(std::move(commands));
+		options_window->SetIndex(previous_index);
+	} else {
+		options_window.reset(new Window_Command(commands, option_command_mov));
+		options_window->SetHeight(80);
+		options_window->SetX(Player::menu_offset_x);
+		options_window->SetY(Player::menu_offset_y + MENU_HEIGHT - 80);
+	}
+	if (native_250921 && !IsEscapeAllowedFromOptionWindow()) {
+		const auto escape = std::find(battle_options.begin(), battle_options.end(), Escape);
+		if (escape != battle_options.end()) options_window->DisableItem(std::distance(battle_options.begin(), escape));
+	}
+}
+
+void Scene_Battle::SetManiacBattleCommands(bool row_disabled, int options) {
+	maniac_row_disabled = row_disabled;
+	maniac_party_options = options & 31;
+	if (maniac_party_options == 7) maniac_party_options = 0;
+	CreateOptions();
+}
+
+bool Scene_Battle::IsManiacPartyCancelSuppressed() const {
+	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return false;
+	return maniac_party_options == 3 || maniac_party_options == 5 || maniac_party_options == 6
+		|| maniac_party_options == 14 || maniac_party_options == 22;
 }
 
 void Scene_Battle::CreateUi() {
@@ -270,9 +307,26 @@ void Scene_Battle::UpdateUi() {
 	Game_Message::Update();
 }
 
+bool Scene_Battle::HandleManiacHookOperation(AsyncOp operation) {
+	if (operation.GetType() == AsyncOp::eLoad && Player::IsPatchManiac()
+			&& Player::game_config.maniac_version.Get() == 250921) {
+		auto map = std::dynamic_pointer_cast<Scene_Map>(Scene::Find(Scene::Map));
+		if (!map) return false;
+		map->QueueManiacLoad(operation);
+		Scene::PopUntil(Scene::Map);
+		return true;
+	}
+	if (operation.GetType() == AsyncOp::eTerminateBattle) {
+		EndBattle(static_cast<BattleResult>(operation.GetBattleResult()));
+		return true;
+	}
+	return CheckSceneExit(operation);
+}
+
 bool Scene_Battle::UpdateEvents() {
 	auto& interp = Game_Battle::GetInterpreterBattle();
 	interp.Update();
+	if (Scene::instance.get() != this) return false;
 	status_window->Refresh();
 
 	if (interp.IsForceFleeEnabled()) {
@@ -288,13 +342,19 @@ bool Scene_Battle::UpdateEvents() {
 
 	if (interp.IsAsyncPending()) {
 		auto aop = interp.GetAsyncOp();
-
-		if (aop.GetType() == AsyncOp::eTerminateBattle) {
-			EndBattle(static_cast<BattleResult>(aop.GetBattleResult()));
-			return false;
+		if (aop.GetType() == AsyncOp::eSave) {
+			// Maniac event saves are also valid while a troop page is running.
+			const bool success = Scene_Save::Save(FileFinder::Save(), aop.GetSaveSlot());
+			if (aop.GetSaveResultVar() > 0) {
+				Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
+				Game_Map::SetNeedRefresh(true);
+			} else if (ApplyManiacSaveResult(aop, success,
+				Main_Data::game_maniac_self_variables.get())) {
+				Game_Map::SetNeedRefresh(true);
+			}
 		}
 
-		if (CheckSceneExit(aop)) {
+		if (HandleManiacHookOperation(aop)) {
 			return false;
 		}
 	}
@@ -362,6 +422,7 @@ Game_Enemy* Scene_Battle::EnemySelected() {
 	}
 
 	Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
+	RecordManiacActingActorContext(*active_actor);
 	ActionSelectedCallback(active_actor);
 	return target;
 }
@@ -395,6 +456,7 @@ Game_Actor* Scene_Battle::AllySelected() {
 	}
 
 	Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
+	RecordManiacActingActorContext(*active_actor);
 	ActionSelectedCallback(active_actor);
 	return &target;
 }
@@ -404,6 +466,7 @@ void Scene_Battle::AttackSelected() {
 
 	if (active_actor->HasAttackAll()) {
 		active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Normal>(active_actor, Main_Data::game_enemyparty.get()));
+		RecordManiacActingActorContext(*active_actor);
 		ActionSelectedCallback(active_actor);
 	} else {
 		SetState(State_SelectEnemyTarget);
@@ -414,6 +477,8 @@ void Scene_Battle::DefendSelected() {
 	Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 
 	active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Defend>(active_actor));
+
+	RecordManiacActingActorContext(*active_actor);
 
 	ActionSelectedCallback(active_actor);
 }
@@ -451,6 +516,7 @@ void Scene_Battle::ItemSelected() {
 		case lcf::rpg::Item::Type_medicine:
 			if (item->entire_party) {
 				active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Item>(active_actor, Main_Data::game_party.get(), *item_window->GetItem()));
+				RecordManiacActingActorContext(*active_actor);
 				ActionSelectedCallback(active_actor);
 			} else {
 				SetState(State_SelectAllyTarget);
@@ -459,6 +525,7 @@ void Scene_Battle::ItemSelected() {
 			break;
 		case lcf::rpg::Item::Type_switch:
 			active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Item>(active_actor, *item_window->GetItem()));
+			RecordManiacActingActorContext(*active_actor);
 			ActionSelectedCallback(active_actor);
 			break;
 	}
@@ -483,6 +550,7 @@ void Scene_Battle::AssignSkill(const lcf::rpg::Skill* skill, const lcf::rpg::Ite
 		case lcf::rpg::Skill::Type_escape:
 		case lcf::rpg::Skill::Type_switch: {
 			active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Skill>(active_actor, *skill, item));
+			RecordManiacActingActorContext(*active_actor);
 			ActionSelectedCallback(active_actor);
 			return;
 		}
@@ -501,16 +569,19 @@ void Scene_Battle::AssignSkill(const lcf::rpg::Skill* skill, const lcf::rpg::Ite
 		case lcf::rpg::Skill::Scope_enemies:
 			active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Skill>(
 					active_actor, Main_Data::game_enemyparty.get(), *skill, item));
+			RecordManiacActingActorContext(*active_actor);
 			ActionSelectedCallback(active_actor);
 			break;
 		case lcf::rpg::Skill::Scope_self:
 			active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Skill>(
 					active_actor, active_actor, *skill, item));
+			RecordManiacActingActorContext(*active_actor);
 			ActionSelectedCallback(active_actor);
 			break;
 		case lcf::rpg::Skill::Scope_party:
 			active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Skill>(
 					active_actor, Main_Data::game_party.get(), *skill, item));
+			RecordManiacActingActorContext(*active_actor);
 			ActionSelectedCallback(active_actor);
 			break;
 	}
@@ -567,23 +638,65 @@ void Scene_Battle::RemoveCurrentAction() {
 	battle_actions.pop_front();
 }
 
+void Scene_Battle::RecordManiacActingActorContext(Game_Actor& actor, bool automatic) {
+	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return;
+	if (automatic) {
+		actor.SetLastBattleAction(-1);
+	} else if (command_window) {
+		const int index = command_window->GetIndex();
+		const bool row = Feature::HasRow() && index == command_window->GetRowMax() - 1;
+		const auto* command = row ? nullptr : actor.GetBattleCommand(index);
+		actor.SetLastBattleAction(command ? command->ID : -1);
+	}
+	auto& context = Game_Battle::GetPrimaryInterpreterBattle();
+	context.SetCurrentActingActorId(actor.GetId());
+	context.SetCurrentManiacActionTarget(actor.GetManiacTargetType(), actor.GetManiacTargetIndex());
+}
+
 void Scene_Battle::ActionSelectedCallback(Game_Battler* for_battler) {
 	assert(for_battler->GetBattleAlgorithm() != nullptr);
 
-	auto single_target = for_battler->GetBattleAlgorithm()->GetOriginalSingleTarget();
-	auto group_targets = for_battler->GetBattleAlgorithm()->GetOriginalPartyTarget();
-	// Target: 0 None, 1 Single Enemy, 2 All Enemies, 3 Single Ally, 4 All Allies
-	Game_Battle::ManiacBattleHook(
+	auto selected_action = for_battler->GetBattleAlgorithm();
+	auto single_target = selected_action->GetOriginalSingleTarget();
+	auto group_targets = selected_action->GetOriginalPartyTarget();
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	int target_index = native_250921 ? for_battler->GetManiacTargetIndex()
+		: (single_target ? single_target->GetPartyIndex() : 0);
+	const int target_type = native_250921 ? for_battler->GetManiacTargetType()
+		: (single_target ? (single_target->GetType() != Game_Battler::Type_Enemy ? 1 : 3)
+			: (group_targets->GetRandomActiveBattler()->GetType() != Game_Battler::Type_Enemy ? 2 : 4));
+	// Target: 0 None, 1 Single Ally, 2 All Allies, 3 Single Enemy, 4 All Enemies.
+	const bool target_hook_ran = Game_Battle::ManiacBattleHook(
 		Game_Interpreter_Battle::ManiacBattleHookType::Targetting,
 		for_battler->GetType() == Game_Battler::Type_Enemy,
-		for_battler->GetPartyIndex(),
+		for_battler->GetManiacHookIndex(),
 		for_battler->GetBattleAlgorithm()->GetActionType(),
 		for_battler->GetBattleAlgorithm()->GetActionId(),
-		single_target
-			? (single_target->GetType() != Game_Battler::Type_Enemy ? 1 : 3)
-			: (group_targets->GetRandomActiveBattler()->GetType() != Game_Battler::Type_Enemy ? 2 : 4),
-		single_target ? single_target->GetPartyIndex() : 0
+		target_type,
+		target_index,
+		&target_index
 	);
+	if (target_hook_ran && for_battler->GetBattleAlgorithm() == selected_action
+		&& (native_250921 ? (target_type == 1 || target_type == 3) : single_target != nullptr)) {
+		auto& party = native_250921
+			? (target_type == 3 ? static_cast<Game_Party_Base&>(*Main_Data::game_enemyparty)
+				: static_cast<Game_Party_Base&>(*Main_Data::game_party))
+			: single_target->GetParty();
+		std::vector<Game_Battler*> live_targets;
+		party.GetBattlers(live_targets);
+		if (!live_targets.empty()) {
+			// The hook can retire the old target. Native clips against the live
+			// party and binds this action to that slot, even if its number is unchanged.
+			target_index = std::clamp(target_index, 0, static_cast<int>(live_targets.size()) - 1);
+			if (single_target && (!native_250921 || selected_action->GetType() == Game_BattleAlgorithm::Type::Normal
+				|| selected_action->GetType() == Game_BattleAlgorithm::Type::Skill || selected_action->GetType() == Game_BattleAlgorithm::Type::Item)) {
+				selected_action->SetOriginalSingleTarget(live_targets[target_index]);
+			}
+		}
+	}
+	if (native_250921 && target_hook_ran && for_battler->GetBattleAlgorithm() == selected_action) {
+		for_battler->SetManiacTargetIndex(target_index);
+	}
 
 	if (for_battler->GetBattleAlgorithm() == nullptr) {
 		Output::Warning("ActionSelectedCallback: Invalid action for battler {} ({})",

@@ -19,6 +19,8 @@
 #define EP_BASEUI_H
 
 // Headers
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <string>
 #include <bitset>
@@ -65,6 +67,29 @@ public:
 	 * Toggles zoom.
 	 */
 	virtual void ToggleZoom() {};
+
+	/** Applies Maniac's explicit window zoom; unsupported hosts return false. */
+	virtual bool SetManiacWindowZoom(int zoom) { return false; }
+	int GetManiacWindowZoom() const { return maniac_window_zoom; }
+	virtual bool SetManiacWindowInterpolation(bool enabled) { return false; }
+	bool GetManiacWindowInterpolation() const { return maniac_window_interpolation; }
+	void SetManiacFullscreenUnevenPixels(bool enabled) { maniac_fullscreen_uneven_pixels = enabled; }
+	int GetManiacFullscreenUnevenPixels() const { return maniac_fullscreen_uneven_pixels; }
+	virtual bool SetManiacWindowFit(bool enabled) { return false; }
+	bool GetManiacWindowFit() const { return maniac_window_fit; }
+	virtual bool SetManiacScreenMode(bool fullscreen) { return false; }
+	bool GetManiacScreenMode() const { return maniac_screen_mode; }
+	void SetManiacFullscreenLayoutOption(int type, bool value) {
+		if (type == 5) maniac_fullscreen_layout = value;
+		else maniac_fullscreen_stretch = value;
+	}
+	bool GetManiacFullscreenLayoutOption(int type) const {
+		return type == 5 ? maniac_fullscreen_layout : maniac_fullscreen_stretch;
+	}
+	void LoadManiacVideoDefaults(int fullscreen_override = -1);
+	void SaveManiacVideoDefaults();
+	void SetManiacSaveVideoDefaults(bool enabled) { maniac_save_video_defaults = enabled; }
+	bool GetManiacSaveVideoDefaults() const { return maniac_save_video_defaults; }
 
 	/**
 	 * Processes events queue.
@@ -161,6 +186,14 @@ public:
 	 */
 	const Point& GetMousePosition() const;
 
+	/** Windows client dimensions for commands that use native cursor coordinates. */
+	bool GetMouseClientSize(Point& size) const;
+	/** Read the system cursor in native window client coordinates when available. */
+	bool GetMouseClientPosition(Point& position) const;
+
+	/** Attempt to move the system cursor from client coordinates. */
+	bool SetMouseClientPosition(Point position) const;
+
 	/**
 	 * @return Axis of the analog controller inputs
 	 */
@@ -212,6 +245,13 @@ public:
 	 * @param value
 	 */
 	void SetPauseWhenFocusLost(bool value);
+	bool ShouldPauseWhenFocusLost() const;
+	virtual void RefreshFocusPolicy() {}
+	virtual bool IsFocusPaused() const { return false; }
+	virtual bool HasInputFocus() const { return true; }
+	virtual bool IsJoystickAvailable() const { return false; }
+	virtual bool ConfirmManiacFileOutput() { return false; }
+	bool IsRightShiftPressed() const;
 
 	/**
 	 * @return the minimum amount of time each physical frame should take.
@@ -328,6 +368,57 @@ protected:
 
 	/** Used by the F2 toggle: Remembers which configuration (ON or Overlay) was used */
 	ConfigEnum::ShowFps original_fps_show_state = ConfigEnum::ShowFps::OFF;
+
+	/** Raw Maniac cursor scaling starts at zero (clamped to one) before an option request. */
+	int maniac_window_zoom = 0;
+	bool maniac_window_interpolation = false;
+	bool maniac_window_interpolation_requested = false;
+	uint8_t maniac_fullscreen_uneven_pixels = 0;
+	bool maniac_window_fit = true;
+	bool maniac_window_fit_requested = false;
+	bool maniac_screen_mode = false;
+	bool maniac_screen_mode_requested = false;
+	bool maniac_fullscreen_layout = false;
+	bool maniac_fullscreen_stretch = false;
+	bool maniac_active_fullscreen_layout = false;
+	bool maniac_active_fullscreen_stretch = false;
+	bool maniac_save_video_defaults = true;
+	bool maniac_video_defaults_loaded = false;
+	std::array<uint8_t, 16> maniac_video_defaults{};
+	void ApplyManiacScreenMode(bool fullscreen) {
+		maniac_screen_mode = fullscreen;
+		maniac_screen_mode_requested = true;
+		maniac_active_fullscreen_layout = maniac_fullscreen_layout;
+		maniac_active_fullscreen_stretch = maniac_fullscreen_stretch;
+	}
+	Rect ManiacFullscreenRect(int width, int height) const {
+		int w = width, h = height;
+		if (!maniac_active_fullscreen_layout) {
+			const int scale = std::max(1, static_cast<int>(std::min(width / GetWidth(), height / GetHeight())));
+			w = GetWidth() * scale;
+			h = GetHeight() * scale;
+		} else if (!maniac_active_fullscreen_stretch) {
+			if (int64_t(width) * GetHeight() > int64_t(height) * GetWidth())
+				w = static_cast<int>(int64_t(height) * GetWidth() / GetHeight());
+			else h = static_cast<int>(int64_t(width) * GetHeight() / GetWidth());
+		}
+		return {(width - w) / 2, (height - h) / 2, w, h};
+	}
+	int ManiacWindowZoomForBounds(int requested, int width, int height) const {
+		const int64_t numerator = maniac_window_fit ? 2 : 3;
+		const int limit_x = static_cast<int>(width * numerator / (2 * GetWidth()));
+		const int limit_y = static_cast<int>(height * numerator / (2 * GetHeight()));
+		return std::max(1, std::min({requested, limit_x, limit_y}));
+	}
+	bool UseManiacWindowInterpolation() const {
+#ifdef __ANDROID__
+		// An explicit zoom uses a window-sized game viewport inside the Activity.
+		return maniac_window_interpolation_requested && !maniac_screen_mode
+			&& (maniac_window_zoom > 0 || maniac_window_fit_requested || maniac_screen_mode_requested);
+#else
+		return maniac_window_interpolation_requested && !IsFullscreen();
+#endif
+	}
 };
 
 /** Global DisplayUi variable. */

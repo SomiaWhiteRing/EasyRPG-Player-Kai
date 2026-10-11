@@ -59,7 +59,10 @@ void Window::SetCloseAnimation(int frames) {
 
 void Window::Draw(Bitmap& dst) {
 	if (width <= 0 || height <= 0) return;
-	if (x < -width || x > dst.GetWidth() || y < -height || y > dst.GetHeight()) return;
+	if (x < -width || x > dst.GetWidth() || y < -height || y > dst.GetHeight()) {
+		DrawContents(dst); // A message face can remain on screen independently of its window.
+		return;
+	}
 
 	if (windowskin) {
 		if (width > 4 && height > 4 && (back_opacity * opacity / 255 > 0)) {
@@ -132,19 +135,7 @@ void Window::Draw(Bitmap& dst) {
 		}
 	}
 
-	if (contents) {
-		if (width > 2 * border_x && height > 2 * border_y &&
-			-ox < width - 2 * border_x && -oy < height - 2 * border_y &&
-			contents_opacity > 0 && animation_frames == 0) {
-			Rect src_rect(-min(-ox, 0), -min(-oy, 0),
-						  min(width - 2 * border_x, width - 2 * border_x + ox),
-						  min(height - 2 * border_y, height - 2 * border_y + oy));
-
-			dst.Blit(max(x + border_x, x + border_x - ox),
-					  max(y + border_y, y + border_y - oy),
-					  *contents, src_rect, contents_opacity);
-		}
-	}
+	DrawContents(dst);
 
 	auto show_arrow = [&](bool which) {
 		if (!which || !animate_arrows) {
@@ -172,6 +163,23 @@ void Window::Draw(Bitmap& dst) {
 	if (show_arrow(left_arrow)) {
 		Rect src_rect(40, 8, 16, 8);
 		dst.RotateZoomOpacityBlit(x, y + height / 2 - 8, 16, 0, *windowskin, src_rect, -M_PI / 2, 1.0, 1.0, 255);
+	}
+}
+
+void Window::DrawContents(Bitmap& dst) {
+	if (x < -width || x > dst.GetWidth() || y < -height || y > dst.GetHeight()) return;
+	if (contents) {
+		if (width > 2 * border_x && height > 2 * border_y &&
+			-ox < width - 2 * border_x && -oy < height - 2 * border_y &&
+			contents_opacity > 0 && animation_frames == 0) {
+			Rect src_rect(-min(-ox, 0), -min(-oy, 0),
+						  min(width - 2 * border_x, width - 2 * border_x + ox),
+						  min(height - 2 * border_y, height - 2 * border_y + oy));
+
+			dst.Blit(max(x + border_x, x + border_x - ox),
+					  max(y + border_y, y + border_y - oy),
+					  *contents, src_rect, contents_opacity);
+		}
 	}
 }
 

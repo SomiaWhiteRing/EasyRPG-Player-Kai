@@ -6,6 +6,7 @@
 *.py      text
 *.rb      text
 *.sh      text eol=lf
+builds/patches/*.patch text eol=lf -whitespace
 builds/ci/package-ubuntu-nightly.cache.env text eol=lf
 builds/docker/package.Dockerfile text eol=lf
 *.ac      text
@@ -14,6 +15,7 @@ builds/docker/package.Dockerfile text eol=lf
 tests/doctest.h -diff linguist-vendored
 builds/autoconf/m4/ax_*.m4 -diff linguist-vendored
 src/external/* -diff linguist-vendored
+lib/quickjs-ng/* text eol=lf linguist-vendored -whitespace
 src/midiprogram.h -diff linguist-vendored
 src/midisequencer.* -diff linguist-vendored
 src/midisynth.* -diff linguist-vendored

@@ -87,6 +87,7 @@ using namespace Game_Interpreter_Shared;
 void Game_Interpreter_Map::SetState(const lcf::rpg::SaveEventExecState& save) {
 	Clear();
 	_state = save;
+	for (auto& frame : _state.stack) NormalizeSerializedManiacText(frame.commands);
 	_keyinput.fromSave(save);
 }
 
@@ -188,6 +189,11 @@ bool Game_Interpreter_Map::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::RecallToLocation:
 			return CmdSetup<&Game_Interpreter_Map::CommandRecallToLocation, 3>(com);
 		case Cmd::EnemyEncounter:
+			// Maniac uses the original argument count to distinguish historical
+			// short records. CmdSetup would erase that distinction by padding them.
+			if (Player::IsPatchManiac()) {
+				return CmdSetup<&Game_Interpreter_Map::CommandEnemyEncounter, 0>(com);
+			}
 			if (Player::IsRPG2k()) {
 				return CmdSetup<&Game_Interpreter_Map::CommandEnemyEncounter, 6>(com);
 			} else {
@@ -288,15 +294,28 @@ bool Game_Interpreter_Map::CommandEnemyEncounter(lcf::rpg::EventCommand const& c
 	if (Game_Message::IsMessageActive()) {
 		return false;
 	}
+	const bool maniac = Player::IsPatchManiac();
+	const auto param = [&com](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	// In the 250921 runtime both fields default to one only when the
+	// original record has at most seven arguments. At eight arguments the
+	// ninth field defaults to zero, unlike a uniformly padded record.
+	const int placement = maniac && com.parameters.size() <= 7 ? 1 : param(7);
+	const int terrain = maniac && com.parameters.size() <= 7 ? 1 : param(8);
 
 	auto& frame = GetFrame();
 	auto& index = frame.current_command;
 
 	BattleArgs args;
 
-	args.troop_id = ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const int maniac_troop_selector = param(0) & 0xf;
+	const int troop_mode = maniac
+		? (maniac_troop_selector == 0 ? 0 : maniac_troop_selector == 1 ? 1 : 2)
+		: param(0);
+	args.troop_id = ValueOrVariable(troop_mode, param(1));
 
-	switch (com.parameters[2]) {
+	switch (param(2)) {
 	case 0:
 		Game_Map::SetupBattle(args);
 		break;
@@ -304,27 +323,27 @@ bool Game_Interpreter_Map::CommandEnemyEncounter(lcf::rpg::EventCommand const& c
 		args.background = ToString(com.string);
 
 		if (Player::IsRPG2k3()) {
-			args.formation = static_cast<lcf::rpg::System::BattleFormation>(com.parameters[7]);
+			args.formation = static_cast<lcf::rpg::System::BattleFormation>(placement);
 		}
 		break;
 	case 2:
-		args.terrain_id = com.parameters[8];
+		args.terrain_id = terrain;
 		break;
 	default:
 		return false;
 	}
-	auto escape_mode = com.parameters[3]; // 0 disallow, 1 end event processing, 2 victory/escape custom handler
-	auto defeat_mode = com.parameters[4]; // 0 game over, 1 victory/defeat custom handler
+	auto escape_mode = param(3); // 0 disallow, 1 end event processing, 2 victory/escape custom handler
+	auto defeat_mode = param(4); // 0 game over, 1 victory/defeat custom handler
 
 	if (escape_mode == 1) {
 		_state.abort_on_escape = true;
 	}
 
-	args.allow_escape = (escape_mode != 0);
-	args.first_strike = com.parameters[5] != 0;
+	args.allow_escape = maniac ? escape_mode > 0 : escape_mode != 0;
+	args.first_strike = maniac ? (param(5) & 0xff) != 0 : param(5) != 0;
 
 	if (Player::IsRPG2k3()) {
-		args.condition = static_cast<lcf::rpg::System::BattleCondition>(com.parameters[6]);
+		args.condition = static_cast<lcf::rpg::System::BattleCondition>(param(6));
 	}
 
 	auto indent = com.indent;
@@ -469,7 +488,7 @@ bool Game_Interpreter_Map::CommandShowInn(lcf::rpg::EventCommand const& com) { /
 		return false;
 	}
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetFromForegroundInterpreter(main_flag);
 
 	std::string_view greeting_1, greeting_2, greeting_3, accept, cancel;
@@ -529,7 +548,7 @@ bool Game_Interpreter_Map::CommandShowInn(lcf::rpg::EventCommand const& com) { /
 	// save game compatibility with RPG_RT
 	ReserveSubcommandIndex(com.indent);
 
-	Game_Message::SetPendingMessage(std::move(pm));
+	_async_op = Game_Message::SetPendingMessage(std::move(pm), this);
 	_state.show_message = true;
 
 	return true;
@@ -724,8 +743,8 @@ bool Game_Interpreter_Map::CommandShowBattleAnimation(lcf::rpg::EventCommand con
 		p.keep = (operand(2) & 2) != 0;
 		p.invert = value(8, 5) != 0;
 		const int buffer = value(5, 2);
-		if (p.mode < 0 || p.mode > 4 || buffer < 0) {
-			Output::Warning("ShowBattleAnimation: Invalid Maniac position mode {} or buffer {}", p.mode, buffer);
+		if (p.mode < 0 || p.mode > 4) {
+			Output::Warning("ShowBattleAnimation: Invalid Maniac position mode {}", p.mode);
 			return true;
 		}
 		if (p.mode <= 2) {
@@ -745,15 +764,16 @@ bool Game_Interpreter_Map::CommandShowBattleAnimation(lcf::rpg::EventCommand con
 			p.x = value(6, 3);
 			p.y = value(7, 4);
 		} else {
-			// Binding's selector only offers variable and indirect variable.
-			// Its indices 0/1 must not be decoded as constant/variable.
-			p.x = operand(6);
-			p.y = operand(7);
-			p.x_mode = value_mode(3);
-			p.y_mode = value_mode(4);
-			if (p.x_mode > 1 || p.y_mode > 1) {
-				Output::Warning("ShowBattleAnimation: Invalid Maniac binding mode");
-				return true;
+			// Native stores the selected variable address, not the selector.
+			// Resolve an indirect selector once, then read that address each frame.
+			p.x = value(6, 3);
+			p.y = value(7, 4);
+			if (p.x < 0 || p.y < 0) {
+				if (const auto* frame = GetFramePtr()) {
+					p.self_scope = frame->easyrpg_self_scope;
+					p.self_map_id = frame->easyrpg_self_map_id;
+					p.self_event_id = frame->easyrpg_self_event_id;
+				}
 			}
 		}
 		const int frames = Main_Data::game_screen->ShowManiacBattleAnimation(buffer, p);

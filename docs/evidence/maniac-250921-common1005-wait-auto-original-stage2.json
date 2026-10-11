@@ -1,0 +1,11 @@
+{
+  "runtime": "original",
+  "stage": 2,
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "fixture_manifest_sha256": "89b4aa89e130fb1474a0e6950ecd47d8751f274df5b7736c1a64fac3042bdf78",
+  "input_save_sha256": "2be7d4d56e36fd6b3dd1c96885d885b48b5418eaef0b7b51d0316a0104cd7f6a",
+  "output_save_sha256": "b2b848fc0db76259270ca5b770319a1d122f22bcf14f1e82469a8897fd943282",
+  "output_save_length": 3896,
+  "observation": "Fresh process for each stage; Save01 remains in fixture for stage 2; captured after one unchanged second, then process terminated."
+}

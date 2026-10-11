@@ -32,19 +32,34 @@
 #include "rand.h"
 
 Game_Enemy::Game_Enemy(const lcf::rpg::TroopMember* member)
-	: troop_member(member)
+	: troop_member(member ? *member : lcf::rpg::TroopMember{})
 {
-	if (troop_member == nullptr) {
+	if (member == nullptr) {
 		return;
 	}
-	Transform(troop_member->enemy_id);
+	Transform(troop_member.enemy_id);
 
 	hp = GetMaxHp();
 	sp = GetMaxSp();
 	ResetBattle();
 
-	SetHidden(troop_member->invisible);
+	SetHidden(troop_member.invisible);
 	SetBattlePosition(GetOriginalPosition());
+}
+
+void Game_Enemy::SetName(std::string name) {
+	// The native host uses NUL-terminated UTF-16 names.
+	const auto end = name.find('\0');
+	if (end != std::string::npos) name.resize(end);
+	name_override = std::move(name);
+}
+
+void Game_Enemy::Retire() {
+	in_party = false;
+	SetHidden(true);
+	SetBattleSprite(nullptr);
+	SetWeaponSprite(nullptr);
+	// Queued actions and animations still hold battler pointers until battle ends.
 }
 
 int Game_Enemy::MaxHpValue() const {
@@ -114,7 +129,7 @@ int Game_Enemy::SetSp(int _sp) {
 }
 
 Point Game_Enemy::GetOriginalPosition() const {
-	return { troop_member->x, troop_member->y };
+	return { troop_member.x, troop_member.y };
 }
 
 static lcf::rpg::Enemy makeDummyEnemy() {

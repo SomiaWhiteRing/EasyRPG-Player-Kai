@@ -1,0 +1,25 @@
+{
+  "case": "depth-pass",
+  "runtime": "original",
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "manifest_sha256": "0bfac4e6343cb9da20587a936ae61ecf28ed2274313553d1e735c18e5c377e8f",
+  "native": {
+    "calls": 8192,
+    "appended": 8192,
+    "max_depth_before": 8192,
+    "max_depth_after": 8193,
+    "returned": 8192,
+    "error": null,
+    "last_append": {
+      "depth": 8193,
+      "common_id": 1,
+      "kind": 37
+    }
+  },
+  "save_exists": true,
+  "process_exit_code": null,
+  "error_lines": [],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed.",
+  "save_sha256": "cd8d64bf88b212f96ed26f1ee8f23fdec27671f79c4bad1957ce14a1d85bd93c"
+}

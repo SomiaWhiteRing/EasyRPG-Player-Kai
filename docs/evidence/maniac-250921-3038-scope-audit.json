@@ -1,0 +1,203 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "source_sha256": {
+    "commands/03038.md": "cb29cff2b24d8e6aea4ea2078a51c5ffbd23b200bdf24e475e86e44d5b41488c",
+    "evidence/runtime-250921/0004d570.c": "fd454c6da5c0bd3d4432b4846060495866cef7ebb8ba41cc21287cda89e943c8",
+    "evidence/native-250921/0004c190.c": "11f459bf135144ce1d5bb5f3d635d7f79bf4f657aae0979586d0ef24d0a11bf5",
+    "evidence/runtime-250921/00024d20.c": "e355ee1c8ea6c97d02921e3a1b7e2683afac49e56f6f4efc260fa5e6d52d0bbc"
+  },
+  "machine_windows": [
+    {
+      "begin_rva": "0x46a1e",
+      "end_rva_exclusive": "0x46a2d",
+      "sha256": "cddd57e302e52c420a545c676097c38d1cac0602f3e5b4f35301bfa157497c38",
+      "decoded_as_code": true,
+      "key_sites": [
+        {
+          "rva": "0x46a21",
+          "instruction": "call 0x14004d570",
+          "bytes": "e84a6b0000"
+        },
+        {
+          "rva": "0x46a28",
+          "instruction": "jmp 0x140046ef3",
+          "bytes": "e9c6040000"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x4d570",
+      "end_rva_exclusive": "0x4da0e",
+      "sha256": "c31be313effb0148745c47d4fc3b9095cc159ddc0b56300b31c822285583c837",
+      "decoded_as_code": true,
+      "key_sites": [
+        {
+          "rva": "0x4d57c",
+          "instruction": "mov edx, dword ptr [r8 + 0x20]",
+          "bytes": "418b5020"
+        },
+        {
+          "rva": "0x4d5af",
+          "instruction": "and ecx, 0xf",
+          "bytes": "83e10f"
+        },
+        {
+          "rva": "0x4d768",
+          "instruction": "cmp ecx, 1",
+          "bytes": "83f901"
+        },
+        {
+          "rva": "0x4d828",
+          "instruction": "test esi, esi",
+          "bytes": "85f6"
+        },
+        {
+          "rva": "0x4d830",
+          "instruction": "cmp esi, 1",
+          "bytes": "83fe01"
+        },
+        {
+          "rva": "0x4d839",
+          "instruction": "cmp edi, 9",
+          "bytes": "83ff09"
+        },
+        {
+          "rva": "0x4d886",
+          "instruction": "mov dword ptr [rip + 0x222a18], eax",
+          "bytes": "8905182a2200"
+        },
+        {
+          "rva": "0x4d8a7",
+          "instruction": "mov dword ptr [rip + 0x2229f7], eax",
+          "bytes": "8905f7292200"
+        },
+        {
+          "rva": "0x4d982",
+          "instruction": "cmp edi, 9",
+          "bytes": "83ff09"
+        },
+        {
+          "rva": "0x4d9a6",
+          "instruction": "mov edx, dword ptr [rip + 0x2228f8]",
+          "bytes": "8b15f8282200"
+        },
+        {
+          "rva": "0x4d9f3",
+          "instruction": "call 0x1400d9fd0",
+          "bytes": "e8d8c50800"
+        },
+        {
+          "rva": "0x4d9fc",
+          "instruction": "call 0x14008c9e0",
+          "bytes": "e8dfef0300"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x4da10",
+      "end_rva_exclusive": "0x4da60",
+      "sha256": "e633497b5db4bf2e39cd5b3954629ac12a1b9511b4970c270fe42b4095b1af9c",
+      "decoded_as_code": false,
+      "key_sites": []
+    },
+    {
+      "begin_rva": "0x24d20",
+      "end_rva_exclusive": "0x24f0c",
+      "sha256": "193aceef4817273116bc77365c4720aec35a7a308b316ee46f83039869b733e8",
+      "decoded_as_code": true,
+      "key_sites": [
+        {
+          "rva": "0x24e19",
+          "instruction": "mov edx, dword ptr [rip + 0x24b485]",
+          "bytes": "8b1585b42400"
+        }
+      ]
+    }
+  ],
+  "opcode_mapping": {
+    "opcode": 3038,
+    "normalized_selector": 1312,
+    "selector_byte_rva": "0x47eca",
+    "slot": 39,
+    "target_slot_rva": "0x47df0",
+    "branch_rva": "0x46a1e",
+    "consumer_rva": "0x4d570"
+  },
+  "effective_branch_ids": [
+    "3038:get-option-0-screen-mode",
+    "3038:get-option-1-window-zoom",
+    "3038:get-option-2-window-interpolation",
+    "3038:get-option-3-keep-window-in-display",
+    "3038:get-option-4-fullscreen-uneven-pixels",
+    "3038:get-option-5-fullscreen-ignore-aspect",
+    "3038:get-option-6-fullscreen-interpolation",
+    "3038:get-option-7-show-fps",
+    "3038:get-option-8-save-current-default",
+    "3038:get-option-9-audio-volume",
+    "3038:set-option-0-screen-mode",
+    "3038:set-option-1-window-zoom",
+    "3038:set-option-2-window-interpolation",
+    "3038:set-option-3-keep-window-in-display",
+    "3038:set-option-4-fullscreen-uneven-pixels",
+    "3038:set-option-5-fullscreen-ignore-aspect",
+    "3038:set-option-6-fullscreen-interpolation",
+    "3038:set-option-7-show-fps",
+    "3038:set-option-8-save-current-default",
+    "3038:set-option-9-audio-volume",
+    "3038:other-operation-or-option-noop"
+  ],
+  "option_jump_tables": {
+    "set_rva": "0x4da10",
+    "get_rva": "0x4da38",
+    "option_count_each": 10
+  },
+  "branch_acceptance_ids": {
+    "3038:get-option-0-screen-mode": "W08-006;W08-008",
+    "3038:get-option-1-window-zoom": "W08-005;W08-008",
+    "3038:get-option-2-window-interpolation": "W08-006;W08-008",
+    "3038:get-option-3-keep-window-in-display": "W08-006;W08-008",
+    "3038:get-option-4-fullscreen-uneven-pixels": "W08-006;W08-008",
+    "3038:get-option-5-fullscreen-ignore-aspect": "W08-006;W08-008",
+    "3038:get-option-6-fullscreen-interpolation": "W08-006;W08-008",
+    "3038:get-option-7-show-fps": "W08-006;W08-008",
+    "3038:get-option-8-save-current-default": "W08-006;W08-008",
+    "3038:get-option-9-audio-volume": "W08-007;W08-008",
+    "3038:set-option-0-screen-mode": "W08-006;W08-008",
+    "3038:set-option-1-window-zoom": "W08-005;W08-008",
+    "3038:set-option-2-window-interpolation": "W08-006;W08-008",
+    "3038:set-option-3-keep-window-in-display": "W08-006;W08-008",
+    "3038:set-option-4-fullscreen-uneven-pixels": "W08-006;W08-008",
+    "3038:set-option-5-fullscreen-ignore-aspect": "W08-006;W08-008",
+    "3038:set-option-6-fullscreen-interpolation": "W08-006;W08-008",
+    "3038:set-option-7-show-fps": "W08-006;W08-008",
+    "3038:set-option-8-save-current-default": "W08-006;W08-008",
+    "3038:set-option-9-audio-volume": "W08-007;W08-008",
+    "3038:other-operation-or-option-noop": "W08-008"
+  },
+  "acceptance_ids": [
+    "W08-005",
+    "W08-006",
+    "W08-007",
+    "W08-008"
+  ],
+  "operand_rule": "A0 nibbles 0,1,2 resolve A1 operation, A2 option type and A3 value/destination in order: mode 0 literal, 1 single global/current-self lookup, other nonzero modes indirect lookup. Missing words default zero. Get writes resolved signed A3 destination through 8c9e0 (zero skipped); set uses resolved A3 value. Formatter and managed editor constrain ordinary writer UI, not runtime modes. Indirection including negative references, INT_MIN and alias effects needs dynamic comparison.",
+  "option_rule": "Resolved operation 0 reads option types 0..9; operation 1 sets types 0..9; other operations/types do no option action. Types 0..8 cover screen/window/fullscreen/FPS/default state. Boolean setters use nonzero; type 3 stores an inverted byte but returns the logical value. Type 1 zoom setter clamps signed input to [1,4] and invokes 0da130 then 53f00; get returns that state. Types 0,3,7 also invoke display callbacks; types 2,4,5,6,8 only store their byte. Type 9 goes through audio getter d9fd0 or setter d9e10; exact volume conversions and failure paths require feature validation.",
+  "cursor_scale_link": "3038 set type 1 writes 2702a4 at RVA 4d886 or 4d8a7; get type 1 reads it at 4d9a6; 3006 raw-coordinate branch reads the same 2702a4 at 24e19, then clamps S to [1,4] for coordinate limits. This is 3038, not 3018 (3018 option 1 is FPS).",
+  "record_rule": "No four-argument minimum: count 0 defaults A0/A1/A2/A3 to zero; count 1 defaults A1/A2/A3; count 2 defaults A2/A3; count 3 defaults A3. Other A0 bits, extra Args, Text and indent have no opcode-specific read and must remain intact.",
+  "schedule_rule": "Dispatcher calls 4d570 and returns AL=1 via 46ef3; no opcode-owned wait or pf refresh/refetch. Option setters 0/1/3/7 call display helpers inside the consumer; these are option effects, not dispatcher scheduling.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "context_evidence": "No 3038-specific context guard between shared selector and consumer. These are static shared-dispatch candidates, not observed executions.",
+  "remaining_questions": [
+    "W08-005: original/Player type 1 zoom get/set, clamp, display callbacks and 3006 raw-coordinate consumer after zoom changes.",
+    "W08-006: original/Player types 0 and 2..8 screen/window/fullscreen/FPS/default read/set and visible effects, callback timing, save/default and platform policies.",
+    "W08-007: original/Player type 9 audio volume backend conversion, returned values, unavailable/failure behavior and actual output.",
+    "W08-008: operation/type/value packed modes, short/extra Args and Text, global/self/indirect read and signed destination writes, unknown branches, alias order, context and continuation.",
+    "W10-007: actual 3006 cursor parity after 3038 zoom changes; 241028, Web and Android remain separate."
+  ],
+  "scope": "250921 Windows static 3038 command scope only; no Player 3038 implementation, visual/audio behavior or dynamic context acceptance is claimed."
+}

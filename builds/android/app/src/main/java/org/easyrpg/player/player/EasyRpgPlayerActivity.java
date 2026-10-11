@@ -34,12 +34,18 @@ import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Insets;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.StrictMode;
 import android.text.SpannableString;
+import android.text.Editable;
+import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -47,9 +53,16 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.window.OnBackInvokedDispatcher;
 
@@ -73,8 +86,10 @@ import org.libsdl.app.SDLSurface;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * EasyRPG Player for Android (inheriting from SDLActivity)
@@ -95,6 +110,398 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     private boolean uiVisible = true;
 
     private int topInset = 0;
+
+    private static class ConsoleRequest {
+        final CountDownLatch done = new CountDownLatch(1);
+        String value;
+        int result;
+    }
+
+    private volatile ConsoleRequest consoleRead, consoleCommand;
+    private volatile boolean consoleInputClosed;
+    private volatile int consoleGeneration;
+    private LinearLayout consolePanel, consoleInputRow;
+    private TextView consoleCaption, consoleOutput;
+    private ScrollView consoleScroll;
+    private EditText consoleInput;
+    private int consoleForeground = 7, consoleBackground = 0;
+    private int consoleRowStart, consoleCursor, consoleColumn, consoleColumns;
+    private final BreakIterator consoleGraphemes = BreakIterator.getCharacterInstance(Locale.ROOT);
+    private ViewTreeObserver.OnGlobalFocusChangeListener consoleFocusListener;
+    private View.OnLayoutChangeListener consoleLayoutListener;
+    private static final int[] CONSOLE_COLORS = {0xff000000, 0xff000080, 0xff008000, 0xff008080,
+            0xff800000, 0xff800080, 0xff808000, 0xffc0c0c0, 0xff808080, 0xff0000ff,
+            0xff00ff00, 0xff00ffff, 0xffff0000, 0xffff00ff, 0xffffff00, 0xffffffff};
+
+    private boolean consoleHasFocus() {
+        return consolePanel != null && consolePanel.findFocus() != null;
+    }
+
+    private void updateConsoleFocus() {
+        if (!consoleInputClosed && !mBrokenLibraries)
+            SDLActivity.nativeFocusChanged(hasWindowFocus() && !consoleHasFocus());
+    }
+
+    private void restoreConsoleGameFocus() {
+        if (consoleInput != null) {
+            InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (keyboard != null) keyboard.hideSoftInputFromWindow(consoleInput.getWindowToken(), 0);
+        }
+        if (!consoleInputClosed && mSurface != null) mSurface.requestFocus();
+        updateConsoleFocus();
+    }
+
+    private void layoutConsolePanel() {
+        if (consolePanel == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        int width = mLayout.getWidth() > 0 ? mLayout.getWidth() : getResources().getDisplayMetrics().widthPixels;
+        int height = mLayout.getHeight() > 0 ? mLayout.getHeight() : getResources().getDisplayMetrics().heightPixels;
+        RelativeLayout.LayoutParams layout = new RelativeLayout.LayoutParams(
+                Math.min((int) (640 * density), width * 9 / 10),
+                Math.min((int) (480 * density), height * 2 / 3));
+        layout.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        layout.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        int margin = (int) (8 * density);
+        layout.setMargins(margin, topInset + margin, margin, margin);
+        consolePanel.setLayoutParams(layout);
+        consolePanel.bringToFront();
+    }
+
+    private int consoleGlyphColumns(String text, int start, int end) {
+        float space = consoleOutput.getPaint().measureText(" ");
+        return Math.max(1, Math.round(consoleOutput.getPaint().measureText(text, start, end) / space));
+    }
+
+    private static String consoleSpaces(int count) {
+        char[] spaces = new char[count]; java.util.Arrays.fill(spaces, ' '); return new String(spaces);
+    }
+
+    private void styleConsolePadding(SpannableString run, int start, int end, Editable buffer, int old) {
+        if (start == end) return;
+        int foreground = CONSOLE_COLORS[7], background = CONSOLE_COLORS[0];
+        if (old >= consoleRowStart && old < buffer.length()) {
+            ForegroundColorSpan[] fg = buffer.getSpans(old, old + 1, ForegroundColorSpan.class);
+            BackgroundColorSpan[] bg = buffer.getSpans(old, old + 1, BackgroundColorSpan.class);
+            if (fg.length > 0) foreground = fg[fg.length - 1].getForegroundColor();
+            if (bg.length > 0) background = bg[bg.length - 1].getBackgroundColor();
+        }
+        run.setSpan(new ForegroundColorSpan(foreground), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        run.setSpan(new BackgroundColorSpan(background), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private void writeConsoleGlyphRun(String text) {
+        Editable buffer = consoleOutput.getEditableText();
+        BreakIterator glyphs = (BreakIterator) consoleGraphemes.clone(); glyphs.setText(text);
+        int width = 0;
+        for (int start = glyphs.first(), end; (end = glyphs.next()) != BreakIterator.DONE; start = end)
+            width += consoleGlyphColumns(text, start, end);
+        String row = buffer.subSequence(consoleRowStart, buffer.length()).toString();
+        int first = row.length(), last = row.length(), firstColumn = 0, lastColumn = 0, column = 0;
+        glyphs.setText(row);
+        for (int start = glyphs.first(), end; (end = glyphs.next()) != BreakIterator.DONE; start = end) {
+            int next = column + consoleGlyphColumns(row, start, end);
+            if (next > consoleColumn && column < consoleColumn + width) {
+                if (first == row.length()) { first = start; firstColumn = column; }
+                last = end; lastColumn = next;
+            }
+            column = next;
+        }
+        if (first == row.length()) firstColumn = lastColumn = column;
+        int left = Math.max(0, consoleColumn - firstColumn), right = Math.max(0, lastColumn - consoleColumn - width);
+        // Preserve the untouched cells and colors when only half of a wide glyph is overwritten.
+        SpannableString run = new SpannableString(consoleSpaces(left) + text + consoleSpaces(right));
+        run.setSpan(new ForegroundColorSpan(CONSOLE_COLORS[consoleForeground]), left, left + text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        run.setSpan(new BackgroundColorSpan(CONSOLE_COLORS[consoleBackground]), left, left + text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        glyphs.setText(text);
+        for (int start = glyphs.first(), end; (end = glyphs.next()) != BreakIterator.DONE; start = end) {
+            float natural = consoleOutput.getPaint().measureText(text, start, end);
+            int advance = Math.round(consoleGlyphColumns(text, start, end) * consoleOutput.getPaint().measureText(" "));
+            if (Math.abs(natural - advance) > 0.01f) {
+                // Fallback CJK fonts can be narrower than two monospace cells.
+                run.setSpan(new android.text.style.ReplacementSpan() {
+                    @Override public int getSize(android.graphics.Paint paint, CharSequence value, int from, int to, android.graphics.Paint.FontMetricsInt metrics) {
+                        if (metrics != null) paint.getFontMetricsInt(metrics);
+                        return advance;
+                    }
+                    @Override public void draw(android.graphics.Canvas canvas, CharSequence value, int from, int to, float x, int top, int y, int bottom, android.graphics.Paint paint) {
+                        canvas.drawText(value, from, to, x, y, paint);
+                    }
+                }, left + start, left + end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        styleConsolePadding(run, 0, left, buffer, consoleRowStart + first);
+        styleConsolePadding(run, left + text.length(), run.length(), buffer, consoleRowStart + last - 1);
+        buffer.replace(consoleRowStart + first, consoleRowStart + last, run);
+        consoleCursor = consoleRowStart + first + left + text.length(); consoleColumn += width;
+    }
+
+    private void nextConsoleRow() {
+        Editable buffer = consoleOutput.getEditableText();
+        buffer.append("\n"); consoleRowStart = consoleCursor = buffer.length(); consoleColumn = 0;
+        consoleGraphemes.setText("");
+    }
+
+    private void writeConsoleRun(String text) {
+        float space = consoleOutput.getPaint().measureText(" ");
+        if (consoleColumns == 0) {
+            int width = consoleOutput.getWidth();
+            if (width == 0) width = consolePanel.getLayoutParams().width
+                    - consolePanel.getPaddingLeft() - consolePanel.getPaddingRight();
+            width -= consoleOutput.getCompoundPaddingLeft() + consoleOutput.getCompoundPaddingRight();
+            consoleColumns = Math.max(1, (int) Math.floor(width / space));
+        }
+        int width = consoleColumns, used = consoleColumn;
+        BreakIterator glyphs = (BreakIterator) consoleGraphemes.clone(); glyphs.setText(text);
+        int runStart = 0;
+        for (int start = glyphs.first(), end; (end = glyphs.next()) != BreakIterator.DONE; start = end) {
+            int advance = consoleGlyphColumns(text, start, end);
+            // Filling the last column delays wrapping until the next printable glyph.
+            if (used > 0 && used + advance > width + 0.01f) {
+                if (start > runStart) writeConsoleGlyphRun(text.substring(runStart, start));
+                nextConsoleRow(); runStart = start; used = 0;
+            }
+            used += advance;
+        }
+        if (runStart < text.length()) writeConsoleGlyphRun(text.substring(runStart));
+    }
+
+    private void appendConsoleText(String text) {
+        if (consoleOutput == null || text.isEmpty()) return;
+        Editable buffer = consoleOutput.getEditableText();
+        if (consoleColumns == 0) writeConsoleRun("");
+        boolean bell = false;
+        for (int i = 0; i < text.length();) {
+            char character = text.charAt(i++);
+            switch (character) {
+                case '\r': consoleCursor = consoleRowStart; consoleColumn = 0; break;
+                case '\n':
+                    nextConsoleRow(); break;
+                case '\b':
+                    if (consoleColumn > 0) {
+                        String row = buffer.subSequence(consoleRowStart, buffer.length()).toString();
+                        consoleGraphemes.setText(row); int column = 0; boolean found = false;
+                        for (int start = consoleGraphemes.first(), end; (end = consoleGraphemes.next()) != BreakIterator.DONE; start = end) {
+                            int next = column + consoleGlyphColumns(row, start, end);
+                            if (next >= consoleColumn) { consoleColumn = column; consoleCursor = consoleRowStart + start; found = true; break; }
+                            column = next;
+                        }
+                        if (!found) { --consoleColumn; consoleCursor = buffer.length(); }
+                    }
+                    break;
+                case '\t':
+                    consoleColumn += Math.min(consoleColumns - consoleColumn, 8 - (consoleColumn & 7));
+                    consoleCursor = buffer.length(); break;
+                case 7: bell = true; break;
+                case 0: writeConsoleRun(" "); break;
+                default:
+                    int start = i - 1;
+                    while (i < text.length()) {
+                        char next = text.charAt(i);
+                        if (next == 0 || (next >= 7 && next <= 10) || next == '\r') break;
+                        ++i;
+                    }
+                    writeConsoleRun(text.substring(start, i));
+            }
+        }
+        // No OS console window on Android; a visual bell preserves game/audio focus.
+        if (bell) { consolePanel.setAlpha(0.5f); consolePanel.animate().alpha(1).setDuration(150).start(); }
+        ScrollView scroll = consoleScroll;
+        scroll.post(() -> scroll.scrollTo(0, scroll.getChildAt(0).getHeight()));
+    }
+
+    private void finishConsoleRead(String value) {
+        ConsoleRequest request = consoleRead;
+        consoleRead = null;
+        try {
+            if (consoleInputRow != null) consoleInputRow.setVisibility(View.GONE);
+            if (request != null) {
+                request.value = value;
+                if (value != null) appendConsoleText(value);
+            }
+            restoreConsoleGameFocus();
+        } finally {
+            if (request != null) request.done.countDown();
+        }
+    }
+
+    private void closeConsolePanel() {
+        if (consolePanel == null) {
+            if (consoleRead != null) finishConsoleRead(null);
+            return;
+        }
+        finishConsoleRead(null);
+        getWindow().getDecorView().getViewTreeObserver().removeOnGlobalFocusChangeListener(consoleFocusListener);
+        mLayout.removeOnLayoutChangeListener(consoleLayoutListener);
+        consolePanel.animate().cancel();
+        mLayout.removeView(consolePanel);
+        consolePanel = null; consoleInputRow = null; consoleCaption = null;
+        consoleOutput = null; consoleScroll = null; consoleInput = null; consoleFocusListener = null;
+        consoleLayoutListener = null;
+        consoleRowStart = consoleCursor = consoleColumn = consoleColumns = 0; consoleGraphemes.setText("");
+        consoleGeneration++;
+        restoreConsoleGameFocus();
+    }
+
+    private void openConsolePanel(String title) {
+        consoleForeground = 7; consoleBackground = 0;
+        consolePanel = new LinearLayout(this);
+        consolePanel.setOrientation(LinearLayout.VERTICAL);
+        consolePanel.setFocusableInTouchMode(true);
+        consolePanel.setBackgroundColor(CONSOLE_COLORS[0]);
+        int padding = (int) (8 * getResources().getDisplayMetrics().density);
+        consolePanel.setPadding(padding, padding, padding, padding);
+        LinearLayout header = new LinearLayout(this);
+        consoleCaption = new TextView(this); consoleCaption.setText(title); consoleCaption.setTextColor(CONSOLE_COLORS[7]);
+        Button close = new Button(this); close.setText("\u00d7"); close.setContentDescription("Close console");
+        close.setOnClickListener(view -> closeConsolePanel());
+        header.addView(consoleCaption, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        header.addView(close); consolePanel.addView(header);
+        consoleScroll = new ScrollView(this);
+        consoleOutput = new TextView(this); consoleOutput.setTypeface(Typeface.MONOSPACE);
+        consoleOutput.setHorizontallyScrolling(true);
+        consoleOutput.setTextColor(CONSOLE_COLORS[7]); consoleOutput.setTextIsSelectable(true);
+        consoleOutput.setText("", TextView.BufferType.EDITABLE); consoleRowStart = consoleCursor = consoleColumn = consoleColumns = 0;
+        consoleScroll.addView(consoleOutput);
+        consolePanel.addView(consoleScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        consoleInputRow = new LinearLayout(this); consoleInputRow.setVisibility(View.GONE);
+        consoleInput = new EditText(this); consoleInput.setSingleLine(true);
+        consoleInput.setTypeface(Typeface.MONOSPACE); consoleInput.setTextColor(CONSOLE_COLORS[7]);
+        consoleInput.setBackgroundColor(CONSOLE_COLORS[0]);
+        consoleInput.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        consoleInputRow.addView(consoleInput, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Button submit = new Button(this); submit.setText(R.string.ok);
+        submit.setOnClickListener(view -> finishConsoleRead(consoleInput.getText().toString() + "\r\n"));
+        Button cancel = new Button(this); cancel.setText(R.string.cancel);
+        cancel.setOnClickListener(view -> finishConsoleRead(null));
+        consoleInputRow.addView(submit); consoleInputRow.addView(cancel); consolePanel.addView(consoleInputRow);
+        consoleInput.setOnEditorActionListener((view, action, event) -> {
+            if (action == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                finishConsoleRead(consoleInput.getText().toString() + "\r\n"); return true;
+            }
+            return false;
+        });
+        mLayout.addView(consolePanel); layoutConsolePanel();
+        consoleGeneration++;
+        consoleFocusListener = (oldView, newView) -> updateConsoleFocus();
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener(consoleFocusListener);
+        consoleLayoutListener = (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) layoutConsolePanel();
+        };
+        mLayout.addOnLayoutChangeListener(consoleLayoutListener);
+        if (hasWindowFocus()) restoreConsoleGameFocus();
+    }
+
+    private int executeConsoleCommand(String op, String text, int options, int foreground, int background) {
+        if (op.equals("close")) { closeConsolePanel(); return 1; }
+        if (op.equals("open")) {
+            if (consolePanel == null) openConsolePanel(text);
+            else if (options != 0) { consoleCaption.setText(text); layoutConsolePanel(); }
+            return 1;
+        }
+        if (consolePanel == null) return 0;
+        switch (op) {
+            case "write": appendConsoleText(text); break;
+            case "color":
+                if ((options & 8) != 0) consoleForeground = foreground & 15;
+                if ((options & 16) != 0) consoleBackground = background & 15;
+                consoleInput.setTextColor(CONSOLE_COLORS[consoleForeground]);
+                consoleInput.setBackgroundColor(CONSOLE_COLORS[consoleBackground]);
+                break;
+            case "focus":
+                if (hasWindowFocus()) {
+                    if (options != 0 && !consoleHasFocus()) consolePanel.requestFocus();
+                    else if (options == 0 && consoleHasFocus()) restoreConsoleGameFocus();
+                }
+                break;
+            default: return 0;
+        }
+        return 1;
+    }
+
+    /** Called synchronously by the SDL thread through JNI. */
+    public int commandManiacConsole(String op, String text, int options, int foreground, int background) {
+        if (op.equals("generation")) return consoleGeneration;
+        if (Looper.myLooper() == Looper.getMainLooper() || consoleInputClosed) return 0;
+        ConsoleRequest request = new ConsoleRequest(); consoleCommand = request;
+        if (consoleInputClosed) { consoleCommand = null; return 0; }
+        runOnUiThread(() -> {
+            try {
+                if (consoleCommand == request && !consoleInputClosed && !isFinishing() && !isDestroyed())
+                    request.result = executeConsoleCommand(op, text, options, foreground, background);
+            } catch (RuntimeException exception) {
+                Log.w("EasyRPG", "Console command unavailable", exception); closeConsolePanel();
+            } finally {
+                if (consoleCommand == request) consoleCommand = null;
+                request.done.countDown();
+            }
+        });
+        try { request.done.await(); return consoleInputClosed ? 0 : request.result; }
+        catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            if (consoleCommand == request) consoleCommand = null;
+            return 0;
+        }
+    }
+
+    /** Called synchronously by the SDL thread through JNI. */
+    public String readManiacConsole() {
+        if (Looper.myLooper() == Looper.getMainLooper() || consoleInputClosed) return null;
+        ConsoleRequest request = new ConsoleRequest();
+        consoleRead = request;
+        // Publish before rechecking destruction, so onDestroy can release the waiter.
+        if (consoleInputClosed) {
+            consoleRead = null;
+            return null;
+        }
+        runOnUiThread(() -> {
+            if (consoleRead != request || consoleInputClosed || consolePanel == null || isFinishing() || isDestroyed()) {
+                if (consoleRead == request) consoleRead = null;
+                request.done.countDown();
+                return;
+            }
+            try {
+                consoleInput.setText(""); consoleInputRow.setVisibility(View.VISIBLE); consoleInput.requestFocus();
+                InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                if (keyboard != null) keyboard.showSoftInput(consoleInput, InputMethodManager.SHOW_IMPLICIT);
+            } catch (RuntimeException exception) {
+                Log.w("EasyRPG", "Console input unavailable", exception);
+                if (consoleRead == request) finishConsoleRead(null);
+                request.done.countDown();
+            }
+        });
+        try {
+            request.done.await();
+            return consoleInputClosed ? null : request.value;
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            runOnUiThread(() -> {
+                if (consoleRead == request) finishConsoleRead(null);
+            });
+            return null;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        consoleInputClosed = true; consoleGeneration++;
+        ConsoleRequest read = consoleRead; consoleRead = null;
+        if (read != null) { read.value = null; read.done.countDown(); }
+        ConsoleRequest request = consoleCommand;
+        consoleCommand = null;
+        if (request != null) {
+            request.result = 0;
+            request.done.countDown();
+        }
+        // SDL destruction may join the native thread, which must already be unblocked.
+        try { closeConsolePanel(); } finally { super.onDestroy(); }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && consoleHasFocus()) updateConsoleFocus();
+    }
 
     @Override
     protected String[] getLibraries() {
@@ -193,6 +600,11 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getActionMasked() == MotionEvent.ACTION_DOWN && consoleHasFocus()) {
+            int[] position = new int[2]; consolePanel.getLocationOnScreen(position);
+            float x = ev.getRawX() - position[0], y = ev.getRawY() - position[1];
+            if (x < 0 || y < 0 || x >= consolePanel.getWidth() || y >= consolePanel.getHeight()) restoreConsoleGameFocus();
+        }
         pointerCount = ev.getPointerCount();
         return super.dispatchTouchEvent(ev);
     }
@@ -207,6 +619,7 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
         applyFullscreenMode();
         updateScreenPosition();
         showInputLayout();
+        layoutConsolePanel();
     }
 
     @Override
@@ -343,6 +756,8 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     }
 
     public void backPressed() {
+        if (consoleRead != null) { finishConsoleRead(null); return; }
+        if (consoleHasFocus()) { closeConsolePanel(); return; }
         openOrCloseMenu();
     }
 
@@ -350,6 +765,16 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     // API 33+ uses the registered OnBackInvokedCallback; SDL still needs key events below 33.
     @SuppressLint("GestureBackNavigation")
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (consoleHasFocus()) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                if (event.getAction() == KeyEvent.ACTION_UP) backPressed();
+                return true;
+            }
+            // Route IME/hardware keys to the panel rather than the SDL Surface.
+            if (event.getKeyCode() != KeyEvent.KEYCODE_VOLUME_UP && event.getKeyCode() != KeyEvent.KEYCODE_VOLUME_DOWN) {
+                getWindow().superDispatchKeyEvent(event); return true;
+            }
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             // Uses OnBackInvokedDispatcher
             return super.dispatchKeyEvent(event);
@@ -362,6 +787,13 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
         }
 
         return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
+        if (consoleHasFocus() && (event.getSource() & android.view.InputDevice.SOURCE_JOYSTICK)
+                == android.view.InputDevice.SOURCE_JOYSTICK) return true;
+        return super.dispatchGenericMotionEvent(event);
     }
 
     @Override

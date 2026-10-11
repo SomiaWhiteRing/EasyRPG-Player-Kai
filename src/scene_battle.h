@@ -73,6 +73,7 @@ constexpr int battle_menu_offset_x = MENU_WIDTH + option_command_mov;
 class Scene_Battle : public Scene {
 
 public:
+	bool HandleManiacHookOperation(AsyncOp operation);
 	static std::shared_ptr<Scene_Battle> Create(const BattleArgs& args);
 
 	~Scene_Battle() override;
@@ -80,6 +81,8 @@ public:
 	void Start() override;
 
 	void CreateOptions();
+	void SetManiacBattleCommands(bool row_disabled, int options);
+	bool IsManiacRowDisabled() const { return maniac_row_disabled; }
 
 	void UpdateScreen();
 	void UpdateBattlers();
@@ -142,6 +145,8 @@ protected:
 
 	bool IsWindowMoving();
 	bool IsEscapeAllowed() const;
+	virtual bool IsEscapeAllowedFromOptionWindow() const { return IsEscapeAllowed(); }
+	bool IsManiacPartyCancelSuppressed() const;
 
 	virtual Game_Enemy* EnemySelected();
 	virtual Game_Actor* AllySelected();
@@ -159,6 +164,7 @@ protected:
 	 * @param for_battler Battler whose action was selected.
 	 */
 	virtual void ActionSelectedCallback(Game_Battler* for_battler);
+	void RecordManiacActingActorContext(Game_Actor& actor, bool automatic = false);
 
 	void PrepareBattleAction(Game_Battler* battler);
 
@@ -174,6 +180,8 @@ protected:
 	// Variables
 	State state = State_Start;
 	State previous_state = State_Start;
+	bool maniac_row_disabled = false;
+	int maniac_party_options = 0;
 	int cycle = 0;
 	int troop_id = 0;
 	int escape_chance = 0;

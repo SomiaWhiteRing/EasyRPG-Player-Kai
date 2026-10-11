@@ -1,7 +1,69 @@
 /* global createEasyRpgEngine */
 let engine;
+let joystickAvailable = false;
 let firstFrame = true;
 let forwardedSoundfont = '';
+let consoleInputId = 0;
+let consoleInput;
+let fileOutputConfirmation;
+let fileOutputConfirmationId = 0;
+let consoleOwned = false;
+let consoleGeneration = 0;
+let consoleForeground = 7, consoleBackground = 0;
+
+function consoleCommand(command) {
+  if (command.op === 'close') {
+    if (!consoleOwned) return true;
+    consoleOwned = false;
+    consoleGeneration++;
+    finishConsoleInput(null);
+  } else {
+    if (engine?.stopping || engine?.stopped) return false;
+    if (command.op === 'open') {
+      if (consoleOwned && !command.options) return true;
+      if (!consoleOwned) {
+        consoleOwned = true;
+        consoleGeneration++;
+        consoleForeground = 7; consoleBackground = 0;
+      }
+    } else if (!consoleOwned) return false;
+    if (command.op === 'color') {
+      if (command.options & 8) consoleForeground = command.foreground & 15;
+      if (command.options & 16) consoleBackground = command.background & 15;
+    }
+  }
+  postMessage({type: 'console-command', ...command, generation: consoleGeneration,
+    foreground: consoleForeground, background: consoleBackground});
+  return true;
+}
+
+function finishConsoleInput(value) {
+  const request = consoleInput;
+  consoleInput = undefined;
+  request?.resolve(typeof value === 'string' ? value : null);
+}
+
+function readConsoleLine(title) {
+  if (!consoleOwned || engine?.stopping || engine?.stopped || consoleInput) return Promise.resolve(null);
+  return new Promise(resolve => {
+    consoleInput = {id: ++consoleInputId, resolve};
+    postMessage({type: 'console-input', id: consoleInput.id, title, generation: consoleGeneration});
+  });
+}
+
+function finishFileOutputConfirmation(answer) {
+  const request = fileOutputConfirmation;
+  fileOutputConfirmation = undefined;
+  request?.resolve(answer === true);
+}
+
+function confirmFileOutput() {
+  if (engine?.stopping || engine?.stopped || fileOutputConfirmation) return Promise.resolve(false);
+  return new Promise(resolve => {
+    fileOutputConfirmation = {id: ++fileOutputConfirmationId, resolve};
+    postMessage({type: 'file-output-confirmation', id: fileOutputConfirmation.id});
+  });
+}
 
 function report(error) {
   postMessage({type: 'error', message: error?.stack || String(error)});
@@ -67,8 +129,13 @@ function createRenderer(canvas) {
 
 self.onmessage = async ({data}) => {
   try {
+    if (data.type === 'joystick-availability') {
+      joystickAvailable = data.available === true;
+      return;
+    }
     if (data.type === 'start') {
       if (engine) throw new Error('Player already started');
+      joystickAvailable = data.joystickAvailable === true;
       const present = createRenderer(data.canvas);
       importScripts(new URL('player-files.js', data.runtimeBase).href,
         new URL('easyrpg-player.js', data.runtimeBase).href);
@@ -95,6 +162,11 @@ self.onmessage = async ({data}) => {
           audioPort.postMessage({...command, generation}, command.file ? [command.file.bytes.buffer] : []);
         },
         locateFile: path => new URL(path, data.runtimeBase).href,
+        readConsoleLine,
+        confirmFileOutput,
+        getJoystickAvailable: () => joystickAvailable,
+        consoleCommand,
+        getConsoleGeneration: () => consoleGeneration,
         present,
         print: (...values) => postMessage({type: 'log', level: 'info', message: values.join(' ')}),
         printErr: (...values) => postMessage({type: 'log', level: 'error', message: values.join(' ')}),
@@ -102,7 +174,16 @@ self.onmessage = async ({data}) => {
       });
       engine.initApi();
     } else if (engine) {
-      if (data.type === 'key') engine._web_key(data.key, data.pressed ? 1 : 0);
+      if (data.type === 'console-input-result') {
+        if (consoleInput?.id === data.id) finishConsoleInput(data.value);
+      }
+      else if (data.type === 'file-output-confirmation-result') {
+        if (fileOutputConfirmation?.id === data.id) finishFileOutputConfirmation(data.answer);
+      }
+      else if (data.type === 'console-closed') {
+        if (consoleOwned && data.generation === consoleGeneration) consoleCommand({op: 'close'});
+      }
+      else if (data.type === 'key') engine._web_key(data.key, data.pressed ? 1 : 0);
       else if (data.type === 'mouse') engine._web_mouse(data.x, data.y, data.focus ? 1 : 0);
       else if (data.type === 'touch') engine._web_touch(data.id, data.x, data.y, data.pressed ? 1 : 0);
       else if (data.type === 'gamepad') engine._web_gamepad(...data.axes, ...data.triggers);
@@ -111,6 +192,9 @@ self.onmessage = async ({data}) => {
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {
         engine.stopping = true;
+        consoleCommand({op: 'close'});
+        finishConsoleInput(null);
+        finishFileOutputConfirmation(false);
         if (engine.stopped) engine.syncSaves().then(() => postMessage({type: 'stopped'})).catch(() => {});
         else engine._web_stop();
       }

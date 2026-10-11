@@ -93,6 +93,7 @@ public:
 	bool IsOpeningOrClosing() const;
 
 protected:
+	virtual void DrawContents(Bitmap& dst);
 	virtual bool IsSystemGraphicUpdateAllowed() const;
 
 	unsigned long ID;

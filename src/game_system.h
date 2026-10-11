@@ -27,6 +27,7 @@
 #include <lcf/rpg/system.h>
 #include <lcf/rpg/savesystem.h>
 #include "color.h"
+#include "point.h"
 #include "transition.h"
 #include "string_view.h"
 #include "async_handler.h"
@@ -90,6 +91,8 @@ public:
 
 	/** @return save game data */
 	const lcf::rpg::SaveSystem& GetSaveData() const;
+	void SetManiacMessageHook(int event_id, uint32_t mask, int system_variable,
+		int system_string, int user_variable, int user_string);
 
 	/**
 	 * Plays a Music.
@@ -328,6 +331,20 @@ public:
 	 * @return face index
 	 */
 	int GetMessageFaceIndex();
+	int GetMessageFaceWidth() const;
+	int GetMessageFaceHeight() const;
+	void SetManiacFaceSize(int32_t width, int32_t height);
+	bool IsManiacMessageMouseEnabled() const;
+	void SetManiacMessageMouseFlags(int32_t flags);
+	int32_t GetManiacPictureLimit() const;
+	void SetManiacPictureLimit(int32_t limit);
+	void SetManiacFps(int32_t request, bool flags_present, int32_t flags);
+	void SetManiacRunWhenInactive(int32_t value);
+	bool IsManiacRunWhenInactive() const;
+	void SetManiacFrameSkip(int32_t value);
+	uint8_t GetManiacFrameSkipMask() const;
+	void SetManiacBattleAlignment(int32_t alignment);
+	Point GetBattleDisplayOffset() const;
 
 	/**
 	 * Sets index of the face to display
@@ -335,6 +352,10 @@ public:
 	 * @param index face index
 	 */
 	void SetMessageFaceIndex(int index);
+	void SetManiacFaceAnimationFlags(int32_t flags);
+	void SetManiacFaceAnimation(int end, int interval, int interval_range, int frame_delay, int frame_delay_range);
+	void ResetManiacFaceAnimation();
+	void UpdateManiacFaceAnimation();
 
 	/**
 	 * Whether to mirror the face.
@@ -435,9 +456,15 @@ public:
 
 	/** @return Whether the game was loaded from a savegame in the current frame */
 	bool IsLoadedThisFrame() const;
+	bool IsManiacLoadPending() const { return maniac_loaded && !maniac_load_ended; }
+	void EndManiacLoadProcess() { maniac_load_ended = true; }
+	bool HasManiacMapStartup() const { return maniac_loaded && !maniac_startup_complete; }
+	bool AdvanceManiacMapStartup();
 
 private:
 	std::string InelukiReadLink(Filesystem_Stream::InputStream& stream);
+	void ResetManiacFaceInterval();
+	void ResetManiacFaceFrameDelay();
 
 	void OnBgmReady(FileRequestResult* result);
 	void OnBgmInelukiReady(FileRequestResult* result);
@@ -445,6 +472,7 @@ private:
 	void OnSeInelukiReady(FileRequestResult* result, lcf::rpg::Sound se);
 	void OnChangeSystemGraphicReady(FileRequestResult* result);
 private:
+	void ApplyManiacFpsRequest();
 	lcf::rpg::SaveSystem data;
 	const lcf::rpg::System* dbsys;
 	FileRequestBinding music_request_id;
@@ -453,6 +481,15 @@ private:
 	Color bg_color = Color{ 0, 0, 0, 255 };
 	bool bgm_pending = false;
 	int loaded_frame_count = 0;
+	bool maniac_loaded = false;
+	bool maniac_load_ended = false;
+	bool maniac_startup_complete = false;
+	int maniac_startup_updates = 0;
+	int maniac_face_interval_elapsed = 0;
+	int maniac_face_interval_limit = 0;
+	int maniac_face_frame_elapsed = 0;
+	int maniac_face_frame_limit = 0;
+	bool maniac_face_return_leg = false;
 };
 
 inline bool Game_System::HasSystemGraphic() {
@@ -490,8 +527,8 @@ inline int Game_System::GetMessageFaceIndex() {
 	return data.face_id;
 }
 
-inline void Game_System::SetMessageFaceIndex(int index) {
-	data.face_id = index;
+inline void Game_System::SetManiacFaceAnimationFlags(int32_t flags) {
+	data.maniac_face_animation_flags = flags;
 }
 
 inline bool Game_System::IsMessageFaceFlipped() {

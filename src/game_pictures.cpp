@@ -16,6 +16,8 @@
  */
 
 #include <cmath>
+#include <climits>
+#include <zlib.h>
 #include "bitmap.h"
 #include "options.h"
 #include "cache.h"
@@ -23,6 +25,7 @@
 #include "game_map.h"
 #include "game_pictures.h"
 #include "game_screen.h"
+#include "game_system.h"
 #include "game_windows.h"
 #include "player.h"
 #include "main_data.h"
@@ -77,6 +80,9 @@ void Game_Pictures::InitGraphics() {
 void Game_Pictures::SetSaveData(std::vector<lcf::rpg::SavePicture> save)
 {
 	pictures.clear();
+	if (Player::IsPatchManiac() && save.size() > static_cast<size_t>(GetMaxPictureId())) {
+		save.resize(GetMaxPictureId());
+	}
 
 	frame_counter = save.empty() ? 0 : save.back().frames;
 
@@ -98,11 +104,37 @@ void Game_Pictures::SetSaveData(std::vector<lcf::rpg::SavePicture> save)
 std::vector<lcf::rpg::SavePicture> Game_Pictures::GetSaveData() const {
 	std::vector<lcf::rpg::SavePicture> save;
 
-	auto data_size = std::max(static_cast<int>(pictures.size()), GetDefaultNumberOfPictures());
+	auto data_size = GetMaxPictureId();
 	save.reserve(data_size);
 
 	for (auto& pic: pictures) {
-		save.push_back(pic.data);
+		auto data = pic.data;
+		if (Player::IsPatchManiac() && pic.bitmap_modified && pic.sprite && pic.sprite->GetBitmap()) {
+			const auto& bitmap = *pic.sprite->GetBitmap();
+			const int64_t bytes = static_cast<int64_t>(bitmap.GetWidth()) * bitmap.GetHeight() * 4;
+			if (bytes <= 0 || bytes > INT32_MAX) Output::Error("Mutable picture {} exceeds save image dimensions", data.ID);
+			std::vector<uint8_t> pixels(static_cast<size_t>(bytes));
+			// Native PNG palette expansion (0xf3650) stores pixels as BGRA.
+			size_t offset = 0;
+			for (int y = 0; y < bitmap.GetHeight(); ++y) {
+				for (int x = 0; x < bitmap.GetWidth(); ++x) {
+					const auto color = bitmap.GetColorAt(x, y);
+					pixels[offset++] = color.blue;
+					pixels[offset++] = color.green;
+					pixels[offset++] = color.red;
+					pixels[offset++] = color.alpha;
+				}
+			}
+			uLongf compressed_size = compressBound(static_cast<uLong>(bytes));
+			data.maniac_image_data.resize(compressed_size);
+			if (compress2(data.maniac_image_data.data(), &compressed_size, pixels.data(), static_cast<uLong>(bytes), 9) != Z_OK)
+				Output::Error("Failed to compress mutable picture {}", data.ID);
+			data.maniac_image_data.resize(compressed_size);
+			data.name.clear();
+			data.maniac_image_flags = (data.maniac_image_flags & 0x00ffffff) | 0x02000000;
+			data.maniac_image_dimensions = {bitmap.GetWidth(), bitmap.GetHeight()};
+		}
+		save.push_back(std::move(data));
 	}
 
 	// RPG_RT Save game data always has a constant number of pictures
@@ -146,6 +178,9 @@ int Game_Pictures::GetDefaultNumberOfPictures() {
 }
 
 Game_Pictures::Picture& Game_Pictures::GetPicture(int id) {
+	if (id <= 0 || (Player::IsPatchManiac() && id > GetMaxPictureId())) {
+		Output::Error("Invalid Picture Access [{}]", id);
+	}
 	if (EP_UNLIKELY(id > static_cast<int>(pictures.size()))) {
 		pictures.reserve(id);
 		while (static_cast<int>(pictures.size()) < id) {
@@ -154,9 +189,29 @@ Game_Pictures::Picture& Game_Pictures::GetPicture(int id) {
 	}
 	return pictures[id - 1];
 }
+int Game_Pictures::GetMaxPictureId() const {
+	if (Player::IsPatchManiac()) {
+		return std::max(1, Main_Data::game_system->GetManiacPictureLimit());
+	}
+	return std::max(GetDefaultNumberOfPictures(), static_cast<int>(pictures.size()));
+}
+
+void Game_Pictures::SetManiacPictureLimit(int32_t limit) {
+	Main_Data::game_system->SetManiacPictureLimit(limit);
+	const int count = std::max(1, limit);
+	// Clear attached windows and pending requests before destroying each tail slot.
+	while (static_cast<int>(pictures.size()) > count) {
+		pictures.back().Erase();
+		pictures.pop_back();
+	}
+	pictures.reserve(count);
+	while (static_cast<int>(pictures.size()) < count) {
+		pictures.emplace_back(static_cast<int>(pictures.size()) + 1);
+	}
+}
 
 Game_Pictures::Picture* Game_Pictures::GetPicturePtr(int id) {
-	return id <= static_cast<int>(pictures.size())
+	return id > 0 && id <= static_cast<int>(pictures.size())
 		? &pictures[id - 1] : nullptr;
 }
 
@@ -264,6 +319,25 @@ bool Game_Pictures::Show(int id, const ShowParams& params) {
 	return false;
 }
 
+void Game_Pictures::ChangeFile(int id, std::string name) {
+	auto& pic = GetPicture(id);
+	if (name.empty()) {
+		pic.Erase();
+		return;
+	}
+	// A JS file assignment replaces the image without resetting its position,
+	// targets, duration, effects or sprite-sheet configuration.
+	pic.request_id = {};
+	pic.bitmap_modified = false;
+	pic.data.maniac_image_flags &= 255;
+	pic.data.maniac_image_dimensions.clear();
+	pic.data.maniac_image_data.clear();
+	pic.data.name = std::move(name);
+	pic.needs_update = true;
+	if (pic.sprite) pic.sprite->SetVisible(false);
+	RequestPictureSprite(pic, false);
+}
+
 void Game_Pictures::Picture::Move(const MoveParams& params) {
 	const bool ignore_position = Player::IsLegacy() && data.fixed_to_map;
 
@@ -325,6 +399,10 @@ void Game_Pictures::Move(int id, const MoveParams& params) {
 }
 
 void Game_Pictures::Picture::Erase() {
+	bitmap_modified = false;
+	data.maniac_image_flags &= 255;
+	data.maniac_image_dimensions.clear();
+	data.maniac_image_data.clear();
 	request_id = {};
 	data.name.clear();
 	if (sprite) {
@@ -351,7 +429,7 @@ void Game_Pictures::EraseAll() {
 
 bool Game_Pictures::Picture::Exists() const {
 	// Incompatible with the Yume2kki edge-case that uses empty filenames
-	return !data.name.empty();
+	return !data.name.empty() || (bitmap_modified && sprite && sprite->GetBitmap());
 }
 
 void Game_Pictures::Picture::CreateSprite() {
@@ -369,34 +447,102 @@ void Game_Pictures::Picture::MakeRequestImportant() const {
 	request->SetImportantFile(true);
 }
 
-void Game_Pictures::RequestPictureSprite(Picture& pic) {
+void Game_Pictures::RequestPictureSprite(Picture& pic, bool apply_origin) {
 	const auto& name = pic.data.name;
 	if (name.empty()) {
+		if (Player::IsPatchManiac() && pic.data.maniac_image_flags >> 24 == 2 && !pic.bitmap_modified)
+			pic.RestoreModifiedBitmap();
 		return;
 	}
 
 	FileRequestAsync* request = AsyncHandler::RequestFile("Picture", name);
 	request->SetGraphicFile(true);
-	pic.request_id = request->Bind(&Game_Pictures::OnPictureSpriteReady, this, pic.data.ID);
+	pic.request_id = request->Bind(&Game_Pictures::OnPictureSpriteReady, this, pic.data.ID, apply_origin);
 	request->Start();
 }
 
-void Game_Pictures::Picture::OnPictureSpriteReady() {
+void Game_Pictures::Picture::OnPictureSpriteReady(bool apply_origin) {
+	bitmap_modified = false;
+	data.maniac_image_flags &= 255;
+	data.maniac_image_dimensions.clear();
+	data.maniac_image_data.clear();
 	auto bitmap = Cache::Picture(data.name, data.use_transparent_color);
 
 	sprite->SetBitmap(bitmap);
 	sprite->OnPictureShow();
 	sprite->SetVisible(true);
 
+	if (apply_origin) ApplyOrigin(false);
+}
+
+BitmapRef Game_Pictures::Picture::GetMutableBitmap(bool flatten_spritesheet) {
+	if (!sprite || !sprite->GetBitmap()) return {};
+	auto bitmap = sprite->GetBitmap();
+	const bool flatten = flatten_spritesheet && (data.spritesheet_cols > 1 || data.spritesheet_rows > 1);
+	if (!bitmap_modified || flatten) {
+		// Pictures loaded from Cache may share this image with other pictures.
+		Rect source = bitmap->GetRect();
+		if (flatten) {
+			if (data.spritesheet_cols <= 0 || data.spritesheet_rows <= 0) return {};
+			const int width = bitmap->GetWidth() / data.spritesheet_cols;
+			const int height = bitmap->GetHeight() / data.spritesheet_rows;
+			const int64_t x = static_cast<int64_t>(data.spritesheet_frame % data.spritesheet_cols) * width;
+			const int64_t y = static_cast<int64_t>(data.spritesheet_frame / data.spritesheet_cols) * height;
+			if (width <= 0 || height <= 0 || x < 0 || y < 0 || x + width > bitmap->GetWidth() || y + height > bitmap->GetHeight()) return {};
+			source = Rect(static_cast<int>(x), static_cast<int>(y), width, height);
+		}
+		bitmap = Bitmap::Create(*bitmap, source);
+		bitmap_modified = true;
+	}
+	if (flatten) {
+		data.spritesheet_cols = data.spritesheet_rows = 1;
+		data.spritesheet_frame = data.spritesheet_speed = data.frames = 0;
+		data.spritesheet_play_once = false;
+	}
+	data.name.clear();
+	data.maniac_image_flags = (data.maniac_image_flags & 0x00ffffff) | 0x02000000;
+	data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_default;
+	sprite->SetBitmap(bitmap);
+	sprite->OnPictureShow();
+	return bitmap;
+}
+
+void Game_Pictures::Picture::RestoreModifiedBitmap() {
+	const auto& dimensions = data.maniac_image_dimensions;
+	if (dimensions.size() != 2 || dimensions[0] <= 0 || dimensions[1] <= 0 || dimensions[0] > INT32_MAX / 4) {
+		Output::Warning("Mutable picture {} has invalid saved dimensions", data.ID);
+		return;
+	}
+	const int64_t bytes = static_cast<int64_t>(dimensions[0]) * dimensions[1] * 4;
+	if (bytes > INT32_MAX || data.maniac_image_data.empty()) {
+		Output::Warning("Mutable picture {} has invalid saved image storage", data.ID);
+		return;
+	}
+	std::vector<uint8_t> pixels(static_cast<size_t>(bytes));
+	uLongf decoded_size = static_cast<uLongf>(bytes);
+	if (uncompress(pixels.data(), &decoded_size, data.maniac_image_data.data(), static_cast<uLong>(data.maniac_image_data.size())) != Z_OK
+			|| decoded_size != static_cast<uLongf>(bytes)) {
+		Output::Warning("Mutable picture {} has invalid compressed pixels", data.ID);
+		return;
+	}
+	const DynamicFormat bgra(32, 8, 16, 8, 8, 8, 0, 8, 24, PF::Alpha);
+	auto source = Bitmap::Create(pixels.data(), dimensions[0], dimensions[1], dimensions[0] * 4, bgra);
+	CreateSprite();
+	sprite->SetBitmap(Bitmap::Create(*source, source->GetRect()));
+	sprite->OnPictureShow();
+	sprite->SetVisible(true);
+	bitmap_modified = true;
+	data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_default;
+	data.current_bot_trans = 0.0; // Chunk 0x12 held dimensions, not bottom transparency.
 	ApplyOrigin(false);
 }
 
-void Game_Pictures::OnPictureSpriteReady(FileRequestResult*, int id) {
+void Game_Pictures::OnPictureSpriteReady(FileRequestResult*, int id, bool apply_origin) {
 	auto* pic = GetPicturePtr(id);
 	if (EP_LIKELY(pic)) {
 		pic->request_id = nullptr;
 		pic->CreateSprite();
-		pic->OnPictureSpriteReady();
+		pic->OnPictureSpriteReady(apply_origin);
 	}
 }
 

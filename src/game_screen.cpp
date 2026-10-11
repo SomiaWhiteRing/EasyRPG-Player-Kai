@@ -17,6 +17,8 @@
 
 // Headers
 #include <cmath>
+#include <cstring>
+#include <iterator>
 #include "bitmap.h"
 #include <lcf/data.h>
 #include "player.h"
@@ -26,6 +28,8 @@
 #include "game_system.h"
 #include "game_variables.h"
 #include "game_map.h"
+#include "game_player.h"
+#include "main_data.h"
 #include "output.h"
 #include "utils.h"
 #include "options.h"
@@ -55,6 +59,7 @@ void Game_Screen::SetSaveData(lcf::rpg::SaveScreen screen)
 	CancelBattleAnimation();
 
 	data = std::move(screen);
+	zoom_initialized = data.maniac_zoom_layer != 0;
 }
 
 void Game_Screen::InitGraphics() {
@@ -175,6 +180,59 @@ void Game_Screen::ShakeEnd() {
 	// RPG_RT does not turn off the continuous shake flag when shake is disabled.
 }
 
+int Game_Screen::ZoomScreen(int x, int y, int scale, int frames, int layer) {
+	const int width = Player::screen_width;
+	const int height = Player::screen_height;
+	if (layer < 1) {
+		x = width / 2;
+		y = height / 2;
+		scale = 100;
+	}
+	const auto limit_center = [&](int value, int size) {
+		// Native arithmetic wraps the screen-size product to signed 32 bits.
+		const uint32_t product = static_cast<uint32_t>(size) * static_cast<uint32_t>(scale);
+		int32_t signed_product;
+		std::memcpy(&signed_product, &product, sizeof(product));
+		const int quarter = (signed_product / 100 - size) / 4;
+		const int low = size / 2 - quarter;
+		const int high = size / 2 + quarter;
+		// At scales below 100 the bounds are reversed in RPG_RT.
+		return value < low ? low : value <= high ? value : high;
+	};
+	if (!zoom_initialized) {
+		data.maniac_zoom_current_x = width / 2;
+		data.maniac_zoom_current_y = height / 2;
+		data.maniac_zoom_current_scale = 100.0;
+		zoom_initialized = true;
+	}
+	data.maniac_zoom_finish_x = limit_center(x, width);
+	data.maniac_zoom_finish_y = limit_center(y, height);
+	data.maniac_zoom_finish_scale = scale;
+	data.maniac_zoom_time_left = std::max(1, frames);
+	data.maniac_zoom_layer = layer;
+	return data.maniac_zoom_time_left;
+}
+
+void Game_Screen::DrawZoom(Bitmap& dst) {
+	const double scale = std::max(100.0, data.maniac_zoom_current_scale);
+	const double width = dst.GetWidth() * 100.0 / scale;
+	const double height = dst.GetHeight() * 100.0 / scale;
+	const double x = data.maniac_zoom_current_x < 0 && Main_Data::game_player
+		? Main_Data::game_player->GetScreenX() : data.maniac_zoom_current_x;
+	const double y = data.maniac_zoom_current_y < 0 && Main_Data::game_player
+		? Main_Data::game_player->GetScreenY() : data.maniac_zoom_current_y;
+	const Rect source_rect(
+		std::clamp(static_cast<int>(x - width / 2), 0, static_cast<int>(dst.GetWidth() - width)),
+		std::clamp(static_cast<int>(y - height / 2), 0, static_cast<int>(dst.GetHeight() - height)),
+		static_cast<int>(width), static_cast<int>(height));
+	if (source_rect.IsEmpty() || source_rect == dst.GetRect()) return;
+	if (!zoom_buffer || zoom_buffer->GetRect() != dst.GetRect()) {
+		zoom_buffer = Bitmap::Create(dst.GetWidth(), dst.GetHeight(), false);
+	}
+	zoom_buffer->Blit(0, 0, dst, dst.GetRect(), Opacity::Opaque(), Bitmap::BlendMode::NormalWithoutAlpha);
+	dst.StretchBlit(dst.GetRect(), *zoom_buffer, source_rect, Opacity::Opaque(), Bitmap::BlendMode::NormalWithoutAlpha);
+}
+
 void Game_Screen::SetWeatherEffect(int type, int strength) {
 	// Some games call weather effects in a parallel process
 	// This causes issues in the rendering (weather rendered too fast)
@@ -248,6 +306,10 @@ bool Game_Screen::OpenMovie(std::string movie_path) {
 	}
 
 	std::string error_message;
+#ifdef HAVE_ANDROID_MOVIE_PLAYER
+	// Document-provider resources need the game filesystem stream.
+	full_path = movie_path;
+#endif
 	if (!movie_player->Open(full_path, error_message)) {
 		Output::Warning("Couldn't play movie: {}. {}", movie_filename, error_message);
 		StopMovie(false);
@@ -262,6 +324,13 @@ bool Game_Screen::OpenMovie(std::string movie_path) {
 
 bool Game_Screen::IsMoviePlaying() const {
 	return movie_player && movie_player->IsPlaying();
+}
+
+void Game_Screen::DrawMovie(Bitmap& dst) {
+	if (!movie_player) return;
+	const int width = movie_res_x > 0 ? movie_res_x : movie_player->GetNativeWidth();
+	const int height = movie_res_y > 0 ? movie_res_y : movie_player->GetNativeHeight();
+	movie_player->Draw(dst, {movie_pos_x, movie_pos_y, width, height});
 }
 
 bool Game_Screen::ConsumeMovieFinished() {
@@ -423,7 +492,7 @@ void Game_Screen::UpdateMovie() {
 		movie_player->Update(GetMovieOutputRect());
 		if (!movie_player->IsPlaying()) {
 			if (movie_player->HasError()) {
-				Output::Warning("Couldn't play movie: {}. Browser video playback failed.", movie_filename);
+				Output::Warning("Couldn't play movie: {}. Video playback backend failed.", movie_filename);
 			}
 			StopMovie(true);
 		}
@@ -505,6 +574,13 @@ void Game_Screen::UpdateWeather() {
 
 void Game_Screen::Update() {
 	UpdateScreenEffects();
+	if (data.maniac_zoom_time_left > 0) {
+		const double step = 1.0 / data.maniac_zoom_time_left;
+		data.maniac_zoom_current_x += (data.maniac_zoom_finish_x - data.maniac_zoom_current_x) * step;
+		data.maniac_zoom_current_y += (data.maniac_zoom_finish_y - data.maniac_zoom_current_y) * step;
+		data.maniac_zoom_current_scale += (data.maniac_zoom_finish_scale - data.maniac_zoom_current_scale) * step;
+		--data.maniac_zoom_time_left;
+	}
 	UpdateMovie();
 	UpdateWeather();
 	UpdateBattleAnimation();
@@ -540,9 +616,21 @@ int Game_Screen::ShowBattleAnimation(int animation_id, int target_id, bool globa
 	return animation->GetFrames();
 }
 
+void Game_Screen::SetManiacAnimationBufferCount(int count) {
+	count = std::clamp(count, 1, 1000);
+	// Empty slots are implicit; growing the native pool starts no animation.
+	while (!maniac_animations.empty()) {
+		auto last = std::prev(maniac_animations.end());
+		if (last->first < count) break;
+		maniac_animations.erase(last);
+	}
+	SaveManiacAnimations();
+}
+
 int Game_Screen::ShowManiacBattleAnimation(int buffer, const ManiacAnimationParams& params, int start_frame) {
-	if (buffer < 0 || params.mode < 0 || params.mode > 4 || start_frame < 0) {
-		Output::Warning("ShowBattleAnimation: Invalid Maniac buffer, mode or frame");
+	buffer = std::clamp(buffer, 0, 999);
+	if (params.mode < 0 || params.mode > 4 || start_frame < 0) {
+		Output::Warning("ShowBattleAnimation: Invalid Maniac mode or frame");
 		return 0;
 	}
 	if (params.animation_id == 0) {
@@ -576,19 +664,20 @@ int Game_Screen::ShowManiacBattleAnimation(int buffer, const ManiacAnimationPara
 }
 
 void Game_Screen::SaveManiacAnimations() {
-	// Version 1 followed by records of 14 int32 values in an EasyRPG chunk.
+	// Version 2 adds the SELF bank's logical identity to each saved animation.
 	auto& out = data.easyrpg_maniac_animations;
 	out.clear();
 	if (maniac_animations.empty()) {
 		return;
 	}
-	out.push_back(1);
+	out.push_back(2);
 	for (const auto& entry : maniac_animations) {
 		const auto& effect = *entry.second;
 		const auto& p = effect.GetManiacParams();
 		out.insert(out.end(), {entry.first, p.animation_id, p.mode, p.target_id,
 			p.x, p.y, p.x_mode, p.y_mode, p.invert ? 1 : 0, p.keep ? 1 : 0,
-			effect.GetFrame(), effect.GetPositionX(), effect.GetPositionY(), 0});
+			effect.GetFrame(), effect.GetPositionX(), effect.GetPositionY(), 0,
+			p.self_scope, p.self_map_id, p.self_event_id});
 	}
 }
 
@@ -598,23 +687,36 @@ void Game_Screen::RestoreManiacAnimations() {
 	if (saved.empty()) {
 		return;
 	}
-	if (saved[0] != 1 || (saved.size() - 1) % 14 != 0) {
+	const size_t record_size = saved[0] == 1 ? 14 : 17;
+	if ((saved[0] != 1 && saved[0] != 2) || (saved.size() - 1) % record_size != 0) {
 		Output::Warning("Invalid saved Maniac animation data");
 		data.easyrpg_maniac_animations.clear();
 		return;
 	}
-	for (size_t i = 1; i < saved.size(); i += 14) {
+	for (size_t i = 1; i < saved.size(); i += record_size) {
 		ManiacAnimationParams p;
 		p.animation_id = saved[i + 1]; p.mode = saved[i + 2]; p.target_id = saved[i + 3];
 		p.x = saved[i + 4]; p.y = saved[i + 5];
 		p.x_mode = saved[i + 6]; p.y_mode = saved[i + 7];
 		p.invert = saved[i + 8] != 0; p.keep = saved[i + 9] != 0;
-		if (p.mode == 4 && (p.x_mode < 0 || p.x_mode > 1 || p.y_mode < 0 || p.y_mode > 1)) {
-			Output::Warning("Invalid saved Maniac animation binding mode");
-			continue;
+		if (saved[0] == 2) {
+			p.self_scope = saved[i + 14];
+			p.self_map_id = saved[i + 15];
+			p.self_event_id = saved[i + 16];
+		} else if (p.mode == 4) {
+			if (p.x_mode < 0 || p.x_mode > 1 || p.y_mode < 0 || p.y_mode > 1) {
+				Output::Warning("Invalid saved Maniac animation binding mode");
+				continue;
+			}
+			// Version 1 has no SELF identity. Preserve its valid global bindings;
+			// do not infer a bank for previously unsupported SELF animation data.
+			if (p.x_mode == 1) p.x = Main_Data::game_variables->Get(p.x);
+			if (p.y_mode == 1) p.y = Main_Data::game_variables->Get(p.y);
 		}
-		ShowManiacBattleAnimation(saved[i], p, saved[i + 10]);
-		auto it = maniac_animations.find(saved[i]);
+		p.x_mode = 0; p.y_mode = 0;
+		const int buffer = std::clamp(saved[i], 0, 999);
+		ShowManiacBattleAnimation(buffer, p, saved[i + 10]);
+		auto it = maniac_animations.find(buffer);
 		if (it != maniac_animations.end()) {
 			it->second->SetPosition(saved[i + 11], saved[i + 12]);
 		}

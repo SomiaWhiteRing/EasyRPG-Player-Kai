@@ -17,12 +17,14 @@
 
 // Headers
 #include <cctype>
+#include <cstring>
 #include <sstream>
 #include <iterator>
 
 #include "compiler.h"
 #include "utils.h"
 #include "window_message.h"
+#include "baseui.h"
 #include "game_actors.h"
 #include "game_map.h"
 #include "game_message.h"
@@ -119,6 +121,28 @@ std::string CleanMessageText(const std::string& raw_text) {
 }
 } //namespace
 
+namespace {
+Point ManiacColorCell(const Bitmap& system, const std::array<int32_t, 2>& colors) {
+	uint32_t sx, sy;
+	if (colors[1] < 0) {
+		const auto columns = std::max(1, system.GetWidth() / 16);
+		const auto index = std::max(0, colors[0]);
+		sx = static_cast<uint32_t>(index % columns) << 4;
+		sy = static_cast<uint32_t>(index / columns) << 4;
+	} else {
+		sx = static_cast<uint32_t>(colors[0]) << 4;
+		if (sx & 0x80000000) sx = 0;
+		sy = static_cast<uint32_t>(colors[1]) << 4;
+	}
+	sx += 2;
+	sy += 50;
+	// Native validates the two 14-pixel color axes independently, after 32-bit scaling.
+	if (sx + 14 > static_cast<uint32_t>(system.GetWidth())) sx = 2;
+	if (sy + 14 > static_cast<uint32_t>(system.GetHeight())) sy = 50;
+	return {static_cast<int>(sx) - 2, static_cast<int>(sy) - 2};
+}
+}
+
 // C4428 is nonsense
 #ifdef _MSC_VER
 #pragma warning (disable : 4428)
@@ -157,7 +181,11 @@ Window_Message::Window_Message(int ix, int iy, int iwidth, int iheight) :
 
 	gold_window->SetVisible(false);
 
-	Main_Data::game_system->ClearMessageFace();
+	// The 250921 face and animation start are system state restored before
+	// the map creates its message window. Keep them when recreating that window.
+	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) {
+		Main_Data::game_system->ClearMessageFace();
+	}
 	Game_Message::SetWindow(this);
 }
 
@@ -168,6 +196,7 @@ Window_Message::~Window_Message() {
 }
 
 void Window_Message::StartMessageProcessing(PendingMessage pm) {
+	aop = {};
 	text.clear();
 	pending_message = std::move(pm);
 
@@ -260,7 +289,7 @@ void Window_Message::StartChoiceProcessing() {
 void Window_Message::StartNumberInputProcessing() {
 	number_input_window->SetMaxDigits(pending_message.GetNumberInputDigits());
 	if (IsFaceEnabled() && !Main_Data::game_system->IsMessageFaceRightPosition()) {
-		number_input_window->SetX(Player::message_box_offset_x + LeftMargin + FaceSize + RightFaceMargin);
+		number_input_window->SetX(Player::message_box_offset_x + LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin);
 	} else {
 		number_input_window->SetX(x);
 	}
@@ -290,6 +319,9 @@ void Window_Message::InsertNewPage() {
 	// Cancel pending face requests for async
 	// Otherwise they render on the wrong page
 	face_request_ids.clear();
+	maniac_face.reset();
+	maniac_faceset.reset();
+	shape_ret.clear();
 
 	contents->Clear();
 	SetIndex(-1);
@@ -299,6 +331,7 @@ void Window_Message::InsertNewPage() {
 	kill_page = false;
 	line_count = 0;
 	text_color = Font::ColorDefault;
+	maniac_text_color_row = Player::IsPatchManiac() ? 0 : -1;
 	speed = 1;
 	kill_page = false;
 	instant_speed = false;
@@ -311,17 +344,47 @@ void Window_Message::InsertNewPage() {
 		page_font = Font::Default();
 	}
 
-	// Position the message box vertically
-	// Game_Message::GetRealPosition() specify top/middle/bottom
-	if (Game_Message::GetRealPosition() == 0) {
-		y = Player::menu_offset_y;
+	if (Player::IsPatchManiac() && Game_Battle::IsBattleRunning()) {
+		const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
+		x = display_offset.x;
+		y = display_offset.y;
+	} else {
+		// Position the message box vertically
+		// Game_Message::GetRealPosition() specify top/middle/bottom
+		if (Game_Message::GetRealPosition() == 0) {
+			y = Player::menu_offset_y;
+		}
+		else if (Game_Message::GetRealPosition() == 1) {
+			y = static_cast<int>((Player::screen_height - MESSAGE_BOX_HEIGHT) / 2.f);
+		}
+		else if (Game_Message::GetRealPosition() == 2) {
+			y = Player::screen_height - Player::menu_offset_y - MESSAGE_BOX_HEIGHT ;
+		}
 	}
-	else if (Game_Message::GetRealPosition() == 1) {
-		y = static_cast<int>((Player::screen_height - MESSAGE_BOX_HEIGHT) / 2.f);
+	maniac_face_x = x + (Main_Data::game_system->IsMessageFaceRightPosition()
+		? std::min(width, Player::screen_width) - Main_Data::game_system->GetMessageFaceWidth() - RightFaceMargin
+		: 8 + LeftMargin);
+	maniac_face_y = y + 8 + TopMargin;
+	if (Player::IsPatchManiac()) {
+		std::array<int32_t, 9> packet = {2, x, y, width, height, maniac_face_x, maniac_face_y,
+			Main_Data::game_system->GetMessageFaceIndex(), IsOpening() ? 1 : 0};
+		const auto face_name = ToString(Main_Data::game_system->GetMessageFaceName());
+		if (Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), &face_name, aop)) {
+			SetX(Game_Message::ReadManiacHookResult(maniac_hook_caller, 1, x));
+			SetY(Game_Message::ReadManiacHookResult(maniac_hook_caller, 2, y));
+			SetWidth(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 3, width), 1, 2000));
+			SetHeight(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 4, height), 1, 2000));
+			// Native fallback uses the window coordinates after their readback, not the old face position.
+			maniac_face_x = Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, x);
+			maniac_face_y = Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, y);
+			const bool transition = Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, packet[8]) != 0;
+			if (contents->GetWidth() != std::max(0, width - 16) || contents->GetHeight() != std::max(0, height - 16)) {
+				SetContents(Bitmap::Create(std::max(0, width - 16), std::max(0, height - 16)));
+			}
+			SetOpenAnimation(transition ? message_animation_frames : 0);
+		}
 	}
-	else if (Game_Message::GetRealPosition() == 2) {
-		y = Player::screen_height - Player::menu_offset_y - MESSAGE_BOX_HEIGHT ;
-	}
+	maniac_glyphs = Player::IsPatchManiac() ? Bitmap::Create(width, height) : BitmapRef{};
 
 	if (Main_Data::game_system->IsMessageTransparent()) {
 		SetOpacity(0);
@@ -333,11 +396,16 @@ void Window_Message::InsertNewPage() {
 
 	if (IsFaceEnabled()) {
 		if (!Main_Data::game_system->IsMessageFaceRightPosition()) {
-			contents_x = LeftMargin + FaceSize + RightFaceMargin;
-			DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), LeftMargin, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
+			contents_x = LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
 		} else {
 			contents_x = 0;
-			DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(), 248, TopMargin, Main_Data::game_system->IsMessageFaceFlipped());
+		}
+		if (Player::IsPatchManiac()) {
+			ReloadManiacFace();
+		} else {
+			DrawFace(Main_Data::game_system->GetMessageFaceName(), Main_Data::game_system->GetMessageFaceIndex(),
+				Main_Data::game_system->IsMessageFaceRightPosition() ? 248 : LeftMargin, TopMargin,
+				Main_Data::game_system->IsMessageFaceFlipped());
 		}
 	} else {
 		contents_x = 0;
@@ -366,10 +434,73 @@ void Window_Message::InsertNewPage() {
 	}
 }
 
+void Window_Message::ReloadManiacFace() {
+	face_request_ids.clear();
+	maniac_face.reset();
+	maniac_faceset.reset();
+	if (Main_Data::game_system->GetMessageFaceName().empty()) return;
+	auto* request = AsyncHandler::RequestFile("FaceSet", Main_Data::game_system->GetMessageFaceName());
+	request->SetGraphicFile(true);
+	face_request_ids.push_back(request->Bind(&Window_Message::OnManiacFaceReady, this));
+	request->Start();
+}
+
+void Window_Message::ProcessManiacFace(const char* end) {
+	std::array<int32_t, 2> numbers;
+	std::optional<std::string> name;
+	text_index = Game_Message::ParseManiacFace(text_index, end, maniac_hook_caller, numbers, name);
+	const bool at_start = contents_x <= 0 && line_count <= 0;
+	if (at_start || IsFaceEnabled()) {
+		if (name) {
+			if (!name->empty() && name->front() == '*') {
+				if (!at_start) return;
+				Main_Data::game_system->SetMessageFaceName("");
+			} else {
+				Main_Data::game_system->SetMessageFaceName(*name);
+			}
+		}
+		// Native fallback is checked against the visibility state before the new flag is written.
+		if (IsFaceEnabled() && (maniac_face_x == INT_MAX || maniac_face_y == INT_MAX)) {
+			maniac_face_x = x + 8 + (Main_Data::game_system->IsMessageFaceRightPosition()
+				? std::min(width, Player::screen_width) - Main_Data::game_system->GetMessageFaceWidth() - RightFaceMargin - 8 : LeftMargin);
+			maniac_face_y = y + 8 + TopMargin;
+		}
+		Main_Data::game_system->SetMessageFaceIndex(numbers[0]);
+		pending_message.SetEnableFace(static_cast<uint8_t>(numbers[1]) != 0);
+	}
+	if (Player::game_config.maniac_version.Get() == 250921) {
+		Main_Data::game_system->SetManiacFaceAnimationFlags(0);
+	}
+	Main_Data::game_system->ResetManiacFaceAnimation();
+	ReloadManiacFace();
+}
+
+void Window_Message::OnManiacFaceReady(FileRequestResult* result) {
+	maniac_faceset = Cache::Faceset(result->file);
+	UpdateManiacFaceBitmap();
+}
+
+void Window_Message::UpdateManiacFaceBitmap() {
+	if (!maniac_faceset) return;
+	maniac_face = maniac_faceset;
+}
+
+void Window_Message::DrawContents(Bitmap& dst) {
+	if (maniac_face && IsFaceEnabled() && !IsOpeningOrClosing() && contents_opacity > 0) {
+		dst.FlipBlit(maniac_face_x, maniac_face_y, *maniac_face, GetMessageFaceRect(*maniac_face),
+			Main_Data::game_system->IsMessageFaceFlipped(), false, contents_opacity);
+	}
+	if (maniac_glyphs && !IsOpeningOrClosing() && contents_opacity > 0
+		&& x >= -width && x <= dst.GetWidth() && y >= -height && y <= dst.GetHeight()) {
+		dst.Blit(x, y, *maniac_glyphs, maniac_glyphs->GetRect(), contents_opacity);
+	}
+	Window::DrawContents(dst);
+}
+
 void Window_Message::InsertNewLine() {
 	DebugLog("{}: MSG NEW LINE");
 	if (IsFaceEnabled() && !Main_Data::game_system->IsMessageFaceRightPosition()) {
-		contents_x = LeftMargin + FaceSize + RightFaceMargin;
+		contents_x = LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
 	} else {
 		contents_x = 0;
 	}
@@ -386,6 +517,7 @@ void Window_Message::InsertNewLine() {
 			} else {
 				text_color = Font::ColorDefault;
 			}
+			maniac_text_color_row = -1;
 		}
 
 		contents_x += 12;
@@ -453,6 +585,17 @@ void Window_Message::CaptureMessageForHistory() {
 
 void Window_Message::FinishMessageProcessing() {
 	DebugLog("{}: FINISH MSG");
+	auto close_frames = Game_Battle::IsBattleRunning() ? 0 : message_animation_frames;
+	if (IsVisible() && !IsClosing() && Player::IsPatchManiac()) {
+		std::array<int32_t, 8> packet = {4, x, y, width, height, maniac_face_x, maniac_face_y, 1};
+		if (Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), nullptr, aop)
+			&& Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, 1) == 0) {
+			close_frames = 0;
+		}
+	}
+	face_request_ids.clear();
+	maniac_face.reset();
+	maniac_glyphs.reset();
 
 	text.clear();
 	text_index = text.data();
@@ -463,8 +606,6 @@ void Window_Message::FinishMessageProcessing() {
 	SetIndex(-1);
 
 	pending_message = PendingMessage(Game_Message::CommandCodeInserter);
-
-	auto close_frames = Game_Battle::IsBattleRunning() ? 0 : message_animation_frames;
 
 	if (number_input_window->IsVisible()) {
 		number_input_window->SetActive(false);
@@ -492,6 +633,10 @@ void Window_Message::ResetWindow() {
 
 void Window_Message::Update() {
 	aop = {};
+	if (Player::IsPatchManiac()) {
+		Main_Data::game_system->UpdateManiacFaceAnimation();
+		UpdateManiacFaceBitmap();
+	}
 	if (IsOpening()) { DebugLog("{}: MSG OPENING"); }
 	if (IsClosing()) { DebugLog("{}: MSG CLOSING"); }
 
@@ -511,6 +656,10 @@ void Window_Message::Update() {
 	if (!IsVisible()) {
 		return;
 	}
+
+	maniac_rshift_forced = Player::IsPatchManiac() && Player::maniac_rshift_message
+		&& DisplayUi && DisplayUi->IsRightShiftPressed();
+	if (maniac_rshift_forced) instant_speed = true;
 
 	if (IsOpeningOrClosing()) {
 		return;
@@ -555,7 +704,7 @@ void Window_Message::UpdateMessage() {
 	// Message Box Show Message rendering loop
 	bool instant_speed_forced = false;
 
-	if (Player::debug_flag && Input::IsPressed(Input::SHIFT)) {
+	if (Player::IsPatchManiac() ? maniac_rshift_forced : Player::debug_flag && Input::IsPressed(Input::SHIFT)) {
 		instant_speed = true;
 		instant_speed_forced = true;
 	}
@@ -599,9 +748,34 @@ void Window_Message::UpdateMessage() {
 
 		const auto ch = tret.ch;
 		if (tret.is_exfont) {
-			if (!DrawGlyph(*page_font, *system, ch, true)) {
+			if (!DrawGlyph(*page_font, *system, ch, true, std::string_view(text_prev, text_index - text_prev))) {
 				text_index = text_prev;
 			}
+			if (aop.IsActive()) return;
+			continue;
+		}
+		if (Player::IsPatchManiac() && !tret.is_escape && ch == '$') {
+			text_prev = text_index - 1;
+			const auto* icon_end = Game_Message::ManiacIconEnd(text_prev, end);
+			const size_t begin_offset = text_prev - text.data();
+			auto units = Utils::DecodeUTF16(std::string_view(text_prev,
+				std::min<size_t>(icon_end - text_prev, 512)), true);
+			const bool split_pair = units.size() > 127 && units[126] >= 0xd800 && units[126] <= 0xdbff
+				&& units[127] >= 0xdc00 && units[127] <= 0xdfff;
+			const auto token = Utils::EncodeUTF(units.substr(0, 127), true);
+			if (split_pair && static_cast<uint8_t>(text_prev[token.size() - 3]) >= 0xf0) {
+				// A retry must keep the same 127-unit cut and leave the low surrogate in the source.
+				text.replace(begin_offset + token.size() - 3, 4,
+					Utils::EncodeUTF(std::u16string(1, units[126]), true)
+					+ Utils::EncodeUTF(std::u16string(1, units[127]), true));
+				text_prev = text.data() + begin_offset;
+				end = text.data() + text.size();
+			}
+			text_index = text_prev + token.size();
+			const bool parameter = token.size() > 1 && token[1] != '$';
+			if (!DrawGlyph(*page_font, *system, '$', parameter,
+				token, parameter)) text_index = text_prev;
+			if (aop.IsActive()) return;
 			continue;
 		}
 
@@ -649,10 +823,42 @@ void Window_Message::UpdateMessage() {
 		if (tret.is_escape && ch != Player::escape_char) {
 			// Special message codes
 			switch (ch) {
+			case 'e':
+			case 'E':
+				if (Player::IsPatchManiac()) {
+					std::array<int32_t, 8> packet = {1, x, y, maniac_face_x, maniac_face_y,
+						line_count, contents_x, contents_y};
+					text_index = Game_Message::ProcessManiacUserHook(text_index, end, maniac_hook_caller, packet, aop);
+					SetX(packet[1]);
+					SetY(packet[2]);
+					maniac_face_x = packet[3];
+					maniac_face_y = packet[4];
+					SetWaitForNonPrintable(0);
+					if (aop.GetType() != AsyncOp::eNone) return;
+				} else {
+					SetWaitForNonPrintable(speed);
+				}
+				break;
+			case 'f':
+			case 'F':
+				if (Player::IsPatchManiac()) {
+					ProcessManiacFace(end);
+				} else {
+					SetWaitForNonPrintable(speed);
+				}
+				break;
 			case 'c':
 			case 'C':
 				{
 					// Color
+					if (Player::IsPatchManiac()) {
+						std::array<int32_t, 2> colors;
+						text_index = Game_Message::ParseManiacNumbers(text_index, end, maniac_hook_caller, colors);
+						text_color = colors[0];
+						maniac_text_color_row = colors[1];
+						SetWaitForNonPrintable(0);
+						break;
+					}
 					auto pres = Game_Message::ParseColor(text_index, end, Player::escape_char, true);
 					auto value = pres.value;
 					text_index = pres.next;
@@ -665,11 +871,31 @@ void Window_Message::UpdateMessage() {
 			case 'S':
 				{
 					// Speed modifier
-					auto pres = Game_Message::ParseSpeed(text_index, end, Player::escape_char, true);
+					const bool maniac = Player::IsPatchManiac();
+					const auto pres = maniac
+						? Game_Message::ParseManiacNumber(text_index, end, maniac_hook_caller)
+						: Game_Message::ParseSpeed(text_index, end, Player::escape_char, true);
 					text_index = pres.next;
 					DebugLogText("{}: MSG Speed \\s[{}]", pres.value);
-					SetWaitForNonPrintable(0);
+					if (!maniac) SetWaitForNonPrintable(0);
 					speed = Utils::Clamp(pres.value, 1, 20);
+				}
+				break;
+			case 'w':
+			case 'W':
+				if (Player::IsPatchManiac()) {
+					const auto pres = Game_Message::ParseManiacNumber(text_index, end, maniac_hook_caller);
+					text_index = pres.next;
+					if (!instant_speed) {
+						// Native control-code tail also applies the speed floor, then returns without decrementing.
+						SetWait(std::max(speed, pres.value) - 1);
+						prev_char_waited = true;
+						prev_char_printable = false;
+						line_char_counter &= ~1;
+						return;
+					}
+				} else {
+					SetWaitForNonPrintable(speed);
 				}
 				break;
 			case '_':
@@ -732,7 +958,8 @@ void Window_Message::UpdateMessage() {
 			continue;
 		}
 
-		if (page_font->CanShape()) {
+		// RPG_RT consumes and invokes the hook per source character. Joining glyphs would merge callbacks.
+		if (page_font->CanShape() && !Player::IsPatchManiac()) {
 			assert(shape_ret.empty());
 
 			auto text_index_shape = text_index;
@@ -761,15 +988,30 @@ void Window_Message::UpdateMessage() {
 			shape_ret = page_font->Shape(text32);
 			continue;
 		} else {
-			if (!DrawGlyph(*page_font, *system, ch, false)) {
+			if (!DrawGlyph(*page_font, *system, ch, false, std::string_view(text_prev, text_index - text_prev))) {
 				text_index = text_prev;
 				continue;
 			}
+			if (aop.IsActive()) return;
 		}
 	}
 }
 
-bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont) {
+Point Window_Message::ProcessManiacGlyphHook(std::string_view token, std::array<int32_t, 2>& colors) {
+	std::array<int32_t, 9> packet = {8, x, y, maniac_face_x, maniac_face_y,
+		contents_x + border_x, contents_y + border_y, colors[0], colors[1]};
+	const std::string source(token);
+	if (!Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), &source, aop)) {
+		return {packet[5], packet[6]};
+	}
+	const auto glyph_x = Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, packet[5]), 0, width);
+	const auto glyph_y = Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, packet[6]), 0, height);
+	colors[0] = Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, colors[0]);
+	colors[1] = Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, colors[1]);
+	return {glyph_x, glyph_y};
+}
+
+bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont, std::string_view token, bool maniac_icon) {
 	if (is_exfont) {
 		DebugLogText("{}: MSG DrawGlyph Exfont {}", static_cast<uint32_t>(glyph));
 	} else {
@@ -800,7 +1042,46 @@ bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph,
 		}
 	}
 
-	auto rect = Text::Draw(*contents, contents_x, contents_y, font, system, text_color, glyph, is_exfont);
+	std::array<int32_t, 2> colors = {text_color, maniac_text_color_row};
+	const auto position = Player::IsPatchManiac() ? ProcessManiacGlyphHook(token, colors) : Point{contents_x, contents_y};
+	const auto cell = ManiacColorCell(system, colors);
+	Point rect;
+	const auto size = font.GetCurrentStyle().size;
+	if (Player::IsPatchManiac() && (static_cast<int64_t>(position.x) + size + 1 >= width
+		|| static_cast<int64_t>(position.y) + size + 1 >= height)) {
+		rect.x = font.GetCurrentStyle().letter_spacing;
+	} else if (maniac_icon) {
+		std::array<int32_t, 2> numbers;
+		Game_Message::ParseManiacNumbers(token.data() + 1, token.data() + token.size(), maniac_hook_caller, numbers);
+		const auto image = Cache::Exfont();
+		Rect source{0, 0, 12, 12};
+		if (numbers[1] < 0) {
+			const int columns = image->GetWidth() / 12;
+			const int index = std::max(0, numbers[0]);
+			if (columns > 0) {
+				source.x = index % columns * 12;
+				const uint32_t y_bits = static_cast<uint32_t>(index / columns) * 12u;
+				std::memcpy(&source.y, &y_bits, sizeof(y_bits));
+			}
+			else source.y = -1;
+		} else {
+			// Native coordinates multiply in 32 bits before clamping the signed source X.
+			const uint32_t x_bits = static_cast<uint32_t>(numbers[0]) * 12u;
+			const uint32_t y_bits = static_cast<uint32_t>(numbers[1]) * 12u;
+			std::memcpy(&source.x, &x_bits, sizeof(x_bits));
+			std::memcpy(&source.y, &y_bits, sizeof(y_bits));
+			source.x = std::max(0, source.x);
+		}
+		if (font.IsStyleApplied()) {
+			auto style_guard = Font::exfont->ApplyStyle(font.GetCurrentStyle());
+			rect = Font::exfont->RenderExfontCell(*maniac_glyphs, position.x, position.y, system, source, &cell);
+		} else {
+			rect = Font::exfont->RenderExfontCell(*maniac_glyphs, position.x, position.y, system, source, &cell);
+		}
+	} else {
+		rect = Text::Draw(Player::IsPatchManiac() ? *maniac_glyphs : *contents, position.x, position.y, font, system,
+			Player::IsPatchManiac() ? 0 : text_color, glyph, is_exfont, Player::IsPatchManiac() ? &cell : nullptr);
+	}
 
 	int glyph_width = rect.x;
 	contents_x += glyph_width;
@@ -862,9 +1143,9 @@ void Window_Message::UpdateCursorRect() {
 
 		if (IsFaceEnabled()) {
 			if (!Main_Data::game_system->IsMessageFaceRightPosition()) {
-				x_pos += LeftMargin + FaceSize + RightFaceMargin;
+				x_pos += LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin;
 			}
-			width = width - LeftMargin - FaceSize - RightFaceMargin;
+			width = width - LeftMargin - Main_Data::game_system->GetMessageFaceWidth() - RightFaceMargin;
 		}
 
 		SetCursorRect(Rect(x_pos, y_pos, width, 16));
@@ -874,8 +1155,11 @@ void Window_Message::UpdateCursorRect() {
 }
 
 void Window_Message::WaitForInput() {
-	const bool mouse_decision = Player::player_config.extra_mouse_support.Get()
-		&& (Input::IsTriggered(Input::MOUSE_LEFT) || Input::IsTriggered(Input::SCROLL_DOWN));
+	const bool mouse_decision = Player::IsPatchManiac()
+		? Main_Data::game_system->IsManiacMessageMouseEnabled()
+			&& (Input::IsTriggered(Input::MOUSE_LEFT) || Input::IsTriggered(Input::MOUSE_RIGHT))
+		: Player::player_config.extra_mouse_support.Get()
+			&& (Input::IsTriggered(Input::MOUSE_LEFT) || Input::IsTriggered(Input::SCROLL_DOWN));
 
 	if (Input::IsTriggered(Input::DECISION) ||
 			mouse_decision ||
@@ -886,14 +1170,34 @@ void Window_Message::WaitForInput() {
 
 void Window_Message::InputChoice() {
 	int choice_result = -1;
+	const bool maniac = Player::IsPatchManiac();
+	const bool mouse_enabled = maniac && Main_Data::game_system->IsManiacMessageMouseEnabled();
+	bool decision = Input::IsTriggered(Input::DECISION);
+	const bool cancel = Input::IsTriggered(Input::CANCEL)
+		|| (mouse_enabled && Input::IsTriggered(Input::MOUSE_RIGHT));
 
-	if (Input::IsTriggered(Input::CANCEL)) {
-		if (pending_message.GetChoiceCancelType() > 0) {
-			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
-			choice_result = pending_message.GetChoiceCancelType() - 1; // Cancel
+	if (maniac && !decision && mouse_enabled && Input::IsTriggered(Input::MOUSE_LEFT)) {
+		const auto point = Input::GetMousePosition();
+		const auto cursor = GetCursorRect();
+		// Native hits include four pixels outside either horizontal cursor edge.
+		const int left = x + 8 + cursor.x - 4;
+		const int right = left + cursor.width + 8;
+		for (int candidate = 0; candidate < item_max; ++candidate) {
+			const int top = y + 8 + cursor.y + (candidate - index) * 16;
+			if (point.x < left || point.x > right || point.y < top || point.y > top + 16) continue;
+			if (candidate == index) decision = true;
+			else {
+				SetIndex(candidate);
+				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cursor));
+			}
+			break;
 		}
-	} else if (Input::IsTriggered(Input::DECISION) ||
-	           (Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
+	} else if (!maniac) {
+		decision = !cancel && (decision
+			|| (Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT)));
+	}
+
+	if (decision) {
 		if (!pending_message.IsChoiceEnabled(index)) {
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
 			return;
@@ -901,6 +1205,9 @@ void Window_Message::InputChoice() {
 
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		choice_result = index;
+	} else if (cancel && pending_message.GetChoiceCancelType() > 0) {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
+		choice_result = pending_message.GetChoiceCancelType() - 1;
 	}
 
 	if (choice_result >= 0) {
@@ -917,7 +1224,7 @@ void Window_Message::InputNumber() {
 	number_input_window->SetVisible(true);
 
 	if (Input::IsTriggered(Input::DECISION) ||
-	    (Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
+	    (!Player::IsPatchManiac() && Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		Main_Data::game_variables->Set(pending_message.GetNumberInputVariable(), number_input_window->GetNumber());
 		Game_Map::SetNeedRefresh(true);

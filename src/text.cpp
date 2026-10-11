@@ -28,17 +28,17 @@
 #include <cctype>
 #include <iterator>
 
-Point Text::Draw(Bitmap& dest, int x, int y, const Font& font, const Bitmap& system, int color, char32_t glyph, bool is_exfont) {
+Point Text::Draw(Bitmap& dest, int x, int y, const Font& font, const Bitmap& system, int color, char32_t glyph, bool is_exfont, const Point* color_cell) {
 	if (is_exfont) {
 		if (!font.IsStyleApplied()) {
-			return Font::exfont->Render(dest, x, y, system, color, glyph);
+			return Font::exfont->Render(dest, x, y, system, color, glyph, color_cell);
 		} else {
 			auto style = font.GetCurrentStyle();
 			auto style_guard = Font::exfont->ApplyStyle(style);
-			return Font::exfont->Render(dest, x, y, system, color, glyph);
+			return Font::exfont->Render(dest, x, y, system, color, glyph, color_cell);
 		}
 	} else {
-		return font.Render(dest, x, y, system, color, glyph);
+		return font.Render(dest, x, y, system, color, glyph, color_cell);
 	}
 }
 

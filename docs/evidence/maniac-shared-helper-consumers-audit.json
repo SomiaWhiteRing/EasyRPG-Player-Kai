@@ -1,0 +1,43 @@
+{
+  "scope": "Player source-level helper-call ownership, selector input, operand input, and result context; original per-command behavior remains unverified here",
+  "reference_count": 248,
+  "reference_kinds": {
+    "comment": 2,
+    "consumer_call": 209,
+    "declaration": 6,
+    "explicit_template_instantiation": 8,
+    "interpreter_wrapper": 12,
+    "shared_definition": 6,
+    "shared_internal_call": 2,
+    "storage_helper_definition_or_declaration": 3
+  },
+  "consumer_count": 209,
+  "consumer_helpers": {
+    "CommandStringOrVariable": 2,
+    "CommandStringOrVariableBitfield": 8,
+    "DecodeTargetEvaluationMode": 3,
+    "GetWithMode": 3,
+    "ValueOrVariable": 97,
+    "ValueOrVariableBitfield": 96
+  },
+  "owner_functions": 56,
+  "command_handlers": 60,
+  "inventory_mapped_consumers": 185,
+  "EasyRPG_extension_consumers": 24,
+  "source_sha256": {
+    "src/game_interpreter.cpp": "b98f4d2386e8234ca882a08d9cea4205947267443ae0f0a160d7957a6d847254",
+    "src/game_interpreter_battle.cpp": "8315ecd63fa46085032df4d270bcd9fcf8f9364a3f5fcccee8394776fadc705f",
+    "src/game_interpreter_map.cpp": "81f22d0012e5113f8aa5196766d5e89b7e2aec9bf53b19300329414cfbceff14",
+    "src/game_interpreter_shared.cpp": "826e4d5352bf4dda420bc7892ae8e199639cce35610053566873092e1e6ba395",
+    "src/game_interpreter_shared.h": "904b955d7518bd2f25d88d24131e529fefd2db12f6520ff591b499f203f5650e",
+    "src/game_strings.h": "1f2c10d9a352290015aeb30b4ed42f61e6084b7636b669925a73ad5a6748bfc7",
+    "src/game_variables.h": "d565c4b8c2ccc287ef33723049e415e28feea4e1369034dd0131cc2b4f9834a9"
+  },
+  "references_sha256": "2b3599f1a2a7544216907f5090af1022c5fae751aa76c839037a25cb9c9939f8",
+  "consumers_sha256": "aff52bea481cd1f42baf97f3fabfc870b9d7d4f5ee72758d9dea0a3cd961de0b",
+  "follow_up_risks": [
+    "ValueOrVariable currently enables modes 2-4 for all callers; original commands may restrict individual modes (W01-007/W05-001).",
+    "3020 assignment direct/indirect self string sources now use interpreter context; GetWithMode callers in conditional branch and string picture still need original comparison (W01-007/W06-001).",
+    "Original behavior for malformed target modes remains unverified; Player now skips unsupported 3020 modes to avoid an uninitialized target (W04-001)."
+  ]
+}

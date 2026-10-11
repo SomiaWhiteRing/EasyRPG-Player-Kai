@@ -1,0 +1,38 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "508be648df38a9ca0d368194937ec515ec436bca58ab7201f8d7674df5c2477b",
+  "manifest_sha256": "7b72434f189bd997e3669bb1e41f48e73d2261c61236998c8ab30a860f1a739f",
+  "dispatch_instructions": {
+    "0x463e2": "mov eax, dword ptr [r13]",
+    "0x463ef": "jmp 0x1400458e0",
+    "0x47d01": "mov al, 1",
+    "0x47d03": "jmp 0x140046ef3"
+  },
+  "results": {
+    "original": {
+      "trace_sha256": "887bc28674d086f35fa194e38f8b0450fdeba662121f5e37497cd5fa4f04f2b9",
+      "save_sha256": "a430c08edadaac07cbcd41a0b5055917228a304a2a338dc329c8035a1b9ccdd5",
+      "global_numeric_ids_1_to_5": [
+        99,
+        99,
+        33,
+        44,
+        55
+      ],
+      "numeric_vector_length": 5
+    },
+    "player": {
+      "trace_sha256": "e4a8d92690ada2cbd88d3b4caa5170592a9628a7038f8ab6fe24058addaf1a16",
+      "save_sha256": "79590a066a0a7a12cf5a0e6d7885962f9318330150d6f5743d761d0325a7125f",
+      "global_numeric_ids_1_to_5": [
+        99,
+        99,
+        33,
+        44,
+        55
+      ],
+      "numeric_vector_length": 6
+    }
+  },
+  "scope": "Fixed 250921 original and Player run 10050 alternating standalone 3024/3035 records in map parallel event 1, followed by a called common event containing standalone 3024, 3034 and 3035 with nonempty Args/Text. Parallel event 2 snapshots variable 1 in the same update and saves variables 1..5. This demonstrates continuous-fetch budget parity and common-event continuation for these records. Battle events, short records and other releases remain separate work."
+}

@@ -1,0 +1,23 @@
+{
+  "command": [
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\probe-maniac-battle-noop.py",
+    "--runtime",
+    "player",
+    "--save-variant",
+    "common1005-modes-auto",
+    "--fixture",
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\build\\maniac-common1005-modes-auto",
+    "--output",
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\evidence\\maniac-250921-common1005-modes-auto-player-trace.json",
+    "--timeout",
+    "45"
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "exit_code": 0,
+      "stdout_tail": "Runtime PID 29688; fixture autostarts.\nC:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\evidence\\maniac-250921-common1005-modes-auto-player-trace.json: saved; 0 native events\n",
+      "stderr_tail": ""
+    }
+  ]
+}

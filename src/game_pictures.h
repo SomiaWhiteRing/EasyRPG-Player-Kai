@@ -42,6 +42,8 @@ public:
 	void InitGraphics();
 
 	static int GetDefaultNumberOfPictures();
+	int GetMaxPictureId() const;
+	void SetManiacPictureLimit(int32_t limit);
 
 	struct Params {
 		int position_x = 0;
@@ -83,6 +85,7 @@ public:
 	};
 
 	bool Show(int id, const ShowParams& params);
+	void ChangeFile(int id, std::string name);
 	void Move(int id, const MoveParams& params);
 	void Erase(int id);
 	void EraseAll();
@@ -101,6 +104,7 @@ public:
 		lcf::rpg::SavePicture data;
 		FileRequestBinding request_id;
 		bool needs_update = false;
+		bool bitmap_modified = false;
 		int origin = 0;
 
 		void Update(bool is_battle);
@@ -122,7 +126,9 @@ public:
 		bool IsRequestPending() const;
 		void MakeRequestImportant() const;
 
-		void OnPictureSpriteReady();
+		void OnPictureSpriteReady(bool apply_origin = true);
+		BitmapRef GetMutableBitmap(bool flatten_spritesheet = false);
+		void RestoreModifiedBitmap();
 		void ApplyOrigin(bool is_move);
 		void OnMapScrolled(int dx, int dy);
 
@@ -134,8 +140,8 @@ public:
 	Picture* GetPicturePtr(int id);
 
 private:
-	void RequestPictureSprite(Picture& pic);
-	void OnPictureSpriteReady(FileRequestResult*, int id);
+	void RequestPictureSprite(Picture& pic, bool apply_origin = true);
+	void OnPictureSpriteReady(FileRequestResult*, int id, bool apply_origin);
 
 	std::vector<Picture> pictures;
 	int frame_counter = 0;

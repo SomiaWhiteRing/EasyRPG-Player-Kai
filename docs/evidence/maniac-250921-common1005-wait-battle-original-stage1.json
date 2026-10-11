@@ -1,0 +1,185 @@
+{
+  "runtime": "original",
+  "stage": 1,
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "fixture_manifest_sha256": "e3e5c03f845be24cea075ffd703ca38a653914a688e6e9d4b99d2a87e5906bec",
+  "input_save_sha256": null,
+  "saved_slots": {
+    "1": {
+      "sha256": "fbd1e40b040849bc79f529b5acc43576176da87ca2af6901fdcd830f2b275f41",
+      "length": 3792,
+      "source_mtime_ns": 1790431139493250700
+    },
+    "2": {
+      "sha256": "51bb19e2e627a404ddee338839557c55d35aa1e853129fdc7d32268bbfaeead6",
+      "length": 3796,
+      "source_mtime_ns": 1790431144493748300
+    },
+    "4": {
+      "sha256": "43b0613431766b5f65786c310b9305f768b6ba592b06ad7e08cecbae339561e2",
+      "length": 3796,
+      "source_mtime_ns": 1790431144495711500
+    }
+  },
+  "original_native_events": [
+    {
+      "event": "call1005",
+      "tick_ms": 1790431139490,
+      "before": {
+        "mode": 2,
+        "depth": 1,
+        "kind": 64,
+        "common_id": 1,
+        "cursor": 2
+      },
+      "after": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 0
+      }
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431139490,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 0
+      },
+      "opcode": 3036
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431139490,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 1
+      },
+      "opcode": 10220
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431139490,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 2
+      },
+      "opcode": 3002
+    },
+    {
+      "event": "save_command",
+      "tick_ms": 1790431139490,
+      "sequence": 1,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 2
+      },
+      "parameters": [
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431139493,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 3
+      },
+      "opcode": 11410
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431144491,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 4
+      },
+      "opcode": 10220
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431144491,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 5
+      },
+      "opcode": 3002
+    },
+    {
+      "event": "save_command",
+      "tick_ms": 1790431144491,
+      "sequence": 2,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 5
+      },
+      "parameters": [
+        0,
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "event": "child_dispatch",
+      "tick_ms": 1790431144493,
+      "state": {
+        "mode": 2,
+        "depth": 2,
+        "kind": 37,
+        "common_id": 1,
+        "cursor": 6
+      },
+      "opcode": 10
+    },
+    {
+      "event": "save_command",
+      "tick_ms": 1790431144493,
+      "sequence": 3,
+      "state": {
+        "mode": 2,
+        "depth": 1,
+        "kind": 64,
+        "common_id": 1,
+        "cursor": 3
+      },
+      "parameters": [
+        0,
+        4,
+        0,
+        0
+      ]
+    }
+  ],
+  "unexpected_post_restart_slots": [],
+  "observation": "Fresh hidden process, no input; frozen saves after target unchanged for one second; process terminated."
+}

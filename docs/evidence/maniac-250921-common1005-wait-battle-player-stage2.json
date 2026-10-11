@@ -1,0 +1,25 @@
+{
+  "runtime": "player",
+  "stage": 2,
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--load-game-id",
+    "1",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921"
+  ],
+  "fixture_manifest_sha256": "e3e5c03f845be24cea075ffd703ca38a653914a688e6e9d4b99d2a87e5906bec",
+  "input_save_sha256": "b95f5b7a035a32d6d89d1bfa7ca8bdb81e59bb8860c1d0569142031888046f09",
+  "saved_slots": {
+    "3": {
+      "sha256": "f98c46656d2905806ccc488ce72bdb7e1241f523a738feb2e74875c322153bf0",
+      "length": 6927,
+      "source_mtime_ns": 1790431162938948500
+    }
+  },
+  "original_native_events": [],
+  "unexpected_post_restart_slots": [],
+  "observation": "Fresh hidden process, no input; frozen saves after target unchanged for one second; process terminated."
+}

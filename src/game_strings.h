@@ -19,6 +19,10 @@
 #include "system.h"
 #include <cstdint>
 #include <string>
+#include <optional>
+#include <memory>
+#include <limits>
+#include <algorithm>
 #include <lcf/data.h>
 #include "compiler.h"
 #include "game_variables.h"
@@ -34,6 +38,8 @@
 #ifdef HAVE_NLOHMANN_JSON
 #include <nlohmann/json.hpp>
 #endif
+
+class Game_BaseInterpreterContext;
 
 /**
  * Game_Strings class.
@@ -69,8 +75,18 @@ public:
 
 	void SetData(Strings_t s);
 	void SetData(const std::vector<lcf::DBString>& s);
-	const Strings_t& GetData() const;
+	Strings_t GetData() const;
 	std::vector<lcf::DBString> GetLcfData() const;
+	std::vector<lcf::DBString> GetManiacZeroSaveData() const;
+	void SetManiacZeroSaveData(const std::vector<lcf::DBString>& data);
+	std::vector<int32_t> GetManiacEmptySlotSaveData() const;
+	void SetManiacEmptySlotSaveData(const std::vector<int32_t>& ids);
+	size_t GetManiacVectorSize() const;
+	void SetManiacVectorSize(int32_t size);
+	void EnsureSize(size_t size);
+	bool IsPresent(int id) const;
+	void SetManiacRawSlot(int id, std::string_view value, bool present = true);
+	std::string_view GetManiacRawSlot(int id) const;
 
 	std::string_view Get(int id) const;
 	std::string_view GetIndirect(int id, const Game_Variables& variables) const;
@@ -92,17 +108,20 @@ public:
 	int Split(Str_Params params, const std::string& delimiter, int string_out_id, int var_id, Game_Variables& variables);
 	static std::string FromFile(std::string_view filename, int encoding, bool& do_yield);
 	bool ToFile(Str_Params params, std::string filename, int encoding);
+	static bool ToFile(std::string_view text, std::string filename, int encoding);
 	std::string_view PopLine(Str_Params params, int offset, int string_out_id);
 	std::string_view ExMatch(Str_Params params, std::string expr, int var_id, int begin, int string_out_id, Game_Variables& variables);
 
-	const Strings_t& RangeOp(Str_Params params, int string_id_1, std::string string, int op, int args[], Game_Variables& variables);
+	void RangeOp(Str_Params params, int string_id_1, std::string string, int op, int args[], Game_Variables& variables);
 
 	static std::string PrependMin(std::string_view string, int min_size, char c);
-	static std::string Extract(std::string_view string, bool as_hex);
+	static std::string Extract(std::string_view string, bool as_hex, const Game_BaseInterpreterContext* context = nullptr);
 	static std::string Substring(std::string_view source, int begin, int length);
 	static std::string Insert(std::string_view source, std::string_view what, int where);
 	static std::string Erase(std::string_view source, int begin, int length);
 	static std::string RegExReplace(std::string_view str, std::string_view search, std::string_view replace, std::regex_constants::match_flag_type flags = std::regex_constants::match_default);
+	static std::string ManiacRegExReplace(std::string_view str, std::string_view search, std::string_view replace, std::regex_constants::match_flag_type flags);
+	static int ManiacRegExSearch(std::string_view str, std::string_view search, int begin, std::vector<std::string>* captures = nullptr);
 	static int AdjustIndex(std::string_view str, int index);
 
 	static std::optional<std::string> ManiacsCommandInserter(char ch, const char** iter, const char* end, uint32_t escape_char);
@@ -113,9 +132,10 @@ private:
 	bool ShouldWarn(int id) const;
 	void WarnGet(int id) const;
 
-	Strings_t _strings;
+	// One owned pointer per slot; nullptr and allocated empty remain distinct.
+	std::vector<std::unique_ptr<std::string>> _strings;
+	std::optional<std::string> _maniac_zero_string;
 	mutable int _warnings = max_warnings;
-	int _size = -1;
 
 #ifdef HAVE_NLOHMANN_JSON
 	std::unordered_map<int, nlohmann::ordered_json> _json_cache;
@@ -134,19 +154,11 @@ inline void Game_Strings::Set(Str_Params params, std::string_view string) {
 		ins_string = Extract(ins_string, params.hex);
 	}
 
-	auto it = _strings.find(params.string_id);
-	if (it == _strings.end()) {
-		if (ins_string.empty()) {
-			return;
-		} else {
-			_strings[params.string_id] = ins_string;
-			if (params.string_id > _size) {
-				_size = params.string_id;
-			}
-		}
-	} else {
-		it->second = ins_string;
-	}
+	if (!IsPresent(params.string_id) && ins_string.empty()) return;
+	EnsureSize(static_cast<size_t>(params.string_id));
+	auto& slot = _strings[params.string_id - 1];
+	if (slot) *slot = std::move(ins_string);
+	else slot = std::make_unique<std::string>(std::move(ins_string));
 
 #ifdef HAVE_NLOHMANN_JSON
 	_json_cache.erase(params.string_id);
@@ -154,8 +166,16 @@ inline void Game_Strings::Set(Str_Params params, std::string_view string) {
 }
 
 inline void Game_Strings::SetData(Strings_t s) {
-	_strings = std::move(s);
-	_size = -1;
+	size_t size = 0;
+	for (const auto& [id, value] : s) {
+		if (id > 0) size = std::max(size, static_cast<size_t>(id));
+	}
+	decltype(_strings) slots(size);
+	for (auto& [id, value] : s) {
+		if (id > 0) slots[id - 1] = std::make_unique<std::string>(std::move(value));
+	}
+	_strings = std::move(slots);
+	_maniac_zero_string.reset();
 
 #ifdef HAVE_NLOHMANN_JSON
 	_json_cache.clear();
@@ -163,34 +183,94 @@ inline void Game_Strings::SetData(Strings_t s) {
 }
 
 inline void Game_Strings::SetData(const std::vector<lcf::DBString>& s) {
-	int i = 1;
-	for (const auto& string: s) {
-		if (!s.empty()) {
-			_strings[i] = ToString(string);
-		}
-		++i;
+	decltype(_strings) slots(s.size());
+	for (size_t i = 0; i < s.size(); ++i) {
+		if (!s[i].empty()) slots[i] = std::make_unique<std::string>(ToString(s[i]));
 	}
-	if ((i - 1) > _size) {
-		_size = i - 1;
-	}
+	_strings = std::move(slots);
+	_maniac_zero_string.reset();
 #ifdef HAVE_NLOHMANN_JSON
 	_json_cache.clear();
 #endif
 }
 
-inline const Game_Strings::Strings_t& Game_Strings::GetData() const {
-	return _strings;
+inline Game_Strings::Strings_t Game_Strings::GetData() const {
+	Strings_t data;
+	for (size_t i = 0; i < _strings.size(); ++i) {
+		if (_strings[i]) data.emplace(static_cast<int>(i + 1), *_strings[i]);
+	}
+	return data;
+}
+
+inline std::vector<lcf::DBString> Game_Strings::GetManiacZeroSaveData() const {
+	return _maniac_zero_string ? std::vector<lcf::DBString>{lcf::DBString(*_maniac_zero_string)}
+		: std::vector<lcf::DBString>{};
+}
+
+inline void Game_Strings::SetManiacZeroSaveData(const std::vector<lcf::DBString>& data) {
+	_maniac_zero_string = data.empty() ? std::optional<std::string>{}
+		: std::optional<std::string>{ToString(data.front())};
+}
+
+inline std::vector<int32_t> Game_Strings::GetManiacEmptySlotSaveData() const {
+	std::vector<int32_t> ids;
+	for (size_t i = 0; i < _strings.size(); ++i) {
+		if (_strings[i] && _strings[i]->empty()) ids.push_back(static_cast<int32_t>(i + 1));
+	}
+	return ids;
+}
+
+inline void Game_Strings::SetManiacEmptySlotSaveData(const std::vector<int32_t>& ids) {
+	for (int32_t id : ids) {
+		if (id <= 0) continue;
+		EnsureSize(static_cast<size_t>(id));
+		if (!_strings[id - 1]) _strings[id - 1] = std::make_unique<std::string>();
+	}
+}
+
+inline size_t Game_Strings::GetManiacVectorSize() const {
+	return _strings.size();
+}
+
+inline void Game_Strings::SetManiacVectorSize(int32_t size) {
+	if (size >= 0) EnsureSize(static_cast<size_t>(size));
+}
+
+inline void Game_Strings::EnsureSize(size_t size) {
+	if (_strings.size() < size) _strings.resize(size);
+}
+
+inline bool Game_Strings::IsPresent(int id) const {
+	return id > 0 && static_cast<size_t>(id) <= _strings.size() && _strings[id - 1] != nullptr;
+}
+
+inline void Game_Strings::SetManiacRawSlot(int id, std::string_view value, bool present) {
+	if (id == 0) {
+		_maniac_zero_string = present ? std::optional<std::string>{ToString(value)} : std::optional<std::string>{};
+	} else if (id > 0) {
+		EnsureSize(static_cast<size_t>(id));
+		if (present) {
+			auto& slot = _strings[id - 1];
+			if (slot) *slot = ToString(value);
+			else slot = std::make_unique<std::string>(value);
+		} else {
+			_strings[id - 1].reset();
+		}
+#ifdef HAVE_NLOHMANN_JSON
+		_json_cache.erase(id);
+#endif
+	}
+}
+
+inline std::string_view Game_Strings::GetManiacRawSlot(int id) const {
+	if (id == 0) return _maniac_zero_string ? std::string_view(*_maniac_zero_string) : std::string_view{};
+	return Get(id);
 }
 
 inline std::vector<lcf::DBString> Game_Strings::GetLcfData() const {
-	std::vector<lcf::DBString> lcf_data;
-
-	for (auto& [index, value]: _strings) {
-		assert(index > 0);
-		if (index >= static_cast<int>(lcf_data.size())) {
-			lcf_data.resize(index + 1);
-		}
-		lcf_data[index - 1] = lcf::DBString(value);
+	std::vector<lcf::DBString> lcf_data(_strings.size());
+	for (size_t i = 0; i < _strings.size(); ++i) {
+		if (_strings[i]) lcf_data[i] = lcf::DBString(*_strings[i]);
 	}
 
 	return lcf_data;
@@ -204,11 +284,7 @@ inline std::string_view Game_Strings::Get(int id) const {
 	if (EP_UNLIKELY(ShouldWarn(id))) {
 		WarnGet(id);
 	}
-	auto it = _strings.find(id);
-	if (it == _strings.end()) {
-		return {};
-	}
-	return it->second;
+	return IsPresent(id) ? std::string_view(*_strings[id - 1]) : std::string_view{};
 }
 
 inline std::string_view Game_Strings::GetIndirect(int id, const Game_Variables& variables) const {

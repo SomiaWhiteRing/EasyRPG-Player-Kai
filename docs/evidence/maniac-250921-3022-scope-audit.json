@@ -1,0 +1,138 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_report_sha256": "95455f4dd4bc84a0fe982b504840800c81915bc1e8ee01639511f90c35ba3300",
+  "reviewed_contract_sha256": "41fa2e91684ca374da8f46fdb5233d3ae4821de601b243817acf08350a669ecf",
+  "expression_protocol_sha256": "9af4a8a7c580b26d4e2f63a19e77d4830131141a58fd51e15a8c5da2519132d2",
+  "formatter_sha256": "5d66b47a0a0c6ec3aa85c40e7d393e1c2e59f543539f737b7bfe654bf3059007",
+  "machine_sites": {
+    "0x456a0": {
+      "instruction": "xor r15d, r15d",
+      "bytes": "4533ff"
+    },
+    "0x45703": {
+      "instruction": "xor r15d, r15d",
+      "bytes": "4533ff"
+    },
+    "0x4622b": {
+      "instruction": "cmp byte ptr [rip + 0x223218], r15b",
+      "bytes": "44383d18322200"
+    },
+    "0x46232": {
+      "instruction": "je 0x140047d01",
+      "bytes": "0f84c91a0000"
+    },
+    "0x46238": {
+      "instruction": "jmp 0x1400463e2",
+      "bytes": "e9a5010000"
+    },
+    "0x463e2": {
+      "instruction": "mov eax, dword ptr [r13]",
+      "bytes": "418b4500"
+    },
+    "0x463e6": {
+      "instruction": "sub eax, 1",
+      "bytes": "83e801"
+    },
+    "0x463e9": {
+      "instruction": "js 0x140047d15",
+      "bytes": "0f8826190000"
+    },
+    "0x463ef": {
+      "instruction": "jmp 0x1400458e0",
+      "bytes": "e9ecf4ffff"
+    },
+    "0x47d01": {
+      "instruction": "mov al, 1",
+      "bytes": "b001"
+    },
+    "0x47d03": {
+      "instruction": "jmp 0x140046ef3",
+      "bytes": "e9ebf1ffff"
+    },
+    "0x17bc38": {
+      "instruction": "mov byte ptr [rip + 0xed80b], bpl",
+      "bytes": "40882d0bd80e00"
+    },
+    "0x17be33": {
+      "instruction": "setne byte ptr [rip + 0xed610]",
+      "bytes": "0f950510d60e00"
+    },
+    "0x17c1f7": {
+      "instruction": "setne byte ptr [rip + 0xed24c]",
+      "bytes": "0f95054cd20e00"
+    },
+    "0x17bc0b": {
+      "instruction": "xor ebp, ebp",
+      "bytes": "33ed"
+    },
+    "0x17c10c": {
+      "instruction": "lea r8, [rip + 0xab175]",
+      "bytes": "4c8d0575b10a00"
+    },
+    "0x17c118": {
+      "instruction": "lea rcx, [rsp + 0x30]",
+      "bytes": "488d4c2430"
+    },
+    "0x17c11d": {
+      "instruction": "call 0x1401d8b24",
+      "bytes": "e802ca0500"
+    },
+    "0x17c1cd": {
+      "instruction": "lea r9, [rsp + 0x30]",
+      "bytes": "4c8d4c2430"
+    },
+    "0x17c1d2": {
+      "instruction": "lea rcx, [rip + 0xb4fd7]",
+      "bytes": "488d0dd74f0b00"
+    },
+    "0x17c1d9": {
+      "instruction": "xor r8d, r8d",
+      "bytes": "4533c0"
+    },
+    "0x17c1dc": {
+      "instruction": "lea rdx, [rip + 0xb4ff5]",
+      "bytes": "488d15f54f0b00"
+    },
+    "0x17c1e3": {
+      "instruction": "call qword ptr [rip + 0x8303f]",
+      "bytes": "ff153f300800"
+    },
+    "0x17c1e9": {
+      "instruction": "test eax, eax",
+      "bytes": "85c0"
+    }
+  },
+  "driver_flag_rva": "0x26944a",
+  "driver_flag_write_sites": [
+    "0x17bc38",
+    "0x17be33",
+    "0x17c1f7"
+  ],
+  "effective_branch_ids": [
+    "3022:driver-zero-immediate-success",
+    "3022:driver-nonzero-same-invocation-next-fetch"
+  ],
+  "acceptance_ids": [
+    "W02-031"
+  ],
+  "runtime_rule": "The standalone opcode 3022 block compares driver byte 0x26944a with zero held in r15b. Zero jumps to 0x47d01 and returns success; nonzero jumps to 0x463e2, validates an active frame, and refetches at 0x458e0 within the same dispatcher invocation. Neither branch reads this record's Args or Text or invokes expression evaluator 0x57500.",
+  "record_rule": "No runtime minimum argument count is imposed by this block. Zero, short, extended and malformed Args all choose the same flag-dependent branch; preserve the original decoded Args, Text and indent for serialization and enclosing event scans. Formatter 0x49350 iterates expressions in Args for display only.",
+  "context_rule": "The shared dispatcher has no opcode-3022 interpreter-mode guard. Map autostart, map parallel, called common event and battle event page are static candidate contexts. Both branches use a configuration byte, not an established map/battle-state selector. Original flag reachability and scheduling in each context await W02-031 differential evidence.",
+  "flag_configuration": {
+    "section": "RPG_RT",
+    "key": "pf",
+    "default": 0,
+    "ini_path_suffix": "/rpg_rt.ini",
+    "conversion": "GetPrivateProfileIntW result != 0",
+    "initial_reset_site_rva": "0x17bc38",
+    "ini_store_site_rva": "0x17c1f7",
+    "profile_store_site_rva": "0x17be33"
+  },
+  "flag_provenance_limit": "The INI read and boolean store are statically bound; a separate parsed-profile write also exists. Startup ordering, profile field identity/priority and externally reachable configuration combinations remain W02-031 questions. These limits do not add expression execution branches.",
+  "expression_boundary": "Expression evaluation belongs to actual consumers, including 10220, 3019 argument mode 4 and 12010 predicate type 16, under W03/W02 acceptance. Opcode 3022's formatter/editor membership does not create an execution submode.",
+  "remaining_questions": [
+    "W02-031: establish flag zero/nonzero reachability in applicable original event contexts, same-invocation versus success-return timing, Player parity, and record retention with short/extended Args and Text.",
+    "241028 consumer behavior and Web/Android scheduling remain independently open."
+  ],
+  "scope": "Fixed 250921 Windows standalone opcode 3022 branch inventory only. No Player feature completion is claimed."
+}

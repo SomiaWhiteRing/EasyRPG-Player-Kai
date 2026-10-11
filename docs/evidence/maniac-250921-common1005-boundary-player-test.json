@@ -1,0 +1,6 @@
+{
+  "runner_sha256": "aaaa67b9b3043c1beb9b90506e0e6a5ec0841b87cc63a6d60401dd9741d1369e",
+  "samples_sha256": "481dbee69756278fded87a8da53e264b582a252d75414002f08aef97c0de468b",
+  "output": "[doctest] doctest version is \"2.4.6\"\n[doctest] run with \"--help\" for options\n===============================================================================\n[doctest] test cases:  1 |  1 passed | 0 failed | 455 skipped\n[doctest] assertions: 39 | 39 passed | 0 failed |\n[doctest] Status: SUCCESS!\n",
+  "observation": "Test-only log callback throws at fatal error entry, allowing inspection of the unmodified interpreter stack before error UI. Explicit Clear validates safe teardown; the handler does not resume after errors."
+}

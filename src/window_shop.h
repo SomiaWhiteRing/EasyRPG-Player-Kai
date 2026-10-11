@@ -55,6 +55,9 @@ public:
 
 protected:
 	void UpdateCursorRect();
+	void DrawContents(Bitmap& dst) override;
+	void OnManiacFaceReady(FileRequestResult* result);
+	BitmapRef maniac_faceset;
 
 	std::string_view greeting;
 	std::string_view regreeting;

@@ -29,6 +29,7 @@
 #include "tone.h"
 #include "opacity.h"
 #include "span.h"
+#include "rect.h"
 
 class TilemapLayer;
 
@@ -61,6 +62,9 @@ public:
 	TilemapLayer(int ilayer);
 
 	void Draw(Bitmap& dst, uint8_t z_order, int render_ox, int render_oy);
+	// rectangle width/height are tile counts; x/y are destination pixels.
+	static void DrawManiacTileRectangle(Bitmap& dst, const Bitmap& chipset, Rect rectangle,
+		std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed);
 
 	BitmapRef const& GetChipset() const;
 	void SetChipset(BitmapRef const& nchipset);

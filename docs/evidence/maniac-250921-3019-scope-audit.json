@@ -1,0 +1,184 @@
+{
+  "original_runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_source_sha256": {
+    "commands/03019.md": "70884fa7432d4e0a6800f26e3bd5b8153f835f4141a0bf511e595bd0741c7f83",
+    "evidence/CallCommand-250921.md": "13165a1096c4eee3c3caac4196471616b079110dd2c12ae4b2ad49552bc0af1e",
+    "evidence/runtime-250921/00045660.c": "444c3f28068a970f57be85734d5f95e5718c659cecba9c04db30220b2d8c382b",
+    "analysis-work/reports/03019-58acb09a5d9e03ce662b52f4b646f86ceb4ec18942b286092f3d1230e77574ce.json": "8cdb77c756c5d7e2a370437d71c8f84e14b27808d28c945d23296fcd3d7c7a4c",
+    "analysis-work/reports/03019-f29c3bb51027535f33e26dca13d615f1418970961686d0c38cb9685d93b6183d.json": "83e0faad6982f42aa5fc5898cb56d5e9936993a7a82f0082ab4a3c030d865c23"
+  },
+  "consumer_window": {
+    "first_rva": "0x459bd",
+    "end_rva_exclusive": "0x46177",
+    "instructions": 541,
+    "sha256": "8c7a35f1a60ad60a55bb6cd5f6b38a8cd11f1a1c764e7279f5d0f916143b17c7"
+  },
+  "dispatch_and_consumer_instructions": {
+    "0x459bd": {
+      "instruction": "mov eax, dword ptr [rbx + 4]",
+      "bytes": "8b4304"
+    },
+    "0x459c6": {
+      "instruction": "mov edx, dword ptr [rbx + 0x20]",
+      "bytes": "8b5320"
+    },
+    "0x459ec": {
+      "instruction": "and ecx, 0xf",
+      "bytes": "83e10f"
+    },
+    "0x45ace": {
+      "instruction": "cmp eax, 0xbcb",
+      "bytes": "3dcb0b0000"
+    },
+    "0x45ad3": {
+      "instruction": "je 0x1400463db",
+      "bytes": "0f8402090000"
+    },
+    "0x45ae5": {
+      "instruction": "shr edx, 4",
+      "bytes": "c1ea04"
+    },
+    "0x45be3": {
+      "instruction": "movzx edx, r12b",
+      "bytes": "410fb6d4"
+    },
+    "0x45bf2": {
+      "instruction": "sub edx, 1",
+      "bytes": "83ea01"
+    },
+    "0x45bfb": {
+      "instruction": "sub edx, 2",
+      "bytes": "83ea02"
+    },
+    "0x45c04": {
+      "instruction": "cmp edx, 1",
+      "bytes": "83fa01"
+    },
+    "0x45c9f": {
+      "instruction": "xor edx, edx",
+      "bytes": "33d2"
+    },
+    "0x45dc3": {
+      "instruction": "mov edx, dword ptr [rbx + 0x20]",
+      "bytes": "8b5320"
+    },
+    "0x45eb9": {
+      "instruction": "call 0x1400491f0",
+      "bytes": "e832330000"
+    },
+    "0x45fe1": {
+      "instruction": "cmp dword ptr [rbx + 0x20], 2",
+      "bytes": "837b2002"
+    },
+    "0x460ca": {
+      "instruction": "test edi, edi",
+      "bytes": "85ff"
+    },
+    "0x460d0": {
+      "instruction": "jle 0x140046112",
+      "bytes": "7e40"
+    },
+    "0x460d6": {
+      "instruction": "call 0x14008c800",
+      "bytes": "e825670400"
+    },
+    "0x46112": {
+      "instruction": "mov edx, 1",
+      "bytes": "ba01000000"
+    },
+    "0x4612a": {
+      "instruction": "mov rax, qword ptr [rip + 0x23423f]",
+      "bytes": "488b053f422300"
+    },
+    "0x46166": {
+      "instruction": "cmp edx, 0x573",
+      "bytes": "81fa73050000"
+    },
+    "0x46172": {
+      "instruction": "jmp 0x1400463db",
+      "bytes": "e964020000"
+    }
+  },
+  "reviewed_allocation_array_and_indirect_helpers": [
+    {
+      "first_rva": "0x491f0",
+      "last_instruction_rva": "0x4927e",
+      "instructions": 42
+    },
+    {
+      "first_rva": "0x4a5f0",
+      "last_instruction_rva": "0x4a743",
+      "instructions": 96
+    },
+    {
+      "first_rva": "0x8c800",
+      "last_instruction_rva": "0x8c8f5",
+      "instructions": 65
+    },
+    {
+      "first_rva": "0xca590",
+      "last_instruction_rva": "0xca618",
+      "instructions": 43
+    },
+    {
+      "first_rva": "0x4a4d0",
+      "last_instruction_rva": "0x4a5e7",
+      "instructions": 78
+    },
+    {
+      "first_rva": "0x8c900",
+      "last_instruction_rva": "0x8c995",
+      "instructions": 43
+    },
+    {
+      "first_rva": "0x4a870",
+      "last_instruction_rva": "0x4a8f6",
+      "instructions": 38
+    }
+  ],
+  "partial_differential_audit_sha256": {
+    "docs/evidence/maniac-250921-common1005-generated-audit.json": "1fbb15ccd817e0f0a1857743e4de040d21d39283447b492d05ddd0721ce71707",
+    "docs/evidence/maniac-250921-common1005-modes-audit.json": "0c05df5ab9d26d22d0ed2082469fcea0b5cef583743018b9cc7cde94a666d009"
+  },
+  "effective_branch_to_acceptance": {
+    "3019:opcode-literal-single-indirect-and-generated-3019-skip": "W03-005",
+    "3019:text-literal-direct-indirect-and-short-records": "W03-005",
+    "3019:array-raw-single-indirect-global-self-and-count": "W03-006",
+    "3019:array-zero-base-or-nonpositive-count": "W03-006",
+    "3019:inline-mode-words-raw-single-indirect-and-count": "W03-007",
+    "3019:expression-byte-stream-results-and-side-effects": "W03-008",
+    "3019:same-frame-redispatch-valid-unknown-busy-and-indent": "W03-009"
+  },
+  "parameter_rule": "A0 low nibbles independently select A1 generated opcode, A2 argument source, A3 count and A4 Text modes. Each numeric selector uses literal 0, one lookup 1, or indirect lookup 2..15. Original argument count is retained; absent ordinary fields read zero. Unknown high mode bits and extra arguments are preserved.",
+  "argument_rule": "Array source mode 0 uses raw signed A2, mode 1 uses one lookup, modes 2 and 5..15 use indirect lookup; signed negative base enters the current self bank. Array count uses the A3 numeric mode. Base zero or count below one gives zero generated Args but a one-element storage sentinel. Inline mode 3 treats raw A2 as a mode-word index, reads A5 onward, uses one low nibble per group of four generated values and clamps negative count to zero. Mode 4 evaluates the little-endian expression stream from A5 onward until its byte cursor reaches the original Args end; A3 does not bound result count. Trailing zero tokens can emit zero values.",
+  "text_rule": "Text mode 0 transfers the original command Text; 1 reads string variable A4; 2..15 resolves numeric A4 then reads a string variable. Text is captured before argument expression evaluation, which may mutate its owner.",
+  "dispatch_rule": "Generated opcode 3019 skips Text/Args construction and returns to ordinary fetch. Other generated opcodes retain caller indent, owner/frame and already advanced real cursor, then redispatch in the same interpreter invocation. Unknown opcodes use the normal default route. A busy generated command can rewind the original 3019 cursor, causing regeneration and expression reevaluation on retry; generated target behavior and saved frames remain separate functional acceptance.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page",
+    "all shared-dispatch target opcodes"
+  ],
+  "context_evidence": "The reviewed block lies inside the shared interpreter dispatcher and has no owner-mode guard. Four original/Player 3019-to-1005 context fixtures establish reachability for one generated target, while other targets and retry semantics remain open.",
+  "existing_partial_evidence": [
+    "W02-029: four-context inline literal 3019-to-1005 differential",
+    "W02-030: four-context global/self/indirect/expression 3019-to-1005 differential"
+  ],
+  "remaining_questions": [
+    "W03-005: opcode and Text selectors, short records, dynamic Text lifetime and 3019 self-skip beyond the fixed 1005 examples.",
+    "W03-006: array base/count modes, signed source banks, zero/negative counts, side effects and boundaries.",
+    "W03-007: inline mode-word overlap, all value reference modes, signed count and source boundaries.",
+    "W03-008: expression stream/result count, evaluation order, side effects, errors and shared W03-002 grammar integration.",
+    "W03-009: same-frame target redispatch, unknown target, busy retry/re-evaluation, indent and all applicable caller contexts.",
+    "241028 Windows, 250921 Web and Android remain separately scoped."
+  ],
+  "acceptance_ids": [
+    "W03-005",
+    "W03-006",
+    "W03-007",
+    "W03-008",
+    "W03-009"
+  ],
+  "scope": "250921 Windows opcode 3019 branch inventory only. Original machine bytes and reviewed contract are fixed; this audit does not validate Player feature parity or every generated target."
+}

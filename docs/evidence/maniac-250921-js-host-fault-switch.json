@@ -1,0 +1,21 @@
+{
+  "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "fixture_manifest_sha256": "1b08caa1be8c0eaf26c7b8ad6b94029f443d4d5dab12d79590879d46762c060f",
+  "selected_case": "switch/error/id_proxy_get",
+  "native_dialog": {
+    "api": "MessageBoxW",
+    "message": "Rm2k3+MP Uncontrollable Error\rMessage: Invalid Switch Access [4294967298]",
+    "caption": "RPG Maker 2003",
+    "numeric_variables": [
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+    ]
+  },
+  "observation": "Original runtime reached MessageBoxW; collector terminated the process with the dialog pending. No normal continuation or save is asserted."
+}

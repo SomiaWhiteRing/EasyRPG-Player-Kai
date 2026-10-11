@@ -1,0 +1,878 @@
+[
+  {
+    "name": "number/scalar/undefined",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/null",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/false",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/true",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 1
+  },
+  {
+    "name": "number/scalar/fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/negative_fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": -3
+  },
+  {
+    "name": "number/scalar/nan",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/infinity",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/wrap32",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 1
+  },
+  {
+    "name": "number/scalar/numeric_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 12
+  },
+  {
+    "name": "number/scalar/bad_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/bigint",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/symbol",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": 0
+  },
+  {
+    "name": "number/scalar/object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "valueOf"
+    ],
+    "after": 23
+  },
+  {
+    "name": "number/scalar/throwing_object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "valueOf!"
+    ],
+    "after": 0
+  },
+  {
+    "name": "switch/scalar/undefined",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/null",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/false",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/true",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": true
+  },
+  {
+    "name": "switch/scalar/fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/negative_fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": true
+  },
+  {
+    "name": "switch/scalar/nan",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/infinity",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/wrap32",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": true
+  },
+  {
+    "name": "switch/scalar/numeric_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": true
+  },
+  {
+    "name": "switch/scalar/bad_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/bigint",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/symbol",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": false
+  },
+  {
+    "name": "switch/scalar/object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "valueOf"
+    ],
+    "after": true
+  },
+  {
+    "name": "switch/scalar/throwing_object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "valueOf!"
+    ],
+    "after": false
+  },
+  {
+    "name": "string/scalar/undefined",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "undefined"
+  },
+  {
+    "name": "string/scalar/null",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "null"
+  },
+  {
+    "name": "string/scalar/false",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "false"
+  },
+  {
+    "name": "string/scalar/true",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "true"
+  },
+  {
+    "name": "string/scalar/fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "0.5"
+  },
+  {
+    "name": "string/scalar/negative_fraction",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "-3.7"
+  },
+  {
+    "name": "string/scalar/nan",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "NaN"
+  },
+  {
+    "name": "string/scalar/infinity",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "Infinity"
+  },
+  {
+    "name": "string/scalar/wrap32",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "4294967297"
+  },
+  {
+    "name": "string/scalar/numeric_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "12"
+  },
+  {
+    "name": "string/scalar/bad_string",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "bad"
+  },
+  {
+    "name": "string/scalar/bigint",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": "42"
+  },
+  {
+    "name": "string/scalar/symbol",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": ""
+  },
+  {
+    "name": "string/scalar/object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "toString"
+    ],
+    "after": "object"
+  },
+  {
+    "name": "string/scalar/throwing_object",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "toString!"
+    ],
+    "after": ""
+  },
+  {
+    "name": "number/array/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/array/range_descriptor",
+    "outcome": {
+      "returned": [
+        11,
+        22,
+        33
+      ]
+    },
+    "events": [],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/array/range_pair",
+    "outcome": {
+      "returned": [
+        11,
+        22
+      ]
+    },
+    "events": [],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/array/range",
+    "outcome": {
+      "returned": [
+        11,
+        22,
+        33
+      ]
+    },
+    "events": [],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/proxy/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/proxy/range_descriptor",
+    "outcome": {
+      "returned": [
+        11,
+        22,
+        33
+      ]
+    },
+    "events": [
+      "id:0",
+      "id:1"
+    ],
+    "after": [
+      11,
+      22,
+      33
+    ]
+  },
+  {
+    "name": "number/error/value_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "bad:valueOf"
+    ],
+    "after": [
+      11,
+      0,
+      33
+    ]
+  },
+  {
+    "name": "number/error/value_proxy_get",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      11,
+      0,
+      33
+    ]
+  },
+  {
+    "name": "number/order/id_before_value",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf",
+      "value:valueOf"
+    ],
+    "after": [
+      25,
+      77,
+      77
+    ]
+  },
+  {
+    "name": "number/error/id_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf!",
+      "value:valueOf"
+    ],
+    "after": [
+      77,
+      77,
+      77
+    ]
+  },
+  {
+    "name": "number/error/revoked_values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      77,
+      77,
+      77
+    ]
+  },
+  {
+    "name": "switch/array/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/array/range_descriptor",
+    "outcome": {
+      "returned": [
+        true,
+        false,
+        true
+      ]
+    },
+    "events": [],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/array/range_pair",
+    "outcome": {
+      "returned": [
+        true,
+        false
+      ]
+    },
+    "events": [],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/array/range",
+    "outcome": {
+      "returned": [
+        true,
+        false,
+        true
+      ]
+    },
+    "events": [],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/proxy/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/proxy/range_descriptor",
+    "outcome": {
+      "returned": [
+        true,
+        false,
+        true
+      ]
+    },
+    "events": [
+      "id:0",
+      "id:1"
+    ],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/error/value_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "bad:valueOf"
+    ],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/error/value_proxy_get",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      true,
+      false,
+      true
+    ]
+  },
+  {
+    "name": "switch/order/id_before_value",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf",
+      "value:valueOf"
+    ],
+    "after": [
+      true,
+      true,
+      true
+    ]
+  },
+  {
+    "name": "switch/error/id_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf!",
+      "value:valueOf"
+    ],
+    "after": [
+      true,
+      true,
+      true
+    ]
+  },
+  {
+    "name": "switch/error/revoked_values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      true,
+      true,
+      true
+    ]
+  },
+  {
+    "name": "string/array/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/array/range_descriptor",
+    "outcome": {
+      "returned": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "events": [],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/array/range_pair",
+    "outcome": {
+      "returned": [
+        "A",
+        "B"
+      ]
+    },
+    "events": [],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/array/range",
+    "outcome": {
+      "returned": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "events": [],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/proxy/values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/proxy/range_descriptor",
+    "outcome": {
+      "returned": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "events": [
+      "id:0",
+      "id:1"
+    ],
+    "after": [
+      "A",
+      "B",
+      "C"
+    ]
+  },
+  {
+    "name": "string/error/value_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "bad:toString"
+    ],
+    "after": [
+      "A",
+      "",
+      "C"
+    ]
+  },
+  {
+    "name": "string/error/value_proxy_get",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "value:length",
+      "value:0",
+      "value:1",
+      "value:2"
+    ],
+    "after": [
+      "A",
+      "",
+      "C"
+    ]
+  },
+  {
+    "name": "string/order/id_before_value",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf",
+      "value:toString"
+    ],
+    "after": [
+      "ordered",
+      "before",
+      "before"
+    ]
+  },
+  {
+    "name": "string/error/id_conversion",
+    "outcome": {
+      "returned": true
+    },
+    "events": [
+      "id:valueOf!",
+      "value:toString"
+    ],
+    "after": [
+      "before",
+      "before",
+      "before"
+    ]
+  },
+  {
+    "name": "string/error/revoked_values",
+    "outcome": {
+      "returned": true
+    },
+    "events": [],
+    "after": [
+      "before",
+      "before",
+      "before"
+    ]
+  }
+]

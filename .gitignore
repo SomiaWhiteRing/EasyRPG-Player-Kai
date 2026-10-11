@@ -91,6 +91,17 @@ easyrpg_log.txt
 /*.log
 /*.trs
 Testing/
+/.playwright-mcp/
+*.dmp
+
+# Maniac run outputs stay local; keep static contracts and the regression fixture.
+/docs/evidence/*-manifest.json
+/docs/evidence/*-trace.json
+/docs/evidence/*-observation.json
+/docs/evidence/**/*.lsd
+!/docs/evidence/maniac-250921-original-save-map-self-resume.lsd
+/docs/evidence/maniac-250921-call12330-wait-auto-audit.json
+/docs/evidence/maniac-250921-common1005-wait-*-audit.json
 
 # distribution archives
 easyrpg-player-*.tar.*
@@ -118,6 +129,7 @@ __MACOSX
 *.iml
 local.properties
 *.aar
+*.apk
 
 # libretro
 easyrpg_libretro.*
@@ -150,3 +162,6 @@ eboot.bin
 *.jks
 *.p12
 !/builds/android/nightly-debug.keystore
+
+# Python tooling caches
+__pycache__/

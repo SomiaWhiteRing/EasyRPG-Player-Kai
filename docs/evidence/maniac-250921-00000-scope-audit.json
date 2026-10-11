@@ -1,0 +1,108 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_contract_sha256": "c37e116ec27bdbf2e7b9fcd6cb3b0fb722608d36e90c72e42ff406bee95bb873",
+  "trace_sha256": "77ac766f2f5ed4fbaf26baabc11a55c3030ee534ab2e0e4fb92b86dd54cca330",
+  "dispatch_block_sha256": "5f1ab096d6650efb05bb7716434ed0edf7ecb53edaec06a4434f7a0fff5fa10d",
+  "dispatch_instructions": {
+    "0x45703": {
+      "instruction": "xor r15d, r15d",
+      "bytes": "4533ff"
+    },
+    "0x4762f": {
+      "instruction": "cmp byte ptr [r13 + 0x38], r15b",
+      "bytes": "45387d38"
+    },
+    "0x47633": {
+      "instruction": "jne 0x140047662",
+      "bytes": "752d"
+    },
+    "0x47635": {
+      "instruction": "mov eax, dword ptr [r13]",
+      "bytes": "418b4500"
+    },
+    "0x47639": {
+      "instruction": "cmp eax, 1",
+      "bytes": "83f801"
+    },
+    "0x4763c": {
+      "instruction": "jg 0x140047662",
+      "bytes": "7f24"
+    },
+    "0x4763e": {
+      "instruction": "test eax, eax",
+      "bytes": "85c0"
+    },
+    "0x47640": {
+      "instruction": "je 0x140047654",
+      "bytes": "7412"
+    },
+    "0x47642": {
+      "instruction": "mov rax, qword ptr [r13 + 8]",
+      "bytes": "498b4508"
+    },
+    "0x4764b": {
+      "instruction": "mov dword ptr [rcx + 0x24], r15d",
+      "bytes": "44897924"
+    },
+    "0x4764f": {
+      "instruction": "jmp 0x140046ef3",
+      "bytes": "e99ff8ffff"
+    },
+    "0x47662": {
+      "instruction": "mov rcx, r13",
+      "bytes": "498bcd"
+    },
+    "0x47665": {
+      "instruction": "call 0x1400454e0",
+      "bytes": "e876deffff"
+    },
+    "0x4766a": {
+      "instruction": "cmp byte ptr [r13 + 0x38], 2",
+      "bytes": "41807d3802"
+    },
+    "0x4766f": {
+      "instruction": "jne 0x140047d01",
+      "bytes": "0f858c060000"
+    },
+    "0x47675": {
+      "instruction": "call 0x140096840",
+      "bytes": "e8c6f10400"
+    },
+    "0x4767a": {
+      "instruction": "call 0x140096840",
+      "bytes": "e8c1f10400"
+    },
+    "0x4767f": {
+      "instruction": "mov al, 1",
+      "bytes": "b001"
+    }
+  },
+  "effective_branch_ids": [
+    "0:mode0-single-frame-cursor-reset",
+    "0:mode0-nested-frame-cleanup",
+    "0:mode1-frame-cleanup",
+    "0:mode2-frame-cleanup-and-two-update-calls"
+  ],
+  "parameter_rule": "Opcode 0 is materialized from the four-byte LCF event-list terminator and has no encoded Args or Text. liblcf Code::END is opcode 10. The fixed opcode 0 dispatch block reads owner mode and frame depth. The zero-frame branch at 0x47654 dereferences null and is excluded as an invalid interpreter state, not an accepted mode.",
+  "observed_contexts": [
+    "map parallel single frame and nested common event",
+    "map autostart single frame and nested common event"
+  ],
+  "candidate_contexts_to_verify": [
+    "battle page mode 2 including cleanup and two 0x96840 calls",
+    "other common/parallel and foreground frame transitions"
+  ],
+  "remaining_questions": [
+    "Original and Player cursor reset timing for mode 0 single-frame parallel execution",
+    "Original and Player frame cleanup, bank identity and later command behavior for nested mode 0 and mode 1",
+    "Mode 2 battle End Command reachability, two update calls, battle continuation and Player parity",
+    "LCF terminator serialization is covered by W02-018/019/020; malformed/noncanonical zero records are excluded from standard event-list inputs",
+    "Old 241028 consumer, Web and Android execution are separate acceptance scopes"
+  ],
+  "acceptance_ids": [
+    "W02-018",
+    "W02-019",
+    "W02-020"
+  ],
+  "scope": "250921 Windows End Command branch inventory. Fixed original runtime and reviewed contract identify four valid owner-mode/depth paths; read-only hooks observe three map paths. Battle mode 2 is statically identified, with runtime/Player verification left open. This is scope audit only, not command equivalence."
+}

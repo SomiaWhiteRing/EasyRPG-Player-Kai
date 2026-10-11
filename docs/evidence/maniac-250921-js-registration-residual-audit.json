@@ -1,0 +1,1269 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "prior_target_audit_sha256": "c2b960bdb3802d5d00e84d4365cb927a6d3ef8bd4a2326f603422a42e25534cb",
+  "initializer_roots_rva": [
+    "0x181650",
+    "0x1803e0",
+    "0x17e030"
+  ],
+  "pdata_function_count": 6839,
+  "decoded_pdata_bytes": 2007259,
+  "direct_cross_function_edges": 32132,
+  "indirect_calls_or_jumps_in_pdata": 3641,
+  "direct_graph_function_count": 513,
+  "residual_helper_sites": 29,
+  "residual_owner_functions": 23,
+  "sites_in_functions_with_direct_graph_path": 5,
+  "sites_without_direct_graph_path": 24,
+  "functions": [
+    {
+      "function_begin_rva": "0x102630",
+      "function_end_rva": "0x102abe",
+      "direct_graph_path_from_initializer": [
+        "0x1803e0",
+        "0x101790",
+        "0x102630"
+      ],
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x101e43",
+          "kind": "call",
+          "source_function_rva": "0x101790"
+        },
+        {
+          "site_rva": "0x102b24",
+          "kind": "call",
+          "source_function_rva": "0x102ac0"
+        },
+        {
+          "site_rva": "0x104071",
+          "kind": "call",
+          "source_function_rva": "0x103260"
+        },
+        {
+          "site_rva": "0x115bfd",
+          "kind": "call",
+          "source_function_rva": "0x112930"
+        },
+        {
+          "site_rva": "0x115cbb",
+          "kind": "call",
+          "source_function_rva": "0x112930"
+        },
+        {
+          "site_rva": "0x141930",
+          "kind": "call",
+          "source_function_rva": "0x1418ab"
+        },
+        {
+          "site_rva": "0x143694",
+          "kind": "call",
+          "source_function_rva": "0x142f50"
+        },
+        {
+          "site_rva": "0x161f16",
+          "kind": "call",
+          "source_function_rva": "0x161e60"
+        },
+        {
+          "site_rva": "0x16ba21",
+          "kind": "call",
+          "source_function_rva": "0x16b7d1"
+        },
+        {
+          "site_rva": "0x16ba9d",
+          "kind": "call",
+          "source_function_rva": "0x16b7d1"
+        },
+        {
+          "site_rva": "0x16be1e",
+          "kind": "call",
+          "source_function_rva": "0x16bd47"
+        },
+        {
+          "site_rva": "0x16be91",
+          "kind": "call",
+          "source_function_rva": "0x16bd47"
+        },
+        {
+          "site_rva": "0x174318",
+          "kind": "call",
+          "source_function_rva": "0x17422a"
+        },
+        {
+          "site_rva": "0x17532d",
+          "kind": "call",
+          "source_function_rva": "0x17529a"
+        },
+        {
+          "site_rva": "0x176e7e",
+          "kind": "call",
+          "source_function_rva": "0x176ab0"
+        },
+        {
+          "site_rva": "0x17859b",
+          "kind": "call",
+          "source_function_rva": "0x17835f"
+        },
+        {
+          "site_rva": "0x1789fb",
+          "kind": "call",
+          "source_function_rva": "0x1787b4"
+        },
+        {
+          "site_rva": "0x17f1ed",
+          "kind": "call",
+          "source_function_rva": "0x17f007"
+        },
+        {
+          "site_rva": "0x17f384",
+          "kind": "call",
+          "source_function_rva": "0x17f007"
+        },
+        {
+          "site_rva": "0x17f4be",
+          "kind": "call",
+          "source_function_rva": "0x17f007"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 2,
+      "helper_calls": [
+        {
+          "site_rva": "0x102a2e",
+          "atom_setup_in_local_window": "mov r8d, ebx"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x102ac0",
+      "function_end_rva": "0x102be8",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x141665",
+          "kind": "call",
+          "source_function_rva": "0x141400"
+        },
+        {
+          "site_rva": "0x144328",
+          "kind": "call",
+          "source_function_rva": "0x1441e0"
+        },
+        {
+          "site_rva": "0x145c30",
+          "kind": "call",
+          "source_function_rva": "0x145ad0"
+        },
+        {
+          "site_rva": "0x145e95",
+          "kind": "call",
+          "source_function_rva": "0x145d20"
+        },
+        {
+          "site_rva": "0x145ec3",
+          "kind": "call",
+          "source_function_rva": "0x145d20"
+        },
+        {
+          "site_rva": "0x1460a9",
+          "kind": "call",
+          "source_function_rva": "0x145d20"
+        },
+        {
+          "site_rva": "0x146673",
+          "kind": "call",
+          "source_function_rva": "0x146100"
+        },
+        {
+          "site_rva": "0x1476d6",
+          "kind": "call",
+          "source_function_rva": "0x1472d0"
+        },
+        {
+          "site_rva": "0x14773b",
+          "kind": "call",
+          "source_function_rva": "0x1472d0"
+        },
+        {
+          "site_rva": "0x1520a0",
+          "kind": "call",
+          "source_function_rva": "0x151d4b"
+        },
+        {
+          "site_rva": "0x1585e0",
+          "kind": "call",
+          "source_function_rva": "0x158193"
+        },
+        {
+          "site_rva": "0x1751dc",
+          "kind": "call",
+          "source_function_rva": "0x174d1b"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x102ba7",
+          "atom_setup_in_local_window": "mov r8d, edi"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1050a0",
+      "function_end_rva": "0x10529f",
+      "direct_graph_path_from_initializer": [
+        "0x1803e0",
+        "0x101790",
+        "0x117ab0",
+        "0x112930",
+        "0x1050a0"
+      ],
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x11427e",
+          "kind": "call",
+          "source_function_rva": "0x112930"
+        },
+        {
+          "site_rva": "0x1142c8",
+          "kind": "call",
+          "source_function_rva": "0x112930"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x105151",
+          "atom_setup_in_local_window": "mov r8d, esi"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x10f9bb",
+      "function_end_rva": "0x10fa92",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x10f93b",
+          "kind": "je",
+          "source_function_rva": "0x10f4b2"
+        },
+        {
+          "site_rva": "0x10f957",
+          "kind": "jne",
+          "source_function_rva": "0x10f4b2"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x10fa2e",
+          "atom_setup_in_local_window": null
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x111010",
+      "function_end_rva": "0x111332",
+      "direct_graph_path_from_initializer": [
+        "0x1803e0",
+        "0x101790",
+        "0x117ab0",
+        "0x112930",
+        "0x111010"
+      ],
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x115e8c",
+          "kind": "call",
+          "source_function_rva": "0x112930"
+        },
+        {
+          "site_rva": "0x13d540",
+          "kind": "call",
+          "source_function_rva": "0x13d450"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 2,
+      "helper_calls": [
+        {
+          "site_rva": "0x11123c",
+          "atom_setup_in_local_window": null
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x112930",
+      "function_end_rva": "0x117a24",
+      "direct_graph_path_from_initializer": [
+        "0x1803e0",
+        "0x101790",
+        "0x117ab0",
+        "0x112930"
+      ],
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0xfe2eb",
+          "kind": "call",
+          "source_function_rva": "0xfe069"
+        },
+        {
+          "site_rva": "0xfe401",
+          "kind": "call",
+          "source_function_rva": "0xfe069"
+        },
+        {
+          "site_rva": "0x1054f0",
+          "kind": "call",
+          "source_function_rva": "0x1053e1"
+        },
+        {
+          "site_rva": "0x1056cf",
+          "kind": "call",
+          "source_function_rva": "0x1053e1"
+        },
+        {
+          "site_rva": "0x10a4a4",
+          "kind": "call",
+          "source_function_rva": "0x10a40a"
+        },
+        {
+          "site_rva": "0x10fcfb",
+          "kind": "call",
+          "source_function_rva": "0x10fc10"
+        },
+        {
+          "site_rva": "0x10fea8",
+          "kind": "call",
+          "source_function_rva": "0x10fe01"
+        },
+        {
+          "site_rva": "0x110085",
+          "kind": "call",
+          "source_function_rva": "0x10ff90"
+        },
+        {
+          "site_rva": "0x1128f2",
+          "kind": "call",
+          "source_function_rva": "0x1126f0"
+        },
+        {
+          "site_rva": "0x117a97",
+          "kind": "call",
+          "source_function_rva": "0x117a30"
+        },
+        {
+          "site_rva": "0x117b2c",
+          "kind": "call",
+          "source_function_rva": "0x117ab0"
+        },
+        {
+          "site_rva": "0x117fd2",
+          "kind": "call",
+          "source_function_rva": "0x117ecf"
+        },
+        {
+          "site_rva": "0x118066",
+          "kind": "call",
+          "source_function_rva": "0x118056"
+        },
+        {
+          "site_rva": "0x11820d",
+          "kind": "call",
+          "source_function_rva": "0x1181cb"
+        },
+        {
+          "site_rva": "0x118751",
+          "kind": "call",
+          "source_function_rva": "0x1186ad"
+        },
+        {
+          "site_rva": "0x118ae0",
+          "kind": "call",
+          "source_function_rva": "0x1189d0"
+        },
+        {
+          "site_rva": "0x118d53",
+          "kind": "call",
+          "source_function_rva": "0x118cc0"
+        },
+        {
+          "site_rva": "0x118df3",
+          "kind": "call",
+          "source_function_rva": "0x118cc0"
+        },
+        {
+          "site_rva": "0x1191ac",
+          "kind": "call",
+          "source_function_rva": "0x118cc0"
+        },
+        {
+          "site_rva": "0x119bd5",
+          "kind": "call",
+          "source_function_rva": "0x119b40"
+        },
+        {
+          "site_rva": "0x11a098",
+          "kind": "call",
+          "source_function_rva": "0x119f27"
+        },
+        {
+          "site_rva": "0x11a7b6",
+          "kind": "call",
+          "source_function_rva": "0x11a6fc"
+        },
+        {
+          "site_rva": "0x11ab5d",
+          "kind": "call",
+          "source_function_rva": "0x11aa20"
+        },
+        {
+          "site_rva": "0x12c1c3",
+          "kind": "call",
+          "source_function_rva": "0x12bcd0"
+        },
+        {
+          "site_rva": "0x12c519",
+          "kind": "call",
+          "source_function_rva": "0x12c420"
+        },
+        {
+          "site_rva": "0x12c821",
+          "kind": "call",
+          "source_function_rva": "0x12c420"
+        },
+        {
+          "site_rva": "0x13fbac",
+          "kind": "call",
+          "source_function_rva": "0x13fb3f"
+        },
+        {
+          "site_rva": "0x13fc99",
+          "kind": "call",
+          "source_function_rva": "0x13fc10"
+        },
+        {
+          "site_rva": "0x13fdd4",
+          "kind": "call",
+          "source_function_rva": "0x13fd20"
+        },
+        {
+          "site_rva": "0x141e41",
+          "kind": "call",
+          "source_function_rva": "0x141d10"
+        },
+        {
+          "site_rva": "0x1422c3",
+          "kind": "call",
+          "source_function_rva": "0x141d10"
+        },
+        {
+          "site_rva": "0x143573",
+          "kind": "call",
+          "source_function_rva": "0x142f50"
+        },
+        {
+          "site_rva": "0x1438c4",
+          "kind": "call",
+          "source_function_rva": "0x142f50"
+        },
+        {
+          "site_rva": "0x1440d5",
+          "kind": "call",
+          "source_function_rva": "0x143a70"
+        },
+        {
+          "site_rva": "0x144d84",
+          "kind": "call",
+          "source_function_rva": "0x144b70"
+        },
+        {
+          "site_rva": "0x1451d1",
+          "kind": "call",
+          "source_function_rva": "0x145174"
+        },
+        {
+          "site_rva": "0x146b3b",
+          "kind": "call",
+          "source_function_rva": "0x1469e0"
+        },
+        {
+          "site_rva": "0x147178",
+          "kind": "call",
+          "source_function_rva": "0x1470dc"
+        },
+        {
+          "site_rva": "0x14b0ee",
+          "kind": "call",
+          "source_function_rva": "0x14b08c"
+        },
+        {
+          "site_rva": "0x14bbdd",
+          "kind": "call",
+          "source_function_rva": "0x14baa5"
+        },
+        {
+          "site_rva": "0x14bf89",
+          "kind": "call",
+          "source_function_rva": "0x14bea3"
+        },
+        {
+          "site_rva": "0x14c3c7",
+          "kind": "call",
+          "source_function_rva": "0x14c2a0"
+        },
+        {
+          "site_rva": "0x151b2b",
+          "kind": "call",
+          "source_function_rva": "0x151aff"
+        },
+        {
+          "site_rva": "0x156566",
+          "kind": "call",
+          "source_function_rva": "0x1560c5"
+        },
+        {
+          "site_rva": "0x156b6e",
+          "kind": "call",
+          "source_function_rva": "0x156b41"
+        },
+        {
+          "site_rva": "0x156cee",
+          "kind": "call",
+          "source_function_rva": "0x156be0"
+        },
+        {
+          "site_rva": "0x159b4b",
+          "kind": "call",
+          "source_function_rva": "0x1599f0"
+        },
+        {
+          "site_rva": "0x159ddf",
+          "kind": "call",
+          "source_function_rva": "0x159d90"
+        },
+        {
+          "site_rva": "0x15a190",
+          "kind": "call",
+          "source_function_rva": "0x15a154"
+        },
+        {
+          "site_rva": "0x15a683",
+          "kind": "call",
+          "source_function_rva": "0x15a64c"
+        },
+        {
+          "site_rva": "0x15afed",
+          "kind": "call",
+          "source_function_rva": "0x15afa1"
+        },
+        {
+          "site_rva": "0x15b706",
+          "kind": "call",
+          "source_function_rva": "0x15b6b1"
+        },
+        {
+          "site_rva": "0x15bdae",
+          "kind": "call",
+          "source_function_rva": "0x15bd78"
+        },
+        {
+          "site_rva": "0x15c174",
+          "kind": "call",
+          "source_function_rva": "0x15c010"
+        },
+        {
+          "site_rva": "0x15c9cb",
+          "kind": "call",
+          "source_function_rva": "0x15c92b"
+        },
+        {
+          "site_rva": "0x15cca5",
+          "kind": "call",
+          "source_function_rva": "0x15cbad"
+        },
+        {
+          "site_rva": "0x15cd51",
+          "kind": "call",
+          "source_function_rva": "0x15ccb2"
+        },
+        {
+          "site_rva": "0x15e064",
+          "kind": "call",
+          "source_function_rva": "0x15dc56"
+        },
+        {
+          "site_rva": "0x15e211",
+          "kind": "call",
+          "source_function_rva": "0x15dc56"
+        },
+        {
+          "site_rva": "0x15f430",
+          "kind": "call",
+          "source_function_rva": "0x15f359"
+        },
+        {
+          "site_rva": "0x160268",
+          "kind": "call",
+          "source_function_rva": "0x1601f3"
+        },
+        {
+          "site_rva": "0x16034c",
+          "kind": "call",
+          "source_function_rva": "0x1602f2"
+        },
+        {
+          "site_rva": "0x1607d9",
+          "kind": "call",
+          "source_function_rva": "0x160720"
+        },
+        {
+          "site_rva": "0x160881",
+          "kind": "call",
+          "source_function_rva": "0x160720"
+        },
+        {
+          "site_rva": "0x1614f2",
+          "kind": "call",
+          "source_function_rva": "0x1613df"
+        },
+        {
+          "site_rva": "0x161591",
+          "kind": "call",
+          "source_function_rva": "0x1613df"
+        },
+        {
+          "site_rva": "0x161d68",
+          "kind": "call",
+          "source_function_rva": "0x161cd8"
+        },
+        {
+          "site_rva": "0x1623d5",
+          "kind": "call",
+          "source_function_rva": "0x1621b9"
+        },
+        {
+          "site_rva": "0x16248a",
+          "kind": "call",
+          "source_function_rva": "0x1621b9"
+        },
+        {
+          "site_rva": "0x162a92",
+          "kind": "call",
+          "source_function_rva": "0x16268b"
+        },
+        {
+          "site_rva": "0x162cb1",
+          "kind": "call",
+          "source_function_rva": "0x16268b"
+        },
+        {
+          "site_rva": "0x1630b3",
+          "kind": "call",
+          "source_function_rva": "0x16268b"
+        },
+        {
+          "site_rva": "0x1635a3",
+          "kind": "call",
+          "source_function_rva": "0x1633c2"
+        },
+        {
+          "site_rva": "0x163869",
+          "kind": "call",
+          "source_function_rva": "0x1633c2"
+        },
+        {
+          "site_rva": "0x16427a",
+          "kind": "call",
+          "source_function_rva": "0x1641e0"
+        },
+        {
+          "site_rva": "0x164739",
+          "kind": "call",
+          "source_function_rva": "0x164503"
+        },
+        {
+          "site_rva": "0x165263",
+          "kind": "call",
+          "source_function_rva": "0x164c12"
+        },
+        {
+          "site_rva": "0x169aff",
+          "kind": "call",
+          "source_function_rva": "0x169abb"
+        },
+        {
+          "site_rva": "0x16e7b6",
+          "kind": "call",
+          "source_function_rva": "0x16e681"
+        },
+        {
+          "site_rva": "0x17517e",
+          "kind": "call",
+          "source_function_rva": "0x174d1b"
+        },
+        {
+          "site_rva": "0x175c7e",
+          "kind": "call",
+          "source_function_rva": "0x175a90"
+        },
+        {
+          "site_rva": "0x177679",
+          "kind": "call",
+          "source_function_rva": "0x1775ce"
+        },
+        {
+          "site_rva": "0x17800b",
+          "kind": "call",
+          "source_function_rva": "0x177fe5"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 5,
+      "helper_calls": [
+        {
+          "site_rva": "0x115496",
+          "atom_setup_in_local_window": "mov r8d, eax"
+        },
+        {
+          "site_rva": "0x116d78",
+          "atom_setup_in_local_window": "mov r8d, ebx"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1417a0",
+      "function_end_rva": "0x141892",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x141796",
+          "kind": "jne",
+          "source_function_rva": "0x141750"
+        },
+        {
+          "site_rva": "0x1418b1",
+          "kind": "jle",
+          "source_function_rva": "0x1418ab"
+        },
+        {
+          "site_rva": "0x141948",
+          "kind": "jmp",
+          "source_function_rva": "0x1418ab"
+        },
+        {
+          "site_rva": "0x141990",
+          "kind": "jmp",
+          "source_function_rva": "0x1418ab"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x14186a",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x141d10",
+      "function_end_rva": "0x1423c5",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x141b27",
+          "kind": "je",
+          "source_function_rva": "0x1419d2"
+        },
+        {
+          "site_rva": "0x141b5d",
+          "kind": "jne",
+          "source_function_rva": "0x1419d2"
+        },
+        {
+          "site_rva": "0x141b6c",
+          "kind": "je",
+          "source_function_rva": "0x1419d2"
+        },
+        {
+          "site_rva": "0x141bab",
+          "kind": "jmp",
+          "source_function_rva": "0x1419d2"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x1423a6",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1424b4",
+      "function_end_rva": "0x1425ae",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x142499",
+          "kind": "jne",
+          "source_function_rva": "0x1423d0"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x14255f",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x142a70",
+      "function_end_rva": "0x142f4a",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [],
+      "absolute_pointer_references": [
+        {
+          "section": ".data",
+          "rva": "0x25cb48",
+          "adjacent_name": "every",
+          "adjacent_name_rva": "0x22f4fc"
+        }
+      ],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x142efd",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1456d0",
+      "function_end_rva": "0x145ac6",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x157e79",
+          "kind": "call",
+          "source_function_rva": "0x156e00"
+        }
+      ],
+      "absolute_pointer_references": [
+        {
+          "section": ".data",
+          "rva": "0x25cd68",
+          "adjacent_name": "push",
+          "adjacent_name_rva": "0x22f5bc"
+        },
+        {
+          "section": ".data",
+          "rva": "0x25cda8",
+          "adjacent_name": "unshift",
+          "adjacent_name_rva": "0x22f5e8"
+        }
+      ],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x145a91",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x145ad0",
+      "function_end_rva": "0x145d16",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x157274",
+          "kind": "call",
+          "source_function_rva": "0x156e00"
+        }
+      ],
+      "absolute_pointer_references": [
+        {
+          "section": ".data",
+          "rva": "0x25cd88",
+          "adjacent_name": "shift",
+          "adjacent_name_rva": "0x22f5b4"
+        },
+        {
+          "section": ".data",
+          "rva": "0x25cdc8",
+          "adjacent_name": "reverse",
+          "adjacent_name_rva": "0x22f5e0"
+        }
+      ],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x145ca2",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x146100",
+      "function_end_rva": "0x1467c5",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [],
+      "absolute_pointer_references": [
+        {
+          "section": ".data",
+          "rva": "0x25ce28",
+          "adjacent_name": "splice",
+          "adjacent_name_rva": "0x22f60c"
+        },
+        {
+          "section": ".data",
+          "rva": "0x25ce48",
+          "adjacent_name": "copyWithin",
+          "adjacent_name_rva": "0x22f600"
+        }
+      ],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x14651a",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        },
+        {
+          "site_rva": "0x1466e3",
+          "atom_setup_in_local_window": "mov r8d, 0x30"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x14fd38",
+      "function_end_rva": "0x14ff06",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x14fcc5",
+          "kind": "jne",
+          "source_function_rva": "0x14fca8"
+        },
+        {
+          "site_rva": "0x14fcd5",
+          "kind": "jne",
+          "source_function_rva": "0x14fca8"
+        },
+        {
+          "site_rva": "0x14fcdf",
+          "kind": "je",
+          "source_function_rva": "0x14fca8"
+        },
+        {
+          "site_rva": "0x14fce9",
+          "kind": "je",
+          "source_function_rva": "0x14fca8"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x14fe81",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x150d42",
+      "function_end_rva": "0x150e60",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x150f7b",
+          "kind": "jmp",
+          "source_function_rva": "0x150e9d"
+        },
+        {
+          "site_rva": "0x1513b4",
+          "kind": "jmp",
+          "source_function_rva": "0x150e9d"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x150e04",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x150e9d",
+      "function_end_rva": "0x1513e7",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x150db4",
+          "kind": "je",
+          "source_function_rva": "0x150d42"
+        },
+        {
+          "site_rva": "0x150dbc",
+          "kind": "js",
+          "source_function_rva": "0x150d42"
+        },
+        {
+          "site_rva": "0x150e0b",
+          "kind": "js",
+          "source_function_rva": "0x150d42"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x150fd4",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1516d5",
+      "function_end_rva": "0x1519c4",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x1515e1",
+          "kind": "je",
+          "source_function_rva": "0x1515d3"
+        },
+        {
+          "site_rva": "0x151603",
+          "kind": "jne",
+          "source_function_rva": "0x1515d3"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x1518b5",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        },
+        {
+          "site_rva": "0x151937",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x151d4b",
+      "function_end_rva": "0x152369",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x152410",
+          "kind": "jmp",
+          "source_function_rva": "0x152369"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x151f06",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        },
+        {
+          "site_rva": "0x152251",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1527af",
+      "function_end_rva": "0x152983",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x1525c5",
+          "kind": "je",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x152601",
+          "kind": "je",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x152629",
+          "kind": "jmp",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x152631",
+          "kind": "je",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x1526be",
+          "kind": "je",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x1526cd",
+          "kind": "jne",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x1526db",
+          "kind": "jne",
+          "source_function_rva": "0x152510"
+        },
+        {
+          "site_rva": "0x1527a9",
+          "kind": "js",
+          "source_function_rva": "0x1526f8"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x152878",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x1529e9",
+      "function_end_rva": "0x152efd",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x15305c",
+          "kind": "jmp",
+          "source_function_rva": "0x152f19"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x152d0c",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x153371",
+      "function_end_rva": "0x154310",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x15335e",
+          "kind": "je",
+          "source_function_rva": "0x153310"
+        },
+        {
+          "site_rva": "0x1545ee",
+          "kind": "je",
+          "source_function_rva": "0x15450e"
+        },
+        {
+          "site_rva": "0x15467e",
+          "kind": "jmp",
+          "source_function_rva": "0x15450e"
+        },
+        {
+          "site_rva": "0x15468a",
+          "kind": "jmp",
+          "source_function_rva": "0x15450e"
+        },
+        {
+          "site_rva": "0x1546ed",
+          "kind": "jmp",
+          "source_function_rva": "0x15450e"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 1,
+      "helper_calls": [
+        {
+          "site_rva": "0x153677",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        },
+        {
+          "site_rva": "0x153b88",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x154746",
+      "function_end_rva": "0x154b85",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x154bc0",
+          "kind": "jb",
+          "source_function_rva": "0x154b85"
+        },
+        {
+          "site_rva": "0x154bd0",
+          "kind": "jg",
+          "source_function_rva": "0x154b85"
+        },
+        {
+          "site_rva": "0x154be8",
+          "kind": "jmp",
+          "source_function_rva": "0x154b85"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x1548b9",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        },
+        {
+          "site_rva": "0x154a4e",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    },
+    {
+      "function_begin_rva": "0x154c41",
+      "function_end_rva": "0x1555d6",
+      "direct_graph_path_from_initializer": null,
+      "direct_inbound_edges": [
+        {
+          "site_rva": "0x154c2e",
+          "kind": "je",
+          "source_function_rva": "0x154bf0"
+        }
+      ],
+      "absolute_pointer_references": [],
+      "indirect_call_or_jump_count": 0,
+      "helper_calls": [
+        {
+          "site_rva": "0x155096",
+          "atom_setup_in_local_window": "mov r8d, 0x55"
+        }
+      ]
+    }
+  ],
+  "scope": "All 29 unobserved direct calls to generic atom-property helper 0x101790 are tied to 23 PE function ranges. The direct graph follows calls and jumps from three audited initializer functions, including both arms of conditions. Five sites lie in four functions with a direct graph path; 24 sites have no such path. This is an upper-bound graph only: it does not prove branch feasibility, resolve indirect dispatch, establish value/target provenance, or close M0-028.",
+  "remaining_questions": [
+    "Resolve indirect dispatch or callback-table paths into the 23 functions during initialization.",
+    "Trace the object and property value through each candidate path; a generic atom-property helper call alone does not establish native host registration."
+  ]
+}

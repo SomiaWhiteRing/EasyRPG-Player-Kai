@@ -503,6 +503,87 @@ void Sdl2Ui::ToggleFullscreen() {
 	EndDisplayModeChange();
 }
 
+bool Sdl2Ui::SetManiacWindowZoom(int zoom) {
+#if defined(SUPPORT_ZOOM) && defined(_WIN32)
+	SDL_Rect bounds;
+	if (SDL_GetDisplayBounds(SDL_GetWindowDisplayIndex(sdl_window), &bounds) != 0) return false;
+	const int effective_zoom = ManiacWindowZoomForBounds(zoom, bounds.w, bounds.h);
+	const bool same_zoom = current_display_mode.zoom == effective_zoom;
+	if (!IsFullscreen() && (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_MAXIMIZED))
+		SDL_RestoreWindow(sdl_window);
+	BeginDisplayModeChange();
+	current_display_mode.zoom = effective_zoom;
+	EndDisplayModeChange();
+	// An explicit option request also resizes a manually resized window.
+	if (same_zoom && !IsFullscreen())
+		SDL_SetWindowSize(sdl_window, main_surface->width() * effective_zoom, main_surface->height() * effective_zoom);
+	maniac_window_zoom = zoom;
+	vcfg.window_zoom.Set(current_display_mode.zoom);
+	return current_display_mode.zoom == effective_zoom;
+#else
+	return false;
+#endif
+}
+
+bool Sdl2Ui::SetManiacWindowFit(bool enabled) {
+	const bool previous = maniac_window_fit;
+	const int requested = maniac_window_zoom;
+	maniac_window_fit = enabled;
+	if (!SetManiacWindowZoom(std::clamp(requested, 1, 4))) {
+		maniac_window_fit = previous;
+		return false;
+	}
+	maniac_window_zoom = requested;
+	maniac_window_fit_requested = true;
+#if defined(SUPPORT_ZOOM) && defined(_WIN32)
+	if (!IsFullscreen()) {
+		SDL_Rect bounds;
+		int top = 0, left = 0, bottom = 0, right = 0, width, height;
+		SDL_GetDisplayBounds(SDL_GetWindowDisplayIndex(sdl_window), &bounds);
+		SDL_GetWindowBordersSize(sdl_window, &top, &left, &bottom, &right);
+		SDL_GetWindowSize(sdl_window, &width, &height);
+		SDL_SetWindowPosition(sdl_window, bounds.x + (bounds.w - width - left - right) / 2 + left,
+			bounds.y + (bounds.h - height - top - bottom) / 2 + top);
+	}
+#endif
+	return true;
+}
+
+bool Sdl2Ui::SetManiacScreenMode(bool fullscreen) {
+	if (IsFullscreen() != fullscreen) ToggleFullscreen();
+	if (IsFullscreen() != fullscreen) return false;
+	ApplyManiacScreenMode(fullscreen);
+	window.size_changed = true;
+	if (!fullscreen) return SetManiacWindowFit(maniac_window_fit);
+	return true;
+}
+
+bool Sdl2Ui::SetManiacWindowInterpolation(bool enabled) {
+#if SDL_VERSION_ATLEAST(2, 0, 12)
+	SDL_Texture* texture = sdl_texture_game;
+	if (!maniac_window_interpolation_requested || maniac_window_interpolation != enabled) {
+		// SDL2's D3D backend caches the bound texture's sampler state. A new texture
+		// makes an explicit filter change reach that state without changing the bitmap.
+		texture = SDL_CreateTexture(sdl_renderer, texture_format, SDL_TEXTUREACCESS_STREAMING,
+			main_surface->width(), main_surface->height());
+		if (!texture) return false;
+	}
+	if (SDL_SetTextureScaleMode(texture, enabled ? SDL_ScaleModeLinear : SDL_ScaleModeNearest) != 0) {
+		if (texture != sdl_texture_game) SDL_DestroyTexture(texture);
+		return false;
+	}
+	if (texture != sdl_texture_game) {
+		SDL_DestroyTexture(sdl_texture_game);
+		sdl_texture_game = texture;
+	}
+	maniac_window_interpolation = enabled;
+	maniac_window_interpolation_requested = true;
+	return true;
+#else
+	return false;
+#endif
+}
+
 void Sdl2Ui::ToggleZoom() {
 #ifdef SUPPORT_ZOOM
 	BeginDisplayModeChange();
@@ -534,6 +615,35 @@ void Sdl2Ui::ToggleZoom() {
 #endif
 }
 
+bool Sdl2Ui::HasInputFocus() const {
+	return sdl_window && (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS);
+}
+
+bool Sdl2Ui::IsJoystickAvailable() const {
+#if defined(USE_JOYSTICK) && defined(SUPPORT_JOYSTICK)
+	for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+		auto* joystick = SDL_JoystickOpen(i);
+		const bool available = joystick && SDL_JoystickGetAttached(joystick);
+		if (joystick) SDL_JoystickClose(joystick);
+		if (available) return true;
+	}
+#endif
+	return false;
+}
+
+bool Sdl2Ui::ConfirmManiacFileOutput() {
+	const SDL_MessageBoxButtonData buttons[] = {
+		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes"},
+		{SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No"}
+	};
+	const SDL_MessageBoxData box = {SDL_MESSAGEBOX_WARNING, sdl_window, "RPG Maker 2003",
+		"Outputting multiple files in a short time. Do you want to continue? (Select No to exit).",
+		2, buttons, nullptr};
+	int answer = 0;
+	if (SDL_ShowMessageBox(&box, &answer) < 0) Output::Error("File output confirmation failed: {}", SDL_GetError());
+	return answer == 1;
+}
+
 bool Sdl2Ui::ProcessEvents() {
 #if defined(__WIIU__)
 		if (!WiiU_ProcessProcUI()) {
@@ -555,6 +665,13 @@ bool Sdl2Ui::ProcessEvents() {
 
 		if (Player::exit_flag)
 			break;
+	}
+
+	// The command can disable inactive execution after the focus-lost event.
+	// Only wait here: audio suspension belongs to the original focus event.
+	if (Player::IsPatchManiac() && !Player::exit_flag && ShouldPauseWhenFocusLost()
+			&& !(SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS)) {
+		WaitForFocus();
 	}
 
 	return true;
@@ -587,6 +704,12 @@ void Sdl2Ui::ToggleVsync() {
 }
 
 void Sdl2Ui::UpdateDisplay() {
+	const bool window_interpolation = UseManiacWindowInterpolation();
+#if SDL_VERSION_ATLEAST(2, 0, 12)
+	if (maniac_window_interpolation_requested)
+		SDL_SetTextureScaleMode(sdl_texture_game,
+			window_interpolation && maniac_window_interpolation ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+#endif
 #ifdef __WIIU__
 	if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
 		// Workaround WiiU bug: Bilinear uses a render target and for these the format is not converted
@@ -622,7 +745,12 @@ void Sdl2Ui::UpdateDisplay() {
 			}
 		};
 
-		if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Integer) {
+		if (maniac_screen_mode_requested && IsFullscreen()) {
+			const Rect rect = ManiacFullscreenRect(window.width, window.height);
+			viewport = {rect.x, rect.y, rect.width, rect.height};
+			window.scale = static_cast<float>(rect.width) / main_surface->width();
+			SDL_RenderSetViewport(sdl_renderer, &viewport);
+		} else if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Integer) {
 			// Integer division on purpose
 			if (want_aspect > real_aspect) {
 				window.scale = static_cast<float>(window.width / main_surface->width());
@@ -682,7 +810,7 @@ void Sdl2Ui::UpdateDisplay() {
 	}
 
 	SDL_RenderClear(sdl_renderer);
-	if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
+	if (!window_interpolation && vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
 		// Render game texture on the scaled texture
 		SDL_SetRenderTarget(sdl_renderer, sdl_texture_scaled);
 		SDL_RenderClear(sdl_renderer);
@@ -804,38 +932,41 @@ void Sdl2Ui::ProcessEvent(SDL_Event &evnt) {
 	}
 }
 
+void Sdl2Ui::WaitForFocus() {
+	bool last = ShowCursor(true);
+
+	// Filter SDL events until focus is regained
+	SDL_Event wait_event;
+
+	while (SDL_WaitEvent(&wait_event)) {
+		if (wait_event.type == SDL_WINDOWEVENT && wait_event.window.event != SDL_WINDOWEVENT_FOCUS_LOST) {
+			// Process size change etc. events
+			ProcessWindowEvent(wait_event);
+		}
+
+		if (FilterUntilFocus(&wait_event)) {
+			break;
+		}
+	}
+
+	ShowCursor(last);
+
+	Player::Resume();
+	ResetKeys();
+
+}
+
 void Sdl2Ui::ProcessWindowEvent(SDL_Event &evnt) {
 	int state = evnt.window.event;
 
 	if (state == SDL_WINDOWEVENT_FOCUS_LOST) {
-		auto cfg = vcfg;
-		vGetConfig(cfg);
-		if (!cfg.pause_when_focus_lost.Get()) {
+		if (!ShouldPauseWhenFocusLost()) {
 			return;
 		}
 
 		Player::Pause();
 
-		bool last = ShowCursor(true);
-
-		// Filter SDL events until focus is regained
-		SDL_Event wait_event;
-
-		while (SDL_WaitEvent(&wait_event)) {
-			if (wait_event.type == SDL_WINDOWEVENT && wait_event.window.event != SDL_WINDOWEVENT_FOCUS_LOST) {
-				// Process size change etc. events
-				ProcessWindowEvent(wait_event);
-			}
-
-			if (FilterUntilFocus(&wait_event)) {
-				break;
-			}
-		}
-
-		ShowCursor(last);
-
-		Player::Resume();
-		ResetKeys();
+		WaitForFocus();
 
 		return;
 	}

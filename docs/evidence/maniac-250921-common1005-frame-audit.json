@@ -1,0 +1,537 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runner_sha256": "ccc41a55ac3c98f965bcddff24514e379fb3f4c21c15611054ed49531729063b",
+  "player_frame_test_sha256": "7a824a55017d5e16a52e42038ca32591d01c51c8c0519470994cb91048c46d27",
+  "cases": [
+    {
+      "context": "auto",
+      "runtime": "original",
+      "trace_sha256": "ae3dab161703d65a7e2d459e20164ab15492d92473f9940389b392cc7b91e5ee",
+      "save_sha256": "7ddba099c3dbc411edbab7fea71a0f9c43c76ccb8f86819117c15110fbe9719f",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        }
+      ],
+      "map_self": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                90
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    {
+      "context": "auto",
+      "runtime": "player",
+      "trace_sha256": "c42d81125068e048df3734b96fdce3fc61c54445993bd1ce0ec78d843d37e856",
+      "save_sha256": "3b862d5bb996c096afeb1e10c822e3cfd15ea97bf3cd470842b036aea37b37e9",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31,
+            0
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42,
+            0
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        }
+      ],
+      "map_self": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                90,
+                0
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    {
+      "context": "parallel",
+      "runtime": "original",
+      "trace_sha256": "52c3ae2851b70e1e2738c540a1240dd0fdb340bbd0ab35a63585fd003c463d75",
+      "save_sha256": "5cba50138cd12c7c3a39f201d1a8da3831e47c751dbc34111d27e1de7556b7a2",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        }
+      ],
+      "map_self": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                90
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    {
+      "context": "parallel",
+      "runtime": "player",
+      "trace_sha256": "da7e6381097636372318b0b4666caaad3fbb120014fb7aa325250388dbd87e67",
+      "save_sha256": "1d675bffe9dd945c4c127812f32dca8974fb2bcdbf17c9413beebb142df9ec72",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31,
+            0
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42,
+            0
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        }
+      ],
+      "map_self": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                90,
+                0
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    {
+      "context": "nested",
+      "runtime": "original",
+      "trace_sha256": "8c66123e91d4dedffdcc2a876803da74b94f1ef0a3d874193c3be909f042f87c",
+      "save_sha256": "307004a7bea61b0b2c06d43aa674a87bdb36c2e20be26733dc79f57fc53b542b",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        },
+        {
+          "common_event_id": 4,
+          "numbers_positive_slots": [
+            90
+          ]
+        }
+      ],
+      "map_self": []
+    },
+    {
+      "context": "nested",
+      "runtime": "player",
+      "trace_sha256": "8182b01f8b1cc71c401322d34d8c5f851757d985f9d93b87485867d123c8af20",
+      "save_sha256": "0f90f58a9f3729406d952b9401788064421fbdd7c8127da0d9400b8093722073",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31,
+            0
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42,
+            0
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        },
+        {
+          "common_event_id": 4,
+          "numbers_positive_slots": [
+            90,
+            0
+          ]
+        }
+      ],
+      "map_self": []
+    },
+    {
+      "context": "battle",
+      "runtime": "original",
+      "trace_sha256": "91b27edc6992f18442556ba9f7a9ff3f3fe5310134b50c7931c202fd70b97c6b",
+      "save_sha256": "001e49d4bdd3f04022a52c174c873ba6427f22177a17224d8bfc4cb698fd4bc6",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        },
+        {
+          "common_event_id": 4,
+          "numbers_positive_slots": [
+            90
+          ]
+        }
+      ],
+      "map_self": []
+    },
+    {
+      "context": "battle",
+      "runtime": "player",
+      "trace_sha256": "3a2affe110f3bce5777421bb8f89815654d0b93e171b03405e604cc253dc46ca",
+      "save_sha256": "6c9436d9a478bc5e24e310a5dce798d8b024d671f3bfb3b5c3fdf403015fa442",
+      "numbers": [
+        31,
+        31,
+        42,
+        42,
+        77,
+        77,
+        123,
+        333,
+        90,
+        0,
+        0,
+        123,
+        333,
+        90,
+        0,
+        0,
+        0,
+        0,
+        0,
+        333
+      ],
+      "common_self": [
+        {
+          "common_event_id": 1,
+          "numbers_positive_slots": [
+            31,
+            0
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "numbers_positive_slots": [
+            42,
+            0
+          ]
+        },
+        {
+          "common_event_id": 3,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            77
+          ],
+          "field_3_observed_utf16_slots": [
+            "P"
+          ]
+        },
+        {
+          "common_event_id": 4,
+          "numbers_positive_slots": [
+            90,
+            0
+          ]
+        }
+      ],
+      "map_self": []
+    }
+  ],
+  "scope": "W02-027: 250921 Windows fresh 1005 frames and nested caller/typed-self-bank isolation. Original raw 0x40-byte frame fields, unchanged immediate parent, two nested common IDs, second invocation persistence and original/Player parent/child return markers. Wait/save/restart remains W02-028."
+}

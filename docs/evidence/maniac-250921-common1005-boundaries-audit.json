@@ -1,0 +1,102 @@
+{
+  "cases": [
+    {
+      "case": "missing",
+      "runtime": "original",
+      "trace_sha256": "33d2ec16a542e868a383eadd63c11ecb85f70adb7c9233bcf8ddec3bc450a384",
+      "success": true
+    },
+    {
+      "case": "missing",
+      "runtime": "player",
+      "trace_sha256": "c358775ae109113f577937637e314e37dcb9dbc13454f879242c349f5019e5b9",
+      "success": true
+    },
+    {
+      "case": "zero",
+      "runtime": "original",
+      "trace_sha256": "b5846ce12600c77399248a86d1435211ab7d73d417e5943582245a96219cbbc2",
+      "success": true
+    },
+    {
+      "case": "zero",
+      "runtime": "player",
+      "trace_sha256": "d801c3389a644839b14d8d130c1bdab77285e793f3167ddb9ce4d933303d50f0",
+      "success": true
+    },
+    {
+      "case": "negative",
+      "runtime": "original",
+      "trace_sha256": "84ed41ac438ae4fff5a372a6826fad26626349c8bd16ee0fc28cf9f3d7f2087b",
+      "success": true
+    },
+    {
+      "case": "negative",
+      "runtime": "player",
+      "trace_sha256": "4210321f0ab816e045f8fc863fef879e22eca3914c3549ec7857283446f13777",
+      "success": true
+    },
+    {
+      "case": "out-of-range",
+      "runtime": "original",
+      "trace_sha256": "d7974b687de4a769ab2d1b6cef11dbc74bf08c2ee382bb12d84bb3348afaa400",
+      "success": true
+    },
+    {
+      "case": "out-of-range",
+      "runtime": "player",
+      "trace_sha256": "84b9c228c9d4016da54bbf8e0e995850b8687b6903f337515efbbf8b4bc9bb97",
+      "success": true
+    },
+    {
+      "case": "int-max",
+      "runtime": "original",
+      "trace_sha256": "9b86f7ef0bf1a3bde4291afb6159ecc76b71cff4585732ae35e683b80089ce7e",
+      "success": true
+    },
+    {
+      "case": "int-max",
+      "runtime": "player",
+      "trace_sha256": "efac16bc444baf163e570e9554bb92e68867b0c94d312842e15f37fec37e669b",
+      "success": true
+    },
+    {
+      "case": "empty",
+      "runtime": "original",
+      "trace_sha256": "463238bf103f0344ccf706b3397c4d0ee73b40383e58a26aa1e9e5213fd7eb02",
+      "success": true
+    },
+    {
+      "case": "empty",
+      "runtime": "player",
+      "trace_sha256": "1b80abef4f003827e736449961aded72b9933f6ba4c3072e58bc1daa97ed455d",
+      "success": true
+    },
+    {
+      "case": "depth-pass",
+      "runtime": "original",
+      "trace_sha256": "2364635d3d05bc3956d56e19057992c2d9b645dcb7ac55c9c1fb1b650b523291",
+      "success": true
+    },
+    {
+      "case": "depth-pass",
+      "runtime": "player",
+      "trace_sha256": "7a920089bff12d05f8adb456414c85664932b215f16339004e9a5b167b71008b",
+      "success": true
+    },
+    {
+      "case": "depth-error",
+      "runtime": "original",
+      "trace_sha256": "38e744579c09f4a66e43035c96f4ca28bee29da9d6a73e69a94ea1f35403f868",
+      "success": true
+    },
+    {
+      "case": "depth-error",
+      "runtime": "player",
+      "trace_sha256": "55f9ba44e9f67c179f86b51340d40e5e73c4cc84e44bc55a8beab3be2826ceaf",
+      "success": true
+    }
+  ],
+  "player_test_sha256": "d32aa44bacff8edbb2f29ad39911ed4e4ae2d01b2294e60e4f253bd631795970",
+  "scope": "250921 Windows: missing/zero/negative/out-of-range/int-max IDs append a fresh kind-37 frame before nonreturning error; depth 8192 may append 8193 and unwind; depth 8193 errors without append; empty common lists pop and resume the caller. Fatal error presentation and process shutdown differ by platform and are not compared as game continuation."
+}

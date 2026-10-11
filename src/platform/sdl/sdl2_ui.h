@@ -62,10 +62,17 @@ public:
 	bool vChangeDisplaySurfaceResolution(int new_width, int new_height) override;
 	void ToggleFullscreen() override;
 	void ToggleZoom() override;
+	bool SetManiacWindowZoom(int zoom) override;
+	bool SetManiacWindowInterpolation(bool enabled) override;
+	bool SetManiacWindowFit(bool enabled) override;
+	bool SetManiacScreenMode(bool fullscreen) override;
 	void UpdateDisplay() override;
 	void SetTitle(const std::string &title) override;
 	bool ShowCursor(bool flag) override;
 	bool ProcessEvents() override;
+	bool HasInputFocus() const override;
+	bool IsJoystickAvailable() const override;
+	bool ConfirmManiacFileOutput() override;
 	void SetScalingMode(ConfigEnum::ScalingMode) override;
 	void ToggleStretch() override;
 	void ToggleVsync() override;
@@ -123,6 +130,7 @@ private:
 	 * Resets keys states.
 	 */
 	void ResetKeys();
+	void WaitForFocus();
 
 	void RequestVideoMode(int width, int height, int zoom, bool fullscreen, bool vsync);
 

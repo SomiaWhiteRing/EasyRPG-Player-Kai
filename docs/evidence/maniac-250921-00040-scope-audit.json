@@ -1,0 +1,45 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_contract_sha256": "6426b9dbe0bce098bef8b1c3e0b281fab618b658738ac058eadf6edbdf1c8608",
+  "reviewed_dispatch_sha256": "439c352c26011574534d0bd9da074b08ff33d37848e7a52461640102d9af1f7c",
+  "reviewed_report_sha256": "2e48ad7ccbcc483188cda27448992f850e61ae7bee54569569cfb875a569ea7b",
+  "dispatch_instructions": {
+    "0x463e2": {
+      "instruction": "mov eax, dword ptr [r13]",
+      "bytes": "418b4500"
+    },
+    "0x463e6": {
+      "instruction": "sub eax, 1",
+      "bytes": "83e801"
+    },
+    "0x463e9": {
+      "instruction": "js 0x140047d15",
+      "bytes": "0f8826190000"
+    },
+    "0x463ef": {
+      "instruction": "jmp 0x1400458e0",
+      "bytes": "e9ecf4ffff"
+    }
+  },
+  "effective_branch_ids": [
+    "40:valid-frame-next-fetch"
+  ],
+  "invalid_state_branch": "Zero interpreter-frame depth jumps to 0x47d15, an invalid execution state rather than an event-command mode.",
+  "parameter_rule": "The opcode 40 runtime block reads frame depth only. It ignores the encoded record's Args and Text, whose bytes and indent must remain intact for serialization and parent scans. The shared dispatcher has advanced the cursor before this block and refetches in the same invocation.",
+  "formatter_boundary": "The reviewed default_formatter at 0x16cb0 displays generic Text and Args for editing; it is not the runtime consumer at 0x463e2.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "runtime_context_evidence": "The shared 250921 opcode-specific dispatch block has no interpreter-mode guard. Dynamic original/Player parity in each context remains W02-022.",
+  "remaining_questions": [
+    "Original and Player same-invocation next-command scheduling, parent scan and retained Args/Text/indent parity across map/common/battle remain W02-022.",
+    "241028 consumers and Web/Android execution remain separate version/platform acceptance scopes."
+  ],
+  "acceptance_ids": [
+    "W02-022"
+  ],
+  "scope": "Fixed 250921 Windows opcode 40 effective runtime branch scope. This audit does not claim Player feature parity."
+}

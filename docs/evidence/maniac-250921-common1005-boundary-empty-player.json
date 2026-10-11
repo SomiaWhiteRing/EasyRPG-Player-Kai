@@ -1,0 +1,21 @@
+{
+  "case": "empty",
+  "runtime": "player",
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921",
+    "--log-file",
+    "common1005-boundary.log"
+  ],
+  "manifest_sha256": "50be2cc852bdbbe6a757e6b3c7fd60cadfa2ee8fe8f9383edb41de2c9157ce38",
+  "native": null,
+  "save_exists": true,
+  "process_exit_code": null,
+  "error_lines": [],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed.",
+  "save_sha256": "998d80f5aea51e7b50fed14bd4d63ffb3aef8b9c52b6c214e56ed48611f251ba"
+}

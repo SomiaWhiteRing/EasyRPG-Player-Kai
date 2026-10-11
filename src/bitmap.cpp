@@ -195,11 +195,26 @@ Bitmap::Bitmap(Bitmap const& source, Rect const& src_rect, bool transparent) {
 	}
 }
 
-bool Bitmap::WritePNG(std::ostream& os) const {
+bool Bitmap::WritePNG(std::ostream& os, bool include_alpha, bool force_opaque) const {
 	size_t const width = GetWidth(), height = GetHeight();
 	size_t const stride = width * 4;
+	if (width == 0 || height == 0) return false;
 
 	std::vector<uint32_t> data(width * height);
+	if (include_alpha) {
+		// Preserve raw channels, including RGB under transparent pixels, on either endian.
+		auto* bytes = reinterpret_cast<uint8_t*>(data.data());
+		for (size_t y = 0; y < height; ++y) {
+			for (size_t x = 0; x < width; ++x) {
+				const Color color = GetColorAt(x, y);
+				*bytes++ = color.red;
+				*bytes++ = color.green;
+				*bytes++ = color.blue;
+				*bytes++ = force_opaque ? 255 : color.alpha;
+			}
+		}
+		return ImagePNG::Write(os, width, height, data.data(), true);
+	}
 
 #ifdef WORDS_BIGENDIAN
 	auto format = PIXMAN_r8g8b8;
@@ -320,11 +335,18 @@ Color Bitmap::GetColorAt(int x, int y) const {
 
 	Color color;
 
-	const uint8_t* pos = &reinterpret_cast<const uint8_t*>(pixels())[y * pitch() + x * bpp()];
+	const uint8_t* pos = &reinterpret_cast<const uint8_t*>(pixels())[y * pitch() + x * format.bytes];
 	uint32_t pixel = *reinterpret_cast<const uint32_t*>(pos);
 	format.uint32_to_rgba(pixel, color.red, color.green, color.blue, color.alpha);
 
 	return color;
+}
+
+void Bitmap::SetColorAt(int x, int y, const Color& color) {
+	if (x < 0 || y < 0 || x >= width() || y >= height()) return;
+	const uint32_t pixel = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
+	uint8_t* pos = static_cast<uint8_t*>(pixels()) + static_cast<size_t>(y) * pitch() + x * format.bytes;
+	std::memcpy(pos, &pixel, format.bytes);
 }
 
 void Bitmap::HueChangeBlit(int x, int y, Bitmap const& src, Rect const& src_rect_, double hue_) {

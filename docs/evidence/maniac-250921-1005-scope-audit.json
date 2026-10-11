@@ -1,0 +1,140 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_sources_sha256": {
+    "commands/01005.md": "4877d479a6a3e46d5e7c77d132ee032a3b0499b6619eaefc87abbf003a45a7b0",
+    "evidence/NativeBatch01-250921.md": "8724a645a1cd46b056a276915617b9810f4746e49fc7ea346831bcc04b18be94",
+    "evidence/runtime-250921/0001d550.c": "cd0aba7c831bd06ef34621a4b711528c97bdd0fb111f906f9f2525c5e40fa1d4",
+    "analysis-work/reports/01005-13794fe54c231d11251d7d0d34805851bc219223fef4b4f2cbdbf1241eca28b3.json": "c96aa06b82d0473ee6a0aca1262f9d8ef75525d427c8d1a96a9d623d7b87b0e4"
+  },
+  "reviewed_helper_windows": [
+    {
+      "first_rva": "0x86e30",
+      "instructions": 29
+    },
+    {
+      "first_rva": "0xb8bf0",
+      "instructions": 32
+    },
+    {
+      "first_rva": "0x1d550",
+      "instructions": 115
+    },
+    {
+      "first_rva": "0xca620",
+      "instructions": 31
+    }
+  ],
+  "dispatch_and_handler_instructions": {
+    "0x46a33": {
+      "instruction": "call 0x1d550",
+      "bytes": "e8186bfdff"
+    },
+    "0x46a38": {
+      "instruction": "mov al, 1",
+      "bytes": "b001"
+    },
+    "0x1d556": {
+      "instruction": "cmp dword ptr [rcx], 0x2000",
+      "bytes": "813900200000"
+    },
+    "0x1d55f": {
+      "instruction": "jg 0x1d6ac",
+      "bytes": "0f8f47010000"
+    },
+    "0x1d573": {
+      "instruction": "cmp eax, 1",
+      "bytes": "83f801"
+    },
+    "0x1d583": {
+      "instruction": "and edx, 0xf",
+      "bytes": "83e20f"
+    },
+    "0x1d58f": {
+      "instruction": "cmp edx, 1",
+      "bytes": "83fa01"
+    },
+    "0x1d59a": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e821021600"
+    },
+    "0x1d5b1": {
+      "instruction": "cmovs ecx, eax",
+      "bytes": "0f48c8"
+    },
+    "0x1d5df": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e8dc011600"
+    },
+    "0x1d603": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e8b8011600"
+    },
+    "0x1d638": {
+      "instruction": "xor ebx, ebx",
+      "bytes": "33db"
+    },
+    "0x1d63e": {
+      "instruction": "call 0x86e30",
+      "bytes": "e8ed970600"
+    },
+    "0x1d64c": {
+      "instruction": "call 0xb8bf0",
+      "bytes": "e89fb50900"
+    },
+    "0x1d651": {
+      "instruction": "mov dword ptr [rdi + 0x2c], ebx",
+      "bytes": "895f2c"
+    },
+    "0x1d657": {
+      "instruction": "mov byte ptr [rdi + 0x3d], 0x25",
+      "bytes": "c6473d25"
+    },
+    "0x1d664": {
+      "instruction": "jae 0x1d69d",
+      "bytes": "7337"
+    },
+    "0x1d694": {
+      "instruction": "mov qword ptr [rcx], rax",
+      "bytes": "488901"
+    },
+    "0x1d6a6": {
+      "instruction": "call 0xc8f60",
+      "bytes": "e8b5b80a00"
+    },
+    "0x1d6b3": {
+      "instruction": "call 0x223d0",
+      "bytes": "e8184d0000"
+    }
+  },
+  "handler_bytes_sha256": "c8852188b8b935b543d3818a60dbbfc90422e3db302d2690cd3984c25d273443",
+  "effective_branch_ids": [
+    "1005:literal-common-id",
+    "1005:single-global-or-negative-self-read",
+    "1005:double-global-or-negative-self-read",
+    "1005:missing-or-invalid-id-error",
+    "1005:zeroed-frame-append-and-bind-list",
+    "1005:depth-over-8192-error"
+  ],
+  "parameter_rule": "A0 is the ID or variable reference. Missing A0 resolves zero. A1 low nibble 0 selects a literal, 1 a single numeric read, and every value 2..15 a double numeric read. Negative first references use self and force the first result to a nonpositive address before the second read. Zero/out-of-range references resolve zero. A1 high bits, extra Args and Text are ignored by the runtime and must be retained.",
+  "frame_rule": "The handler checks old depth >8192 before evaluation; depth 8192 may append. It constructs a zeroed 0x40-byte frame, appends before ID validation, writes resolved ID at +0x2c and kind 0x25 at +0x3d, then binds a valid common-event command list. Caller arguments and return destinations are not copied. The shared dispatch returns success after push; subsequent execution is from the new stack top.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page",
+    "3019-produced command"
+  ],
+  "context_evidence": "Shared dispatch and opcode 1005 consumer have no interpreter-mode guard. A battle editor command can therefore be encoded in any shared event list. Dynamic producer 3019 uses the shared consumer and needs separate context/production validation.",
+  "remaining_questions": [
+    "W02-023: valid ID modes, signed references, high bits, retained data and original/Player common-frame selection across static map/common/battle lists.",
+    "W02-024: frame initialization, no caller argument/return copy, nesting and parent scheduling, wait/save/restart continuation and 3019-produced calls.",
+    "W02-025: invalid/missing IDs, empty lists, depth 8192/8193 and error/cleanup ordering; any safe deviations need explicit evidence.",
+    "241028 and Web/Android retain separate version/platform acceptance scopes."
+  ],
+  "acceptance_ids": [
+    "W02-023",
+    "W02-024",
+    "W02-025"
+  ],
+  "scope": "250921 Windows opcode 1005 runtime branch scope only. Reviewed helpers and full consumer bytes are bound to the fixed original; no Player feature parity is inferred from the formatter or this static audit."
+}

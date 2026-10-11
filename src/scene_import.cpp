@@ -37,7 +37,7 @@ void Scene_Import::PopulateSaveWindow(Window_SaveFile& win, int id) {
 		win.SetDisplayOverride(files[id].short_path, files[id].file_id);
 
 		std::unique_ptr<lcf::rpg::Save> savegame =
-			lcf::LSD_Reader::Load(files[id].full_path, Player::encoding);
+			lcf::LSD_Reader::Load(files[id].full_path, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
 
 		if (savegame.get()) {
 			PopulatePartyFaces(win, id, *savegame);

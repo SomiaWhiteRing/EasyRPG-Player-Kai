@@ -1,0 +1,22 @@
+{
+  "case": "negative",
+  "runtime": "player",
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921",
+    "--log-file",
+    "common1005-boundary.log"
+  ],
+  "manifest_sha256": "79c17a00ff9699b4498cb4175e110c41a0f4a163c9609f26ebb64c4a2bf4ac99",
+  "native": null,
+  "save_exists": false,
+  "process_exit_code": null,
+  "error_lines": [
+    "\u001b[1m\u001b[31mError:\u001b[0m \u001b[31mCallCommonEvent: Can't call invalid common event -1\u001b[0m"
+  ],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed."
+}

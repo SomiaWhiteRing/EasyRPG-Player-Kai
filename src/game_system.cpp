@@ -16,6 +16,7 @@
  */
 
 // Headers
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include "game_system.h"
@@ -36,18 +37,214 @@
 #include "utils.h"
 #include "audio_secache.h"
 #include "feature.h"
+#include "rand.h"
+
+namespace {
+	int32_t ManiacFaceDelay(int base, int range, bool positive) {
+		const int32_t lower = positive ? 0 : static_cast<int32_t>(0u - static_cast<uint32_t>(range));
+		const int32_t random = Player::game_config.maniac_version.Get() == 250921
+			? Main_Data::ManiacRandomInclusive(lower, range)
+			: Rand::GetRandomNumber(std::min(lower, range), std::max(lower, range));
+		return static_cast<int32_t>(static_cast<uint32_t>(base) + static_cast<uint32_t>(random));
+	}
+}
 
 Game_System::Game_System()
 	: dbsys(&lcf::Data::system)
 { }
 
+bool Game_System::AdvanceManiacMapStartup() {
+	if (!HasManiacMapStartup()) return false;
+	// 192ba0 allows one map update before the second starts the fade;
+	// 3004 marks the load ended and bypasses that initial update delay.
+	if (!maniac_load_ended && ++maniac_startup_updates <= 1) return false;
+	maniac_load_ended = true;
+	maniac_startup_complete = true;
+	return true;
+}
+
 void Game_System::SetupFromSave(lcf::rpg::SaveSystem save) {
 	data = std::move(save);
 	loaded_frame_count = data.frame_count;
+	maniac_loaded = true;
+	maniac_load_ended = false;
+	maniac_startup_complete = false;
+	maniac_startup_updates = 0;
+	if (Player::IsPatchManiac()) {
+		data.maniac_run_when_inactive = static_cast<uint8_t>(data.maniac_run_when_inactive);
+		ApplyManiacFpsRequest();
+		Player::UpdateDebugFlag();
+		ResetManiacFaceAnimation();
+		if (DisplayUi) DisplayUi->RefreshFocusPolicy();
+	}
+}
+
+void Game_System::SetMessageFaceIndex(int index) {
+	data.face_id = index;
+	if (Player::IsPatchManiac()) data.maniac_face_start = index;
+}
+
+int Game_System::GetMessageFaceWidth() const {
+	return Player::IsPatchManiac() && data.maniac_face_width > 0 ? data.maniac_face_width : 48;
+}
+
+int Game_System::GetMessageFaceHeight() const {
+	return Player::IsPatchManiac() && data.maniac_face_height > 0 ? data.maniac_face_height : 48;
+}
+
+void Game_System::SetManiacFaceSize(int32_t width, int32_t height) {
+	data.maniac_face_width = width;
+	data.maniac_face_height = height;
+}
+
+bool Game_System::IsManiacMessageMouseEnabled() const {
+	return (data.maniac_message_mouse_flags & 1) == 0;
+}
+
+void Game_System::SetManiacMessageMouseFlags(int32_t flags) {
+	data.maniac_message_mouse_flags = static_cast<uint8_t>(flags);
+}
+
+int32_t Game_System::GetManiacPictureLimit() const {
+	return data.maniac_picture_limit;
+}
+
+void Game_System::SetManiacPictureLimit(int32_t limit) {
+	data.maniac_picture_limit = limit;
+}
+
+void Game_System::ApplyManiacFpsRequest() {
+	const int old_fps = Game_Clock::GetTargetGameFps();
+	const int request = data.maniac_fps_request;
+	if (request > 0) {
+		Game_Clock::SetTargetGameFps(request);
+		Player::SetTargetFps(request);
+	}
+	if (old_fps != request) Game_Clock::ResetFrame(Game_Clock::now(), true);
+}
+
+void Game_System::SetManiacFps(int32_t request, bool flags_present, int32_t flags) {
+	data.maniac_fps_request = request;
+	ApplyManiacFpsRequest();
+	Player::maniac_testplay_selector = flags_present ? static_cast<uint32_t>(flags) & 15 : 0;
+	Player::maniac_rshift_message = flags_present && ((static_cast<uint32_t>(flags) >> 4) & 1);
+	if (Player::maniac_testplay_selector > 0) Player::debug_flag = Player::maniac_testplay_selector - 1;
+}
+
+void Game_System::SetManiacRunWhenInactive(int32_t value) {
+	data.maniac_run_when_inactive = value != 0;
+	if (DisplayUi) DisplayUi->RefreshFocusPolicy();
+}
+
+bool Game_System::IsManiacRunWhenInactive() const {
+	return static_cast<uint8_t>(data.maniac_run_when_inactive) != 0;
+}
+
+void Game_System::SetManiacFrameSkip(int32_t value) {
+	data.maniac_frameskip = static_cast<uint8_t>(value);
+}
+
+uint8_t Game_System::GetManiacFrameSkipMask() const {
+	static constexpr uint8_t masks[] = {0, 4, 2, 1};
+	return masks[data.maniac_frameskip & 3];
+}
+
+void Game_System::SetManiacBattleAlignment(int32_t alignment) {
+	data.maniac_battle_alignment = static_cast<uint8_t>(alignment);
+}
+
+Point Game_System::GetBattleDisplayOffset() const {
+	if (!Player::IsPatchManiac()) return {Player::menu_offset_x, Player::menu_offset_y};
+	const int center_x = Player::screen_width / 2 - 160;
+	const int center_y = Player::screen_height / 2 - 120;
+	const int right = Player::screen_width - 320;
+	const int bottom = Player::screen_height - 240;
+	const Point offsets[] = {
+		{center_x, center_y}, {0, 0}, {0, bottom}, {right, 0}, {right, bottom},
+		{center_x, 0}, {center_x, bottom}, {0, center_y}, {right, center_y}
+	};
+	return data.maniac_battle_alignment < 9 ? offsets[data.maniac_battle_alignment] : Point{0, 0};
+}
+
+void Game_System::SetManiacFaceAnimation(int end, int interval, int interval_range, int frame_delay, int frame_delay_range) {
+	data.maniac_face_end = end;
+	data.maniac_face_interval = interval;
+	data.maniac_face_interval_range = interval_range;
+	data.maniac_face_frame_delay = frame_delay;
+	data.maniac_face_frame_delay_range = frame_delay_range;
+}
+
+void Game_System::ResetManiacFaceInterval() {
+	maniac_face_interval_elapsed = 0;
+	maniac_face_interval_limit = ManiacFaceDelay(data.maniac_face_interval, data.maniac_face_interval_range,
+		(data.maniac_face_animation_flags & 16) != 0);
+}
+
+void Game_System::ResetManiacFaceFrameDelay() {
+	maniac_face_frame_elapsed = 0;
+	maniac_face_frame_limit = ManiacFaceDelay(data.maniac_face_frame_delay, data.maniac_face_frame_delay_range,
+		(data.maniac_face_animation_flags & 32) != 0);
+}
+
+void Game_System::ResetManiacFaceAnimation() {
+	if (data.face_name.empty()) return;
+	data.face_id = data.maniac_face_start;
+	maniac_face_return_leg = false;
+	ResetManiacFaceInterval();
+	ResetManiacFaceFrameDelay();
+}
+
+void Game_System::UpdateManiacFaceAnimation() {
+	const int flags = data.maniac_face_animation_flags;
+	if ((flags & 2) == 0) return;
+	if (maniac_face_interval_elapsed < maniac_face_interval_limit) {
+		++maniac_face_interval_elapsed;
+		return;
+	}
+	if (maniac_face_frame_elapsed < maniac_face_frame_limit) {
+		++maniac_face_frame_elapsed;
+		return;
+	}
+	maniac_face_frame_elapsed = 0;
+	const int start = data.maniac_face_start;
+	const int end = data.maniac_face_end;
+	bool reached_end = false;
+	if (start < end) {
+		++data.face_id;
+		reached_end = data.face_id >= end;
+	} else if (start > end) {
+		--data.face_id;
+		reached_end = data.face_id <= end;
+	}
+	if (!reached_end) return;
+	if ((flags & 8) != 0) {
+		data.face_id = end;
+	} else if ((flags & 4) != 0) {
+		std::swap(data.maniac_face_start, data.maniac_face_end);
+		maniac_face_return_leg = !maniac_face_return_leg;
+	} else {
+		data.face_id = start;
+	}
+	if ((flags & 64) != 0 || !maniac_face_return_leg) ResetManiacFaceInterval();
+	ResetManiacFaceFrameDelay();
 }
 
 const lcf::rpg::SaveSystem& Game_System::GetSaveData() const {
 	return data;
+}
+
+void Game_System::SetManiacMessageHook(int event_id, uint32_t mask, int system_variable,
+	int system_string, int user_variable, int user_string) {
+	data.maniac_message_hook_common_event_id = event_id;
+	auto& flags = data.maniac_message_hook_flags;
+	flags.user_event = (mask & 1) != 0;
+	flags.create_window = (mask & 2) != 0;
+	flags.destroy_window = (mask & 4) != 0;
+	flags.text_rendering = (mask & 8) != 0;
+	data.maniac_message_hook_callback_system_variable = system_variable;
+	data.maniac_message_hook_callback_system_string_variable = system_string;
+	data.maniac_message_hook_callback_user_variable = user_variable;
+	data.maniac_message_hook_callback_user_string_variable = user_string;
 }
 
 bool Game_System::IsStopFilename(std::string_view name, Filesystem_Stream::InputStream (*find_func) (std::string_view), Filesystem_Stream::InputStream& found_stream) {
@@ -70,33 +267,39 @@ bool Game_System::IsStopSoundFilename(std::string_view name, Filesystem_Stream::
 }
 
 void Game_System::BgmPlay(lcf::rpg::Music const& bgm) {
+	const lcf::rpg::Music requested_music = bgm;
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 	lcf::rpg::Music previous_music = data.current_music;
-	data.current_music = bgm;
-
-	// Validate
-	if (bgm.volume < 0 || bgm.volume > 100) {
-		data.current_music.volume = Utils::Clamp<int32_t>(bgm.volume, 0, 100);
-
-		Output::Debug("BGM {} has invalid volume {}", bgm.name, bgm.volume);
+	data.current_music = requested_music;
+	if (native_250921) {
+		previous_music.volume = Utils::Clamp<int32_t>(previous_music.volume, 0, 100);
+		previous_music.tempo = Utils::Clamp<int32_t>(previous_music.tempo, 10, 400);
 	}
 
-	if (bgm.fadein < 0 || bgm.fadein > 10000) {
-		data.current_music.fadein = Utils::Clamp<int32_t>(bgm.fadein, 0, 10000);
+	// Validate
+	if (requested_music.volume < 0 || requested_music.volume > 100) {
+		data.current_music.volume = Utils::Clamp<int32_t>(requested_music.volume, 0, 100);
 
-		Output::Debug("BGM {} has invalid fadein {}", bgm.name, bgm.fadein);
+		Output::Debug("BGM {} has invalid volume {}", requested_music.name, requested_music.volume);
+	}
+
+	if (requested_music.fadein < 0 || requested_music.fadein > 10000) {
+		data.current_music.fadein = Utils::Clamp<int32_t>(requested_music.fadein, 0, 10000);
+
+		Output::Debug("BGM {} has invalid fadein {}", requested_music.name, requested_music.fadein);
 	}
 
 	// Normal pitch is 50 to 200 but Yume2kki uses out of range values
-	if (bgm.tempo < 10 || bgm.tempo > 400) {
-		data.current_music.tempo = Utils::Clamp<int32_t>(bgm.tempo, 10, 400);
+	if (requested_music.tempo < 10 || requested_music.tempo > 400) {
+		data.current_music.tempo = Utils::Clamp<int32_t>(requested_music.tempo, 10, 400);
 
-		Output::Debug("BGM {} has invalid tempo {}", bgm.name, bgm.tempo);
+		Output::Debug("BGM {} has invalid tempo {}", requested_music.name, requested_music.tempo);
 	}
 
 	// (OFF) means play nothing
-	if (!bgm.name.empty() && bgm.name != "(OFF)") {
+	if (!requested_music.name.empty() && requested_music.name != "(OFF)") {
 		// Same music: Only adjust volume and speed
-		if (!data.music_stopping && previous_music.name == bgm.name) {
+		if (!data.music_stopping && previous_music.name == requested_music.name) {
 			if (previous_music.volume != data.current_music.volume) {
 				if (!bgm_pending) { // Delay if not ready
 					Audio().BGM_Volume(data.current_music.volume);
@@ -110,7 +313,7 @@ void Game_System::BgmPlay(lcf::rpg::Music const& bgm) {
 		} else {
 			Audio().BGM_Stop();
 			bgm_pending = true;
-			FileRequestAsync* request = AsyncHandler::RequestFile("Music", bgm.name);
+			FileRequestAsync* request = AsyncHandler::RequestFile("Music", requested_music.name);
 			music_request_id = request->Bind(&Game_System::OnBgmReady, this);
 			request->Start();
 		}
@@ -119,6 +322,8 @@ void Game_System::BgmPlay(lcf::rpg::Music const& bgm) {
 	}
 
 	data.music_stopping = false;
+	// Native GetGameInfo and saves retain the request, separately from playback limits.
+	if (native_250921) data.current_music = requested_music;
 }
 
 void Game_System::BgmStop() {
@@ -548,12 +753,14 @@ void Game_System::OnBgmReady(FileRequestResult* result) {
 		return;
 	}
 
-	Audio().BGM_Play(std::move(stream), data.current_music.volume, data.current_music.tempo, data.current_music.fadein);
+	Audio().BGM_Play(std::move(stream), Utils::Clamp<int32_t>(data.current_music.volume, 0, 100),
+		Utils::Clamp<int32_t>(data.current_music.tempo, 10, 400), Utils::Clamp<int32_t>(data.current_music.fadein, 0, 10000));
 }
 
 void Game_System::OnBgmInelukiReady(FileRequestResult* result) {
 	bgm_pending = false;
-	Audio().BGM_Play(FileFinder::Game().OpenFile(result->file), data.current_music.volume, data.current_music.tempo, data.current_music.fadein);
+	Audio().BGM_Play(FileFinder::Game().OpenFile(result->file), Utils::Clamp<int32_t>(data.current_music.volume, 0, 100),
+		Utils::Clamp<int32_t>(data.current_music.tempo, 10, 400), Utils::Clamp<int32_t>(data.current_music.fadein, 0, 10000));
 }
 
 void Game_System::OnSeReady(FileRequestResult* result, lcf::rpg::Sound se, bool stop_sounds) {

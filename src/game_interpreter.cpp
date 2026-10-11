@@ -17,14 +17,22 @@
 
 // Headers
 #include <algorithm>
+#include <cmath>
 #include <ctime>
+#include <cstring>
+#include <cwchar>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
+#include <new>
 #include <regex>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <cassert>
 #include "game_interpreter.h"
+#include "game_maniac_self_variables.h"
+#include "game_maniac_js.h"
 #include "async_handler.h"
 #include "cache.h"
 #include "audio.h"
@@ -32,23 +40,28 @@
 #include "filefinder.h"
 #include "game_destiny.h"
 #include "game_map.h"
+#include "map_data.h"
 #include "game_event.h"
 #include "game_enemyparty.h"
 #include "game_ineluki.h"
 #include "game_player.h"
 #include "game_targets.h"
 #include "game_switches.h"
+#include "game_strings.h"
 #include "game_variables.h"
 #include "game_party.h"
 #include "game_actors.h"
 #include "game_system.h"
+#include "window_message.h"
 #include "game_message.h"
 #include "game_pictures.h"
 #include "game_screen.h"
 #include "game_interpreter_control_variables.h"
 #include "game_windows.h"
+#include "graphics.h"
 #include "json_helper.h"
 #include "maniac_patch.h"
+#include "maniac_original_save.h"
 #include "spriteset_map.h"
 #include "sprite_character.h"
 #include "scene_gameover.h"
@@ -57,6 +70,7 @@
 #include "scene_settings.h"
 #include "scene.h"
 #include "game_clock.h"
+#include "tilemap_layer.h"
 #include "input.h"
 #include "main_data.h"
 #include "output.h"
@@ -74,6 +88,9 @@
 #include "rand.h"
 
 using namespace Game_Interpreter_Shared;
+
+namespace {
+}
 
 enum BranchSubcommand {
 	eOptionBranchElse = 1
@@ -101,28 +118,46 @@ bool Game_Interpreter::IsRunning() const {
 }
 
 // Setup.
+void Game_Interpreter::NormalizeSerializedManiacText(std::vector<lcf::rpg::EventCommand>& commands) {
+	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return;
+	for (auto& command : commands) {
+		const std::string_view text = command.string;
+		const auto end = text.find('\0');
+		if (end != std::string_view::npos) command.string = lcf::DBString(text.substr(0, end));
+	}
+}
+
 void Game_Interpreter::Push(
 	std::vector<lcf::rpg::EventCommand> _list,
 	int event_id,
 	bool started_by_decision_key,
 	int event_page_id
 ) {
-	if (_list.empty()) {
+	const bool native_250921 = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
+	if (_list.empty() && !native_250921) {
 		return;
 	}
 
-	if ((int)_state.stack.size() > call_stack_limit) {
-		Output::Error("Call Event limit ({}) has been exceeded", call_stack_limit);
+	const int limit = native_250921 ? 8192 : call_stack_limit;
+	if (_state.stack.size() > static_cast<size_t>(limit)) {
+		Output::Error("Call Event limit ({}) has been exceeded", limit);
 	}
 
 	lcf::rpg::SaveEventExecFrame frame;
 	frame.ID = _state.stack.size() + 1;
 	frame.commands = std::move(_list);
+	NormalizeSerializedManiacText(frame.commands);
 	frame.current_command = 0;
 	frame.triggered_by_decision_key = started_by_decision_key;
 	frame.event_id = event_id;
 	frame.maniac_event_id = event_id;
 	frame.maniac_event_page_id = event_page_id;
+	if (event_id > 0 && Main_Data::game_player) {
+		frame.easyrpg_self_scope = 2;
+		frame.easyrpg_self_map_id = Main_Data::game_player->GetMapId();
+		frame.easyrpg_self_event_id = event_id;
+	}
 
 	if (_state.stack.empty() && main_flag && !Game_Battle::IsBattleRunning()) {
 		Main_Data::game_system->ClearMessageFace();
@@ -371,7 +406,6 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 	if (!IsRunning()) {
 		return;
 	}
-
 	if (Input::IsTriggered(Input::DEBUG_ABORT_EVENT) && Player::debug_flag && !Game_Battle::IsBattleRunning()) {
 		if (Game_Message::IsMessageActive()) {
 			Game_Message::GetWindow()->FinishMessageProcessing();
@@ -384,9 +418,10 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 	}
 
 #ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
+	auto* previous_flags = Player::active_interpreter_flags;
 	Player::active_interpreter_flags = &_state.easyrpg_runtime_flags;
-	auto flags_guard = lcf::makeScopeGuard([]() {
-		Player::active_interpreter_flags = &Player::interpreter_default_flags;
+	auto flags_guard = lcf::makeScopeGuard([previous_flags]() {
+		Player::active_interpreter_flags = previous_flags;
 	});
 #endif
 
@@ -495,6 +530,18 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 			continue;
 		}
 
+		// The 250921 dispatcher handles these standalone records by fetching
+		// the next command inside the same dispatch call. They have no payload
+		// effect and must not consume an outer interpreter command slot.
+		const auto opcode = frame->commands[frame->current_command].code;
+		if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+			&& (opcode == static_cast<int32_t>(lcf::rpg::EventCommand::Code::END)
+				|| opcode == 40 || opcode == 12110 || opcode == 3024 || opcode == 3035)) {
+			++frame->current_command;
+			--loop_count;
+			continue;
+		}
+
 		// Save the frame index before we call events.
 		int current_frame_idx = _state.stack.size() - 1;
 
@@ -538,15 +585,84 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 
 // Setup Starting Event
 void Game_Interpreter::Push(Game_Event* ev) {
+	const auto depth = _state.stack.size();
 	Push(ev->GetList(), ev->GetId(), ev->WasStartedByDecisionKey(), ev->GetActivePage() ? ev->GetActivePage()->ID : 0);
+	if (Player::IsPatchManiac() && _state.stack.size() > depth) {
+		_state.stack.back().maniac_event_info = 0x10 | static_cast<int>(ev->GetTrigger());
+	}
 }
 
 void Game_Interpreter::Push(Game_Event* ev, const lcf::rpg::EventPage* page, bool triggered_by_decision_key) {
+	const auto depth = _state.stack.size();
 	Push(page->event_commands, ev->GetId(), triggered_by_decision_key, page->ID);
+	if (Player::IsPatchManiac() && _state.stack.size() > depth) {
+		_state.stack.back().maniac_event_info = 0x10 | static_cast<int>(page->trigger);
+	}
 }
 
 void Game_Interpreter::Push(Game_CommonEvent* ev) {
-	Push(ev->GetList(), 0, false);
+	auto list = ev->GetList();
+	if (!list.empty() || (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921)) {
+		Push(std::move(list), 0, false);
+		auto& frame = _state.stack.back();
+		frame.easyrpg_self_scope = 1;
+		frame.easyrpg_self_map_id = 0;
+		frame.easyrpg_self_event_id = ev->GetId();
+	}
+}
+
+int32_t Game_Interpreter::ReadVariable(int id) const {
+	if (id >= 0 || !Player::IsPatchManiac()) {
+		return Main_Data::game_variables->Get(id);
+	}
+	const auto* frame = GetFramePtr();
+	const auto* state = Main_Data::game_maniac_self_variables.get();
+	const auto* bank = frame && state
+		? state->Find(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id)
+		: nullptr;
+	return Game_ManiacSelfVariables::ReadNumber(bank, id);
+}
+
+int Game_Interpreter::ReadSwitch(int id) const {
+	if (id == 0 && Player::IsPatchManiac()) {
+		// The native ordinary switch getter ignores ID 0 even though Maniac
+		// commands can write its physical byte slot.
+		return 0;
+	}
+	if (id >= 0 || !Player::IsPatchManiac()) {
+		return Main_Data::game_switches->GetInt(id);
+	}
+	const auto* frame = GetFramePtr();
+	const auto* state = Main_Data::game_maniac_self_variables.get();
+	const auto* bank = frame && state
+		? state->Find(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id)
+		: nullptr;
+	return Game_ManiacSelfVariables::ReadSwitch(bank, id);
+}
+
+std::string_view Game_Interpreter::ReadString(int id) const {
+	if (id >= 0 || !Player::IsPatchManiac()) {
+		return Main_Data::game_strings->Get(id);
+	}
+	const auto* frame = GetFramePtr();
+	const auto* state = Main_Data::game_maniac_self_variables.get();
+	const auto* bank = frame && state
+		? state->Find(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id)
+		: nullptr;
+	const auto slot = -static_cast<int64_t>(id);
+	return bank && slot < static_cast<int64_t>(bank->strings.size())
+		? static_cast<std::string_view>(bank->strings[static_cast<size_t>(slot)]) : std::string_view{};
+}
+
+bool Game_Interpreter::IsManiacStringPresent(int id) const {
+	if (id > 0) return Main_Data::game_strings->IsPresent(id);
+	if (id == 0 || !Player::IsPatchManiac()) return false;
+	const auto* frame = GetFramePtr();
+	const auto* state = Main_Data::game_maniac_self_variables.get();
+	const auto* bank = frame && state
+		? state->Find(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id)
+		: nullptr;
+	return Game_ManiacSelfVariables::IsStringPresent(bank, static_cast<size_t>(-static_cast<int64_t>(id)));
 }
 
 bool Game_Interpreter::CheckGameOver() {
@@ -589,12 +705,16 @@ bool Game_Interpreter::ExecuteCommand() {
 
 bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 	switch (static_cast<Cmd>(com.code)) {
+		case Cmd::CallCommonEvent:
+			return Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+				? CommandManiacCallCommonEvent(com) : true;
 		case Cmd::ShowMessage:
 			return CmdSetup<&Game_Interpreter::CommandShowMessage, 0>(com);
 		case Cmd::MessageOptions:
 			return CmdSetup<&Game_Interpreter::CommandMessageOptions, 4>(com);
 		case Cmd::ChangeFaceGraphic:
-			return CmdSetup<&Game_Interpreter::CommandChangeFaceGraphic, 3>(com);
+			return Player::IsPatchManiac() ? CommandChangeFaceGraphic(com)
+				: CmdSetup<&Game_Interpreter::CommandChangeFaceGraphic, 3>(com);
 		case Cmd::ShowChoice:
 			return CmdSetup<&Game_Interpreter::CommandShowChoices, 1>(com);
 		case Cmd::ShowChoiceOption:
@@ -729,10 +849,17 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::ChangeMainMenuAccess:
 			return CmdSetup<&Game_Interpreter::CommandChangeMainMenuAccess, 1>(com);
 		case Cmd::ConditionalBranch:
+			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921 && com.parameters.size() < 6) {
+				auto padded = com;
+				padded.parameters = lcf::DBArray<int32_t>(6);
+				std::copy(com.parameters.begin(), com.parameters.end(), padded.parameters.begin());
+				return CommandConditionalBranch(padded);
+			}
 			return CmdSetup<&Game_Interpreter::CommandConditionalBranch, 6>(com);
 		case Cmd::Label:
 			return true;
 		case Cmd::JumpToLabel:
+			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) return CommandJumpToLabel(com);
 			return CmdSetup<&Game_Interpreter::CommandJumpToLabel, 1>(com);
 		case Cmd::Loop:
 			return CmdSetup<&Game_Interpreter::CommandLoop, 0>(com);
@@ -743,7 +870,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::EraseEvent:
 			return CmdSetup<&Game_Interpreter::CommandEraseEvent, 0>(com);
 		case Cmd::CallEvent:
-			return CmdSetup<&Game_Interpreter::CommandCallEvent, 3>(com);
+			return CommandCallEvent(com);
 		case Cmd::ReturntoTitleScreen:
 			return CmdSetup<&Game_Interpreter::CommandReturnToTitleScreen, 0>(com);
 		case Cmd::ChangeClass:
@@ -765,13 +892,13 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::Maniac_Load:
 			return CmdSetup<&Game_Interpreter::CommandManiacLoad, 3>(com);
 		case Cmd::Maniac_Save:
-			return CmdSetup<&Game_Interpreter::CommandManiacSave, 3>(com);
+			return CmdSetup<&Game_Interpreter::CommandManiacSave, 4>(com);
 		case Cmd::Maniac_EndLoadProcess:
 			return CmdSetup<&Game_Interpreter::CommandManiacEndLoadProcess, 0>(com);
 		case Cmd::Maniac_GetMousePosition:
 			return CmdSetup<&Game_Interpreter::CommandManiacGetMousePosition, 2>(com);
 		case Cmd::Maniac_SetMousePosition:
-			return CmdSetup<&Game_Interpreter::CommandManiacSetMousePosition, 3>(com);
+			return CmdSetup<&Game_Interpreter::CommandManiacSetMousePosition, 0>(com);
 		case Cmd::Maniac_ShowStringPicture:
 			return CmdSetup<&Game_Interpreter::CommandManiacShowStringPicture, 23>(com);
 		case Cmd::Maniac_GetPictureInfo:
@@ -783,17 +910,39 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::Maniac_RewriteMap:
 			return CmdSetup<&Game_Interpreter::CommandManiacRewriteMap, 9>(com);
 		case Cmd::Maniac_ControlGlobalSave:
-			return CmdSetup<&Game_Interpreter::CommandManiacControlGlobalSave, 6>(com);
+			return CommandManiacControlGlobalSave(com);
 		case Cmd::Maniac_ChangePictureId:
 			return CmdSetup<&Game_Interpreter::CommandManiacChangePictureId, 6>(com);
 		case Cmd::Maniac_SetGameOption:
-			return CmdSetup<&Game_Interpreter::CommandManiacSetGameOption, 4>(com);
+			return CmdSetup<&Game_Interpreter::CommandManiacSetGameOption, 0>(com);
 		case Cmd::Maniac_ControlStrings:
 			return CmdSetup<&Game_Interpreter::CommandManiacControlStrings, 8>(com);
 		case Cmd::Maniac_CallCommand:
-			return CmdSetup<&Game_Interpreter::CommandManiacCallCommand, 6>(com);
+			return CmdSetup<&Game_Interpreter::CommandManiacCallCommand, 0>(com);
 		case Cmd::Maniac_GetGameInfo:
 			return CmdSetup<&Game_Interpreter::CommandManiacGetGameInfo, 8>(com);
+		case Cmd::Maniac_EditTile:
+			return CommandManiacDrawTileOnPicture(com);
+		case Cmd::Maniac_EditPicture:
+			return CommandManiacEditPicture(com);
+		case Cmd::Maniac_WritePicture:
+			return CommandManiacWritePicture(com);
+		case Cmd::Maniac_ControlTextProcessing:
+			return CommandManiacControlTextProcessing(com);
+		case Cmd::Maniac_ZoomScreen:
+			return CommandManiacZoomScreen(com);
+		case Cmd::Maniac_JavaScript:
+			return CommandManiacJavaScript(com);
+		case Cmd::Maniac_JavaScriptContinuation:
+			return true;
+		case Cmd::Maniac_Console:
+			return CommandManiacConsole(com);
+		case Cmd::Maniac_Selfvar:
+			return CommandManiacSelfvar(com);
+		case Cmd::Maniac_ChangeTroopMember:
+			return CommandManiacChangeTroopMember(com);
+		case Cmd::Maniac_ControlMediaOption:
+			return CommandManiacControlMediaOption(com);
 		case Cmd::EasyRpg_SetInterpreterFlag:
 			return CmdSetup<&Game_Interpreter::CommandEasyRpgSetInterpreterFlag, 2>(com);
 		case Cmd::EasyRpg_ProcessJson:
@@ -894,7 +1043,7 @@ bool Game_Interpreter::CommandShowMessage(lcf::rpg::EventCommand const& com) { /
 		return false;
 	}
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetIsEventMessage(true);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -933,7 +1082,7 @@ bool Game_Interpreter::CommandShowMessage(lcf::rpg::EventCommand const& com) { /
 		}
 	}
 
-	Game_Message::SetPendingMessage(std::move(pm));
+	_async_op = Game_Message::SetPendingMessage(std::move(pm), this);
 	_state.show_message = true;
 
 	return true;
@@ -956,6 +1105,40 @@ bool Game_Interpreter::CommandMessageOptions(lcf::rpg::EventCommand const& com) 
 }
 
 bool Game_Interpreter::CommandChangeFaceGraphic(lcf::rpg::EventCommand const& com) { // Code 10130
+	if (Player::IsPatchManiac()) {
+		const auto parameter = [&](size_t index) -> int32_t {
+			return index < com.parameters.size() ? com.parameters[index] : 0;
+		};
+		auto& system = *Main_Data::game_system;
+		const int32_t flags = parameter(5);
+		// The native command writes flags even when it then waits for the message.
+		system.SetManiacFaceAnimationFlags(flags);
+		if ((flags & 1) == 0 && !Game_Message::CanShowMessage(main_flag)) return false;
+		const uint32_t modes = static_cast<uint32_t>(parameter(3));
+		const auto number = [&](int index, int shift) -> int32_t {
+			const int mode = (modes >> (shift * 4)) & 15;
+			const int32_t value = parameter(index);
+			return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+		};
+		const int file_mode = modes & 15;
+		const int file_id = parameter(4);
+		system.SetMessageFaceName(file_mode == 0 ? ToString(com.string)
+			: ToString(ReadString(file_mode == 1 ? file_id : ResolveVariableIndirectAddress(file_id))));
+		system.SetMessageFaceIndex(number(0, 1));
+		system.SetMessageFaceRightPosition(parameter(1) != 0);
+		system.SetMessageFaceFlipped(static_cast<uint8_t>(parameter(2)) != 0);
+		if ((flags & 2) != 0) {
+			const int end = number(6, 2);
+			const int interval = number(7, 3);
+			const int interval_range = number(8, 4);
+			const int frame_delay = number(9, 5);
+			const int frame_delay_range = number(10, 6);
+			system.SetManiacFaceAnimation(end, interval, interval_range, frame_delay, frame_delay_range);
+		}
+		system.ResetManiacFaceAnimation();
+		if (auto* window = Game_Message::GetWindow()) window->ReloadManiacFace();
+		return true;
+	}
 	if (!Game_Message::CanShowMessage(main_flag)) {
 		return false;
 	}
@@ -991,7 +1174,7 @@ bool Game_Interpreter::CommandShowChoices(lcf::rpg::EventCommand const& com) { /
 		return false;
 	}
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetIsEventMessage(true);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -1000,7 +1183,7 @@ bool Game_Interpreter::CommandShowChoices(lcf::rpg::EventCommand const& com) { /
 	pm.SetChoiceCancelType(com.parameters[0]);
 	SetupChoices(choices, com.indent, pm);
 
-	Game_Message::SetPendingMessage(std::move(pm));
+	_async_op = Game_Message::SetPendingMessage(std::move(pm), this);
 	_state.show_message = true;
 
 	++index;
@@ -1022,7 +1205,7 @@ bool Game_Interpreter::CommandInputNumber(lcf::rpg::EventCommand const& com) { /
 		return false;
 	}
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetIsEventMessage(true);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -1031,7 +1214,7 @@ bool Game_Interpreter::CommandInputNumber(lcf::rpg::EventCommand const& com) { /
 
 	pm.PushNumInput(variable_id, digits);
 
-	Game_Message::SetPendingMessage(std::move(pm));
+	_async_op = Game_Message::SetPendingMessage(std::move(pm), this);
 	_state.show_message = true;
 
 	// Continue
@@ -1039,6 +1222,46 @@ bool Game_Interpreter::CommandInputNumber(lcf::rpg::EventCommand const& com) { /
 }
 
 bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com) { // code 10210
+	if (Player::IsPatchManiac()) {
+		const int mode = com.parameters[0];
+		int first = com.parameters[1];
+		int last = first;
+		if (mode == 1) {
+			last = com.parameters[2];
+		} else if (mode != 0) {
+			first = ResolveVariableIndirectAddress(first);
+			last = first;
+		}
+		if ((first < 0) != (last < 0)) last = first;
+		const int64_t first_slot = first < 0 ? -static_cast<int64_t>(first) : first;
+		const int64_t last_slot = last < 0 ? -static_cast<int64_t>(last) : last;
+		const int64_t low = std::min(first_slot, last_slot);
+		const int64_t high = std::max(first_slot, last_slot);
+		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+		if (!native250921 && high > 1000000) {
+			Output::Warning("ControlSwitches: Target exceeds safe storage limit");
+			return true;
+		}
+		const int operation = com.parameters[3];
+		if (first < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return true;
+			bank->switches.resize(std::max(bank->switches.size(), static_cast<size_t>(high + (native250921 ? 2 : 1))));
+			for (int64_t slot = low; slot <= high; ++slot) {
+				auto& value = bank->switches[static_cast<size_t>(slot)];
+				value = operation == 0 ? 1 : operation == 1 ? 0 : value == 0 ? 1 : 0;
+			}
+		} else {
+			if (operation == 0) Main_Data::game_switches->SetRange(static_cast<int>(low), static_cast<int>(high), true);
+			else if (operation == 1) Main_Data::game_switches->SetRange(static_cast<int>(low), static_cast<int>(high), false);
+			else Main_Data::game_switches->FlipRange(static_cast<int>(low), static_cast<int>(high));
+		}
+		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		return true;
+	}
 	{
 		int start, end;
 		bool target_eval_result = DecodeTargetEvaluationMode<
@@ -1075,14 +1298,106 @@ bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com)
 }
 
 bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com) { // code 10220
+	int start = 0, end = 0;
+	const int target_mode = com.parameters[0];
+	const bool resolved_maniac_target = Player::IsPatchManiac();
+	if (resolved_maniac_target) {
+		// Maniac resolves the destination before evaluating the operand.
+		if (target_mode >= 0 && target_mode <= 3) {
+			start = target_mode >= 2 ? ResolveVariableIndirectAddress(com.parameters[1]) : com.parameters[1];
+			end = (target_mode & 1) != 0
+				? (target_mode == 3 ? ResolveVariableIndirectAddress(com.parameters[2]) : com.parameters[2]) : start;
+		} else {
+			const int32_t index = com.parameters.size() > 1 ? com.parameters[1] : 0;
+			if (index >= 0 && static_cast<size_t>(index) < com.parameters.size()) {
+				const size_t payload = static_cast<size_t>(index) + 1;
+				const int32_t words = com.parameters[index];
+				const size_t count = words > 0 ? std::min(static_cast<size_t>(words), com.parameters.size() - payload) : 0;
+				const auto bounds = ManiacPatch::ParseExpressionPair(MakeSpan(com.parameters).subspan(payload, count), *this);
+				start = bounds.first;
+				end = bounds.second;
+			}
+			if (target_mode != 4) {
+				start = start < 0 ? start : -start;
+				end = end < 0 ? end : -end;
+			}
+		}
+		if ((start < 0) != (end < 0)) end = start;
+	}
 	int value = 0;
 	int operand = com.parameters[4];
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const auto numeric = [&](int32_t raw, int mode) -> int32_t {
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
+	const auto evaluate_lerp = [&]() -> int32_t {
+		const uint32_t modes = static_cast<uint32_t>(parameter(5));
+		const double a = numeric(parameter(6), modes & 15);
+		const double b = numeric(parameter(7), (modes >> 4) & 15);
+		const double c = numeric(parameter(8), (modes >> 8) & 15);
+		const double raw_d = numeric(parameter(9), (modes >> 12) & 15);
+		const double result = a + (b - a) * (c / (raw_d == 0 ? 1 : raw_d));
+		if (!std::isfinite(result) || result < static_cast<double>(INT32_MIN) || result >= 2147483648.0) {
+			return INT32_MIN; // CVTTSD2SI with the usual masked invalid-operation exception.
+		}
+		return static_cast<int32_t>(std::trunc(result));
+	};
+	const auto evaluate_array = [&]() -> int32_t {
+		const uint32_t modes = static_cast<uint32_t>(parameter(5));
+		const int base_mode = modes & 15;
+		int32_t base = parameter(6);
+		if (operand == 23) {
+			base = numeric(base, base_mode);
+		} else if (base_mode == 1) {
+			base = ReadVariable(base);
+			if (parameter(6) < 0) base = static_cast<int32_t>(-std::abs(static_cast<int64_t>(base)));
+		} else if (base_mode != 0) {
+			base = ResolveVariableIndirectAddress(ResolveVariableIndirectAddress(base));
+		}
+		const int32_t raw_count = numeric(parameter(7), (modes >> 4) & 15);
+		const int64_t count = std::max<int64_t>(raw_count, operand == 23 ? 0 : 1);
+		const bool self_array = base < 0;
+		const int64_t first_slot = self_array ? -static_cast<int64_t>(base) : base;
+		const int64_t last_slot = first_slot + count;
+		if (Player::game_config.maniac_version.Get() != 250921 && last_slot >= 1000000) {
+			Output::Warning("ControlVariables: Array operand exceeds safe storage limit");
+			return 0;
+		}
+		if (self_array) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return 0;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(last_slot + 1)));
+		} else {
+			Main_Data::game_variables->GetManiacWritable(static_cast<int>(last_slot + 1));
+		}
+		uint32_t sum = 0;
+		int32_t extremum = operand == 24 ? INT32_MAX : INT32_MIN;
+		const int64_t read_count = operand == 25 ? count - 1 : count;
+		for (int64_t index = 0; index < read_count; ++index) {
+			const int id = static_cast<int>(self_array ? -(first_slot + index) : first_slot + index);
+			const int32_t element = id == 0 && Player::game_config.maniac_version.Get() == 250921
+				? Main_Data::game_variables->GetManiacRawSlot(0) : ReadVariable(id);
+			if (operand == 23) sum += static_cast<uint32_t>(element);
+			else if (operand == 24) extremum = std::min(extremum, element);
+			else extremum = std::max(extremum, element);
+		}
+		if (operand != 23) return extremum;
+		int32_t result;
+		std::memcpy(&result, &sum, sizeof(result));
+		return result;
+	};
 
 	if (EP_UNLIKELY(operand >= 9 && !Player::IsPatchManiac())) {
 		Output::Warning("ControlVariables: Unsupported operand {}", operand);
 		return true;
 	}
 
+	const auto evaluate_operand = [&](int32_t& value) -> bool {
 	switch (operand) {
 		case 0:
 			// Constant
@@ -1090,11 +1405,11 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			break;
 		case 1:
 			// Var A ops B
-			value = Main_Data::game_variables->Get(com.parameters[5]);
+			value = ReadVariable(com.parameters[5]);
 			break;
 		case 2:
 			// Number of var A ops B
-			value = Main_Data::game_variables->GetIndirect(com.parameters[5]);
+			value = ReadVariableIndirect(com.parameters[5]);
 			break;
 		case 3: {
 			// Random between range
@@ -1160,11 +1475,8 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		case 10: {
 			// Switch (Maniac)
 			value = com.parameters[5];
-			if (com.parameters[6] == 1) {
-				value = Main_Data::game_switches->GetInt(value);
-			} else {
-				value = Main_Data::game_switches->GetInt(Main_Data::game_variables->Get(value));
-			}
+			value = com.parameters[6] == 0 ? ReadSwitch(value)
+				: ReadSwitch(ResolveVariableIndirectAddress(value));
 			break;
 		}
 		case 11: {
@@ -1177,7 +1489,8 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		case 12: {
 			// Sqrt (Maniac)
 			int arg = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);
-			int mul = com.parameters[6];
+			int mul = Player::game_config.maniac_version.Get() == 250921
+				? ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]) : com.parameters[6];
 			value = ControlVariables::Sqrt(arg, mul);
 			break;
 		}
@@ -1185,7 +1498,8 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			// Sin (Maniac)
 			int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);
 			int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[8]);
-			float mul = static_cast<float>(com.parameters[6]);
+			int mul = Player::game_config.maniac_version.Get() == 250921
+				? com.parameters[6] : static_cast<int>(static_cast<float>(com.parameters[6]));
 			value = ControlVariables::Sin(arg1, arg2, mul);
 			break;
 		}
@@ -1245,25 +1559,103 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			}
 			break;
 		}
-		case 21:
-			// Expression (Maniac)
-			value = ManiacPatch::ParseExpression(MakeSpan(com.parameters).subspan(6, com.parameters[5]), *this);
+		case 21: {
+			// The operand envelope has a separate length header at A5.
+			const int32_t words = parameter(5);
+			const size_t available = com.parameters.size() > 6 ? com.parameters.size() - 6 : 0;
+			const size_t count = words > 0 ? std::min(static_cast<size_t>(words), available) : 0;
+			value = ManiacPatch::ParseExpression(MakeSpan(com.parameters).subspan(6, count), *this);
+			break;
+		}
+		case 22:
+			value = evaluate_lerp();
+			break;
+		case 23: case 24: case 25:
+			value = evaluate_array();
 			break;
 		default:
 			Output::Warning("ControlVariables: Unsupported operand {}", operand);
-			return true;
+			return false;
 	}
+	return true;
+	};
+	if (!resolved_maniac_target && !evaluate_operand(value)) return true;
 
-	int start, end;
-	bool target_eval_result = DecodeTargetEvaluationMode<
+	bool target_eval_result = true;
+	if (!resolved_maniac_target) {
+		target_eval_result = DecodeTargetEvaluationMode<
 		/* validate_patches */ true,
 		/* support_range_indirect */ true,
 		/* support_expressions */ true,
 		/* support_bitmask */ false,
 		/* support_scopes */ false
 	>(com, start, end);
+	}
 	if (!target_eval_result) {
 		Output::Warning("ControlVariables: Unsupported target evaluation mode {}", com.parameters[0]);
+		return true;
+	}
+	if (Player::IsPatchManiac() && start >= 0 && end >= 0 && end < start) std::swap(start, end);
+	if (Player::IsPatchManiac()) {
+		if ((start < 0) != (end < 0)) end = start;
+		if (Player::game_config.maniac_version.Get() == 241028 && target_mode == 0 && start < 0) {
+			// The fixed 241028 runtime ignores this direct negative target;
+			// 250921 writes the current event self bank instead.
+			return true;
+		}
+		const bool self_target = start < 0;
+		const int64_t first_slot = self_target ? -static_cast<int64_t>(start) : start;
+		const int64_t last_slot = self_target ? -static_cast<int64_t>(end) : end;
+		const int64_t low = std::min(first_slot, last_slot);
+		const int64_t high = std::max(first_slot, last_slot);
+		if (Player::game_config.maniac_version.Get() != 250921 && high > 1000000) {
+			Output::Warning("ControlVariables: Target exceeds safe storage limit");
+			return true;
+		}
+		Game_ManiacSelfVariables::Bank* bank = nullptr;
+		if (self_target) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return true;
+			// 8c800 prepares through the endpoint plus one extra physical slot.
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(high + 2)));
+		} else {
+			// The global physical slot zero is stored separately from this vector.
+			Main_Data::game_variables->EnsureSize(static_cast<size_t>(high + 1));
+		}
+		const int operation = com.parameters[3];
+		const int64_t min_value = Main_Data::game_variables->GetMinValue();
+		const int64_t max_value = Main_Data::game_variables->GetMaxValue();
+		for (int64_t slot = low; slot <= high; ++slot) {
+			int32_t operand_value = 0;
+			if (!evaluate_operand(operand_value)) return true;
+			int32_t* destination_ptr = self_target ? &bank->numbers[static_cast<size_t>(slot)]
+				: Main_Data::game_variables->GetManiacWritable(static_cast<int>(slot));
+			if (!destination_ptr) continue;
+			auto& destination = *destination_ptr;
+			int64_t result = 0;
+			switch (operation) {
+				case 0: destination = operand_value; continue;
+				case 1: result = static_cast<int64_t>(destination) + operand_value; break;
+				case 2: result = static_cast<int64_t>(destination) - operand_value; break;
+				case 3: result = static_cast<int64_t>(destination) * operand_value; break;
+				case 4: result = static_cast<int64_t>(destination) / (operand_value == 0 ? 1 : operand_value); break;
+				case 5: result = static_cast<int64_t>(destination) % (operand_value == 0 ? 1 : operand_value); break;
+				case 6: case 7: case 8: case 9: case 10: {
+					const uint32_t lhs = static_cast<uint32_t>(destination);
+					const uint32_t rhs = static_cast<uint32_t>(operand_value);
+					uint32_t bits = operation == 6 ? lhs | rhs : operation == 7 ? lhs & rhs
+						: operation == 8 ? lhs ^ rhs : operation == 9 ? lhs << (rhs & 31) : lhs >> (rhs & 31);
+					std::memcpy(&destination, &bits, sizeof(bits));
+					continue;
+				}
+				default: continue;
+			}
+			destination = static_cast<int32_t>(std::clamp(result, min_value, max_value));
+		}
+		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
 		return true;
 	}
 
@@ -1656,7 +2048,7 @@ void Game_Interpreter::ForegroundTextPush(PendingMessage pm) {
 	auto& fg_interp = GetForegroundInterpreter();
 	fg_interp._state.show_message = true;
 
-	Game_Message::SetPendingMessage(std::move(pm));
+	_async_op = Game_Message::SetPendingMessage(std::move(pm), this);
 }
 
 bool Game_Interpreter::CommandChangeExp(lcf::rpg::EventCommand const& com) { // Code 10410
@@ -1671,7 +2063,7 @@ bool Game_Interpreter::CommandChangeExp(lcf::rpg::EventCommand const& com) { // 
 		com.parameters[4]
 	);
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetEnableFace(false);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -1702,7 +2094,7 @@ bool Game_Interpreter::CommandChangeLevel(lcf::rpg::EventCommand const& com) { /
 		com.parameters[4]
 	);
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetEnableFace(false);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -2045,7 +2437,185 @@ bool Game_Interpreter::CommandPlaySound(lcf::rpg::EventCommand const& com) { // 
 	return true;
 }
 
-bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& /* com */) { // code 12310
+bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& com) { // code 12310
+	if (Player::IsPatchManiac() && com.parameters.size() >= 2 && Main_Data::game_maniac_self_variables) {
+		const auto parse_decimal = [](std::string_view source) -> int32_t {
+			const auto units = Utils::DecodeUTF16(source, true);
+			const std::wstring wide(units.begin(), units.end());
+			const long parsed = std::wcstol(wide.c_str(), nullptr, 10);
+			return static_cast<int32_t>(std::clamp<long>(parsed, INT32_MIN, INT32_MAX));
+		};
+		const auto* frame = GetFramePtr();
+		if (frame && frame->easyrpg_maniac_return_address != 0) {
+			const int receiver_type = frame->easyrpg_maniac_return_type;
+			const bool numeric_receiver = receiver_type == 2 || receiver_type == 3;
+			const bool switch_receiver = receiver_type == 8 || receiver_type == 9;
+			const bool string_receiver = receiver_type == 5 || receiver_type == 6;
+			if (Player::game_config.maniac_version.Get() == 250921
+				&& frame->easyrpg_maniac_return_address < 0 && _state.stack.size() >= 2
+				&& (numeric_receiver || switch_receiver || string_receiver)) {
+				// Native resolves the caller environment before converting the source.
+				// A battle page has no map/common self bank and must fail here.
+				const auto& caller = _state.stack[_state.stack.size() - 2];
+				if (!Main_Data::game_maniac_self_variables->Ensure(caller.easyrpg_self_scope,
+					caller.easyrpg_self_map_id, caller.easyrpg_self_event_id)) {
+					Output::Error("Failed to create self-variables.");
+				}
+			}
+			if (numeric_receiver || switch_receiver) {
+				const int32_t raw_address = frame->easyrpg_maniac_return_address;
+				const bool indirect = receiver_type == 3 || receiver_type == 9;
+				const int positive_address = raw_address > 0
+					? (indirect ? Main_Data::game_variables->Get(raw_address) : raw_address) : 0;
+				const int source_type = com.parameters[1];
+				const int32_t raw_source = com.parameters.size() >= 3 ? com.parameters[2] : 0;
+				int32_t result = 0;
+				switch (source_type) {
+					case 1: result = raw_source; break;
+					case 2: result = ReadVariable(raw_source); break;
+					case 3: result = ReadVariableIndirect(raw_source); break;
+					case 4: result = parse_decimal(com.string); break;
+					case 5: result = parse_decimal(ReadString(raw_source)); break;
+					case 6: result = parse_decimal(ReadString(ResolveVariableIndirectAddress(raw_source))); break;
+					case 7: result = raw_source != 0; break;
+					case 8: result = ReadSwitch(raw_source); break;
+					case 9: result = ReadSwitch(ResolveVariableIndirectAddress(raw_source)); break;
+					default: break;
+				}
+				if (raw_address > 0) {
+					const int address = positive_address;
+					if (address > 0) {
+						if (numeric_receiver) {
+							if (auto* value = Main_Data::game_variables->GetManiacWritable(address)) *value = result;
+						} else Main_Data::game_switches->Set(address, result != 0);
+					} else if (address < 0 && address != INT32_MIN) {
+						auto* bank = Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+							frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
+						if (!bank && Player::game_config.maniac_version.Get() == 250921) {
+							Output::Error("Failed to create self-variables.");
+						}
+						if (bank) {
+							const size_t slot = static_cast<size_t>(-static_cast<int64_t>(address));
+							if (numeric_receiver) {
+								bank->numbers.resize(std::max(bank->numbers.size(), slot + 1));
+								bank->numbers[slot] = result;
+							} else {
+								bank->switches.resize(std::max(bank->switches.size(), slot + 1));
+								bank->switches[slot] = result != 0;
+							}
+						}
+					}
+				} else if (_state.stack.size() >= 2) {
+					const auto& caller = _state.stack[_state.stack.size() - 2];
+					auto* bank = Main_Data::game_maniac_self_variables->Ensure(caller.easyrpg_self_scope,
+						caller.easyrpg_self_map_id, caller.easyrpg_self_event_id);
+					if (bank) {
+						const size_t reference = static_cast<size_t>(-static_cast<int64_t>(raw_address));
+						if (reference <= INT32_MAX) {
+							const int32_t value = indirect && reference < bank->numbers.size() ? bank->numbers[reference] : 0;
+							const size_t slot = indirect ? static_cast<size_t>(std::abs(static_cast<int64_t>(value))) : reference;
+							if (slot <= INT32_MAX) {
+								if (numeric_receiver) {
+									bank->numbers.resize(std::max(bank->numbers.size(), slot + 1));
+									bank->numbers[slot] = result;
+								} else {
+									bank->switches.resize(std::max(bank->switches.size(), slot + 1));
+									bank->switches[slot] = result != 0;
+								}
+							}
+						}
+					}
+				}
+			} else if (string_receiver && Main_Data::game_strings) {
+				const int32_t raw_address = frame->easyrpg_maniac_return_address;
+				const bool indirect = receiver_type == 6;
+				const int positive_address = raw_address > 0
+					? (indirect ? Main_Data::game_variables->Get(raw_address) : raw_address) : 0;
+				const int source_type = com.parameters[1];
+				const int32_t raw_source = com.parameters.size() >= 3 ? com.parameters[2] : 0;
+				std::string result;
+				bool result_present = false;
+				switch (source_type) {
+					case 1: result = std::to_string(raw_source); break;
+					case 2: result = std::to_string(ReadVariable(raw_source)); break;
+					case 3: result = std::to_string(ReadVariableIndirect(raw_source)); break;
+					case 4: result = ToString(com.string); break;
+					case 5:
+						result = ToString(ReadString(raw_source));
+						result_present = IsManiacStringPresent(raw_source);
+						break;
+					case 6: {
+						const int id = ResolveVariableIndirectAddress(raw_source);
+						result = ToString(ReadString(id));
+						result_present = IsManiacStringPresent(id);
+						break;
+					}
+					case 7: result = std::to_string(raw_source != 0); break;
+					case 8: result = std::to_string(ReadSwitch(raw_source) != 0); break;
+					case 9: result = std::to_string(ReadSwitch(ResolveVariableIndirectAddress(raw_source)) != 0); break;
+					default: break;
+				}
+				if (source_type != 5 && source_type != 6) result_present = !result.empty();
+				if (raw_address > 0) {
+					if (positive_address > 0) {
+						Main_Data::game_strings->SetManiacRawSlot(positive_address, result, result_present);
+					} else if (positive_address < 0 && positive_address != INT32_MIN) {
+						auto* bank = Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+							frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
+						if (!bank && Player::game_config.maniac_version.Get() == 250921) {
+							Output::Error("Failed to create self-variables.");
+						}
+						if (bank) {
+							const size_t slot = static_cast<size_t>(-static_cast<int64_t>(positive_address));
+							bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+							bank->strings[slot] = lcf::DBString(result);
+							Game_ManiacSelfVariables::SetStringPresence(bank, slot, result_present);
+						}
+					}
+				} else if (_state.stack.size() >= 2) {
+					const auto& caller = _state.stack[_state.stack.size() - 2];
+					auto* bank = Main_Data::game_maniac_self_variables->Ensure(caller.easyrpg_self_scope,
+						caller.easyrpg_self_map_id, caller.easyrpg_self_event_id);
+					if (bank) {
+						const size_t reference = static_cast<size_t>(-static_cast<int64_t>(raw_address));
+						if (reference <= INT32_MAX) {
+							const int32_t value = indirect && reference < bank->numbers.size() ? bank->numbers[reference] : 0;
+							const size_t slot = indirect ? static_cast<size_t>(std::abs(static_cast<int64_t>(value))) : reference;
+							if (slot > 0 && slot <= INT32_MAX) {
+								bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+								bank->strings[slot] = lcf::DBString(result);
+								Game_ManiacSelfVariables::SetStringPresence(bank, slot, result_present);
+							}
+						}
+					}
+				}
+			}
+			// Native return delivery refreshes map pages before callee cleanup.
+			// Unknown receiver kinds still take this branch.
+			if ((frame->easyrpg_maniac_return_address > 0 || _state.stack.size() >= 2)
+				&& (Player::game_config.maniac_version.Get() == 250921 || !Game_Battle::IsBattleRunning())) {
+				// The native refresh guard is not the battle-interpreter mode: fixed
+				// mode-2 captures still refresh before cleanup and both input polls.
+				Game_Map::Refresh();
+			}
+		}
+	}
+	if (Player::IsPatchManiac() && !com.parameters.empty() && Main_Data::game_maniac_self_variables) {
+		const int flags = com.parameters[0] & 7;
+		if (flags != 0) {
+			const auto* frame = GetFramePtr();
+			auto* bank = frame ? Main_Data::game_maniac_self_variables->FindMutable(
+				frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (bank) {
+				if ((flags & 1) != 0) bank->numbers.clear();
+				if ((flags & 2) != 0) {
+					bank->strings.clear();
+					bank->empty_string_slots.clear();
+				}
+				if ((flags & 4) != 0) bank->switches.clear();
+			}
+		}
+	}
 	EndEventProcessing();
 	return true;
 }
@@ -2140,7 +2710,11 @@ bool Game_Interpreter::CommandChangeHeroName(lcf::rpg::EventCommand const& com) 
 		return true;
 	}
 
-	actor->SetName(ToString(CommandStringOrVariableBitfield(com, 1, 1, 2)));
+	const auto name = CommandStringOrVariableBitfield(com, 1, 1, 2);
+	const int mode = com.parameters.size() > 2 ? (com.parameters[1] >> 4) & 15 : 0;
+	const bool present = !name.empty() || (mode != 0 && Player::game_config.maniac_version.Get() == 250921
+		&& IsManiacStringPresent(mode == 1 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2])));
+	actor->SetName(ToString(name), present);
 	return true;
 }
 
@@ -2153,7 +2727,11 @@ bool Game_Interpreter::CommandChangeHeroTitle(lcf::rpg::EventCommand const& com)
 		return true;
 	}
 
-	actor->SetTitle(ToString(CommandStringOrVariableBitfield(com, 1, 1, 2)));
+	const auto title = CommandStringOrVariableBitfield(com, 1, 1, 2);
+	const int mode = com.parameters.size() > 2 ? (com.parameters[1] >> 4) & 15 : 0;
+	const bool present = !title.empty() || (mode != 0 && Player::game_config.maniac_version.Get() == 250921
+		&& IsManiacStringPresent(mode == 1 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2])));
+	actor->SetTitle(ToString(title), present);
 	return true;
 }
 
@@ -2893,8 +3471,7 @@ bool Game_Interpreter::CommandShowPicture(lcf::rpg::EventCommand const& com) { /
 		Output::Error("ShowPicture: Requested invalid picture id ({})", pic_id);
 	}
 
-	// RPG_RT will crash if you ask for a picture id greater than the limit that
-	// version of the engine allows. We allow an arbitrary number of pictures in Player.
+	// Maniac's configured pool is checked by Game_Pictures; other engines may grow lazily.
 
 	if (Main_Data::game_pictures->Show(pic_id, params)) {
 		if (params.origin > 0) {
@@ -3499,6 +4076,7 @@ bool Game_Interpreter::CommandChangeMainMenuAccess(lcf::rpg::EventCommand const&
 
 bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& com) { // Code 12010
 	const auto& frame = GetFrame();
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 
 	bool result = false;
 	int value1, value2;
@@ -3509,12 +4087,12 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	switch (com.parameters[0]) {
 	case 0:
 		// Switch
-		result = Main_Data::game_switches->Get(com.parameters[1]) == (com.parameters[2] == 0);
+		result = (native_250921 ? ReadSwitch(com.parameters[1]) != 0 : Main_Data::game_switches->Get(com.parameters[1])) == (com.parameters[2] == 0);
 		break;
 	case 1:
 		// Variable
-		value1 = Main_Data::game_variables->Get(com.parameters[1]);
-		value2 = ValueOrVariable(com.parameters[2], com.parameters[3]);
+		value1 = native_250921 ? ReadVariable(com.parameters[1]) : Main_Data::game_variables->Get(com.parameters[1]);
+		value2 = native_250921 ? (com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : ValueOrVariable(com.parameters[2], com.parameters[3]);
 		result = CheckOperator(value1, value2, com.parameters[4]);
 		break;
 	case 2:
@@ -3569,6 +4147,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 		actor = Main_Data::game_actors->GetActor(actor_id);
 
 		if (!actor) {
+			if (native_250921) Output::Error("ConditionalBranch: Actor {} was not found.", actor_id);
 			Output::Warning("ConditionalBranch: Invalid actor ID {}", actor_id);
 			// Use Else Branch
 			SetSubcommandIndex(com.indent, 1);
@@ -3618,6 +4197,27 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	case 6: {
 		// Orientation of char
 		int chara_id = com.parameters[1];
+		if (native_250921) {
+			const int mode = com.parameters[3] & 15;
+			chara_id = mode == 0 ? chara_id : mode == 1 ? ReadVariable(chara_id) : ReadVariableIndirect(chara_id);
+			if (com.parameters[4] == 1) {
+				if (chara_id == Game_Character::CharPlayer) result = true;
+				else if (chara_id >= Game_Character::CharBoat && chara_id <= Game_Character::CharAirship) {
+					const auto* vehicle = Game_Map::GetVehicle(static_cast<Game_Vehicle::Type>(chara_id - Game_Character::CharBoat + 1));
+					result = vehicle && vehicle->GetMapId() == Game_Map::GetMapId();
+				} else {
+					if (chara_id == Game_Character::CharThisEvent) {
+						chara_id = 0;
+						for (auto i = _state.stack.rbegin(); i != _state.stack.rend(); ++i) {
+							if (i->event_id > 0) { chara_id = i->event_id; break; }
+						}
+					}
+					result = Game_Map::GetEvent(chara_id) != nullptr;
+				}
+				break;
+			}
+			if (com.parameters[4] != 0) break;
+		} else
 
 		if (Player::IsPatchManiac()) {
 			chara_id = ValueOrVariable(com.parameters[3], chara_id);
@@ -3692,10 +4292,13 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 		if (Player::IsPatchManiac()) {
 			switch (com.parameters[1]) {
 				case 0:
-					result = Main_Data::game_system->IsLoadedThisFrame();
+					result = native_250921 ? Main_Data::game_system->IsManiacLoadPending() : Main_Data::game_system->IsLoadedThisFrame();
 					break;
 				case 1:
-					// Joypad is active (We always read from Controller so simply report 'true')
+					if (native_250921) {
+						result = DisplayUi && DisplayUi->IsJoystickAvailable();
+						break;
+					}
 #if defined(USE_JOYSTICK) && defined(SUPPORT_JOYSTICK)
 					result = true;
 #else
@@ -3703,9 +4306,10 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 #endif
 					break;
 				case 2:
-					// FIXME: Window has focus. Needs function exposed in DisplayUi
-					// Assuming 'true' as Player usually suspends when loosing focus
-					result = true;
+					result = !native_250921 || (DisplayUi && DisplayUi->HasInputFocus());
+					break;
+				case 3:
+					result = native_250921 && Output::IsManiacFileOutputAvailable();
 					break;
 			}
 		}
@@ -3713,20 +4317,51 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	case 13:
 		// Maniac: Switch through Variable
 		if (Player::IsPatchManiac()) {
-			result = Main_Data::game_switches->Get(Main_Data::game_variables->Get(com.parameters[1])) == (com.parameters[2] == 0);
+			result = (native_250921 ? ReadSwitch(ResolveVariableIndirectAddress(com.parameters[1])) != 0 : Main_Data::game_switches->Get(Main_Data::game_variables->Get(com.parameters[1]))) == (com.parameters[2] == 0);
 		}
 		break;
 	case 14:
 		// Maniac: Variable indirect
 		if (Player::IsPatchManiac()) {
-			value1 = Main_Data::game_variables->GetIndirect(com.parameters[1]);
-			value2 = ValueOrVariable(com.parameters[2], com.parameters[3]);
+			value1 = native_250921 ? ReadVariableIndirect(com.parameters[1]) : Main_Data::game_variables->GetIndirect(com.parameters[1]);
+			value2 = native_250921 ? (com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : ValueOrVariable(com.parameters[2], com.parameters[3]);
 			result = CheckOperator(value1, value2, com.parameters[4]);
 		}
 		break;
 	case 15:
 		// Maniac: String comparison
 		if (Player::IsPatchManiac()) {
+			if (native_250921) {
+				const uint32_t modes = static_cast<uint32_t>(com.parameters[1]);
+				const int left_id = (modes & 15) == 0 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2]);
+				const int right_mode = (modes >> 4) & 15;
+				const int right_id = right_mode == 0 ? 0 : right_mode == 1 ? com.parameters[3] : ResolveVariableIndirectAddress(com.parameters[3]);
+				auto left = Utils::DecodeUTF16(ReadString(left_id), true);
+				auto right = Utils::DecodeUTF16(right_mode == 0 ? std::string_view(com.string) : ReadString(right_id), true);
+				bool left_present = IsManiacStringPresent(left_id);
+				bool right_present = right_mode == 0 ? !com.string.empty() : IsManiacStringPresent(right_id);
+				const uint32_t options = static_cast<uint32_t>(com.parameters[4]);
+				const bool fold = ((options >> 8) & 255) != 0;
+				if (fold) {
+					left_present = !left.empty(); right_present = !right.empty();
+					for (auto* text : {&left, &right}) for (auto& unit : *text) if (unit >= u'A' && unit <= u'Z') unit += u'a' - u'A';
+				}
+				const bool equal = left_present == right_present && left == right;
+				const auto contains = [&]() {
+					if (!right_present) return true;
+					if (!left_present || left.empty()) return false;
+					return std::u16string_view(left.data(), std::find(left.begin(), left.end(), u'\0') - left.begin()).find(
+						std::u16string_view(right.data(), std::find(right.begin(), right.end(), u'\0') - right.begin())) != std::u16string_view::npos;
+				};
+				switch (options & 255) {
+					case 0: result = equal; break;
+					case 1: result = !equal; break;
+					case 2: result = contains(); break;
+					case 3: result = !contains(); break;
+					default: result = fold && equal; break;
+				}
+				break;
+			}
 			int modes[] = {
 				(com.parameters[1]     ) & 15, //str_l mode: 0 = direct, 1 = indirect
 				(com.parameters[1] >> 4) & 15, //str_r mode: 0 = literal, 1 = direct, 2 = indirect
@@ -3752,7 +4387,20 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	int sub_idx = subcommand_sentinel;
 	if (!result) {
 		sub_idx = eOptionBranchElse;
-		SkipToNextConditional({Cmd::ElseBranch, Cmd::EndBranch}, com.indent);
+		if (native_250921) {
+			auto& mutable_frame = GetFrame();
+			for (int i = mutable_frame.current_command + 1; i < static_cast<int>(mutable_frame.commands.size()); ++i) {
+				const auto& marker = mutable_frame.commands[i];
+				if (marker.indent != com.indent) continue;
+				mutable_frame.current_command = i;
+				if (marker.code == static_cast<int>(Cmd::ElseBranch) || marker.code == static_cast<int>(Cmd::EndBranch)) {
+					// liblcf omits the serialized END sentinel. Reaching the end
+					// of this vector is normal completion, handled by Update().
+					++mutable_frame.current_command;
+				}
+				break;
+			}
+		} else SkipToNextConditional({Cmd::ElseBranch, Cmd::EndBranch}, com.indent);
 	}
 
 	SetSubcommandIndex(com.indent, sub_idx);
@@ -3761,6 +4409,13 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 
 
 bool Game_Interpreter::CommandElseBranch(lcf::rpg::EventCommand const& com) { //code 22010
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		auto& frame = GetFrame();
+		for (int i = frame.current_command + 1; i < static_cast<int>(frame.commands.size()); ++i) {
+			if (frame.commands[i].indent == com.indent) { frame.current_command = i; break; }
+		}
+		return true;
+	}
 	return CommandOptionGeneric(com, eOptionBranchElse, {Cmd::EndBranch});
 }
 
@@ -3773,13 +4428,17 @@ bool Game_Interpreter::CommandJumpToLabel(lcf::rpg::EventCommand const& com) { /
 	const auto& list = frame.commands;
 	auto& index = frame.current_command;
 
-	int label_id = com.parameters[0];
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	int label_id = com.parameters.empty() ? 0 : com.parameters[0];
 
 	for (int idx = 0; (size_t)idx < list.size(); idx++) {
 		if (static_cast<Cmd>(list[idx].code) != Cmd::Label)
 			continue;
-		if (list[idx].parameters.empty() || list[idx].parameters[0] != label_id)
+		if ((list[idx].parameters.empty() ? 0 : list[idx].parameters[0]) != label_id || (!native_250921 && list[idx].parameters.empty()))
 			continue;
+		// Re-fetching the label uses the immediate skip and consumes no budget.
+		// Keep the cursor different from this jump even for Label; Jump pairs,
+		// so Update's automatic increment cannot skip a jump back to itself.
 		index = idx;
 		break;
 	}
@@ -3787,7 +4446,143 @@ bool Game_Interpreter::CommandJumpToLabel(lcf::rpg::EventCommand const& com) { /
 	return true;
 }
 
+bool Game_Interpreter::CommandManiacLoop(lcf::rpg::EventCommand const& com, bool end) {
+	auto& frame = GetFrame();
+	const auto arg = [&](int64_t i) -> int32_t {
+		return i >= 0 && static_cast<uint64_t>(i) < com.parameters.size() ? com.parameters[i] : 0;
+	};
+	const int type = arg(0);
+	const auto rewind = [&]() {
+		for (int i = frame.current_command - 1; i >= 0; --i) {
+			if (frame.commands[i].indent == com.indent && frame.commands[i].code == static_cast<int>(Cmd::Loop)) {
+				frame.current_command = i + 1;
+				break;
+			}
+		}
+	};
+	if (type == 0) {
+		if (end) rewind();
+		return true;
+	}
+	const auto offset = static_cast<size_t>(com.indent) * 2;
+	if (frame.maniac_loop_info.size() < offset + 2) frame.maniac_loop_info.resize(offset + 2);
+	frame.maniac_loop_info_size = static_cast<int32_t>(frame.maniac_loop_info.size() / 2);
+	auto& current = frame.maniac_loop_info[offset];
+	auto& bound = frame.maniac_loop_info[offset + 1];
+	const uint32_t modes = static_cast<uint32_t>(arg(1));
+	const auto scalar = [&](int32_t raw, int mode) -> int32_t {
+		if (mode == 0) return raw;
+		if (mode == 1) return ReadVariable(raw);
+		if (mode == 2) return ReadVariableIndirect(raw);
+		return ReadSwitch(mode == 3 ? raw : ResolveVariableIndirectAddress(raw));
+	};
+	const auto compare = [&]() {
+		const int op = (modes >> 8) & 255;
+		return op > 5 || CheckOperator(scalar(arg(2), modes & 15), scalar(arg(3), (modes >> 4) & 15), op);
+	};
+	const auto list_value = [&](int32_t i) {
+		const uint32_t packed = static_cast<uint32_t>(arg(static_cast<int64_t>(arg(2)) + i / 4));
+		const int mode = (packed >> ((static_cast<uint32_t>(i % 4) * 4) & 31)) & 15;
+		const int32_t raw = arg(static_cast<int64_t>(i) + 5);
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
+	const auto output = [&](int32_t value, bool pair) {
+		const int32_t destination = arg(4);
+		if (destination == 0) return;
+		const size_t slot = destination < 0 ? -static_cast<int64_t>(destination) : destination;
+		if (destination < 0) {
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = state ? state->Ensure(frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("Failed to create self-variables.");
+			bank->numbers.resize(std::max(bank->numbers.size(), slot + (pair ? 3 : 1)));
+			bank->numbers[slot] = value;
+			if (pair) bank->numbers[slot + 1] = current;
+		} else {
+			Main_Data::game_variables->EnsureSize(slot + (pair ? 2 : 0));
+			*Main_Data::game_variables->GetManiacWritable(destination) = value;
+			if (pair) *Main_Data::game_variables->GetManiacWritable(destination + 1) = current;
+		}
+		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+	};
+	const auto advance = [&](int change) {
+		current = static_cast<int32_t>(static_cast<uint32_t>(current) + static_cast<uint32_t>(change));
+	};
+	bool enter = true;
+	int32_t value = 0;
+	if (!end) {
+		switch (type) {
+			case 1:
+				value = static_cast<int32_t>(static_cast<uint32_t>(scalar(arg(2), modes & 15)) - 1);
+				enter = value >= 0;
+				if (enter) { current = 0; bound = value; }
+				value = 0;
+				break;
+			case 2: case 3: {
+				value = scalar(arg(2), modes & 15);
+				const int32_t limit = scalar(arg(3), (modes >> 4) & 15);
+				enter = type == 2 ? value <= limit : value >= limit;
+				if (enter) { current = value; bound = limit; }
+				break;
+			}
+			case 4: case 5:
+				enter = type == 5 || compare();
+				if (enter) current = 0;
+				break;
+			case 6:
+				enter = arg(3) > 0;
+				if (enter) { current = 0; bound = arg(3) - 1; value = list_value(0); }
+				break;
+			case 8:
+				current = 0;
+				bound = Game_Map::GetMapId();
+				enter = !Game_Map::GetEvents().empty();
+				if (enter) value = Game_Map::GetEvents().front().GetId();
+				break;
+			default:
+				value = scalar(arg(3), ((modes >> 4) & 15) == 0 ? 0 : ((modes >> 4) & 15) == 1 ? 1 : 2);
+				enter = value > 0;
+				if (enter) { current = 0; bound = value - 1; value = ReadVariableIndirect(arg(2)); }
+				break;
+		}
+		if (!enter) {
+			// Native skips the first equal-indent record, independently of opcode.
+			const int next = frame.current_command + 1;
+			frame.current_command += 2;
+			for (int i = next; i < static_cast<int>(frame.commands.size()); ++i) {
+				if (frame.commands[i].indent == com.indent) { frame.current_command = i + 1; break; }
+			}
+			return true;
+		}
+		output(value, type >= 6);
+		return true;
+	}
+	if (type == 4 || type == 5) {
+		if (!compare()) return true;
+		advance(1);
+	} else if (type == 8) {
+		if (bound != Game_Map::GetMapId()) return true;
+		advance(1);
+		if (static_cast<uint32_t>(current) >= Game_Map::GetEvents().size()) return true;
+	} else {
+		advance(type == 3 ? -1 : 1);
+		if (type == 3 ? current < bound : current > bound) return true;
+	}
+	if (type < 6) value = current;
+	else if (arg(4) != 0) {
+		if (type == 6) value = list_value(current);
+		else if (type == 8) value = Game_Map::GetEvents()[current].GetId();
+		else value = ReadVariableIndirect(static_cast<int32_t>(static_cast<uint32_t>(arg(2)) + static_cast<uint32_t>(current)));
+	}
+	// Type8's native end has a positive-only output gate; begin accepts SELF.
+	if (type != 8 || arg(4) > 0) output(value, type >= 6);
+	rewind();
+	return true;
+}
+
 bool Game_Interpreter::CommandLoop(lcf::rpg::EventCommand const& com) { // code 12210
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		return CommandManiacLoop(com, false);
+	}
 	if (!Player::IsPatchManiac() || com.parameters.size() < 5 || com.parameters[0] == 0) {
 		// Infinite loop
 		return true;
@@ -3909,6 +4704,9 @@ bool Game_Interpreter::CommandBreakLoop(lcf::rpg::EventCommand const& com) { // 
 }
 
 bool Game_Interpreter::CommandEndLoop(lcf::rpg::EventCommand const& com) { // code 22210
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		return CommandManiacLoop(com, true);
+	}
 	auto& frame = GetFrame();
 	const auto& list = frame.commands;
 	auto& index = frame.current_command;
@@ -4024,47 +4822,728 @@ bool Game_Interpreter::CommandEraseEvent(lcf::rpg::EventCommand const& com) { //
 	return true;
 }
 
+bool Game_Interpreter::CommandManiacSelfvar(lcf::rpg::EventCommand const& com) try { // code 3036
+	if (!Player::IsPatchManiac() || !Main_Data::game_maniac_self_variables) {
+		return true;
+	}
+	// The native dispatcher refreshes map pages after every 3036 helper path,
+	// including unknown operations and branches that did not write a value.
+	auto refresh_guard = lcf::makeScopeGuard([]() {
+		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+	});
+	const auto param = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t mode = static_cast<uint32_t>(param(0));
+	const auto nibble = [&](unsigned index) -> int {
+		return static_cast<int>((mode >> (index * 4)) & 15);
+	};
+	const uint32_t options = static_cast<uint32_t>(param(7));
+	const int kind = (options >> 4) & 15;
+	const int array_mode = (options >> 8) & 15;
+	const int operation = param(9);
+	if (operation < 0 || operation > 2) {
+		return true;
+	}
+	if (operation == 1 && nibble(3) != 1 && nibble(3) != 2) {
+		// Clear checks its target ID selector before resolving an environment.
+		return true;
+	}
+	// Runtime consumes the shared command text as UTF-16 units. The byte
+	// budget is an approximation and must not be measured in UTF-8 bytes.
+	const auto text_units = Utils::DecodeUTF16(com.string, Player::IsPatchManiac());
+	size_t text_cursor = 0;
+	const auto take_text = [&](int32_t budget) -> std::u16string {
+		const size_t begin = text_cursor;
+		while (budget > 0 && text_cursor < text_units.size()) {
+			const uint16_t unit = text_units[text_cursor];
+			const int cost = unit <= 0x00ff || (unit >= 0xff61 && unit <= 0xff9f) ? 1 : 2;
+			if (cost > budget) break;
+			budget -= cost;
+			++text_cursor;
+		}
+		return text_units.substr(begin, text_cursor - begin);
+	};
+
+	// The sign of a negative first reference is retained only when its result
+	// is used as an address for another read (or as a Set destination ID).
+	const auto propagate_negative_reference = [&](int32_t id) -> int32_t {
+		const int32_t value = ReadVariable(id);
+		if (id >= 0) {
+			return value;
+		}
+		const int64_t magnitude = std::abs(static_cast<int64_t>(value));
+		return static_cast<int32_t>(-magnitude);
+	};
+	const auto select = [&](int32_t raw, int selector) -> int32_t {
+		if (selector == 1) return ReadVariable(raw);
+		if (selector == 2) return ReadVariable(propagate_negative_reference(raw));
+		return raw;
+	};
+	const auto select_map_for_clear_or_init = [&](int32_t raw, int selector) -> int32_t {
+		if (operation != 0 && selector == 5) return propagate_negative_reference(raw);
+		return select(raw, selector);
+	};
+	const int count_mode = options & 15;
+	const auto read_count = [&]() -> int32_t {
+		return count_mode == 0 ? param(8) : count_mode == 1 ? ReadVariable(param(8)) : ReadVariable(propagate_negative_reference(param(8)));
+	};
+
+	struct Key { int scope, map_id, event_id; };
+	const auto resolve = [&](int env, int id_mode, int map_mode, int32_t raw_id, int32_t raw_map) -> std::optional<Key> {
+		if (env == 3 || env == 4) {
+			const size_t depth = env == 3 ? 1 : 2;
+			if (_state.stack.size() >= depth) {
+				const auto& frame = _state.stack[_state.stack.size() - depth];
+				if (frame.easyrpg_self_scope == 1 || frame.easyrpg_self_scope == 2) {
+					return Key{frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
+				}
+			}
+			if (operation == 0) Output::Error("Failed to create self-variables.");
+			return std::nullopt;
+		}
+		if (env == 1) {
+			// Literal and numeric-reference selectors are independent of the chosen bank.
+			int id = raw_id;
+			if (id_mode == 1 || id_mode == 2) id = select(raw_id, id_mode);
+			if (id_mode >= 3 && id_mode <= 5) {
+				if (id_mode == 3 && com.easyrpg_maniac_common_name_cache != 0) {
+					id = com.easyrpg_maniac_common_name_cache;
+				} else {
+					std::u16string name;
+					if (id_mode == 3) {
+						name = take_text(raw_id);
+					} else {
+						const auto value = ReadString(id_mode == 4 ? raw_id : ReadVariable(raw_id));
+						name = Utils::DecodeUTF16(value.substr(0, value.find('\0')), true);
+					}
+					id = 0;
+					for (const auto& candidate : lcf::Data::commonevents) {
+						if (Utils::DecodeUTF16(static_cast<std::string_view>(candidate.name), true) == name) {
+							id = candidate.ID;
+							break;
+						}
+					}
+					if (id == 0) Output::Error("Invalid Common Event: {}", Utils::EncodeUTF(name, true));
+					if (id_mode == 3 && id != 0) com.easyrpg_maniac_common_name_cache = id;
+				}
+			}
+			if (id == 0) {
+				for (auto it = _state.stack.rbegin(); it != _state.stack.rend(); ++it) {
+					if (it->easyrpg_self_scope == 1) { id = it->easyrpg_self_event_id; break; }
+				}
+			}
+			return Key{1, 0, id};
+		}
+		if (env == 2) {
+			int map_id = select_map_for_clear_or_init(raw_map, map_mode);
+			if (map_id == 0 && Main_Data::game_player) map_id = Main_Data::game_player->GetMapId();
+			int id = select_map_for_clear_or_init(raw_id, id_mode);
+			if (id == 0 || id == 10005) {
+				id = 0;
+				const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+				for (auto it = _state.stack.rbegin(); it != _state.stack.rend(); ++it) {
+					if (native_250921 ? it->event_id > 0
+						: it->easyrpg_self_scope == 2 && it->easyrpg_self_map_id == map_id) {
+						id = native_250921 ? it->event_id : it->easyrpg_self_event_id;
+						break;
+					}
+				}
+			}
+			return Key{2, map_id, id};
+		}
+		return Key{0, 0, 0};
+	};
+	const auto find_bank = [&](Key key) -> Game_ManiacSelfVariables::Bank* {
+		for (auto& bank : Main_Data::game_maniac_self_variables->MutableBanks()) {
+			if (bank.scope == key.scope && bank.map_id == key.map_id && bank.event_id == key.event_id) return &bank;
+		}
+		return nullptr;
+	};
+	// Clear reads its count and target ID before resolving the destination environment.
+	const int32_t clear_count = operation == 1 ? read_count() : 0;
+	const int32_t clear_target_id = operation == 1
+		? (nibble(3) == 1 ? param(3) : ReadVariable(param(3))) : 0;
+	const auto target = resolve(nibble(0), nibble(1), nibble(2), param(1), param(2));
+	if (!target) return true;
+	if (operation == 0 && target->scope != 0) {
+		Main_Data::game_maniac_self_variables->Ensure(target->scope, target->map_id, target->event_id);
+	}
+	std::optional<Key> source;
+	if (operation == 0) {
+		source = resolve(nibble(4), nibble(5), nibble(6), param(4), param(5));
+		if (source && source->scope != 0) {
+			Main_Data::game_maniac_self_variables->Ensure(source->scope, source->map_id, source->event_id);
+		}
+	}
+
+	if (operation == 2) {
+		if (target->scope == 0) {
+			Main_Data::game_variables->SetData({});
+			Main_Data::game_switches->SetData({});
+			Main_Data::game_strings->SetData(Game_Strings::Strings_t{});
+		} else {
+			const int32_t count = read_count();
+			for (auto& bank : Main_Data::game_maniac_self_variables->MutableBanks()) {
+				if (bank.scope != target->scope || (target->scope == 2 && target->map_id >= 0 && bank.map_id != target->map_id)) continue;
+				if (target->event_id >= 0) {
+					const int64_t offset = static_cast<int64_t>(bank.event_id) - target->event_id;
+					if (offset < 0 || (count >= 0 && offset >= count)) continue;
+				}
+				bank.numbers.clear();
+				bank.switches.clear();
+				bank.strings.clear();
+				bank.empty_string_slots.clear();
+			}
+		}
+		return true;
+	}
+
+	if (nibble(3) != 1 && nibble(3) != 2) return true;
+	int32_t target_id = operation == 1 ? clear_target_id : nibble(3) == 1 ? param(3) : propagate_negative_reference(param(3));
+	const int32_t count = operation == 1 ? clear_count : read_count();
+	if (operation == 1) {
+		const auto clear_bank = [&](Game_ManiacSelfVariables::Bank* bank) {
+			// Negative starts can address before native vectors. Skip that unsafe case.
+			if (!bank || target_id < 0) return;
+			const size_t start = static_cast<size_t>(target_id);
+			const auto clear = [&](auto& values) {
+				if (start >= values.size()) return;
+				const size_t length = count < 0 ? values.size() - start : std::min<size_t>(count, values.size() - start);
+				std::fill_n(values.begin() + start, length, typename std::decay_t<decltype(values)>::value_type{});
+			};
+			if (kind == 0 || kind == 3) clear(bank->numbers);
+			if (kind == 1 || kind == 3) {
+				clear(bank->strings);
+				bank->empty_string_slots.erase(std::remove_if(bank->empty_string_slots.begin(),
+					bank->empty_string_slots.end(), [&](int32_t id) {
+						return id >= 0 && static_cast<size_t>(id) >= start
+							&& (count < 0 || static_cast<int64_t>(id) < static_cast<int64_t>(start) + count);
+					}), bank->empty_string_slots.end());
+			}
+			if (kind == 2 || kind == 3) clear(bank->switches);
+		};
+		if (target->scope == 0) {
+			if (target_id < 0) return true; // Negative global starts can write before native vectors.
+			const int64_t start = target_id;
+			const int64_t end = count < 0 ? INT64_MAX : start + count;
+			if (kind == 0 || kind == 3) {
+				if (start == 0 && end > 0) *Main_Data::game_variables->GetManiacWritable(0) = 0;
+				for (int64_t id = std::max<int64_t>(start, 1); id <= Main_Data::game_variables->GetSize() && id < end; ++id) {
+					*Main_Data::game_variables->GetManiacWritable(static_cast<int>(id)) = 0;
+				}
+			}
+			if (kind == 1 || kind == 3) {
+				if (start == 0 && end > 0) Main_Data::game_strings->SetManiacZeroSaveData({});
+				const size_t vector_size = Main_Data::game_strings->GetManiacVectorSize();
+				auto values = Main_Data::game_strings->GetData();
+				for (auto it = values.begin(); it != values.end();) {
+					if (it->first >= start && it->first < end) it = values.erase(it);
+					else ++it;
+				}
+				const auto zero = Main_Data::game_strings->GetManiacZeroSaveData();
+				Main_Data::game_strings->SetData(std::move(values));
+				Main_Data::game_strings->EnsureSize(vector_size);
+				Main_Data::game_strings->SetManiacZeroSaveData(zero);
+			}
+			if (kind == 2 || kind == 3) {
+				if (start == 0 && end > 0) Main_Data::game_switches->SetManiacRaw(0, 0);
+				for (int64_t id = std::max<int64_t>(start, 1); id <= Main_Data::game_switches->GetSize() && id < end; ++id) {
+					Main_Data::game_switches->SetManiacRaw(static_cast<int>(id), 0);
+				}
+			}
+		} else if (target->event_id >= 0 && target->map_id >= 0) {
+			clear_bank(find_bank(*target));
+		} else {
+			for (auto& bank : Main_Data::game_maniac_self_variables->MutableBanks()) {
+				if (bank.scope == target->scope && (target->scope == 1 || target->map_id < 0 || bank.map_id == target->map_id)
+					&& (target->event_id < 0 || bank.event_id == target->event_id)) clear_bank(&bank);
+			}
+		}
+		return true;
+	}
+
+	if (!source) return true;
+	if (array_mode == 1) {
+		if (nibble(7) != 1 && nibble(7) != 2) return true;
+		const int32_t source_id = nibble(7) == 1 ? param(6) : propagate_negative_reference(param(6));
+		auto* source_bank = find_bank(*source);
+		auto* target_bank = find_bank(*target);
+		if ((source->scope != 0 && !source_bank) || (target->scope != 0 && !target_bank)) return true;
+		// Negative same-vector IDs address before the native buffer after its
+		// capacity check. Avoid reproducing that memory corruption.
+		const bool same_bank = target->scope == source->scope && target->map_id == source->map_id && target->event_id == source->event_id;
+		if (same_bank && (target_id < 0 || source_id < 0)) return true;
+		if (count < 0) {
+			const auto length = [&](int32_t id) {
+				return static_cast<uint64_t>(std::abs(static_cast<int64_t>(id)))
+					+ static_cast<uint32_t>(count) + 1;
+			};
+			const uint64_t required = same_bank ? length(std::max(target_id, source_id))
+				: std::max(length(target_id), length(source_id));
+			if (required > UINT32_MAX) Output::Error("Selfvar: Vector length exceeds uint32 range.");
+			const auto grow = [&](Key key, int32_t id) {
+				const auto size = static_cast<size_t>(length(id));
+				if (key.scope == 0) {
+					if (kind == 1) Main_Data::game_strings->EnsureSize(size - 1);
+					else if (kind == 2) Main_Data::game_switches->EnsureSize(size - 1);
+					else Main_Data::game_variables->EnsureSize(size - 1);
+				} else if (auto* bank = find_bank(key)) {
+					if (kind == 1) bank->strings.resize(std::max(bank->strings.size(), size));
+					else if (kind == 2) bank->switches.resize(std::max(bank->switches.size(), size));
+					else bank->numbers.resize(std::max(bank->numbers.size(), size));
+				}
+			};
+			if (same_bank) grow(*target, std::max(target_id, source_id));
+			else {
+				grow(*target, target_id);
+				grow(*source, source_id);
+			}
+			// Negative string counts skip their signed copy loop after growth.
+			// Wrapped-zero numeric copies are safe; other negative byte copies
+			// address outside storage in the fixed runtime.
+			return true;
+		}
+		const auto copy_array = [&](auto& global, auto bank_vector, bool global_has_zero = false) -> bool {
+			using Vector = std::decay_t<decltype(global)>;
+			using Value = typename Vector::value_type;
+			Vector* dst = target->scope == 0 ? &global : &bank_vector(*target_bank);
+			Vector* src = source->scope == 0 ? &global : &bank_vector(*source_bank);
+			const auto slot = [&](int32_t id, bool is_global) -> uint64_t {
+				const uint64_t value = static_cast<uint64_t>(std::abs(static_cast<int64_t>(id)));
+				return is_global && !global_has_zero && value > 0 ? value - 1 : value;
+			};
+			const uint64_t dst_index = slot(target_id, target->scope == 0);
+			const uint64_t src_index = slot(source_id, source->scope == 0);
+			const uint64_t dst_size = dst_index + static_cast<uint64_t>(count) + 1;
+			const uint64_t src_size = src_index + static_cast<uint64_t>(count) + 1;
+			if (dst_size > UINT32_MAX || src_size > UINT32_MAX) {
+				Output::Error("Selfvar: Vector length exceeds uint32 range.");
+			}
+			if (dst == src) {
+				dst->resize(std::max<size_t>(dst->size(), std::max(dst_size, src_size)));
+			} else {
+				dst->resize(std::max<size_t>(dst->size(), dst_size));
+				src->resize(std::max<size_t>(src->size(), src_size));
+			}
+			const auto d = static_cast<size_t>(dst_index);
+			const auto s = static_cast<size_t>(src_index);
+			const auto n = static_cast<size_t>(count);
+			if constexpr (std::is_same_v<Value, lcf::DBString>) {
+				// Native string arrays retain/release in forward order. Overlap can
+				// propagate a value that was written by an earlier iteration.
+				for (size_t i = 0; i < n; ++i) (*dst)[d + i] = (*src)[s + i];
+			} else if (dst == src && d > s && d < s + n) {
+				std::copy_backward(src->begin() + s, src->begin() + s + n, dst->begin() + d + n);
+			} else {
+				std::copy_n(src->begin() + s, n, dst->begin() + d);
+			}
+			return true;
+		};
+		bool copied = false;
+		if (kind == 1) {
+			const auto previous_zero = Main_Data::game_strings->GetManiacZeroSaveData();
+			auto global = Main_Data::game_strings->GetLcfData();
+			global.insert(global.begin(), lcf::DBString(Main_Data::game_strings->GetManiacRawSlot(0)));
+			std::vector<uint8_t> present(global.size());
+			present[0] = !previous_zero.empty();
+			for (const auto& [id, value] : Main_Data::game_strings->GetData()) {
+				if (id > 0 && static_cast<size_t>(id) < present.size()) present[static_cast<size_t>(id)] = 1;
+			}
+			const auto bank_presence = [](const Game_ManiacSelfVariables::Bank* bank) {
+				std::vector<uint8_t> flags(bank ? bank->strings.size() : 0);
+				for (size_t id = 0; id < flags.size(); ++id) flags[id] = Game_ManiacSelfVariables::IsStringPresent(bank, id);
+				return flags;
+			};
+			auto source_present = source->scope == 0 ? std::vector<uint8_t>{} : bank_presence(source_bank);
+			auto target_present = target->scope == 0 ? std::vector<uint8_t>{} : bank_presence(target_bank);
+			copied = copy_array(global, [](auto& bank) -> auto& { return bank.strings; }, true);
+			if (copied) {
+				present.resize(global.size());
+				if (source->scope != 0) source_present.resize(source_bank->strings.size());
+				if (target->scope != 0) target_present.resize(target_bank->strings.size());
+				const size_t dst = static_cast<size_t>(std::abs(static_cast<int64_t>(target_id)));
+				const size_t src = static_cast<size_t>(std::abs(static_cast<int64_t>(source_id)));
+				for (int32_t offset = 0; offset < count; ++offset) {
+					const bool value = source->scope == 0 ? present[src + offset]
+						: same_bank ? target_present[src + offset] : source_present[src + offset];
+					if (target->scope == 0) present[dst + offset] = value;
+					else target_present[dst + offset] = value;
+				}
+				if (target->scope != 0) {
+					target_bank->empty_string_slots.clear();
+					for (size_t id = 0; id < target_present.size(); ++id) {
+						if (target_present[id] && target_bank->strings[id].empty())
+							target_bank->empty_string_slots.push_back(static_cast<int32_t>(id));
+					}
+				}
+				if (target->scope == 0 || source->scope == 0) {
+					Game_Strings::Strings_t empty_slots;
+					for (size_t id = 1; id < global.size(); ++id) {
+						if (present[id]) empty_slots[static_cast<int>(id)] = ToString(global[id]);
+					}
+					Main_Data::game_strings->SetData(std::move(empty_slots));
+					Main_Data::game_strings->EnsureSize(global.size() - 1);
+					if (present[0]) Main_Data::game_strings->SetManiacZeroSaveData({global[0]});
+				}
+			}
+		} else if (kind == 2) {
+			std::vector<uint8_t> global;
+			global.push_back(Main_Data::game_switches->GetManiacRawSlot(0));
+			for (int id = 1; id <= Main_Data::game_switches->GetSize(); ++id) {
+				global.push_back(static_cast<uint8_t>(Main_Data::game_switches->GetInt(id)));
+			}
+			copied = copy_array(global, [](auto& bank) -> auto& { return bank.switches; }, true);
+			if (copied && (target->scope == 0 || source->scope == 0)) {
+				Game_Switches::Switches_t values;
+				for (size_t index = 1; index < global.size(); ++index) values.push_back(global[index] != 0);
+				Main_Data::game_switches->SetData(std::move(values));
+				Main_Data::game_switches->SetManiacRaw(0, global[0]);
+				for (size_t index = 1; index < global.size(); ++index) {
+					if (global[index] > 1) Main_Data::game_switches->SetManiacRaw(static_cast<int>(index), global[index]);
+				}
+			}
+		} else {
+			Game_Variables::Variables_t global;
+			global.push_back(Main_Data::game_variables->GetManiacRawSlot(0));
+			const auto& ordinary = Main_Data::game_variables->GetData();
+			global.insert(global.end(), ordinary.begin(), ordinary.end());
+			copied = copy_array(global, [](auto& bank) -> auto& { return bank.numbers; }, true);
+			if (copied && (target->scope == 0 || source->scope == 0)) {
+				const int32_t zero = global[0];
+				Main_Data::game_variables->SetData(Game_Variables::Variables_t(global.begin() + 1, global.end()));
+				*Main_Data::game_variables->GetManiacWritable(0) = zero;
+			}
+		}
+		return true;
+	}
+	if (array_mode != 0 || (target->scope != 0 && (target->event_id <= 0 || target->map_id < 0))) return true;
+	const auto* source_bank = find_bank(*source);
+	const auto self_index = [](int32_t id) -> size_t { return static_cast<size_t>(std::abs(static_cast<int64_t>(id))); };
+	const auto self_number = [&](int32_t id) -> int32_t {
+		const size_t index = self_index(id);
+		return source_bank && index < source_bank->numbers.size() ? source_bank->numbers[index] : 0;
+	};
+	int32_t number = param(6);
+	std::string string_value;
+	bool string_present = false;
+	if (kind == 1) {
+		if (source->scope == 0) {
+			if (nibble(7) == 1 || nibble(7) == 2) {
+				const int id = nibble(7) == 1 ? ReadVariable(param(6))
+					: ReadVariable(propagate_negative_reference(param(6)));
+				string_value = ToString(ReadString(id));
+				string_present = IsManiacStringPresent(id);
+			} else {
+				string_value = Utils::EncodeUTF(take_text(param(6)), true);
+				string_present = !string_value.empty();
+			}
+		} else if (nibble(7) == 1 || nibble(7) == 2) {
+			const auto id = nibble(7) == 1 ? param(6) : self_number(param(6));
+			const size_t index = self_index(id);
+			if (source_bank && index < source_bank->strings.size()) string_value = ToString(source_bank->strings[index]);
+			string_present = Game_ManiacSelfVariables::IsStringPresent(source_bank, index);
+		} else {
+			string_value = Utils::EncodeUTF(take_text(param(6)), true);
+			string_present = !string_value.empty();
+		}
+	} else if (nibble(7) == 1 || nibble(7) == 2) {
+		if (source->scope == 0) number = ReadVariable(nibble(7) == 1 ? param(6) : propagate_negative_reference(param(6)));
+		else {
+			const auto id = nibble(7) == 1 ? param(6) : self_number(param(6));
+			const size_t index = self_index(id);
+			if (kind == 2) number = source_bank && index < source_bank->switches.size() ? source_bank->switches[index] : 0;
+			else number = self_number(id);
+		}
+	}
+	const size_t start = self_index(target_id);
+	const uint64_t required = static_cast<uint64_t>(start) + static_cast<uint32_t>(count) + 1;
+	if (required > UINT32_MAX) Output::Error("Selfvar: Vector length exceeds uint32 range.");
+	if (target->scope != 0) {
+		if (auto* bank = find_bank(*target)) {
+			if (kind == 1 && bank->strings.size() < required) bank->strings.resize(required);
+			else if (kind == 2 && bank->switches.size() < required) bank->switches.resize(required);
+			else if (kind != 1 && kind != 2 && bank->numbers.size() < required) bank->numbers.resize(required);
+		}
+	} else {
+		// Prepare the native extra slot even for zero count. Global ordinary
+		// vectors exclude the physical slot zero, unlike self vectors.
+		if (kind == 1) {
+			Main_Data::game_strings->EnsureSize(static_cast<size_t>(required - 1));
+		} else if (kind == 2) {
+			Main_Data::game_switches->EnsureSize(required - 1);
+		} else {
+			Main_Data::game_variables->EnsureSize(required - 1);
+		}
+	}
+	for (int32_t offset = 0; offset < count; ++offset) {
+		const size_t slot = start + offset;
+		if (target->scope == 0) {
+			const int64_t id = static_cast<int64_t>(start) + offset;
+			if (kind == 1) Main_Data::game_strings->SetManiacRawSlot(static_cast<int>(id), string_value, string_present);
+			else if (kind == 2) Main_Data::game_switches->SetManiacRaw(static_cast<int>(id), static_cast<uint8_t>(number));
+			else if (auto* destination = Main_Data::game_variables->GetManiacWritable(static_cast<int>(id))) *destination = number;
+		} else if (auto* bank = find_bank(*target)) {
+			if (kind == 1) {
+				if (bank->strings.size() <= slot) bank->strings.resize(slot + 1);
+				bank->strings[slot] = lcf::DBString(string_value);
+				Game_ManiacSelfVariables::SetStringPresence(bank, slot, string_present);
+			} else if (kind == 2) {
+				if (bank->switches.size() <= slot) bank->switches.resize(slot + 1);
+				bank->switches[slot] = static_cast<uint8_t>(number);
+			} else {
+				if (bank->numbers.size() <= slot) bank->numbers.resize(slot + 1);
+				bank->numbers[slot] = number;
+			}
+		}
+	}
+	return true;
+} catch (const std::bad_alloc&) {
+	Output::Error("Selfvar: bad allocation.");
+	return false;
+} catch (const std::length_error&) {
+	Output::Error("Selfvar: bad allocation.");
+	return false;
+}
+
+bool Game_Interpreter::CommandManiacCallCommonEvent(lcf::rpg::EventCommand const& com) { // code 1005
+	if (_state.stack.size() > 8192) {
+		Output::Error("Call Event limit (8192) has been exceeded");
+	}
+	const int operand = com.parameters.empty() ? 0 : com.parameters[0];
+	const int mode = com.parameters.size() > 1 ? com.parameters[1] & 0xf : 0;
+	const int event_id = mode == 0 ? operand : mode == 1
+		? ReadVariable(operand) : ReadVariableIndirect(operand);
+
+	// Unlike 12330, this call creates a fresh frame without arguments or a
+	// return destination. The original appends it before validating the ID.
+	lcf::rpg::SaveEventExecFrame frame;
+	frame.ID = _state.stack.size() + 1;
+	frame.maniac_event_id = event_id;
+	frame.maniac_event_info = 0x25;
+	frame.easyrpg_self_scope = 1;
+	frame.easyrpg_self_event_id = event_id;
+	_state.stack.push_back(std::move(frame));
+	Game_CommonEvent* common_event = lcf::ReaderUtil::GetElement(Game_Map::GetCommonEvents(), event_id);
+	if (!common_event) {
+		Output::Error("CallCommonEvent: Can't call invalid common event {}", event_id);
+	}
+	_state.stack.back().commands = common_event->GetList();
+	return true;
+}
+
 bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // code 12330
+	const bool native_250921 = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
+	// The native check precedes frame allocation, target lookup and arguments.
+	if (native_250921 && _state.stack.size() > 8192) {
+		Output::Error("Call Event limit (8192) has been exceeded");
+	}
 	int evt_id;
 	int event_page;
+	const auto param = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const auto text_units = Utils::DecodeUTF16(com.string, Player::IsPatchManiac());
+	size_t text_cursor = 0;
+	const auto take_text = [&](int32_t budget) -> std::u16string {
+		const size_t begin = text_cursor;
+		uint32_t remaining = static_cast<uint32_t>(budget);
+		while (text_cursor < text_units.size()) {
+			const char16_t unit = text_units[text_cursor];
+			const int cost = unit <= 0x00ff || (unit >= 0xff61 && unit <= 0xff9f) ? 1 : 2;
+			// The native wide-unit charge precedes the signed comparison. Preserve
+			// its INT_MIN wraparound without relying on signed C++ overflow.
+			if (cost == 2) --remaining;
+			int32_t signed_remaining;
+			std::memcpy(&signed_remaining, &remaining, sizeof(signed_remaining));
+			if (int64_t(signed_remaining) <= int64_t(text_cursor - begin)) break;
+			++text_cursor;
+		}
+		return text_units.substr(begin, text_cursor - begin);
+	};
+	const auto assign_arguments = [&](int scope, int map_id, int target_id) {
+		if (!Player::IsPatchManiac() || !Main_Data::game_maniac_self_variables) return;
+		const int32_t count = param(6);
+		if (count <= 0) return;
+		if (native_250921 && count > (INT32_MAX - 7) / 2) {
+			Output::Error("CallEvent: Argument count {} overflows the native argument index", count);
+		}
+		if (!Main_Data::game_maniac_self_variables->Ensure(scope, map_id, target_id)) return;
+		int number_slot = 0, string_slot = 0, switch_slot = 0;
+		for (int64_t index = 0; index < count; ++index) {
+			const int64_t type_index = 7 + index * 2;
+			const int type = type_index < static_cast<int64_t>(com.parameters.size()) ? param(static_cast<size_t>(type_index)) : 0;
+			const int32_t raw = type_index + 1 < static_cast<int64_t>(com.parameters.size()) ? param(static_cast<size_t>(type_index + 1)) : 0;
+			int32_t numeric_value = raw;
+			std::string string_value;
+			bool string_present = false;
+			if (type == 2) numeric_value = ReadVariable(raw);
+			else if (type == 3) numeric_value = ReadVariableIndirect(raw);
+			else if (type == 4) {
+				string_value = Utils::EncodeUTF(take_text(raw), true);
+				string_present = !string_value.empty();
+			} else if (type == 5 || type == 6) {
+				const int id = type == 5 ? raw : ResolveVariableIndirectAddress(raw);
+				string_value = ToString(ReadString(id));
+				string_present = IsManiacStringPresent(id);
+			}
+			else if (type == 8) numeric_value = ReadSwitch(raw);
+			else if (type == 9) numeric_value = ReadSwitch(ResolveVariableIndirectAddress(raw));
+			// Source reads precede this write. A recursive call may alias the same bank.
+			auto* bank = Main_Data::game_maniac_self_variables->Ensure(scope, map_id, target_id);
+			if (!bank) return;
+			if (type >= 4 && type <= 6) {
+				if (++string_slot > 1000000 && !native_250921) return;
+				bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(string_slot + 1)));
+				bank->strings[string_slot] = lcf::DBString(string_value);
+				Game_ManiacSelfVariables::SetStringPresence(bank, string_slot, string_present);
+			} else if (type >= 7 && type <= 9) {
+				if (++switch_slot > 1000000 && !native_250921) return;
+				bank->switches.resize(std::max(bank->switches.size(), static_cast<size_t>(switch_slot + 1)));
+				bank->switches[switch_slot] = static_cast<uint8_t>(numeric_value);
+			} else {
+				if (++number_slot > 1000000 && !native_250921) return;
+				bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(number_slot + 1)));
+				bank->numbers[number_slot] = numeric_value;
+			}
+		}
+	};
+	int32_t offset = 0;
+	if (Player::IsPatchManiac()) {
+		const int offset_mode = static_cast<uint32_t>(param(3)) & 15;
+		offset = offset_mode == 0 ? param(4) : offset_mode == 1
+			? ReadVariable(param(4)) : ReadVariableIndirect(param(4));
+	}
+	const auto add_offset = [&](int32_t id) -> int32_t {
+		const uint32_t bits = static_cast<uint32_t>(id) + static_cast<uint32_t>(offset);
+		int32_t result;
+		std::memcpy(&result, &bits, sizeof(result));
+		return result;
+	};
+	const auto set_return_destination = [&]() {
+		if (!Player::IsPatchManiac() || com.parameters.size() < 6 || _state.stack.empty()) return;
+		auto& frame = _state.stack.back();
+		frame.easyrpg_maniac_return_type = (static_cast<uint32_t>(param(3)) >> 4) & 15;
+		frame.easyrpg_maniac_return_address = param(5);
+	};
 
-	switch (com.parameters[0]) {
+	const int selector = Player::IsPatchManiac() && (param(0) < 0 || param(0) > 7)
+		? 0 : param(0);
+	switch (selector) {
 	case 0:
 	case 3:
-	case 4: { // Common Event
-		if (com.parameters[0] == 0) {
-			evt_id = com.parameters[1];
-		} else if (com.parameters[0] == 3 && Player::IsPatchManiac()) {
-			evt_id = Main_Data::game_variables->Get(com.parameters[1]);
-		} else if (com.parameters[0] == 4 && Player::IsPatchManiac()) {
-			evt_id = Main_Data::game_variables->GetIndirect(com.parameters[1]);
+	case 4:
+	case 5:
+	case 6:
+	case 7: { // Common Event
+		if (selector == 0) {
+			evt_id = param(1);
+		} else if (selector == 3 && Player::IsPatchManiac()) {
+			evt_id = ReadVariable(param(1));
+		} else if (selector == 4 && Player::IsPatchManiac()) {
+			evt_id = ReadVariableIndirect(param(1));
+		} else if (selector >= 5 && selector <= 7 && Player::IsPatchManiac()) {
+			std::u16string name;
+			if (selector == 5) {
+				name = take_text(param(1));
+			} else {
+				const int string_id = selector == 6 ? param(1) : ResolveVariableIndirectAddress(param(1));
+				const auto value = ReadString(string_id);
+				name = Utils::DecodeUTF16(value.substr(0, value.find('\0')), true);
+			}
+			evt_id = selector == 5 ? com.easyrpg_maniac_common_name_cache : 0;
+			if (evt_id == 0) {
+				for (const auto& candidate : lcf::Data::commonevents) {
+					if (Utils::DecodeUTF16(static_cast<std::string_view>(candidate.name), true) == name) {
+						evt_id = candidate.ID;
+						break;
+					}
+				}
+				if (evt_id == 0) {
+					Output::Error("CallEvent: Can't find common event named '{}'", Utils::EncodeUTF(name, true));
+				}
+				if (selector == 5 && evt_id != 0) com.easyrpg_maniac_common_name_cache = evt_id;
+			}
 		} else {
 			return true;
 		}
+		evt_id = add_offset(evt_id);
 
 		Game_CommonEvent* common_event = lcf::ReaderUtil::GetElement(Game_Map::GetCommonEvents(), evt_id);
 		if (!common_event) {
+			if (native_250921) Output::Error("CallEvent: Can't call invalid common event {}", evt_id);
 			Output::Warning("CallEvent: Can't call invalid common event {}", evt_id);
 			return true;
 		}
 
+		assign_arguments(1, 0, evt_id);
+		const size_t old_stack_size = _state.stack.size();
 		Push(common_event);
+		if (_state.stack.size() > old_stack_size) {
+			if (Player::IsPatchManiac()) {
+				auto& frame = _state.stack.back();
+				frame.maniac_event_id = evt_id;
+				frame.maniac_event_info = 0x25;
+			}
+			set_return_destination();
+		}
 
 		return true;
 	}
 	case 1: // Map Event
-		evt_id = com.parameters[1];
-		event_page = com.parameters[2];
+		evt_id = param(1);
+		if (native_250921 && evt_id == Game_Character::CharThisEvent) {
+			evt_id = 0;
+			for (auto it = _state.stack.rbegin(); it != _state.stack.rend(); ++it) {
+				if (it->event_id > 0) { evt_id = it->event_id; break; }
+			}
+		} else if (Player::IsPatchManiac() && evt_id == Game_Character::CharThisEvent) {
+			evt_id = GetThisEventId();
+		}
+		event_page = param(2);
 		break;
 	case 2: // Indirect
-		evt_id = Main_Data::game_variables->Get(com.parameters[1]);
-		event_page = Main_Data::game_variables->Get(com.parameters[2]);
+		evt_id = ReadVariable(param(1));
+		event_page = ReadVariable(param(2));
 		break;
 	default:
 		return true;
 	}
+	evt_id = add_offset(evt_id);
 
-	Game_Event* event = static_cast<Game_Event*>(GetCharacter(evt_id, "CallEvent"));
+	if (native_250921) {
+		const auto& definitions = Game_Map::GetMap().events;
+		const auto find_definition = [&](int id) -> const lcf::rpg::Event* {
+			auto it = std::find_if(definitions.begin(), definitions.end(),
+				[id](const auto& definition) { return definition.ID == id; });
+			return it == definitions.end() ? nullptr : &*it;
+		};
+		const auto* definition = find_definition(evt_id);
+		if (!definition) {
+			if (auto* live = Game_Map::GetEvent(evt_id)) {
+				const int source_id = live->data()->easyrpg_clone_event_id;
+				definition = find_definition(source_id > 0 ? source_id : live->GetId());
+			}
+		}
+		if (!definition) Output::Error("CallEvent: Can't call non-existent event {}", evt_id);
+		auto page = std::find_if(definition->pages.begin(), definition->pages.end(),
+			[event_page](const auto& candidate) { return candidate.ID == event_page; });
+		if (page == definition->pages.end()) {
+			Output::Error("CallEvent: Can't call non-existent page {} of event {}", event_page, evt_id);
+		}
+		assign_arguments(2, Main_Data::game_player->GetMapId(), definition->ID);
+		Push(page->event_commands, evt_id, false, event_page);
+		auto& frame = _state.stack.back();
+		frame.maniac_event_info = 0x15;
+		frame.maniac_event_id = definition->ID;
+		frame.easyrpg_self_event_id = definition->ID;
+		set_return_destination();
+		return true;
+	}
+
+	Game_Event* event = Player::IsPatchManiac() && selector == 2
+		? Game_Map::GetEvent(evt_id) : static_cast<Game_Event*>(GetCharacter(evt_id, "CallEvent"));
 	if (!event) {
 		Output::Warning("CallEvent: Can't call non-existent event {}", evt_id);
 		return true;
@@ -4076,7 +5555,12 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 		return true;
 	}
 
-	Push(page->event_commands, event->GetId(), false, page->ID);
+	assign_arguments(2, Main_Data::game_player->GetMapId(), event->GetId());
+	const size_t old_stack_size = _state.stack.size();
+	Push(event, page, false);
+	if (_state.stack.size() > old_stack_size) {
+		set_return_destination();
+	}
 
 	return true;
 }
@@ -4105,7 +5589,7 @@ bool Game_Interpreter::CommandChangeClass(lcf::rpg::EventCommand const& com) { /
 		return false;
 	}
 
-	PendingMessage pm(Game_Message::CommandCodeInserter);
+	PendingMessage pm(Game_Message::MakeCommandCodeInserter(*this));
 	pm.SetEnableFace(false);
 	pm.SetFromForegroundInterpreter(main_flag);
 
@@ -4206,16 +5690,98 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	const uint32_t modes = com.parameters[0];
+	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+	const bool dynamic_graphic = native_250921 ? (com.parameters[6] & 1) != 0 : com.parameters[6] == 1;
+	const auto number = [&](int field, int shift) {
+		const int mode = (modes >> (shift * 4)) & 15;
+		return mode == 0 ? com.parameters[field] : mode == 1
+			? ReadVariable(com.parameters[field]) : ReadVariableIndirect(com.parameters[field]);
+	};
+	const auto write_numbers = [&](int32_t destination, const auto& values) {
+		const size_t first = static_cast<size_t>(std::abs(static_cast<int64_t>(destination)));
+		if (destination < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("GetGameInfo: Self destination requires current self context.");
+			bank->numbers.resize(std::max(bank->numbers.size(), first + values.size() + 1));
+			std::copy(values.begin(), values.end(), bank->numbers.begin() + first);
+		} else {
+			Main_Data::game_variables->EnsureSize(first + values.size());
+			if (destination == 0) {
+				*Main_Data::game_variables->GetManiacWritable(0) = values[0];
+				std::copy(values.begin() + 1, values.end(), Main_Data::game_variables->GetManiacWritable(1));
+			} else {
+				std::copy(values.begin(), values.end(), Main_Data::game_variables->GetManiacWritable(destination));
+			}
+		}
+	};
+
+	const auto write_scalar = [&](int32_t destination, int32_t value) {
+		if (native_250921) {
+			if (destination != 0) write_numbers(destination, std::array<int32_t, 1>{value});
+		} else Main_Data::game_variables->Set(destination, value);
+	};
+	const auto write_string = [&](int32_t destination, std::string_view value) {
+		if (!native_250921) {
+			Main_Data::game_strings->Asg(destination, value);
+		} else if (destination > 0) {
+			Main_Data::game_strings->SetManiacRawSlot(destination, value, !value.empty());
+		} else if (destination < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("GetGameInfo: Self destination requires current self context.");
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(destination));
+			bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+			bank->strings[slot] = lcf::DBString(value);
+			Game_ManiacSelfVariables::SetStringPresence(bank, slot, !value.empty());
+		}
+	};
 
 	int event_id;
 	int var = com.parameters[2];
+	const auto write_pair = [&](int32_t first, int32_t second) {
+		if (Player::game_config.maniac_version.Get() == 250921) {
+			write_numbers(var, std::array<int32_t, 2>{first, second});
+		} else {
+			Main_Data::game_variables->Set(var, first);
+			Main_Data::game_variables->Set(var + 1, second);
+		}
+	};
 
 	switch (com.parameters[1]) {
 		case 0: // Get map size
-			Main_Data::game_variables->Set(var, Game_Map::GetTilesX());
-			Main_Data::game_variables->Set(var + 1, Game_Map::GetTilesY());
+			write_pair(Game_Map::GetTilesX(), Game_Map::GetTilesY());
 			break;
 		case 1: { // Get tile info
+			if (Player::game_config.maniac_version.Get() == 250921) {
+				const int x = number(3, 0), y = number(4, 1);
+				const int width = number(5, 2), height = number(6, 3);
+				const int64_t count = static_cast<int64_t>(width) * height;
+				const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
+				if (width <= 0 || height <= 0 || count > INT32_MAX || map_width <= 0 || map_height <= 0) return true;
+				const auto& layer = com.parameters[2] == 0 ? Game_Map::GetMapDataDown() : Game_Map::GetMapDataUp();
+				std::vector<int32_t> values(static_cast<size_t>(count), 0);
+				for (int row = 0; row < height; ++row) {
+					int64_t sy = static_cast<int64_t>(y) + row;
+					if (Game_Map::LoopVertical()) sy = (sy % map_height + map_height) % map_height;
+					for (int column = 0; column < width; ++column) {
+						int64_t sx = static_cast<int64_t>(x) + column;
+						if (Game_Map::LoopHorizontal()) sx = (sx % map_width + map_width) % map_width;
+						if (sx < 0 || sx >= map_width || sy < 0 || sy >= map_height) continue;
+						const int tile = static_cast<uint16_t>(layer[static_cast<size_t>(sy * map_width + sx)]);
+						const int index = tile < 3000 ? tile / 1000 : tile < 4000 ? 3 + (tile - 3000) / 50
+							: tile < 5000 ? 6 + (tile - 4000) / 50 : tile < 10000 ? tile - 4982 : std::min(tile - 10000, 143);
+						values[static_cast<size_t>(row) * width + column] = index;
+					}
+				}
+				write_numbers(com.parameters[7], values);
+				break;
+			}
 			var = com.parameters[7];
 
 			int32_t tile_layer = com.parameters[2]; // 0: Lower || 1: Upper
@@ -4236,50 +5802,106 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			break;
 		}
 		case 2: // Get window size
-			Main_Data::game_variables->Set(var, Player::screen_width);
-			Main_Data::game_variables->Set(var + 1, Player::screen_height);
+			write_pair(Player::screen_width, Player::screen_height);
 			break;
-		case 3: // Get pixel info
-			// FIXME: figure out how 'Pixel info' works
-			Output::Warning("GetGameInfo: Option 'Pixel Info' not implemented.");
+		case 3: { // Get pixel info
+			if (Player::game_config.maniac_version.Get() != 250921) {
+				Output::Warning("GetGameInfo: Option 'Pixel Info' not implemented.");
+				break;
+			}
+			const int x = number(3, 0), y = number(4, 1);
+			const int width = number(5, 2), height = number(6, 3);
+			const int32_t destination = number(7, 4);
+			const int64_t count = static_cast<int64_t>(width) * height;
+			if (width <= 0 || height <= 0 || count > INT32_MAX
+				|| static_cast<int64_t>(x) + width <= 0 || static_cast<int64_t>(y) + height <= 0) return true;
+			const auto bitmap = DisplayUi ? DisplayUi->GetDisplaySurface() : BitmapRef{};
+			if (!bitmap) return true;
+			std::vector<int32_t> values(static_cast<size_t>(count), 0);
+			const int left = std::max(x, 0), top = std::max(y, 0);
+			const int64_t right = std::min(static_cast<int64_t>(x) + width, static_cast<int64_t>(bitmap->GetWidth()));
+			const int64_t bottom = std::min(static_cast<int64_t>(y) + height, static_cast<int64_t>(bitmap->GetHeight()));
+			for (int64_t sy = top; sy < bottom; ++sy) {
+				for (int64_t sx = left; sx < right; ++sx) {
+					const auto color = bitmap->GetColorAt(static_cast<int>(sx), static_cast<int>(sy));
+					uint32_t pixel = (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
+					if (com.parameters[2] == 0) pixel |= 0xff000000;
+					values[static_cast<size_t>((sy - y) * width + sx - x)] = static_cast<int32_t>(pixel);
+				}
+			}
+			write_numbers(destination, values);
 			break;
-		case 4: // Get command interpreter state
-			// FIXME: figure out how 'command interpreter state' works
-			Output::Warning("GetGameInfo: Option 'Command Interpreter State' not implemented.");
+		}
+		case 4: { // Get command interpreter state
+			if (Player::game_config.maniac_version.Get() != 250921) {
+				Output::Warning("GetGameInfo: Option 'Command Interpreter State' not implemented.");
+				break;
+			}
+			const int32_t destination = number(2, 0);
+			std::array<int32_t, 5> values{};
+			if (com.parameters[3] == 0) {
+				const int32_t nest = number(4, 2);
+				const uint32_t count = static_cast<uint32_t>(_state.stack.size());
+				const uint32_t index = nest < 0 ? count + static_cast<uint32_t>(nest) : static_cast<uint32_t>(nest);
+				if (index < count) {
+					const auto& frame = _state.stack[count - 1 - index];
+					const uint8_t info = static_cast<uint8_t>(frame.maniac_event_info);
+					values = {info >> 4, frame.maniac_event_id,
+						(info & 0x10) ? frame.maniac_event_page_id : 0,
+						info & 15, frame.current_command};
+				}
+			}
+			write_numbers(destination, values);
 			break;
+		}
 		case 5: // Get tileset ID
-			Main_Data::game_variables->Set(var, Game_Map::GetChipset());
+			write_scalar(var, Game_Map::GetChipset());
 			break;
 		case 6: // Get actor/message face graphic
+			if (native_250921) {
+				event_id = number(5, 0);
+				if (com.parameters[4] != 0 && com.parameters[4] != 1) {
+					write_string(var, "");
+					write_scalar(com.parameters[3], 0);
+					break;
+				}
+			}
 			if (com.parameters[4] == 1) {
 				// Message
-				Main_Data::game_strings->Asg(var, Main_Data::game_system->GetMessageFaceName());
-				Main_Data::game_variables->Set(com.parameters[3], Main_Data::game_system->GetMessageFaceIndex());
+				write_string(var, Main_Data::game_system->GetMessageFaceName());
+				write_scalar(com.parameters[3], Main_Data::game_system->GetMessageFaceIndex());
 			} else {
 				// Actor
-				event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
+				if (!native_250921) event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
 
 				auto* actor = Main_Data::game_actors->GetActor(event_id);
 				if (!actor) {
+					if (native_250921) Output::Error("GetGameInfo: Actor {} was not found.", event_id);
 					Output::Warning("GetGameInfo: Invalid actor ID {}", event_id);
 					return true;
 				}
 
-				if (com.parameters[6] == 1) {
+				if (dynamic_graphic) {
 					// Dynamic
-					Main_Data::game_strings->Asg(var, actor->GetFaceName());
-					Main_Data::game_variables->Set(com.parameters[3], actor->GetFaceIndex());
+					write_string(var, actor->GetFaceName());
+					write_scalar(com.parameters[3], actor->GetFaceIndex());
 				} else {
 					// Original
-					Main_Data::game_strings->Asg(var, actor->GetOriginalFaceName());
-					Main_Data::game_variables->Set(com.parameters[3], actor->GetOriginalFaceIndex());
+					write_string(var, actor->GetOriginalFaceName());
+					write_scalar(com.parameters[3], actor->GetOriginalFaceIndex());
 				}
 			}
 			break;
 		case 7: { // Get actor/event body graphic
-			event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
-			auto* character = GetCharacter(event_id, "GetGameInfo");
-			if (!character) {
+			event_id = native_250921 ? number(5, 0) : ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
+			if (native_250921 && com.parameters[4] != 0 && com.parameters[4] != 1) {
+				write_string(var, "");
+				write_scalar(com.parameters[3], 0);
+				break;
+			}
+			auto* character = native_250921 && com.parameters[4] == 0 ? nullptr : GetCharacter(event_id, "GetGameInfo");
+			if (!character && (!native_250921 || com.parameters[4] == 1)) {
+				if (native_250921) Output::Error("GetGameInfo: Map Event {} was not found.", event_id);
 				return true;
 			}
 
@@ -4287,47 +5909,47 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 				// Get event graphic
 				// Bug: .static 10001 gives current sprite of Player. .dynamic 10001 gives out nothing.
 				// Bug: Cannot get .static 10005 sprite of self. .dynamic 10005 works however
-				if (com.parameters[6] == 1) {
+				if (dynamic_graphic) {
 					// Dynamic
 					if (event_id == Game_Character::CharPlayer) {
 							// Return nothing as per Maniac Patch
-							Main_Data::game_strings->Asg(var, "");
-							Main_Data::game_variables->Set(com.parameters[3], 0);
+							write_string(var, "");
+							write_scalar(com.parameters[3], 0);
 							break;
 					}
-					Main_Data::game_strings->Asg(var, std::string_view(character->GetSpriteName()));
-					Main_Data::game_variables->Set(com.parameters[3], character->GetSpriteIndex());
+					write_string(var, std::string_view(character->GetSpriteName()));
+					write_scalar(com.parameters[3], character->GetSpriteIndex());
 					break;
 				} else {
 					// Static
 					switch (event_id) {
 						case Game_Character::CharPlayer:
 							// Return dynamic player sprite
-							Main_Data::game_strings->Asg(var, std::string_view(character->GetSpriteName()));
-							Main_Data::game_variables->Set(com.parameters[3], character->GetSpriteIndex());
+							write_string(var, std::string_view(character->GetSpriteName()));
+							write_scalar(com.parameters[3], character->GetSpriteIndex());
 							break;
 						case Game_Character::CharBoat:
-							Main_Data::game_strings->Asg(var, std::string_view(lcf::Data::system.boat_name));
-							Main_Data::game_variables->Set(com.parameters[3], lcf::Data::system.boat_index);
+							write_string(var, std::string_view(lcf::Data::system.boat_name));
+							write_scalar(com.parameters[3], lcf::Data::system.boat_index);
 							break;
 						case Game_Character::CharShip:
-							Main_Data::game_strings->Asg(var, std::string_view(lcf::Data::system.ship_name));
-							Main_Data::game_variables->Set(com.parameters[3], lcf::Data::system.ship_index);
+							write_string(var, std::string_view(lcf::Data::system.ship_name));
+							write_scalar(com.parameters[3], lcf::Data::system.ship_index);
 							break;
 						case Game_Character::CharAirship:
-							Main_Data::game_strings->Asg(var, std::string_view(lcf::Data::system.airship_name));
-							Main_Data::game_variables->Set(com.parameters[3], lcf::Data::system.airship_index);
+							write_string(var, std::string_view(lcf::Data::system.airship_name));
+							write_scalar(com.parameters[3], lcf::Data::system.airship_index);
 							break;
 						default: {
 							auto* event = static_cast<Game_Event*>(character);
 							auto* page = event->GetActivePage();
 							if (page == nullptr) {
 								// return nothing
-								Main_Data::game_strings->Asg(var, "");
-								Main_Data::game_variables->Set(com.parameters[3], 0);
+								write_string(var, "");
+								write_scalar(com.parameters[3], 0);
 							} else {
-								Main_Data::game_strings->Asg(var, std::string_view(page->character_name));
-								Main_Data::game_variables->Set(com.parameters[3], page->character_index);
+								write_string(var, std::string_view(page->character_name));
+								write_scalar(com.parameters[3], page->character_index);
 							}
 						}
 					}
@@ -4336,35 +5958,45 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 				// Get actor graphic
 				auto* actor = Main_Data::game_actors->GetActor(event_id);
 				if (!actor) {
+					if (native_250921) Output::Error("GetGameInfo: Actor {} was not found.", event_id);
 					Output::Warning("GetGameInfo: Invalid actor ID {}", event_id);
 					return true;
 				}
 
-				if (com.parameters[6] == 1) {
+				if (dynamic_graphic) {
 					// Dynamic
-					Main_Data::game_strings->Asg(var, actor->GetSpriteName());
-					Main_Data::game_variables->Set(com.parameters[3], actor->GetSpriteIndex());
+					write_string(var, actor->GetSpriteName());
+					write_scalar(com.parameters[3], actor->GetSpriteIndex());
 				} else {
 					// Default one
-					Main_Data::game_strings->Asg(var, actor->GetOriginalSpriteName());
-					Main_Data::game_variables->Set(com.parameters[3], actor->GetOriginalSpriteIndex());
+					write_string(var, actor->GetOriginalSpriteName());
+					write_scalar(com.parameters[3], actor->GetOriginalSpriteIndex());
 				}
 			}
 			break;
 		}
 		case 8:
 			// Screen position
-			Main_Data::game_variables->Set(var, Game_Map::GetPositionX() >> 4);
-			Main_Data::game_variables->Set(var + 1, Game_Map::GetPositionY() >> 4);
+			if (Player::game_config.maniac_version.Get() == 250921) {
+				write_pair(Game_Map::GetPositionX() / 16, Game_Map::GetPositionY() / 16);
+			} else {
+				write_pair(Game_Map::GetPositionX() >> 4, Game_Map::GetPositionY() >> 4);
+			}
 			break;
 		case 9:
 			// Screen shake
-			Main_Data::game_variables->Set(var, Main_Data::game_screen->GetShakeOffsetX());
-			Main_Data::game_variables->Set(var + 1, Main_Data::game_screen->GetShakeOffsetY());
+			write_pair(Main_Data::game_screen->GetShakeOffsetX(), Main_Data::game_screen->GetShakeOffsetY());
 			break;
 		case 10: {
 			// Current BGM
 			const auto& bgm = Main_Data::game_system->GetCurrentBGM();
+			if (Player::game_config.maniac_version.Get() == 250921) {
+				write_string(var, bgm.name);
+				if (com.parameters[3] != 0) {
+					write_numbers(com.parameters[3], std::array<int32_t, 4>{bgm.fadein, bgm.volume, bgm.tempo, bgm.balance});
+				}
+				break;
+			}
 			Main_Data::game_strings->Asg(var, bgm.name);
 			Main_Data::game_variables->Set(com.parameters[3], bgm.fadein);
 			Main_Data::game_variables->Set(com.parameters[3] + 1, bgm.volume);
@@ -4384,13 +6016,38 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 		return true;
 	}
 
-	int save_number = ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+	const int mode = static_cast<uint32_t>(com.parameters[0]) & 15;
+	const int save_number = native_250921
+		? (mode == 0 ? com.parameters[1] : mode == 1
+			? ReadVariable(com.parameters[1]) : ReadVariableIndirect(com.parameters[1]))
+		: ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const auto self_bank = [&]() {
+		const auto* frame = GetFramePtr();
+		auto* state = Main_Data::game_maniac_self_variables.get();
+		auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+			frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+		if (!bank) Output::Error("GetSaveInfo: Self destination requires current self context.");
+		return bank;
+	};
+	const auto write_number = [&](int id, int32_t value) {
+		if (native_250921 && id == 0) return;
+		if (!native_250921 || id > 0) {
+			Main_Data::game_variables->Set(id, value);
+		} else {
+			auto* bank = self_bank();
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
+			bank->numbers.resize(std::max(bank->numbers.size(), slot + 2));
+			bank->numbers[slot] = value;
+			Game_Map::SetNeedRefresh(true);
+		}
+	};
 
 	// Error case, set later on success
-	Main_Data::game_variables->Set(com.parameters[2], 0);
-	Main_Data::game_variables->Set(com.parameters[3], 0);
-	Main_Data::game_variables->Set(com.parameters[4], 0);
-	Main_Data::game_variables->Set(com.parameters[5], 0);
+	write_number(com.parameters[2], 0);
+	write_number(com.parameters[3], 0);
+	write_number(com.parameters[4], 0);
+	write_number(com.parameters[5], 0);
 
 	if (save_number <= 0) {
 		Output::Debug("ManiacGetSaveInfo: Invalid save number {}", save_number);
@@ -4406,21 +6063,36 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 		return true;
 	}
 
-	auto save = lcf::LSD_Reader::Load(save_stream, Player::encoding);
+	auto save = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
 	if (!save) {
 		Output::Debug("ManiacGetSaveInfo: Save corrupted {}", save_number);
 		// Maniac Patch writes this for whatever reason
-		Main_Data::game_variables->Set(com.parameters[2], 8991230);
+		write_number(com.parameters[2], 8991230);
 		return true;
 	}
 
 	std::time_t t = lcf::LSD_Reader::ToUnixTimestamp(save->title.timestamp);
 	std::tm* tm = std::gmtime(&t);
 
-	Main_Data::game_variables->Set(com.parameters[2], atoi(Utils::FormatDate(tm, Utils::DateFormat_YYMMDD).c_str()));
-	Main_Data::game_variables->Set(com.parameters[3], atoi(Utils::FormatDate(tm, Utils::DateFormat_HHMMSS).c_str()));
-	Main_Data::game_variables->Set(com.parameters[4], save->title.hero_level);
-	Main_Data::game_variables->Set(com.parameters[5], save->title.hero_hp);
+	const int date = native_250921
+		? ((tm->tm_year + 1900) % 1000 * 100 + tm->tm_mon + 1) * 100 + tm->tm_mday
+		: atoi(Utils::FormatDate(tm, Utils::DateFormat_YYMMDD).c_str());
+	write_number(com.parameters[2], date);
+	write_number(com.parameters[3], atoi(Utils::FormatDate(tm, Utils::DateFormat_HHMMSS).c_str()));
+	write_number(com.parameters[4], save->title.hero_level);
+	write_number(com.parameters[5], save->title.hero_hp);
+	if (native_250921 && (com.parameters[0] & 0xf0) != 0) {
+		const int id = com.parameters[6];
+		const auto& name = save->title.hero_name;
+		if (id > 0) Main_Data::game_strings->SetManiacRawSlot(id, name, !name.empty());
+		else if (id < 0) {
+			auto* bank = self_bank();
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
+			bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+			bank->strings[slot] = lcf::DBString(name);
+			Game_ManiacSelfVariables::SetStringPresence(bank, slot, !name.empty());
+		}
+	}
 	Game_Map::SetNeedRefresh(true);
 
 	auto face_ids = Utils::MakeArray(save->title.face1_id, save->title.face2_id, save->title.face3_id, save->title.face4_id);
@@ -4464,17 +6136,52 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		return true;
 	}
 
-	int slot = ValueOrVariable(com.parameters[0], com.parameters[1]);
+	// 250921 treats every nonzero A0 as the same indirect numeric lookup.
+	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+	const int slot = native_250921
+		? (com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]))
+		: ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const int out_var = com.parameters[2] != 0 ? com.parameters[3] : 0;
+	const auto* frame = GetFramePtr();
 	if (slot <= 0) {
 		Output::Debug("ManiacSave: Invalid save slot {}", slot);
+		// The original still writes result 0 after skipping the save.
+		if (native_250921 && out_var > 0) {
+			Main_Data::game_variables->Set(out_var, 0);
+			Game_Map::SetNeedRefresh(true);
+		} else if (native_250921 && out_var < 0 && ApplyManiacSaveResult(
+			AsyncOp::MakeSave(slot, out_var,
+				frame ? frame->easyrpg_self_scope : 0,
+				frame ? frame->easyrpg_self_map_id : 0,
+				frame ? frame->easyrpg_self_event_id : 0),
+			false, Main_Data::game_maniac_self_variables.get())) {
+			Game_Map::SetNeedRefresh(true);
+		}
 		return true;
 	}
 
-	int out_var = com.parameters[2] != 0 ? com.parameters[3] : -1;
+	const auto operation = AsyncOp::MakeSave(slot, out_var,
+		frame ? frame->easyrpg_self_scope : 0,
+		frame ? frame->easyrpg_self_map_id : 0,
+		frame ? frame->easyrpg_self_event_id : 0);
+	Output::BeginManiacFileOutput();
+	if (native_250921 && (maniac_message_hook || Game_Battle::IsManiacHookPumping())) {
+		// Hook dispatch has no ordinary scene update between this command and
+		// its suffix. A subsequent Update would clear an unhandled async save.
+		// RPG_RT saves here, writes the result, then dispatches the next command.
+		const bool success = Scene_Save::Save(FileFinder::Save(), slot);
+		if (out_var > 0) {
+			Main_Data::game_variables->Set(out_var, success ? 1 : 0);
+			Game_Map::SetNeedRefresh(true);
+		} else if (ApplyManiacSaveResult(operation, success,
+			Main_Data::game_maniac_self_variables.get())) {
+			Game_Map::SetNeedRefresh(true);
+		}
+		return true;
+	}
 
-	// Maniac Patch saves directly and game data could be in an undefined state
-	// We yield first to the Update loop and then do a save.
-	_async_op = AsyncOp::MakeSave(slot, out_var);
+	// Ordinary events yield to the update loop before saving their live state.
+	_async_op = operation;
 
 	return true;
 }
@@ -4484,7 +6191,11 @@ bool Game_Interpreter::CommandManiacLoad(lcf::rpg::EventCommand const& com) {
 		return true;
 	}
 
-	int slot = ValueOrVariable(com.parameters[0], com.parameters[1]);
+	// The 250921 load dispatcher uses the same single numeric lookup as Save:
+	// every nonzero A0 reads A1 once, including negative self addresses.
+	const int slot = Player::game_config.maniac_version.Get() == 250921
+		? (com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]))
+		: ValueOrVariable(com.parameters[0], com.parameters[1]);
 	if (slot <= 0) {
 		Output::Debug("ManiacLoad: Invalid save slot {}", slot);
 		return true;
@@ -4496,21 +6207,25 @@ bool Game_Interpreter::CommandManiacLoad(lcf::rpg::EventCommand const& com) {
 	auto savefs = FileFinder::Save();
 	std::string save_name = Scene_Save::GetSaveFilename(savefs, slot);
 	auto save_stream = FileFinder::Save().OpenInputStream(save_name);
-	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, Player::encoding);
+	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
 
 	if (!save) {
 		Output::Debug("ManiacLoad: Save not found {}", slot);
 		return true;
 	}
 
-	// FIXME: In Maniac the load causes a blackscreen followed by a fade-in that can be cancelled by a transition event
-	// This is not implemented yet, the loading is instant without fading
-	_async_op = AsyncOp::MakeLoad(slot);
+	// 250921 A3 skips the reset clear/F12-release/20-tick presentation only.
+	const int presentation = Player::game_config.maniac_version.Get() == 250921
+		? (com.parameters.size() > 3 && com.parameters[3] != 0 ? 2 : 1) : 0;
+	_async_op = AsyncOp::MakeLoad(slot, presentation);
 
 	return true;
 }
 
 bool Game_Interpreter::CommandManiacEndLoadProcess(lcf::rpg::EventCommand const&) {
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		Main_Data::game_system->EndManiacLoadProcess();
+	}
 	// no-op
 	return true;
 }
@@ -4531,21 +6246,86 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 #endif
 
 	Point mouse_pos = Input::GetMousePosition();
-
-	Main_Data::game_variables->Set(com.parameters[0], mouse_pos.x);
-	Main_Data::game_variables->Set(com.parameters[1], mouse_pos.y);
+	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+	if (native_250921 && DisplayUi && DisplayUi->GetMouseClientPosition(mouse_pos)) {
+		const bool raw = com.parameters.size() >= 4 && (com.parameters[3] & 1) != 0;
+		if (!raw) {
+			Point size = {};
+			DisplayUi->GetMouseClientSize(size);
+			mouse_pos.x = Utils::RoundTo<int>(mouse_pos.x * (size.x > 0 ? 320.0 / size.x : 1.0));
+			mouse_pos.y = Utils::RoundTo<int>(mouse_pos.y * (size.y > 0 ? 240.0 / size.y : 1.0));
+		}
+	}
+	const auto write_number = [&](int32_t id, int32_t value) {
+		if (native_250921 && id == 0) return;
+		if (!native_250921 || id > 0) {
+			Main_Data::game_variables->Set(id, value);
+		} else {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("GetMousePosition: Self destination requires current self context.");
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
+			bank->numbers.resize(std::max(bank->numbers.size(), slot + 2));
+			bank->numbers[slot] = value;
+		}
+	};
+	write_number(com.parameters[0], mouse_pos.x);
+	write_number(com.parameters[1], mouse_pos.y);
 
 	Game_Map::SetNeedRefresh(true);
 
 	return true;
 }
 
-bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand const&) {
+bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand const& com) {
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
 
-	Output::Warning("Maniac Patch: Command SetMousePosition not supported");
+	const auto arg = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const bool literal = arg(0) == 0;
+	const bool old_runtime = Player::game_config.maniac_version.Get() == 241028;
+	const auto read_coordinate = [&](int32_t operand) -> int32_t {
+		if (literal) return operand;
+		// 241028 has only positive global sources. 250921 also has current-self
+		// sources, and every nonzero A0 selects this single lookup.
+		if (old_runtime) return operand > 0 ? Main_Data::game_variables->Get(operand) : 0;
+		return ReadVariable(operand);
+	};
+	const int32_t x = read_coordinate(arg(1));
+	const int32_t y = read_coordinate(arg(2));
+
+	Point client_size = {};
+	if (!DisplayUi || !DisplayUi->GetMouseClientSize(client_size)) {
+		static bool warned = false;
+		if (!warned) {
+			Output::Warning("Maniac SetMousePosition: System cursor positioning is unsupported on this platform");
+			warned = true;
+		}
+		return true;
+	}
+	Point point = {};
+	if (!old_runtime && com.parameters.size() >= 4 && (arg(3) & 1) != 0) {
+		const int scale = std::clamp(DisplayUi->GetManiacWindowZoom(), 1, 4);
+		point.x = std::clamp(x, 0, scale * 320 - 1);
+		point.y = std::clamp(y, 0, scale * 240 - 1);
+	} else {
+		const int clamped_x = std::clamp(x, 0, 319);
+		const int clamped_y = std::clamp(y, 0, 239);
+		const int width = client_size.x;
+		const int height = client_size.y;
+		// Original factors are 320/client_width and 240/client_height;
+		// nonpositive dimensions leave the factor at one.
+		const double x_factor = width > 0 ? 320.0 / width : 1.0;
+		const double y_factor = height > 0 ? 240.0 / height : 1.0;
+		point.x = static_cast<int>(std::nearbyint(clamped_x / x_factor));
+		point.y = static_cast<int>(std::nearbyint(clamped_y / y_factor));
+	}
+	DisplayUi->SetMouseClientPosition(point);
 	return true;
 }
 
@@ -4657,9 +6437,14 @@ bool Game_Interpreter::CommandManiacShowStringPicture(lcf::rpg::EventCommand con
 		return false;
 	});
 
-	if (components.size() < 4) {
+	if (components.size() < 2) {
 		Output::Warning("ShowStringPic: Bad text arg (id={})", pic_id);
 		return true;
+	}
+	// RPG_RT permits omitted system/font segments and fills them from the
+	// current system settings when the picture is created.
+	if (components.size() < 4) {
+		components.resize(4);
 	}
 
 	if (com.parameters.size() >= 23) {
@@ -4675,6 +6460,12 @@ bool Game_Interpreter::CommandManiacShowStringPicture(lcf::rpg::EventCommand con
 
 	params.system_name = components[2];
 	text.font_name = components[3];
+	if (params.system_name.empty()) {
+		params.system_name = ToString(Main_Data::game_system->GetSystemName());
+	}
+	if (text.font_name.empty()) {
+		text.font_name = Main_Data::game_system->GetFontId() == 0 ? "RPG2000" : "RPG2000G";
+	}
 
 	params.texts = {text};
 
@@ -4693,7 +6484,19 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		return true;
 	}
 
-	int pic_id = ValueOrVariable(com.parameters[0], com.parameters[3]);
+	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = static_cast<uint32_t>(parameter(0));
+	const auto number = [&](int index) -> int32_t {
+		const int mode = (modes >> ((index - 3) * 4)) & 15;
+		return mode == 0 ? parameter(index) : mode == 1
+			? ReadVariable(parameter(index)) : ReadVariableIndirect(parameter(index));
+	};
+	int pic_id = native_250921 ? number(3) : ValueOrVariable(parameter(0), parameter(3));
+	if (native_250921 && (pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId()))
+		Output::Error("GetPictureInfo: Invalid picture ID {}", pic_id);
 	auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 
 	if (pic.IsRequestPending()) {
@@ -4704,13 +6507,62 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	}
 
 	const auto& data = pic.data;
+	if (native_250921 && parameter(1) == 3) {
+		const int x = number(4), y = number(5), width = number(6), height = number(7);
+		const int32_t destination = number(8);
+		const int64_t count = static_cast<int64_t>(width) * height;
+		if (width <= 0 || height <= 0 || count > INT32_MAX || !pic.sprite || !pic.sprite->GetBitmap()) return true;
+		auto& sprite = *pic.sprite;
+		const int frame_width = sprite.GetFrameWidth(), frame_height = sprite.GetFrameHeight();
+		const int left = std::max(x, 0), top = std::max(y, 0);
+		const int64_t right = std::min(static_cast<int64_t>(x) + width, static_cast<int64_t>(frame_width));
+		const int64_t bottom = std::min(static_cast<int64_t>(y) + height, static_cast<int64_t>(frame_height));
+		// A wholly clipped rectangle does not allocate or change the destination.
+		if (right <= left || bottom <= top) return true;
+		auto bitmap = sprite.GetBitmap();
+		const int columns = frame_width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
+		Rect source(frame_width * (data.spritesheet_frame % columns),
+			frame_height * (data.spritesheet_frame / columns), frame_width, frame_height);
+		if (parameter(2) & 1) bitmap = sprite.GetPreparedBitmap(source);
+		std::vector<int32_t> values(static_cast<size_t>(count), 0);
+		for (int64_t sy = top; sy < bottom; ++sy) {
+			for (int64_t sx = left; sx < right; ++sx) {
+				const auto color = bitmap->GetColorAt(static_cast<int>(sx) + source.x, static_cast<int>(sy) + source.y);
+				uint32_t pixel = (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
+				if (!(parameter(2) & 2)) pixel |= uint32_t(color.alpha) << 24;
+				values[static_cast<size_t>((sy - y) * width + sx - x)] = static_cast<int32_t>(pixel);
+			}
+		}
+		const size_t first = static_cast<size_t>(std::abs(static_cast<int64_t>(destination)));
+		if (destination < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("GetPictureInfo: Self destination requires current self context.");
+			bank->numbers.resize(std::max(bank->numbers.size(), first + values.size() + 1));
+			std::copy(values.begin(), values.end(), bank->numbers.begin() + first);
+		} else {
+			Main_Data::game_variables->EnsureSize(first + values.size());
+			if (destination == 0) {
+				*Main_Data::game_variables->GetManiacWritable(0) = values[0];
+				std::copy(values.begin() + 1, values.end(), Main_Data::game_variables->GetManiacWritable(1));
+			} else {
+				std::copy(values.begin(), values.end(), Main_Data::game_variables->GetManiacWritable(destination));
+			}
+		}
+		return true;
+	}
 
+	const int type = parameter(1);
+	const bool active = pic.sprite && pic.sprite->GetBitmap();
+	if (native_250921 && (type < 0 || type > 2) && !(type < 3 && !active)) return true;
 	int x = 0;
 	int y = 0;
-	int width = pic.sprite ? pic.sprite->GetWidth() : 0;
-	int height = pic.sprite ? pic.sprite->GetHeight() : 0;
+	int width = native_250921 ? (active ? pic.sprite->GetFrameWidth() : 0) : (pic.sprite ? pic.sprite->GetWidth() : 0);
+	int height = native_250921 ? (active ? pic.sprite->GetFrameHeight() : 0) : (pic.sprite ? pic.sprite->GetHeight() : 0);
 
-	switch (com.parameters[1]) {
+	if (!native_250921 || active) switch (type) {
 		case 0:
 			x = Utils::RoundTo<int>(data.current_x);
 			y = Utils::RoundTo<int>(data.current_y);
@@ -4745,10 +6597,25 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		}
 	}
 
-	Main_Data::game_variables->Set(com.parameters[4], x);
-	Main_Data::game_variables->Set(com.parameters[5], y);
-	Main_Data::game_variables->Set(com.parameters[6], width);
-	Main_Data::game_variables->Set(com.parameters[7], height);
+	const auto write_number = [&](int32_t id, int32_t value) {
+		if (native_250921 && id == 0) return;
+		if (!native_250921 || id > 0) {
+			Main_Data::game_variables->Set(id, value);
+		} else {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("GetPictureInfo: Self destination requires current self context.");
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
+			bank->numbers.resize(std::max(bank->numbers.size(), slot + 2));
+			bank->numbers[slot] = value;
+		}
+	};
+	write_number(parameter(4), x);
+	write_number(parameter(5), y);
+	write_number(parameter(6), width);
+	write_number(parameter(7), height);
 
 	Game_Map::SetNeedRefresh(true);
 
@@ -4759,92 +6626,184 @@ bool Game_Interpreter::CommandManiacControlVarArray(lcf::rpg::EventCommand const
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
-
-	int op = com.parameters[0];
-	int mode = com.parameters[1];
-
-	int target_a = ValueOrVariableBitfield(mode, 0, com.parameters[2]);
-	int length = ValueOrVariableBitfield(mode, 1, com.parameters[3]);
-	int target_b = ValueOrVariableBitfield(mode, 2, com.parameters[4]);
-	int last_target_a = target_a + length - 1;
-
-	if (target_a < 1 || length <= 0) {
-		return true;
-	}
-
-	switch (op) {
-		case 0: {
-			// Copy, assigns left to right, the others apply right to left
-			int last_target_b = target_b + length - 1;
-			Main_Data::game_variables->SetArray(target_b, last_target_b, target_a);
-			break;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const auto negative_abs = [](int32_t value) -> int32_t {
+		const uint32_t bits = value < 0 ? static_cast<uint32_t>(value) : uint32_t{0} - static_cast<uint32_t>(value);
+		int32_t result;
+		std::memcpy(&result, &bits, sizeof(result));
+		return result;
+	};
+	const auto negate32 = [](int32_t value) -> int32_t {
+		const uint32_t bits = uint32_t{0} - static_cast<uint32_t>(value);
+		int32_t result;
+		std::memcpy(&result, &bits, sizeof(result));
+		return result;
+	};
+	const auto numeric = [&](int32_t raw, int mode) -> int32_t {
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
+	const auto address = [&](int32_t raw, int mode) -> int32_t {
+		if (mode == 0) return raw;
+		if (mode == 1) {
+			const int32_t value = ReadVariable(raw);
+			return raw < 0 ? negative_abs(value) : value;
 		}
+		const int32_t first = raw < 0 ? negative_abs(ReadVariable(raw)) : ReadVariable(raw);
+		const int32_t second = ReadVariable(first);
+		return first < 0 ? negative_abs(second) : second;
+	};
+	const int operation = parameter(0);
+	const uint32_t modes = static_cast<uint32_t>(parameter(1));
+	const int32_t base = address(parameter(2), modes & 15);
+	const int32_t count = numeric(parameter(3), (modes >> 4) & 15);
+	if (base == 0 || count <= 0 || operation < 0 || operation > 22) return true;
+	const bool needs_array = operation == 0 || operation == 1 ||
+		(operation >= 6 && operation <= 19) || operation == 22;
+	const int32_t rhs = needs_array ? address(parameter(4), (modes >> 8) & 15)
+		: (operation == 5 || operation == 20 ? numeric(parameter(4), (modes >> 8) & 15) : 0);
+	const bool prepare_before_zero_rhs = operation == 0 || operation == 1 || operation == 22;
+	if (needs_array && rhs == 0 && !prepare_before_zero_rhs) return true;
+	const auto* frame = GetFramePtr();
+	auto* state = Main_Data::game_maniac_self_variables.get();
+	Game_ManiacSelfVariables::Bank* bank = nullptr;
+	const auto prepare = [&](int32_t first) -> bool {
+		const int64_t last = std::abs(static_cast<int64_t>(first)) + count;
+		// Prepare the same signed-address range as the variable accessors. A
+		// historical one-million cutoff silently rejected ordinary existing banks.
+		if (last >= std::numeric_limits<int32_t>::max()) {
+			Output::Warning("ManiacControlVarArray: Array exceeds signed address range");
+			return false;
+		}
+		if (first < 0) {
+			if (!bank && frame && state) {
+				bank = state->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
+			}
+			if (!bank) return false;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(last + 1)));
+		} else {
+			Main_Data::game_variables->GetManiacWritable(static_cast<int>(last + 1));
+		}
+		return true;
+	};
+	if (!prepare(base)) return true;
+	if (needs_array && rhs == 0) return true;
+	if (needs_array && !prepare(rhs)) return true;
+	const auto pointer = [&](int32_t first) -> int32_t* {
+		const int64_t physical = std::abs(static_cast<int64_t>(first));
+		return first < 0 ? &bank->numbers[static_cast<size_t>(physical)]
+			: Main_Data::game_variables->GetManiacWritable(static_cast<int>(physical));
+	};
+	int32_t* a = pointer(base);
+	int32_t* b = needs_array ? pointer(rhs) : nullptr;
+	if (!a || (needs_array && !b)) return true;
+	const auto assign_arithmetic = [&](int32_t old, int32_t value) -> int32_t {
+		int64_t result = 0;
+		switch (operation) {
+			case 6: result = static_cast<int64_t>(old) + value; break;
+			case 7: result = static_cast<int64_t>(old) - value; break;
+			case 8: result = static_cast<int64_t>(old) * value; break;
+			case 9: result = static_cast<int64_t>(old) / (value == 0 ? 1 : value); break;
+			case 10: result = static_cast<int64_t>(old) % (value == 0 ? 1 : value); break;
+			case 11: return old | value;
+			case 12: return old & value;
+			case 13: return old ^ value;
+			case 14: {
+				const uint32_t bits = static_cast<uint32_t>(old) << (static_cast<uint32_t>(value) & 31);
+				int32_t out; std::memcpy(&out, &bits, sizeof(out)); return out;
+			}
+			case 15: {
+				const uint32_t bits = static_cast<uint32_t>(old) >> (static_cast<uint32_t>(value) & 31);
+				int32_t out; std::memcpy(&out, &bits, sizeof(out)); return out;
+			}
+		}
+		return static_cast<int32_t>(std::clamp(result,
+			static_cast<int64_t>(Main_Data::game_variables->GetMinValue()),
+			static_cast<int64_t>(Main_Data::game_variables->GetMaxValue())));
+	};
+	switch (operation) {
+		case 0: std::memmove(b, a, static_cast<size_t>(count) * sizeof(int32_t)); break;
 		case 1:
-			// Swap
-			Main_Data::game_variables->SwapArray(target_a, last_target_a, target_b);
+			for (int i = 0; i < count; ++i) std::swap(a[i], b[i]);
 			break;
 		case 2:
-			// Sort asc
-			Main_Data::game_variables->SortRange(target_a, last_target_a, true);
-			break;
 		case 3:
-			// Sort desc
-			Main_Data::game_variables->SortRange(target_a, last_target_a, false);
+			if (base < 0) {
+				Output::Warning("ManiacControlVarArray: Unsafe native self sort skipped");
+				return true;
+			}
+			if (operation == 2) std::sort(a, a + count);
+			else std::sort(a, a + count, std::greater<int32_t>());
 			break;
 		case 4:
-			// Shuffle
-			Main_Data::game_variables->ShuffleRange(target_a, last_target_a);
+			for (int i = count; i > 0; --i) {
+				const int j = static_cast<int>((static_cast<uint64_t>(Main_Data::NextManiacRandom()) * i) >> 32);
+				std::swap(a[i - 1], a[j]);
+			}
 			break;
-		case 5:
-			// Enumerate (target_b is a single value here, not an array)
-			Main_Data::game_variables->EnumerateRange(target_a, last_target_a, target_b);
+		case 5: {
+			uint32_t value = static_cast<uint32_t>(rhs);
+			for (int i = 0; i < count; ++i) {
+				std::memcpy(&a[i], &value, sizeof(value));
+				++value;
+			}
 			break;
-		case 6:
-			// Add
-			Main_Data::game_variables->AddArray(target_a, last_target_a, target_b);
+		}
+		case 6: case 7: case 8: case 9: case 10:
+		case 11: case 12: case 13: case 14: case 15:
+			for (int i = 0; i < count; ++i) a[i] = assign_arithmetic(a[i], b[i]);
 			break;
-		case 7:
-			// Sub
-			Main_Data::game_variables->SubArray(target_a, last_target_a, target_b);
+		case 16:
+			for (int i = 0; i < count; ++i) {
+				const int32_t reference = base < 0 ? negate32(a[i]) : a[i];
+				b[i] = ReadVariable(reference);
+			}
+			return true;
+		case 17:
+		case 18: {
+			const auto compare = [&](int32_t left, int32_t right) {
+				return operation == 17 ? left < right : left > right;
+			};
+			const auto paired_swap = [&](int left, int right) {
+				std::swap(a[left], a[right]);
+				std::swap(b[left], b[right]);
+			};
+			const auto sort = [&](const auto& recurse, int left, int right) -> void {
+				while (left < right) {
+					int low = left, high = right;
+					const int32_t pivot = a[left + (right - left) / 2];
+					while (low <= high) {
+						while (low <= right && compare(a[low], pivot)) ++low;
+						while (high >= left && compare(pivot, a[high])) --high;
+						if (low <= high) paired_swap(low++, high--);
+					}
+					if (left < high) recurse(recurse, left, high);
+					left = low;
+				}
+			};
+			sort(sort, 0, count - 1);
 			break;
-		case 8:
-			// Mul
-			Main_Data::game_variables->MultArray(target_a, last_target_a, target_b);
+		}
+		case 19:
+			for (int i = count; i > 0; --i) {
+				const int j = static_cast<int>((static_cast<uint64_t>(Main_Data::NextManiacRandom()) * i) >> 32);
+				std::swap(a[i - 1], a[j]);
+				std::swap(b[i - 1], b[j]);
+			}
 			break;
-		case 9:
-			// Div
-			Main_Data::game_variables->DivArray(target_a, last_target_a, target_b);
+		case 20:
+			std::fill(a, a + count, rhs);
 			break;
-		case 10:
-			// Mod
-			Main_Data::game_variables->ModArray(target_a, last_target_a, target_b);
+		case 21:
+			std::reverse(a, a + count);
+			return true;
+		case 22:
+			std::memmove(a, b, static_cast<size_t>(count) * sizeof(int32_t));
 			break;
-		case 11:
-			// OR
-			Main_Data::game_variables->BitOrArray(target_a, last_target_a, target_b);
-			break;
-		case 12:
-			// AND
-			Main_Data::game_variables->BitAndArray(target_a, last_target_a, target_b);
-			break;
-		case 13:
-			// XOR
-			Main_Data::game_variables->BitXorArray(target_a, last_target_a, target_b);
-			break;
-		case 14:
-			// Shift left
-			Main_Data::game_variables->BitShiftLeftArray(target_a, last_target_a, target_b);
-			break;
-		case 15:
-			// Shift right
-			Main_Data::game_variables->BitShiftRightArray(target_a, last_target_a, target_b);
-			break;
-		default:
-			Output::Warning("ManiacControlVarArray: Unknown operation {}", op);
 	}
-
-	Game_Map::SetNeedRefresh(true);
-
+	if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
 	return true;
 }
 
@@ -4882,13 +6841,546 @@ bool Game_Interpreter::CommandManiacKeyInputProcEx(lcf::rpg::EventCommand const&
 	return true;
 }
 
+bool Game_Interpreter::CommandManiacEditPicture(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = parameter(0);
+	const auto numeric = [&](size_t index) -> int32_t {
+		const int mode = (modes >> (4 * (index - 1))) & 15;
+		const int32_t raw = parameter(index);
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
+	const int pic_id = numeric(1), x = numeric(2), y = numeric(3);
+	const int width = numeric(4), height = numeric(5);
+	int32_t source = parameter(6);
+	const int source_mode = (modes >> 20) & 15;
+	if (source_mode == 1) source = ResolveVariableIndirectAddress(source);
+	else if (source_mode != 0) source = ResolveVariableIndirectAddress(ResolveVariableIndirectAddress(source));
+	if (pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId())
+		Output::Error("ManiacEditPicture: Invalid picture ID {}", pic_id);
+	auto* picture = Main_Data::game_pictures->GetPicturePtr(pic_id);
+	if (!picture) return true;
+	if (picture->IsRequestPending()) {
+		picture->MakeRequestImportant();
+		_async_op = AsyncOp::MakeYieldRepeat();
+		return true;
+	}
+	// Native detaches the selected frame and clears animation even for an empty edit.
+	auto bitmap = picture->GetMutableBitmap(true);
+	if (!bitmap) return true;
+	const int64_t skip_x = x < 0 ? -static_cast<int64_t>(x) : 0;
+	const int64_t skip_y = y < 0 ? -static_cast<int64_t>(y) : 0;
+	// 0x6d60f expands the source stride for a negative X; do not substitute ordinary clipping.
+	const int64_t stride = static_cast<int64_t>(width) + skip_x;
+	const int64_t rows = static_cast<int64_t>(height) + skip_y;
+	const int64_t base = static_cast<int64_t>(source) + skip_x + skip_y * width;
+	if (stride <= 0 || rows <= 0) return true;
+	if (stride > INT32_MAX || rows > INT32_MAX || base < INT32_MIN || base > INT32_MAX) {
+		Output::Warning("ManiacEditPicture: Source rectangle exceeds signed dimensions");
+		return true;
+	}
+	const int64_t count = stride * rows;
+	const int64_t first = std::abs(base), last = first + count;
+	if (count > INT32_MAX || last > INT32_MAX) {
+		Output::Warning("ManiacEditPicture: Source range exceeds signed slot addresses");
+		return true;
+	}
+	// Native 0x8c800 exposes the whole adjusted range before clipping right/bottom.
+	if (base < 0) {
+		const auto* frame = GetFramePtr();
+		auto* state = Main_Data::game_maniac_self_variables.get();
+		auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+		if (!bank) return true;
+		bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(last + 1)));
+	} else {
+		Main_Data::game_variables->GetManiacWritable(static_cast<int>(last));
+	}
+	const int dx = std::max(x, 0), dy = std::max(y, 0);
+	const int draw_width = static_cast<int>(std::min(stride, static_cast<int64_t>(bitmap->GetWidth()) - dx));
+	const int draw_height = static_cast<int>(std::min(rows, static_cast<int64_t>(bitmap->GetHeight()) - dy));
+	const int options = parameter(7);
+	for (int py = 0; py < draw_height; ++py) {
+		for (int px = 0; px < draw_width; ++px) {
+			const int64_t slot = first + static_cast<int64_t>(py) * stride + px;
+			uint32_t pixel = slot == 0 ? Main_Data::game_variables->GetManiacRawSlot(0)
+				: ReadVariable(static_cast<int>(base < 0 ? -slot : slot));
+			if (options & 1) pixel |= 0xff000000;
+			else if ((options & 2) && !(pixel & 0xff000000)) continue;
+			bitmap->SetColorAt(dx + px, dy + py, Color(pixel >> 16, pixel >> 8, pixel, pixel >> 24));
+		}
+	}
+	return true;
+}
+
+AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id) {
+	const auto* event = lcf::ReaderUtil::GetElement(lcf::Data::commonevents, common_event_id);
+	if (!event) Output::Error("Maniac message hook: Invalid common event ID {}", common_event_id);
+	Game_Interpreter hook(false);
+	hook.maniac_message_hook = true;
+	hook.Push(event->event_commands, 0);
+	if (!hook.IsRunning()) return {};
+	auto& frame = hook._state.stack.back();
+	frame.easyrpg_self_scope = 1;
+	frame.easyrpg_self_map_id = 0;
+	frame.easyrpg_self_event_id = common_event_id;
+	frame.maniac_event_info = 0x28;
+	// Each invocation has its own budget. A wait/failed dispatch stops this
+	// invocation; do not spin until completion or consume the caller's budget.
+	hook.Update();
+	return hook.GetAsyncOp();
+}
+
+bool Game_Interpreter::CommandManiacControlTextProcessing(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const int selector = parameter(0) & 15;
+	int event_id = 0;
+	if (selector == 0) event_id = parameter(2);
+	else if (selector == 1) event_id = ReadVariable(parameter(2));
+	else if (selector == 2) event_id = ReadVariableIndirect(parameter(2));
+	else if (selector >= 3 && selector <= 5) {
+		event_id = selector == 3 ? com.easyrpg_maniac_common_name_cache : 0;
+		if (event_id == 0) {
+			const auto value = selector == 3 ? static_cast<std::string_view>(com.string)
+				: ReadString(selector == 4 ? parameter(2) : ResolveVariableIndirectAddress(parameter(2)));
+			const auto name = Utils::DecodeUTF16(value.substr(0, value.find('\0')), true);
+			for (const auto& candidate : lcf::Data::commonevents) {
+				const auto candidate_name = static_cast<std::string_view>(candidate.name);
+				if (Utils::DecodeUTF16(candidate_name.substr(0, candidate_name.find('\0')), true) == name) {
+					event_id = candidate.ID;
+					break;
+				}
+			}
+			if (selector == 3 && event_id != 0) com.easyrpg_maniac_common_name_cache = event_id;
+		}
+	}
+	Main_Data::game_system->SetManiacMessageHook(event_id, parameter(1),
+		parameter(3), parameter(4), parameter(5), parameter(6));
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacWritePicture(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = parameter(0);
+	const int filename_mode = (modes >> 4) & 15;
+	const int string_id = filename_mode == 0 ? 0
+		: filename_mode == 1 ? parameter(3) : ResolveVariableIndirectAddress(parameter(3));
+	std::string filename = filename_mode == 0 ? ToString(com.string) : ToString(ReadString(string_id));
+	const bool filename_present = filename_mode == 0 ? !com.string.empty() : IsManiacStringPresent(string_id);
+	const int picture_mode = modes & 15;
+	const int pic_id = picture_mode == 0 ? parameter(2)
+		: picture_mode == 1 ? ReadVariable(parameter(2)) : ReadVariableIndirect(parameter(2));
+	const auto game_fs = FileFinder::Game();
+	std::error_code path_error;
+	const auto game_path = game_fs.GetFullPath();
+	const auto absolute_root = std::filesystem::absolute(std::filesystem::u8path(game_path.empty() ? "." : game_path), path_error);
+	if (path_error) Output::Error("ManiacWritePicture: Cannot resolve game directory {}", game_path);
+	const auto root = absolute_root.lexically_normal().generic_u8string();
+	const auto prefix = EndsWith(root, '/') ? root : root + "/";
+	// Native appends the suffix before canonicalising and opening the file.
+	filename += ".png";
+	if (!filename_present || Utils::DecodeUTF16(prefix + filename, true).size() >= 1024)
+		Output::Error("ManiacWritePicture: Invalid file name {}", filename);
+	const auto terminator = filename.find('\0');
+	if (terminator != std::string::npos) filename.resize(terminator);
+	const auto canonical_path = FileFinder::MakeCanonical(prefix + filename);
+	if (!StartsWith(canonical_path, prefix) || canonical_path.size() == prefix.size())
+		Output::Error("ManiacWritePicture: Invalid file name {}", filename);
+	// A repeated asynchronous load attempt is still the same file output.
+	if (parameter(1) != 0 && pic_id > 0 && pic_id <= Main_Data::game_pictures->GetMaxPictureId()) {
+		auto* pending = Main_Data::game_pictures->GetPicturePtr(pic_id);
+		if (pending && pending->IsRequestPending()) {
+			pending->MakeRequestImportant();
+			_async_op = AsyncOp::MakeYieldRepeat();
+			return true;
+		}
+	}
+	Output::BeginManiacFileOutput();
+	filename = canonical_path.substr(prefix.size());
+	// Read-only archives/remote resources use the established per-game save filesystem.
+#ifdef EMSCRIPTEN
+	// The browser's writable game mount is temporary; only the save mount persists.
+	const auto output_fs = FileFinder::Save();
+#else
+	const auto output_fs = game_fs.IsFeatureSupported(Filesystem::Feature::Write) ? game_fs : FileFinder::Save();
+#endif
+	const auto directory = FileFinder::GetPathAndFilename(filename).first;
+	if (!directory.empty()) output_fs.MakeDirectory(directory, true);
+	auto stream = output_fs.OpenOutputStream(filename);
+	if (!stream) return true; // Native silently continues when opening fails, before validating the picture.
+	BitmapRef bitmap;
+	bool force_opaque = true;
+	if (parameter(1) == 0) {
+		if (DisplayUi) bitmap = DisplayUi->GetDisplaySurface();
+	} else {
+		if (pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId())
+			Output::Error("ManiacWritePicture: Invalid picture ID {}", pic_id);
+		auto* picture = Main_Data::game_pictures->GetPicturePtr(pic_id);
+		if (picture && picture->sprite) {
+			auto& sprite = *picture->sprite;
+			bitmap = sprite.GetBitmap();
+			if (bitmap) {
+				const auto& data = picture->data;
+				const int width = sprite.GetFrameWidth(), height = sprite.GetFrameHeight();
+				const int cols = width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
+				const int rows = height == bitmap->GetHeight() ? 1 : std::max(1, data.spritesheet_rows);
+				Rect rect(width * (data.spritesheet_frame % cols), height * (data.spritesheet_frame / cols % rows), width, height);
+				if (parameter(4) & 1) bitmap = sprite.GetPreparedBitmap(rect);
+				rect.Adjust(bitmap->GetRect());
+				if (!rect.IsEmpty()) bitmap = Bitmap::CreateReadOnlyView(bitmap, rect);
+				else bitmap.reset();
+			}
+		}
+		force_opaque = (parameter(4) & 2) != 0;
+	}
+	if (bitmap && !bitmap->WritePNG(stream, true, force_opaque))
+		Output::Warning("ManiacWritePicture: Could not write {}", filename);
+#ifdef EMSCRIPTEN
+	stream.Close();
+	AsyncHandler::SaveFilesystem();
+#endif
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacZoomScreen(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = static_cast<uint32_t>(parameter(0));
+	const auto number = [&](int index) -> int32_t {
+		const int mode = (modes >> ((index - 1) * 4)) & 15;
+		const int32_t value = parameter(index);
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
+	const int x = number(1);
+	const int y = number(2);
+	const int scale = number(3);
+	const int frames = number(4);
+	const int layer = number(5);
+	const int duration = Main_Data::game_screen->ZoomScreen(x, y, scale, frames, layer);
+	if (parameter(6) != 0) SetupWaitFrames(duration);
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacJavaScript(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&com](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+	std::string source;
+	if (parameter(0) == 0) {
+		source = ToString(com.string);
+		auto& frame = GetFrame();
+		// Consume the parent and its continuation records in one dispatch.
+		++frame.current_command;
+		while (frame.current_command < static_cast<int>(frame.commands.size())
+			&& frame.commands[frame.current_command].code == static_cast<int>(Cmd::Maniac_JavaScriptContinuation)) {
+			source += "\r\n";
+			source += ToString(frame.commands[frame.current_command++].string);
+		}
+	} else if (parameter(0) == 1 || parameter(0) == 2) {
+		source = ToString(ReadString(parameter(0) == 1 ? parameter(1) : ResolveVariableIndirectAddress(parameter(1))));
+	}
+	Game_ManiacJs::Execute(source, MakeSpan(com.parameters), *this);
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacChangeTroopMember(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	auto parameter = [&](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+	const auto flags = static_cast<uint32_t>(parameter(0));
+	auto number = [&](size_t i, unsigned nibble) {
+		const auto mode = (flags >> (4 * nibble)) & 0xf;
+		return mode == 0 ? parameter(i) : mode == 1 ? ReadVariable(parameter(i)) : ReadVariableIndirect(parameter(i));
+	};
+	auto& party = *Main_Data::game_enemyparty;
+	const int operation = parameter(1);
+	const int index = number(3, 0);
+	int enemy_id = number(4, 1);
+	if (operation == 2) {
+		party.RemoveEnemies(index, enemy_id);
+		return true;
+	}
+	if (operation < 0 || operation > 3) return true;
+	if ((operation == 1 && index < 0) || (operation == 3 && !party.GetEnemy(index))) {
+		Output::Warning("Maniac Change Troop Member: Invalid index {}", index);
+		return true;
+	}
+	const auto inherit_flags = static_cast<uint32_t>(parameter(2));
+	auto inherits = [&](unsigned nibble) { return ((inherit_flags >> (4 * nibble)) & 0xf) != 0; };
+	const auto* old = operation == 3 ? party.GetEnemy(index) : nullptr;
+	lcf::rpg::TroopMember member;
+	member.ID = party.GetNextTroopMemberId();
+	if (old && inherits(1)) enemy_id = old->GetId();
+	member.enemy_id = enemy_id;
+	member.x = number(5, 2);
+	member.y = number(6, 3);
+	if (Game_Battle::GetBattleCondition() == lcf::rpg::System::BattleCondition_back)
+		member.x = static_cast<int32_t>(320u - static_cast<uint32_t>(member.x));
+	if (old && inherits(2)) member.x = old->GetBattlePosition().x;
+	if (old && inherits(3)) member.y = old->GetBattlePosition().y;
+	// Native 05e6e0 resets Stat to visible after consuming parameter 7.
+	// Only replacement's inherited Stat survives that initialization.
+	member.invisible = old && inherits(4) && old->IsHidden();
+	const bool reversed = old && inherits(5) ? old->IsDirectionFlipped() : number(8, 5) != 0;
+	auto enemy = std::make_unique<Game_Enemy>(&member);
+	enemy->SetDirectionFlipped(reversed);
+	if (old) {
+		const auto mode = (flags >> 24) & 0xf;
+		const int name_id = mode == 1 ? parameter(9) : ResolveVariableIndirectAddress(parameter(9));
+		if (inherits(6)) enemy->SetName(ToString(old->GetName()));
+		else if (mode == 0) {
+			if (!com.string.empty()) enemy->SetName(ToString(com.string));
+		} else if (IsManiacStringPresent(name_id)) enemy->SetName(ToString(ReadString(name_id)));
+	}
+	if (Game_Battle::IsBattleRunning()) {
+		auto sprite = std::make_unique<Sprite_Enemy>(enemy.get());
+		sprite->ResetFixedFacingDirection();
+		sprite->SetVisible(true);
+		enemy->SetBattleSprite(std::move(sprite));
+	}
+	if (operation == 3) party.ReplaceEnemy(index, std::move(enemy));
+	else party.InsertEnemy(operation == 0 ? party.GetBattlerCount() : index, std::move(enemy));
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacConsole(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&com](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+	const uint32_t modes = parameter(0);
+	const auto number = [&](size_t i) {
+		const auto mode = (modes >> ((i - 1) * 4)) & 15;
+		return mode == 0 ? parameter(i) : mode == 1 ? ReadVariable(parameter(i)) : ReadVariableIndirect(parameter(i));
+	};
+	const auto extract = [&](std::string value, uint32_t options) {
+		value.resize(value.find('\0') == std::string::npos ? value.size() : value.find('\0'));
+		return options & 1 ? Game_Strings::Extract(value, (options & 2) != 0, this) : value;
+	};
+	const int type = number(1);
+	if (type >= 0 && type <= 5 && type != 1) Output::ManiacConsoleOpen();
+	switch (type) {
+	case 0:
+		break;
+	case 1:
+		Output::ManiacConsoleClose();
+		break;
+	case 2: {
+		const uint32_t options = number(2);
+		const auto mode = (modes >> 8) & 15;
+		std::string text = mode == 0 ? ToString(com.string)
+			: ToString(ReadString(mode == 1 ? parameter(3) : ResolveVariableIndirectAddress(parameter(3))));
+		text = extract(std::move(text), options);
+		if (!(options & 4)) text += "\r\n";
+		if (!Output::ManiacConsoleWrite(text)) Output::Warning("Maniac Console: Output unavailable");
+		break;
+	}
+	case 3: {
+		const uint32_t options = number(2);
+		const int id = number(3);
+		std::string text;
+		if (!Output::ManiacConsoleRead(number(4), text)) {
+			Output::Warning("Maniac Console: Line input unavailable on this platform");
+			break;
+		}
+		text = extract(std::move(text), options);
+		if (id >= 0) Main_Data::game_strings->SetManiacRawSlot(id, text, !text.empty());
+		else {
+			if (!Main_Data::game_maniac_self_variables)
+				Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+			const auto& frame = GetFrame();
+			auto* bank = Main_Data::game_maniac_self_variables->Ensure(frame.easyrpg_self_scope,
+				frame.easyrpg_self_map_id, frame.easyrpg_self_event_id);
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
+			bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+			bank->strings[slot] = lcf::DBString(text);
+			Game_ManiacSelfVariables::SetStringPresence(bank, slot, !text.empty());
+		}
+		break;
+	}
+	case 4:
+		if (!Output::ManiacConsoleColor(number(2), number(3), number(4)))
+			Output::Warning("Maniac Console: Color control unavailable on this platform");
+		break;
+	case 5:
+		if (!Output::ManiacConsoleFocus(number(3) != 0))
+			Output::Warning("Maniac Console: Window focus control unavailable on this platform");
+		break;
+	}
+	return true;
+}
+
+bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = parameter(0);
+	const auto numeric = [&](size_t index, int nibble) -> int32_t {
+		const int mode = (modes >> (4 * nibble)) & 15;
+		const int32_t raw = parameter(index);
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
+	const int pic_id = numeric(1, 0);
+	const int x = numeric(2, 1), y = numeric(3, 2);
+	const int width = numeric(4, 3), height = numeric(5, 4);
+	int tileset_id = numeric(10, 6);
+	int time = numeric(11, 7);
+	const bool range = parameter(8) != 0;
+	const int source_mode = (modes >> 20) & 15;
+	int32_t source;
+	if (range) {
+		source = parameter(6);
+		if (source_mode == 1) source = ResolveVariableIndirectAddress(source);
+		else if (source_mode != 0) source = ResolveVariableIndirectAddress(ResolveVariableIndirectAddress(source));
+	} else {
+		source = numeric(6, 5);
+	}
+	if (width <= 0 || height <= 0) return true;
+	if (pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId()) {
+		Output::Error("ManiacDrawTileOnPicture: Invalid picture ID {}", pic_id);
+	}
+	auto* picture = Main_Data::game_pictures->GetPicturePtr(pic_id);
+	if (!picture) return true; // A valid, unused slot has no image backing.
+	if (picture->IsRequestPending()) {
+		picture->MakeRequestImportant();
+		_async_op = AsyncOp::MakeYieldRepeat();
+		return true;
+	}
+	if (!picture->sprite || !picture->sprite->GetBitmap()) return true;
+	const int64_t count = static_cast<int64_t>(width) * height;
+	const int64_t pixel_width = static_cast<int64_t>(width) * 16;
+	const int64_t pixel_height = static_cast<int64_t>(height) * 16;
+	if (count > INT32_MAX || pixel_width > INT32_MAX || pixel_height > INT32_MAX
+			|| static_cast<int64_t>(x) + pixel_width > INT32_MAX
+			|| static_cast<int64_t>(y) + pixel_height > INT32_MAX) {
+		Output::Warning("ManiacDrawTileOnPicture: Rectangle exceeds representable dimensions");
+		return true;
+	}
+	if (tileset_id <= 0 || tileset_id == Game_Map::GetChipset()) tileset_id = Game_Map::GetChipset();
+	const auto* tileset = lcf::ReaderUtil::GetElement(lcf::Data::chipsets, tileset_id);
+	BitmapRef chipset;
+	if (tileset) {
+		auto* request = AsyncHandler::RequestFile("ChipSet", tileset->chipset_name);
+		request->SetGraphicFile(true);
+		request->SetImportantFile(true);
+		request->Start();
+		if (!request->IsReady()) {
+			_async_op = AsyncOp::MakeYieldRepeat();
+			return true;
+		}
+		chipset = request->IsSuccess() ? Cache::Chipset(tileset->chipset_name) : Bitmap::Create(480, 256);
+	}
+	auto bitmap = picture->GetMutableBitmap();
+	const int options = parameter(7);
+	if (options & 2) bitmap->ClearRect(Rect(x, y, static_cast<int>(pixel_width), static_cast<int>(pixel_height)));
+	// Native 3028 clears the unoffset rectangle, then draws into the selected sheet frame.
+	int64_t draw_x = x, draw_y = y;
+	if (picture->NumSpriteSheetFrames() > 1) {
+		const auto& data = picture->data;
+		draw_x += static_cast<int64_t>(data.spritesheet_frame % data.spritesheet_cols) * picture->sprite->GetFrameWidth();
+		draw_y += static_cast<int64_t>(data.spritesheet_frame / data.spritesheet_cols) * picture->sprite->GetFrameHeight();
+	}
+	if (draw_x < INT32_MIN || draw_y < INT32_MIN || draw_x + pixel_width > INT32_MAX || draw_y + pixel_height > INT32_MAX) {
+		Output::Warning("ManiacDrawTileOnPicture: Sheet frame exceeds representable coordinates");
+		return true;
+	}
+	std::vector<int32_t> values(static_cast<size_t>(count), source);
+	if (range) {
+		const int64_t first = std::abs(static_cast<int64_t>(source));
+		// 0x8c800 / 0x8c900 also allocate the zero slot following the requested range.
+		const int64_t last = first + count;
+		if (last > INT32_MAX) {
+			Output::Warning("ManiacDrawTileOnPicture: Source range exceeds signed slot addresses");
+			return true;
+		}
+		if (source < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return true;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(last + 1)));
+		} else if (last > 0) {
+			Main_Data::game_variables->GetManiacWritable(static_cast<int>(last));
+		}
+		for (int64_t i = 0; i < count; ++i)
+			values[static_cast<size_t>(i)] = first + i == 0 ? Main_Data::game_variables->GetManiacRawSlot(0)
+				: ReadVariable(static_cast<int>(source < 0 ? -first - i : first + i));
+	}
+	if (chipset && tileset) {
+		if (time == -1) time = Main_Data::game_system->GetFrameCounter();
+		TilemapLayer::DrawManiacTileRectangle(*bitmap, *chipset,
+			Rect(static_cast<int>(draw_x), static_cast<int>(draw_y), width, height), std::move(values),
+			parameter(9) != 0, options, time, tileset->animation_type, tileset->animation_speed);
+	}
+	return true;
+}
+
 bool Game_Interpreter::CommandManiacRewriteMap(lcf::rpg::EventCommand const& com) {
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	if (Player::game_config.maniac_version.Get() == 250921) {
+		const bool range = (com.parameters[1] & 1) != 0;
+		const uint32_t modes = com.parameters[0];
+		const auto operand = [&](int field, int shift) {
+			const int mode = (modes >> (shift * 4)) & 0xf;
+			return mode == 0 ? com.parameters[field] : mode == 1
+				? ReadVariable(com.parameters[field]) : ReadVariableIndirect(com.parameters[field]);
+		};
+		// Native resolves the rectangle, and rejects empty sizes, before the source.
+		const int x_start = operand(4, 1), y_start = operand(5, 2);
+		const int width = operand(6, 3), height = operand(7, 4);
+		if (width <= 0 || height <= 0) return true;
+		const int source_mode = modes & 0xf;
+		const int source = range ? (source_mode == 0 ? com.parameters[3] : source_mode == 1
+			? ResolveVariableIndirectAddress(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : operand(3, 0);
+		uint32_t source_index = static_cast<uint32_t>(std::abs(static_cast<int64_t>(source)));
+		const bool upper = (com.parameters[2] & 1) != 0;
+		const bool disable_autotile = com.parameters[8] != 0;
+		auto* scene = static_cast<Scene_Map*>(Scene::Find(Scene::Map).get());
+		const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
+		if (map_width <= 0 || map_height <= 0) return true;
+		for (int row = 0; row < height; ++row) {
+			for (int column = 0; column < width; ++column, ++source_index) {
+				// Consume each source immediately, even for a skipped destination.
+				const int id = static_cast<int32_t>(source < 0 ? 0u - source_index : source_index);
+				int tile = range ? ReadVariable(id) : source;
+				int x = static_cast<int32_t>(static_cast<uint32_t>(x_start) + column);
+				int y = static_cast<int32_t>(static_cast<uint32_t>(y_start) + row);
+				if (Game_Map::LoopHorizontal()) x = Utils::PositiveModulo(x, map_width);
+				if (Game_Map::LoopVertical()) y = Utils::PositiveModulo(y, map_height);
+				if (!Game_Map::IsValid(x, y)) continue;
+				if (upper) {
+					if (static_cast<uint32_t>(tile) >= NUM_UPPER_TILES) tile = 0;
+					if (scene && scene->spriteset) scene->spriteset->ReplaceUpAt(x, y, tile);
+					else Game_Map::ReplaceTileAt(x, y, IndexToChipId(tile + BLOCK_F_INDEX), 1);
+				} else if (!range && disable_autotile) {
+					// The fixed native single/lower/direct branch stores startY,
+					// not the converted source tile, in its uint16 map cell.
+					const auto raw_tile = static_cast<uint16_t>(y_start);
+					if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, true);
+					else Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
+				} else {
+					if (static_cast<uint32_t>(tile) >= NUM_LOWER_TILES) tile = NUM_LOWER_TILES - 1;
+					// The fixed 250921 lower table stores 3074 for animated index 4.
+					// Its renderer groups both IDs alike, but retain the native raw cell.
+					const int raw_tile = tile == 4 ? 3074 : IndexToChipId(tile);
+					if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, disable_autotile);
+					else if (disable_autotile) Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
+				}
+			}
+		}
+		return true;
+	}
 
 	int mode = com.parameters[0];
-	//bool is_replace_range = com.parameters[1] != 0; FIXME not implemented
+	// Other patch versions retain their existing path.
 	bool is_upper_layer = com.parameters[2] != 0;
 
 	int tile_index = ValueOrVariableBitfield(mode, 0, com.parameters[3]);
@@ -4925,13 +7417,24 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 		return true;
 	}
 
-	int operation = com.parameters[0];
+	const auto param = [&](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+	int operation = param(0);
+
+	auto close_global_save = []() {
+		Main_Data::global_save_opened = false;
+		Main_Data::game_switches_global->SetData({});
+		Main_Data::game_variables_global->SetData({});
+		Main_Data::game_strings_global->SetData(Game_Strings::Strings_t{});
+	};
 
 	auto load_global_save = [&]() {
+		close_global_save();
 		Main_Data::global_save_opened = true;
 
 		// Load
-		auto lgs = FileFinder::Save().OpenFile("Save.lgs");
+		auto save_fs = FileFinder::Save();
+		auto lgs = Player::game_config.maniac_version.Get() == 250921 && save_fs.IsFile("SaveData/Save.lgs")
+			? save_fs.OpenInputStream("SaveData/Save.lgs") : save_fs.OpenFile("Save.lgs");
 		if (!lgs) {
 			return;
 		}
@@ -4948,18 +7451,34 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 
 		while (!reader.Eof()) {
 			chunk.ID = reader.ReadInt();
+			if (chunk.ID == 0) break;
 			chunk.length = reader.ReadInt();
 			switch (chunk.ID) {
 				case 1: {
-					Game_Switches::Switches_t switches;
+					std::vector<uint8_t> switches;
 					reader.Read(switches, chunk.length);
-					Main_Data::game_switches_global->SetData(std::move(switches));
+					Main_Data::game_switches_global->SetData({});
+					Main_Data::game_switches_global->EnsureSize(switches.size());
+					for (size_t i = 0; i < switches.size(); ++i)
+						Main_Data::game_switches_global->SetManiacRaw(static_cast<int>(i + 1), switches[i]);
 					break;
 				}
 				case 2: {
 					Game_Variables::Variables_t variables;
 					reader.Read(variables, chunk.length);
 					Main_Data::game_variables_global->SetData(std::move(variables));
+					break;
+				}
+				case 3: {
+					std::vector<uint8_t> bytes;
+					reader.Read(bytes, chunk.length);
+					ManiacOriginalSave::Cursor field(bytes.data(), bytes.size());
+					Game_ManiacSelfVariables::Bank bank;
+					if (!ManiacOriginalSave::DecodeStringSlots(field, bank)) {
+						Output::Warning("Maniac ControlGlobalSave: Invalid string field");
+						return;
+					}
+					Main_Data::game_strings_global->SetData(std::vector<lcf::DBString>(bank.strings.begin() + 1, bank.strings.end()));
 					break;
 				}
 				default:
@@ -4970,18 +7489,31 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 
 	if (operation == 0) {
 		// Open
-		load_global_save();
+		if (!Main_Data::global_save_opened) load_global_save();
 	} else if (operation == 1) {
 		// Close
-		Main_Data::global_save_opened = false;
+		close_global_save();
 	} else if (operation == 2 || operation == 3) {
 		// 2: Save (write to file)
 		// 3: Save and Close
 		if (!Main_Data::global_save_opened) {
 			return true;
 		}
+		Output::BeginManiacFileOutput();
 
-		auto savelgs_name = FileFinder::Save().FindFile("Save.lgs");
+		Game_ManiacSelfVariables::Bank strings;
+		strings.strings = Main_Data::game_strings_global->GetLcfData();
+		strings.strings.insert(strings.strings.begin(), lcf::DBString{});
+		strings.empty_string_slots = Main_Data::game_strings_global->GetManiacEmptySlotSaveData();
+		std::vector<uint8_t> string_payload;
+		if (!ManiacOriginalSave::EncodeStringSlots(strings, string_payload)) {
+			Output::Warning("Maniac ControlGlobalSave: Saving string field failed");
+			return true;
+		}
+
+		auto save_fs = FileFinder::Save();
+		auto savelgs_name = Player::game_config.maniac_version.Get() == 250921 && save_fs.IsDirectory("SaveData", true)
+			? std::string("SaveData/Save.lgs") : save_fs.FindFile("Save.lgs");
 		if (savelgs_name.empty()) {
 			savelgs_name = "Save.lgs";
 		}
@@ -4996,53 +7528,106 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 		writer.WriteInt(13);
 		const std::string header = "LcfGlobalSave";
 		writer.Write(header);
+		std::vector<uint8_t> switches;
+		for (int id = 1; id <= Main_Data::game_switches_global->GetSize(); ++id)
+			switches.push_back(Main_Data::game_switches_global->GetManiacRawSlot(id));
+		while (!switches.empty() && switches.back() == 0) switches.pop_back();
 		writer.WriteInt(1);
-		writer.WriteInt(Main_Data::game_switches_global->GetSize());
-		writer.Write(Main_Data::game_switches_global->GetData());
+		writer.WriteInt(static_cast<int>(switches.size()));
+		writer.Write(switches);
+		auto variables = Main_Data::game_variables_global->GetData();
+		while (!variables.empty() && variables.back() == 0) variables.pop_back();
 		writer.WriteInt(2);
-		writer.WriteInt(Main_Data::game_variables_global->GetSize() * sizeof(int32_t));
-		writer.Write(Main_Data::game_variables_global->GetData());
+		writer.WriteInt(static_cast<int>(variables.size() * sizeof(int32_t)));
+		writer.Write(variables);
+		if (!string_payload.empty()) {
+			writer.WriteInt(3);
+			writer.WriteInt(static_cast<int>(string_payload.size()));
+			writer.Write(string_payload);
+		}
+		writer.WriteInt(0);
+		lgs_out.Close(); // Finish the file before requesting platform persistence.
 
 		AsyncHandler::SaveFilesystem();
 
 		if (operation == 3) {
-			Main_Data::global_save_opened = false;
+			close_global_save();
 		}
 	} else if (operation == 4 || operation == 5) {
 		if (!Main_Data::global_save_opened) {
 			load_global_save();
 		}
 
-		int type = com.parameters[2];
-		int game_state_idx = ValueOrVariableBitfield(com.parameters[1], 0, com.parameters[3]);
-		int global_save_idx = ValueOrVariableBitfield(com.parameters[1], 1, com.parameters[4]);
-		int length = ValueOrVariableBitfield(com.parameters[1], 2, com.parameters[5]);
-
-		if (operation == 4) {
-			// Copy from global save to game state
-			for (int i = 0; i < length; ++i) {
-				if (type == 0) {
-					Main_Data::game_switches->Set(game_state_idx, Main_Data::game_switches_global->Get(global_save_idx));
-				} else if (type == 1) {
-					Main_Data::game_variables->Set(game_state_idx, Main_Data::game_variables_global->Get(global_save_idx));
-				}
-				++game_state_idx;
-				++global_save_idx;
-			}
-
-			Game_Map::SetNeedRefresh(true);
+		int type = param(2);
+		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+		const auto numeric = [&](int shift, int raw) {
+			const int mode = (param(1) >> (shift * 4)) & 15;
+			return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+		};
+		int length = native250921 ? numeric(2, param(5)) : ValueOrVariableBitfield(param(1), 2, param(5));
+		int game_state_idx;
+		if (native250921) {
+			const int mode = param(1) & 15;
+			game_state_idx = mode == 0 ? param(3) : mode == 1 ? ResolveVariableIndirectAddress(param(3))
+				: ResolveVariableIndirectAddress(ResolveVariableIndirectAddress(param(3)));
 		} else {
-			// Copy from game state to global save
-			for (int i = 0; i < length; ++i) {
-				if (type == 0) {
-					Main_Data::game_switches_global->Set(global_save_idx, Main_Data::game_switches->Get(game_state_idx));
-				} else if (type == 1) {
-					Main_Data::game_variables_global->Set(global_save_idx, Main_Data::game_variables->Get(game_state_idx));
-				}
-				++game_state_idx;
-				++global_save_idx;
-			}
+			game_state_idx = ValueOrVariableBitfield(param(1), 0, param(3));
 		}
+		int global_save_idx = native250921 ? numeric(1, param(4)) : ValueOrVariableBitfield(param(1), 1, param(4));
+		if (length <= 0 || game_state_idx == 0 || global_save_idx <= 0) return true;
+		if (type < 0 || type > 2) return true;
+		const uint32_t local_start = game_state_idx < 0 ? 0u - static_cast<uint32_t>(game_state_idx) : game_state_idx;
+		const uint32_t shared_start = global_save_idx;
+		const size_t local_size = local_start + static_cast<uint32_t>(length) + 1u;
+		const size_t shared_size = shared_start + static_cast<uint32_t>(length) + 1u;
+		Game_ManiacSelfVariables::Bank* bank = nullptr;
+		if (game_state_idx < 0) {
+			const auto* frame = GetFramePtr();
+			if (frame && Main_Data::game_maniac_self_variables)
+				bank = Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
+			if (!bank) return true;
+			if (type == 0) bank->switches.resize(std::max(bank->switches.size(), local_size));
+			else if (type == 1) bank->numbers.resize(std::max(bank->numbers.size(), local_size));
+			else bank->strings.resize(std::max(bank->strings.size(), local_size));
+		} else {
+			// Ordinary global vectors omit their reserved physical slot zero.
+			if (type == 0) Main_Data::game_switches->EnsureSize(local_size - 1);
+			else if (type == 1) Main_Data::game_variables->EnsureSize(local_size - 1);
+			else Main_Data::game_strings->EnsureSize(local_size - 1);
+		}
+		if (type == 0) Main_Data::game_switches_global->EnsureSize(shared_size - 1);
+		else if (type == 1) Main_Data::game_variables_global->EnsureSize(shared_size - 1);
+		else Main_Data::game_strings_global->EnsureSize(shared_size - 1);
+		for (uint32_t i = 0; i < static_cast<uint32_t>(length); ++i) {
+			const uint32_t local = local_start + i, shared = shared_start + i;
+			if (type == 0) {
+				if (operation == 4) {
+					const auto value = Main_Data::game_switches_global->GetManiacRawSlot(shared);
+					if (bank) bank->switches[local] = value;
+					else Main_Data::game_switches->SetManiacRaw(local, value);
+				} else Main_Data::game_switches_global->SetManiacRaw(shared,
+					bank ? bank->switches[local] : Main_Data::game_switches->GetManiacRawSlot(local));
+			} else if (type == 1) {
+				if (operation == 4) {
+					const auto value = Main_Data::game_variables_global->GetManiacRawSlot(shared);
+					if (bank) bank->numbers[local] = value;
+					else *Main_Data::game_variables->GetManiacWritable(local) = value;
+				} else *Main_Data::game_variables_global->GetManiacWritable(shared) =
+					bank ? bank->numbers[local] : Main_Data::game_variables->GetManiacRawSlot(local);
+			} else if (operation == 4) {
+				const auto value = Main_Data::game_strings_global->Get(shared);
+				const bool present = Main_Data::game_strings_global->GetData().count(shared) != 0;
+				if (bank) {
+					bank->strings[local] = lcf::DBString(value);
+					Game_ManiacSelfVariables::SetStringPresence(bank, local, present);
+				} else Main_Data::game_strings->SetManiacRawSlot(local, value, present);
+			} else Main_Data::game_strings_global->SetManiacRawSlot(shared,
+				bank ? static_cast<std::string_view>(bank->strings[local]) : Main_Data::game_strings->Get(local),
+				bank ? Game_ManiacSelfVariables::IsStringPresent(bank, local) : Main_Data::game_strings->IsPresent(local));
+		}
+		// The fixed native copy does not request a map refresh.
+		if (Player::game_config.maniac_version.Get() != 250921 && operation == 4) Game_Map::SetNeedRefresh(true);
 	}
 
 	return true;
@@ -5057,19 +7642,151 @@ bool Game_Interpreter::CommandManiacChangePictureId(lcf::rpg::EventCommand const
 	return true;
 }
 
+bool Game_Interpreter::CommandManiacControlMediaOption(lcf::rpg::EventCommand const& com) {
+	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return true;
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = static_cast<uint32_t>(parameter(0));
+	const auto number = [&](int index) -> int32_t {
+		const int mode = (modes >> ((index - 1) * 4)) & 15;
+		return mode == 0 ? parameter(index) : mode == 1
+			? ReadVariable(parameter(index)) : ReadVariableIndirect(parameter(index));
+	};
+	const int operation = number(1), type = number(2);
+	const int32_t value = number(3);
+	if (operation != 0 && operation != 1) return true;
+	if (type < 0 || type > 9) return true;
+	if (!DisplayUi) return true;
+	int32_t result = 0;
+	if (type == 8) {
+		if (operation == 1) {
+			DisplayUi->SetManiacSaveVideoDefaults(value != 0);
+			return true;
+		}
+		result = DisplayUi->GetManiacSaveVideoDefaults();
+	} else if (type == 4) {
+		if (operation == 1) {
+			DisplayUi->SetManiacFullscreenUnevenPixels(value != 0);
+			return true;
+		}
+		result = DisplayUi->GetManiacFullscreenUnevenPixels();
+	} else if (type == 9) {
+		if (operation == 1) {
+			Audio().SetManiacVolume(value);
+			return true;
+		}
+		result = Audio().GetManiacVolume();
+	} else if (type == 0) {
+		if (operation == 1) {
+			if (!DisplayUi->SetManiacScreenMode(value != 0))
+				Output::Warning("Maniac screen mode could not be applied");
+			Graphics::Update();
+			return true;
+		}
+		result = DisplayUi->GetManiacScreenMode();
+	} else if (type == 1) {
+		if (operation == 1) {
+			if (!DisplayUi->SetManiacWindowZoom(std::clamp(value, 1, 4)))
+				Output::Warning("Maniac window zoom could not be applied");
+			Graphics::Update();
+			return true;
+		}
+		result = DisplayUi->GetManiacWindowZoom();
+	} else if (type == 2) {
+		if (operation == 1) {
+			if (!DisplayUi->SetManiacWindowInterpolation(value != 0))
+				Output::Warning("Maniac window interpolation could not be applied");
+			return true;
+		}
+		result = DisplayUi->GetManiacWindowInterpolation();
+	} else if (type == 3) {
+		if (operation == 1) {
+			if (!DisplayUi->SetManiacWindowFit(value != 0))
+				Output::Warning("Maniac window fit could not be applied");
+			Graphics::Update();
+			return true;
+		}
+		result = DisplayUi->GetManiacWindowFit();
+	} else if (type == 5 || type == 6) {
+		if (operation == 1) {
+			DisplayUi->SetManiacFullscreenLayoutOption(type, value != 0);
+			return true;
+		}
+		result = DisplayUi->GetManiacFullscreenLayoutOption(type);
+	} else if (operation == 1) {
+#ifdef _WIN32
+		const auto shown = ConfigEnum::ShowFps::ON;
+#else
+		// Mobile and browser surfaces present the counter inside the game image.
+		const auto shown = ConfigEnum::ShowFps::Overlay;
+#endif
+		DisplayUi->SetShowFps(value != 0 ? shown : ConfigEnum::ShowFps::OFF);
+		Graphics::Update();
+		return true;
+	} else {
+		// Query active display state: menu config can hide an active overlay option.
+		result = DisplayUi->RenderFps() || DisplayUi->ShowFpsOnTitle();
+	}
+	if (value > 0) {
+		Main_Data::game_variables->Set(value, result);
+	} else if (value < 0) {
+		const auto* frame = GetFramePtr();
+		auto* state = Main_Data::game_maniac_self_variables.get();
+		auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+			frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+		if (!bank) Output::Error("ControlMediaOption: Self destination requires current self context.");
+		const size_t slot = static_cast<size_t>(-static_cast<int64_t>(value));
+		bank->numbers.resize(std::max(bank->numbers.size(), slot + 2));
+		bank->numbers[slot] = result;
+	}
+	return true;
+}
+
 bool Game_Interpreter::CommandManiacSetGameOption(lcf::rpg::EventCommand const& com) {
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
 
+	if (com.parameters.size() < 2) {
+		Main_Data::game_system->SetManiacRunWhenInactive(0);
+		return true;
+	}
 	int operation = com.parameters[1];
-	//int value = ValueOrVariable(com.parameters[0], com.parameters[2]);
+	const auto operand = [&](int index, int mode) {
+		if (index >= static_cast<int>(com.parameters.size())) return int32_t(0);
+		const auto value = com.parameters[index];
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
 
 	switch (operation) {
-		case 2: // Change Picture Limit (noop, we support arbitrary amount of pictures)
+		case 2:
+			Main_Data::game_pictures->SetManiacPictureLimit(operand(2, com.parameters[0]));
+			break;
+		case 4:
+			Main_Data::game_system->SetManiacMessageMouseFlags(operand(2, com.parameters[0]));
+			break;
+		case 5:
+			Main_Data::game_system->SetManiacBattleAlignment(operand(2, com.parameters[0]));
+			break;
+		case 7: {
+			Main_Data::game_system->SetManiacFaceSize(operand(2, com.parameters[0] & 15),
+				operand(3, (com.parameters[0] >> 4) & 15));
+			break;
+		}
+		case 0:
+			Main_Data::game_system->SetManiacRunWhenInactive(com.parameters.size() > 2 ? com.parameters[2] : 0);
+			break;
+		case 1:
+			Main_Data::game_system->SetManiacFps(operand(2, com.parameters[0]),
+				com.parameters.size() > 3, com.parameters.size() > 3 ? com.parameters[3] : 0);
+			break;
+		case 6:
+			Main_Data::game_screen->SetManiacAnimationBufferCount(operand(2, com.parameters[0]));
 			break;
 		default:
-			Output::Warning("Maniac SetGameOption: Operation {} not supported", operation);
+			// Option3 and unknown options consume the raw operand; A0 is ignored.
+			Main_Data::game_system->SetManiacFrameSkip(com.parameters.size() > 2 ? com.parameters[2] : 0);
 	}
 
 	return true;
@@ -5104,9 +7821,36 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 	//		Flags, such as: extract, hex... There is also an edge case where the last argument of exRep is here
 	//
 	//*parameters 4..n - arguments
+	const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+	const bool native_assignment = native250921 && (com.parameters[3] & 255) <= 1;
+	bool db_source_present = false;
 	bool is_range = com.parameters[0] & 1;
 	int string_id_0, string_id_1;
-	DecodeTargetEvaluationMode<false, true, false, true, false>(com, string_id_0, string_id_1);
+	if (native250921) {
+		const int target_mode = com.parameters[0] & 15;
+		is_range = target_mode == 1 || target_mode >= 3;
+		string_id_0 = target_mode < 2 ? com.parameters[1] : ResolveVariableIndirectAddress(com.parameters[1]);
+		string_id_1 = target_mode == 1 ? com.parameters[2]
+			: target_mode >= 3 ? ResolveVariableIndirectAddress(com.parameters[2]) : string_id_0;
+	} else if (!DecodeTargetEvaluationMode<false, true, false, true, false>(com, string_id_0, string_id_1)) {
+		Output::Warning("ControlStrings: Unsupported target evaluation mode {}", com.parameters[0] & 15);
+		return true;
+	}
+	const bool self_target = string_id_0 < 0;
+	int64_t first_slot = std::abs(static_cast<int64_t>(string_id_0));
+	int64_t last_slot = first_slot;
+	if (native250921) {
+		if (is_range && self_target == (string_id_1 < 0)) {
+			last_slot = std::abs(static_cast<int64_t>(string_id_1));
+			if (last_slot < first_slot) std::swap(first_slot, last_slot);
+		}
+		if (last_slot - first_slot + 1 > INT32_MAX) return true;
+		// Native 8ce30 reserves a global tail even for SELF and no-op targets,
+		// before reading the operation or computing an aliased source.
+		if (last_slot + 1 > INT32_MAX) Output::Error("Failed to create string-variables.");
+		Main_Data::game_strings->SetManiacVectorSize(static_cast<int32_t>(last_slot + 1));
+		if ((com.parameters[3] & 255) == 6 || (com.parameters[3] & 255) > 10) return true;
+	}
 
 	int op = (com.parameters[3] >>  0) & 255;
 	int fn = (com.parameters[3] >>  8) & 255;
@@ -5135,10 +7879,74 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 
 	std::string str_param = ToString(com.string);
 	std::string result;
+	const auto literal_units = native250921 ? Utils::DecodeUTF16(str_param, true) : std::u16string{};
+	const auto source_number = [&](int mode, int value) {
+		return native250921 ? (mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value))
+			: ValueOrVariable(mode, value);
+	};
+	const auto get_string_source = [&](int mode, int id) -> std::string_view {
+		if (native250921) return mode == 0 ? std::string_view(str_param)
+			: ReadString(mode == 1 ? id : ResolveVariableIndirectAddress(id));
+		if (mode == Game_Strings::eStringEval_Direct) return ReadString(id);
+		if (mode == Game_Strings::eStringEval_Indirect) return ReadString(ResolveVariableIndirectAddress(id));
+		return str_param;
+	};
+	const auto read_target = [&](int id) {
+		// Direct native arrays include physical global slot0. Whole S operands
+		// continue to use their separate checked lookup through ReadString.
+		return id < 0 ? ReadString(id) : Main_Data::game_strings->GetManiacRawSlot(id);
+	};
+	const auto get_string_source_with_pos = [&](int mode, int id, int& pos) -> std::string {
+		if (native250921) {
+			if (mode != 0) return ToString(get_string_source(mode, id));
+			const size_t start = static_cast<size_t>(pos);
+			size_t accepted = 0;
+			int32_t budget = id;
+			while (start + accepted < literal_units.size()) {
+				const char16_t unit = literal_units[start + accepted];
+				if (unit > 0x00ff && !(unit >= 0xff61 && unit <= 0xff9f))
+					budget = static_cast<int32_t>(static_cast<uint32_t>(budget) - 1);
+				if (static_cast<int64_t>(budget) <= static_cast<int64_t>(accepted)) break;
+				++accepted;
+			}
+			pos += static_cast<int>(accepted);
+			return Utils::EncodeUTF(literal_units.substr(start, accepted), true);
+		}
+		if (mode == Game_Strings::eStringEval_Direct || mode == Game_Strings::eStringEval_Indirect) {
+			return ToString(get_string_source(mode, id));
+		}
+		return Main_Data::game_strings->GetWithModeAndPos(str_param, mode, id, pos, *Main_Data::game_variables);
+	};
+	const auto expand_source = [&](std::string text) {
+		if (extract_flag) {
+			text.resize(text.find('\0') == std::string::npos ? text.size() : text.find('\0'));
+			text = Game_Strings::Extract(text, hex_flag, this);
+			text.resize(text.find('\0') == std::string::npos ? text.size() : text.find('\0'));
+		}
+		return text;
+	};
+	const auto unit_position = [](size_t length, int32_t index) {
+		int64_t position = index;
+		if (position < 0) position += static_cast<int64_t>(length);
+		return static_cast<size_t>(std::clamp<int64_t>(position, 0, static_cast<int64_t>(length)));
+	};
 	Game_Strings::Str_Params str_params = {
 		string_id_0,
 		hex_flag,
 		extract_flag,
+	};
+	const auto pad_native = [](std::string_view text, int32_t width) {
+		if (width == 0) return ToString(text);
+		// The formatter consumes a terminated string and measures UTF16 units.
+		text = text.substr(0, text.find('\0'));
+		const uint32_t minimum = width < 0 ? 0u - static_cast<uint32_t>(width) : static_cast<uint32_t>(width);
+		const size_t length = Utils::DecodeUTF16(text, true).size();
+		std::string padded = ToString(text);
+		if (minimum > length) {
+			if (width < 0) padded.append(minimum - length, ' ');
+			else padded.insert(0, minimum - length, ' ');
+		}
+		return padded;
 	};
 
 	switch (op)
@@ -5148,48 +7956,83 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		switch (fn)
 		{
 		case 0: //String <fn(string text, int min_size)>
-			result = ToString(Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables));
-			args[1] = ValueOrVariable(modes[1], args[1]);
+			result = ToString(get_string_source(modes[0], args[0]));
+			args[1] = source_number(modes[1], args[1]);
 
 			// min_size
-			result = Game_Strings::PrependMin(result, args[1], ' ');
+			if (native250921) {
+				if (extract_flag) {
+					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+					result = Game_Strings::Extract(result, hex_flag, this);
+					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+				}
+				result = pad_native(result, args[1]);
+				str_params.extract = 0;
+			} else result = Game_Strings::PrependMin(result, args[1], ' ');
 			break;
 		case 1: //Number <fn(int number, int min_size)>
-			args[0] = ValueOrVariable(modes[0], args[0]);
-			args[1] = ValueOrVariable(modes[1], args[1]);
+			args[0] = source_number(modes[0], args[0]);
+			args[1] = source_number(modes[1], args[1]);
 
-			result = std::to_string(args[0]);
-			result = Game_Strings::PrependMin(result, args[1], '0');
+			if (native250921) {
+				const int width = Utils::Clamp(args[1], 0, 12);
+				result = hex_flag ? fmt::format("{:0{}x}", static_cast<uint32_t>(args[0]), width)
+					: fmt::format("{:0{}d}", args[0], width);
+				str_params.extract = 0; // This source ignores bit18.
+			} else {
+				result = std::to_string(args[0]);
+				result = Game_Strings::PrependMin(result, args[1], '0');
+			}
 			break;
 		case 2: //Switch <fn(int number, int min_size)>
 		{
-			if (modes[0] == 1) args[0] = Main_Data::game_variables->Get(args[0]);
-			args[1] = ValueOrVariable(modes[1], args[1]);
+			if (native250921) {
+				// Every nonzero mode resolves one address, including SELF references.
+				if (modes[0] != 0) args[0] = ResolveVariableIndirectAddress(args[0]);
+			} else if (modes[0] == 1) {
+				args[0] = Main_Data::game_variables->Get(args[0]);
+			}
+			args[1] = source_number(modes[1], args[1]);
 
-			if (Main_Data::game_switches->Get(args[0])) {
+			if (native250921 ? ReadSwitch(args[0]) != 0 : Main_Data::game_switches->Get(args[0])) {
 				result = "ON";
 			} else {
 				result = "OFF";
 			}
-			result = Game_Strings::PrependMin(result, args[1], ' ');
+			if (native250921) {
+				result = pad_native(result, args[1]);
+				str_params.extract = 0; // This source ignores bit18.
+			} else result = Game_Strings::PrependMin(result, args[1], ' ');
 			break;
 		}
-		case 3: //Database Names <fn(int database_id, int entity_id, bool dynamic)>
-			args[1] = ValueOrVariable(modes[1], args[1]);
-			result = ToString(ManiacPatch::GetLcfName(args[0], args[1], (bool)args[2]));
+		case 3: //Database Names <fn(int database_id, int entity_id, int flags)>
+		case 4: //Database Descriptions
+		{
+			args[1] = source_number(modes[1], args[1]);
+			result = ToString(fn == 3 ? ManiacPatch::GetLcfName(args[0], args[1], args[2] != 0, &db_source_present)
+				: ManiacPatch::GetLcfDescription(args[0], args[1], args[2] != 0, &db_source_present));
+			if (native250921) {
+				// These sources expand only for A6 bit4, independently of bit18.
+				if (args[2] & 4) {
+					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+					result = Game_Strings::Extract(result, hex_flag, this);
+					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+				}
+				str_params.extract = 0;
+			}
 			break;
-		case 4: //Database Descriptions <fn(int id, bool dynamic)>
-			args[1] = ValueOrVariable(modes[1], args[1]);
-			result = ToString(ManiacPatch::GetLcfDescription(args[0], args[1], (bool)args[2]));
-			break;
+		}
 		case 6: //Concatenate (cat) <fn(int id_or_length_a, int id_or_length_b, int id_or_length_c)>
 		{
 			int pos = 0;
 			std::string op_string;
 			for (int i = 0; i < 3; i++) {
-				op_string += Main_Data::game_strings->GetWithModeAndPos(str_param, modes[i], args[i], pos, *Main_Data::game_variables);
+				auto part = get_string_source_with_pos(modes[i], args[i], pos);
+				op_string += native250921 ? expand_source(std::move(part)) : std::move(part);
 			}
-			result = std::move(op_string);
+			// Slices can leave adjacent surrogate halves in separate operands.
+			result = native250921 ? Utils::EncodeUTF(Utils::DecodeUTF16(op_string, true), true) : std::move(op_string);
+			if (native250921) str_params.extract = 0;
 			break;
 		}
 		case 7: //Insert (ins) <fn(string base, int index, string insert)>
@@ -5197,11 +8040,16 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			int pos = 0;
 			std::string base, insert;
 
-			args[1] = ValueOrVariable(modes[1], args[1]);
-			base = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[0], args[0], pos, *Main_Data::game_variables);
-			insert = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[2], args[2], pos, *Main_Data::game_variables);
+			args[1] = source_number(modes[1], args[1]);
+			base = get_string_source_with_pos(modes[0], args[0], pos);
+			insert = get_string_source_with_pos(modes[2], args[2], pos);
 
-			result = Game_Strings::Insert(base, insert, args[1]);
+			if (native250921) {
+				auto units = Utils::DecodeUTF16(expand_source(std::move(base)), true);
+				units.insert(unit_position(units.size(), args[1]), Utils::DecodeUTF16(expand_source(std::move(insert)), true));
+				result = Utils::EncodeUTF(units, true);
+				str_params.extract = 0;
+			} else result = Game_Strings::Insert(base, insert, args[1]);
 			break;
 		}
 		case 8: //Replace (rep) <fn(string base, string search, string replacement)>
@@ -5209,32 +8057,73 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			int pos = 0;
 			std::string base, search, replacement;
 
-			base = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[0], args[0], pos, *Main_Data::game_variables);
-			search = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[1], args[1], pos, *Main_Data::game_variables);
-			replacement = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[2], args[2], pos, *Main_Data::game_variables);
-			result = Utils::ReplaceAll(base, search, replacement);
+			base = get_string_source_with_pos(modes[0], args[0], pos);
+			search = get_string_source_with_pos(modes[1], args[1], pos);
+			replacement = get_string_source_with_pos(modes[2], args[2], pos);
+			if (native250921) {
+				base = expand_source(std::move(base));
+				search = expand_source(std::move(search));
+				replacement = expand_source(std::move(replacement));
+				const auto terminated_units = [](const std::string& text) {
+					return Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
+				};
+				auto units = terminated_units(base);
+				const auto needle = terminated_units(search), inserted = terminated_units(replacement);
+				if (!needle.empty()) {
+					for (size_t position = 0; (position = units.find(needle, position)) != std::u16string::npos; position += inserted.size())
+						units.replace(position, needle.size(), inserted);
+				}
+				result = Utils::EncodeUTF(units, true);
+				str_params.extract = 0;
+			} else result = Utils::ReplaceAll(base, search, replacement);
 
 			break;
 		}
 		case 9: //Substring (subs) <fn(string base, int index, int size)>
-			args[1] = ValueOrVariable(modes[1], args[1]);
-			args[2] = ValueOrVariable(modes[2], args[2]);
+			args[1] = source_number(modes[1], args[1]);
+			args[2] = source_number(modes[2], args[2]);
 
-			result = ToString(Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables));
-			result = Game_Strings::Substring(result, args[1], args[2]);
+			result = ToString(get_string_source(modes[0], args[0]));
+			if (native250921) {
+				const auto units = Utils::DecodeUTF16(expand_source(std::move(result)), true);
+				result = Utils::EncodeUTF(units.substr(unit_position(units.size(), args[1]), static_cast<size_t>(std::max(args[2], 0))), true);
+				str_params.extract = 0;
+			} else result = Game_Strings::Substring(result, args[1], args[2]);
 			break;
 		case 10: //Join (join) <fn(string delimiter, int id, int size)>
 		{
 			std::string op_string;
-			std::string delimiter = ToString(Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables));
+			const auto join_input = [&](std::string_view text) {
+				text = text.substr(0, text.find('\0'));
+				std::string expanded = extract_flag ? Game_Strings::Extract(text, hex_flag, this) : ToString(text);
+				expanded.resize(expanded.find('\0') == std::string::npos ? expanded.size() : expanded.find('\0'));
+				return expanded;
+			};
+			const auto source_delimiter = get_string_source(modes[0], args[0]);
+			std::string delimiter = native250921 ? join_input(source_delimiter) : ToString(source_delimiter);
+			if (native250921) {
+				// Expansion happens once per input, before joining; inserted text
+				// must not be scanned again when assigning or appending the result.
+				str_params.extract = 0;
+			}
 
 			// args[1] & mode[1] relates to starting ID for strings to join
 			// mode 0 = id literal, 1 = direct var, 2 = var literal, 3 = direct var
-			args[1] = ValueOrVariable(modes[1] % 2, args[1]);
-			args[2] = ValueOrVariable(modes[2], args[2]);
+			args[1] = source_number(modes[1] % 2, args[1]);
+			args[2] = source_number(modes[2], args[2]);
+			if (native250921 && modes[1] >= 6) break;
 
 			while (args[2] > 0) {
-				if (modes[1] < 2) {
+				if (native250921) {
+					const int id = args[1];
+					args[1] = static_cast<int32_t>(static_cast<uint32_t>(id) + 1);
+					if (modes[1] < 2) op_string += join_input(ReadString(id));
+					else if (modes[1] < 4) {
+						const int32_t value = ReadVariable(id);
+						op_string += hex_flag ? fmt::format("{:x}", static_cast<uint32_t>(value)) : std::to_string(value);
+					}
+					else op_string += ReadSwitch(id) != 0 ? "ON" : "OFF";
+				} else if (modes[1] < 2) {
 					op_string += ToString(Main_Data::game_strings->Get(args[1]++));
 				} else {
 					op_string += std::to_string(Main_Data::game_variables->Get(args[1]++));
@@ -5249,7 +8138,15 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		case 12: //File (file) <fn(string filename, int encode)>
 		{
 			// maniacs does not like a file extension
-			std::string_view filename = Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables);
+			std::string filename = ToString(get_string_source(modes[0], args[0]));
+			if (native250921) {
+				args[1] = source_number(modes[1], args[1]);
+				const bool present = modes[0] == 0 ? !str_param.empty()
+					: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
+				filename = expand_source(std::move(filename));
+				str_params.extract = 0; // Only the filename is expanded.
+				if (filename.empty() && (extract_flag || !present)) break;
+			}
 			// args[1] is the encoding... 0 for ansi, 1 for utf8
 			bool do_yield;
 			result = Game_Strings::FromFile(filename, args[1], do_yield);
@@ -5263,19 +8160,27 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			break;
 		}
 		case 13: //Remove (rem) <fn(string base, int index, int size)>
-			args[1] = ValueOrVariable(modes[1], args[1]);
-			args[2] = ValueOrVariable(modes[2], args[2]);
-			result = ToString(Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables));
-			result = Game_Strings::Erase(result, args[1], args[2]);
+			args[1] = source_number(modes[1], args[1]);
+			args[2] = source_number(modes[2], args[2]);
+			if (native250921) {
+				int pos = 0;
+				auto units = Utils::DecodeUTF16(expand_source(get_string_source_with_pos(modes[0], args[0], pos)), true);
+				units.erase(unit_position(units.size(), args[1]), static_cast<size_t>(std::max(args[2], 0)));
+				result = Utils::EncodeUTF(units, true);
+				str_params.extract = 0;
+			} else {
+				result = ToString(get_string_source(modes[0], args[0]));
+				result = Game_Strings::Erase(result, args[1], args[2]);
+			}
 			break;
 		case 14: //Replace Ex (exRep) <fn(string base, string search, string replacement, bool first)>, edge case: the arg "first" is at ((flags >> 19) & 1). Wtf BingShan
 		{
 			int pos = 0;
 			std::string base, search, replacement;
 
-			base = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[0], args[0], pos, *Main_Data::game_variables);
-			search = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[1], args[1], pos, *Main_Data::game_variables);
-			replacement = Main_Data::game_strings->GetWithModeAndPos(str_param, modes[2], args[2], pos, *Main_Data::game_variables);
+			base = get_string_source_with_pos(modes[0], args[0], pos);
+			search = get_string_source_with_pos(modes[1], args[1], pos);
+			replacement = get_string_source_with_pos(modes[2], args[2], pos);
 
 			auto flags = std::regex_constants::match_default;
 
@@ -5283,11 +8188,50 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 				flags = std::regex_constants::format_first_only;
 			}
 
-			result = Game_Strings::RegExReplace(base, search, replacement, flags);
+			if (native250921) {
+				base = expand_source(std::move(base));
+				search = expand_source(std::move(search));
+				replacement = expand_source(std::move(replacement));
+				result = Game_Strings::ManiacRegExReplace(base, search, replacement, flags);
+				str_params.extract = 0;
+			} else result = Game_Strings::RegExReplace(base, search, replacement, flags);
 			break;
 		}
 		default:
-			Output::Warning("Unknown or unimplemented string sub-operation {}", op);
+			if (!native250921) Output::Warning("Unknown or unimplemented string sub-operation {}", op);
+			break;
+		}
+		if (native_assignment) {
+			if (str_params.extract) result = Game_Strings::Extract(result, hex_flag, this);
+			const int source = modes[0] == 1 ? args[0]
+				: modes[0] >= 2 ? ResolveVariableIndirectAddress(args[0]) : 0;
+			const bool source_present = !result.empty() || ((fn == 3 || fn == 4) && !(args[2] & 4) && db_source_present)
+				|| (fn == 0 && !extract_flag
+				&& modes[0] != 0 && args[1] == 0 && IsManiacStringPresent(source));
+			// Compute the source once, before any aliased destination is changed.
+			for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
+				std::string value = result;
+				bool present = source_present;
+				if (op == 1) {
+					const auto destination = id >= 0 ? Main_Data::game_strings->GetManiacRawSlot(id) : ReadString(id);
+					const bool destination_present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
+					value = ToString(destination) + result;
+					present = source_present || destination_present;
+				}
+				if (id >= 0) {
+					Main_Data::game_strings->SetManiacRawSlot(id, value, present);
+				} else {
+					if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+					const auto* frame = GetFramePtr();
+					auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+						frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+					if (!bank) Output::Error("Failed to create self-variables.");
+					bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(slot + 1)));
+					bank->strings[slot] = lcf::DBString(value);
+					Game_ManiacSelfVariables::SetStringPresence(bank, static_cast<size_t>(slot), present);
+				}
+			}
 			break;
 		}
 		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, result, op, nullptr, *Main_Data::game_variables);
@@ -5298,6 +8242,43 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		break;
 	case 2: //toNum <fn(int var_id)> takes hex
 	case 3: //getLen <fn(int var_id)>
+		if (native250921) {
+			// A4 is a raw numeric-array address; nibble1 is ignored. Allocate
+			// before the first read, then advance magnitudes inside its bank.
+			const int64_t count = last_slot - first_slot + 1;
+			const int64_t output_first = std::abs(static_cast<int64_t>(args[0]));
+			if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+			Game_ManiacSelfVariables::Bank* output_bank = nullptr;
+			if (args[0] < 0) {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				output_bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!output_bank) Output::Error("Failed to create self-variables.");
+				output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
+			} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
+			for (int64_t index = 0; index < count; ++index) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index))
+					: static_cast<int>(first_slot + index);
+				std::string text = ToString(read_target(id));
+				int32_t value;
+				if (op == 3) value = static_cast<int32_t>(Utils::DecodeUTF16(text, true).size());
+				else {
+					if (extract_flag) text = Game_Strings::Extract(text.substr(0, text.find('\0')), hex_flag, this);
+					const auto units = Utils::DecodeUTF16(text, true);
+					const std::wstring wide(units.begin(), units.end());
+					const long parsed = std::wcstol(wide.c_str(), nullptr, hex_flag ? 16 : 10);
+					value = static_cast<int32_t>(std::clamp<long>(parsed, INT32_MIN, INT32_MAX));
+				}
+				const int slot = static_cast<int>(output_first + index);
+				if (output_bank) output_bank->numbers[slot] = value;
+				else {
+					*Main_Data::game_variables->GetManiacWritable(slot) = value;
+					Game_Map::SetNeedRefreshForVarChange(slot);
+				}
+			}
+			break;
+		}
 		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, result, op, args, *Main_Data::game_variables);
 		else {
 			if (op == 2) {
@@ -5309,7 +8290,50 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		break;
 	case 4: //inStr <fn(string text, int var_id, int begin)> FIXME: takes hex?
 	{
-		std::string_view search = Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables);
+		if (native250921) {
+			// Unlike regex A5, Instr A5 is an ordinary numeric value operand.
+			const int output = source_number(modes[1], args[1]);
+			const int begin = source_number(modes[2], args[2]);
+			const int64_t output_first = std::abs(static_cast<int64_t>(output));
+			const int64_t count = last_slot - first_slot + 1;
+			if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+			Game_ManiacSelfVariables::Bank* output_bank = nullptr;
+			if (output < 0) {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				output_bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!output_bank) Output::Error("Failed to create self-variables.");
+				output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
+			} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
+			const auto raw_needle = get_string_source(modes[0], args[0]);
+			const bool needle_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
+				: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
+			const auto needle_text = expand_source(ToString(raw_needle));
+			const auto needle = Utils::DecodeUTF16(needle_text.substr(0, needle_text.find('\0')), true);
+			const bool null_needle = extract_flag ? needle_text.empty() : !needle_present;
+			for (int64_t index = 0; index < count; ++index) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+				const auto source = read_target(id);
+				const auto stored = Utils::DecodeUTF16(source, true);
+				int value = null_needle ? 0 : -1;
+				if (!null_needle && begin >= 0 && static_cast<size_t>(begin) < stored.size()) {
+					// wcsstr consumes a terminated suffix, although start is bounded
+					// by the stored UTF16 length (which can include embedded NUL).
+					const auto suffix = stored.substr(static_cast<size_t>(begin));
+					const auto found = suffix.substr(0, suffix.find(u'\0')).find(needle);
+					if (found != std::u16string::npos) value = static_cast<int>(begin + found);
+				}
+				const int slot = static_cast<int>(output_first + index);
+				if (output_bank) output_bank->numbers[slot] = value;
+				else {
+					*Main_Data::game_variables->GetManiacWritable(slot) = value;
+					Game_Map::SetNeedRefreshForVarChange(slot);
+				}
+			}
+			break;
+		}
+		std::string_view search = get_string_source(modes[0], args[0]);
 		args[1] = ValueOrVariable(modes[1], args[1]); // not sure this is necessary but better safe
 		args[2] = ValueOrVariable(modes[2], args[2]);
 
@@ -5319,7 +8343,94 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 	}
 	case 5: //split <fn(string text, int str_id, int var_id)> takes hex
 	{
-		std::string_view delimiter = Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables);
+		if (native250921) {
+			const auto raw_delimiter = get_string_source(modes[0], args[0]);
+			const bool delimiter_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
+				: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
+			const auto delimiter_text = expand_source(ToString(raw_delimiter));
+			const auto delimiter = Utils::DecodeUTF16(delimiter_text.substr(0, delimiter_text.find('\0')), true);
+			const bool null_delimiter = extract_flag ? delimiter_text.empty() : !delimiter_present;
+			int32_t output = modes[1] == 0 ? args[1] : modes[1] == 1 ? ResolveVariableIndirectAddress(args[1]) : ReadVariableIndirect(args[1]);
+			const int64_t count = last_slot - first_slot + 1;
+			// A6 is a raw optional count array; zero disables it, regardless of n3.
+			const int64_t count_first = std::abs(static_cast<int64_t>(args[2]));
+			Game_ManiacSelfVariables::Bank* bank = nullptr;
+			const auto self_bank = [&]() {
+				if (!bank) {
+					if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+					const auto* frame = GetFramePtr();
+					bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+						frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+					if (!bank) Output::Error("Failed to create self-variables.");
+				}
+				return bank;
+			};
+			if (args[2] != 0) {
+				if (count_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+				if (args[2] < 0) {
+					auto* counts = self_bank();
+					counts->numbers.resize(std::max(counts->numbers.size(), static_cast<size_t>(count_first + count + 1)));
+				} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(count_first + count));
+			}
+			for (int64_t index = 0; index < count; ++index) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+				const bool present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
+				const auto source = Utils::DecodeUTF16(read_target(id), true);
+				std::vector<std::u16string> parts;
+				if (present) {
+					if (!null_delimiter && delimiter.empty()) {
+						// Only a present input enters native's nonprogressing find loop.
+						Output::Warning("ControlStrings: Split with a nonnull empty delimiter cannot advance");
+						break;
+					}
+					if (null_delimiter) {
+						for (const auto unit : source) parts.emplace_back(1, unit);
+					} else {
+						const auto terminated = source.substr(0, source.find(u'\0'));
+						size_t position = 0, found;
+						while ((found = terminated.find(delimiter, position)) != std::u16string::npos) {
+							parts.push_back(terminated.substr(position, found - position));
+							position = found + delimiter.size();
+						}
+						parts.push_back(terminated.substr(position));
+					}
+				} else if (!null_delimiter) {
+					// Native emits the trailing NULL part without entering find.
+					parts.emplace_back();
+				}
+				const int64_t output_first = std::abs(static_cast<int64_t>(output));
+				if (!parts.empty()) {
+					if (output_first + parts.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
+					auto* strings = output < 0 ? self_bank() : nullptr;
+					if (strings) {
+						strings->strings.resize(std::max(strings->strings.size(), static_cast<size_t>(output_first + parts.size() + 1)));
+						strings->string_vector_size = strings->strings.size();
+					} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(output_first + parts.size()));
+					for (size_t part = 0; part < parts.size(); ++part) {
+						const int slot = static_cast<int>(output_first + part);
+						const auto text = Utils::EncodeUTF(parts[part], true);
+						if (strings) {
+							strings->strings[slot] = lcf::DBString(text);
+							Game_ManiacSelfVariables::SetStringPresence(strings, slot, false);
+						} else Main_Data::game_strings->SetManiacRawSlot(slot, text, !text.empty());
+					}
+				}
+				const int32_t segments = static_cast<int32_t>(parts.size());
+				if (args[2] != 0) {
+					const int slot = static_cast<int>(count_first + index);
+					if (args[2] < 0) self_bank()->numbers[slot] = segments;
+					else {
+						*Main_Data::game_variables->GetManiacWritable(slot) = segments;
+						Game_Map::SetNeedRefreshForVarChange(slot);
+					}
+				}
+				// The helper advances magnitude; the caller adds its count to the
+				// signed base, so negative ranges can next move towards global0.
+				output = static_cast<int32_t>(static_cast<uint32_t>(output) + segments);
+			}
+			break;
+		}
+		std::string_view delimiter = get_string_source(modes[0], args[0]);
 		args[1] = ValueOrVariable(modes[1], args[1]);
 		args[2] = ValueOrVariable(modes[2], args[2]);
 
@@ -5329,27 +8440,140 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 	}
 	case 7: //toFile <fn(string filename, int encode)>  takes hex
 	{
-		std::string_view filename = Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables);
+		if (native250921) {
+			std::string body;
+			for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
+				body += read_target(id);
+			}
+			const auto filename = expand_source(ToString(get_string_source(modes[0], args[0])));
+			const int encoding = source_number(modes[1], args[1]);
+			Game_Strings::ToFile(std::string_view(body), filename, encoding);
+			break;
+		}
+		std::string_view filename = get_string_source(modes[0], args[0]);
 		args[1] = ValueOrVariable(modes[1], args[1]);
 
 		Main_Data::game_strings->ToFile(str_params, ToString(filename), args[1]);
 		break;
 	}
 	case 8: //popLine <fn(int output_str_id)> takes hex
-		// a range parameter with popLine doesn't affect multiple strings;
-		// it instead alters the behavior.
-		// given a range t[a..b], it will pop the first (b-a)+1 lines,
-		// and store the last popped line into the output string.
-		args[1] = ValueOrVariable(modes[0], args[0]);
-
-		if (is_range) Main_Data::game_strings->PopLine(str_params, string_id_1 - string_id_0, args[0]);
-		else          Main_Data::game_strings->PopLine(str_params, 0, args[0]);
+		if (native250921) {
+			const int output = modes[0] == 0 ? args[0] : modes[0] == 1
+				? ResolveVariableIndirectAddress(args[0]) : ReadVariableIndirect(args[0]);
+			const int64_t output_first = std::abs(static_cast<int64_t>(output));
+			const int64_t count = last_slot - first_slot + 1;
+			if (output_first + count > INT32_MAX) Output::Error("Failed to create string-variables.");
+			Game_ManiacSelfVariables::Bank* bank = nullptr;
+			if (self_target || output < 0) {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!bank) Output::Error("Failed to create self-variables.");
+			}
+			const auto reserve = [&](bool self, int64_t first) {
+				if (self) {
+					bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(first + count + 1)));
+					bank->string_vector_size = bank->strings.size();
+				} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(first + count));
+			};
+			reserve(self_target, first_slot);
+			reserve(output < 0, output_first);
+			const auto write = [&](bool self, int slot, std::string_view text) {
+				if (self) {
+					bank->strings[slot] = lcf::DBString(text);
+					Game_ManiacSelfVariables::SetStringPresence(bank, slot, false);
+				} else Main_Data::game_strings->SetManiacRawSlot(slot, text, !text.empty());
+			};
+			for (int64_t index = 0; index < count; ++index) {
+				const int slot = static_cast<int>(first_slot + index);
+				// Read each source after preceding overlapping output writes.
+				const std::string source = self_target ? ToString(bank->strings[slot])
+					: ToString(Main_Data::game_strings->GetManiacRawSlot(slot));
+				const auto newline = source.find('\n');
+				const auto prefix = expand_source(source.substr(0, newline));
+				write(output < 0, static_cast<int>(output_first + index), prefix);
+				write(self_target, slot, newline == std::string::npos ? std::string_view{} : std::string_view(source).substr(newline + 1));
+			}
+			break;
+		}
+		args[0] = ValueOrVariable(modes[0], args[0]);
+		if (is_range) {
+			// Each selected string loses its first line; destinations advance from A4.
+			// Negative self-bank strings need a separate context-aware implementation.
+			const int64_t first = std::min<int64_t>(string_id_0, string_id_1);
+			const int64_t last = std::max<int64_t>(string_id_0, string_id_1);
+			const int64_t destination_last = static_cast<int64_t>(args[0]) + last - first;
+			if (first <= 0 || args[0] <= 0 || last > 1000000 || destination_last > 1000000) {
+				Output::Warning("ControlStrings: PopLine range outside supported global strings");
+				break;
+			}
+			for (int64_t id = first; id <= last; ++id) {
+				str_params.string_id = static_cast<int>(id);
+				Main_Data::game_strings->PopLine(str_params, 0, static_cast<int>(args[0] + id - first));
+			}
+		} else {
+			Main_Data::game_strings->PopLine(str_params, 0, args[0]);
+		}
 		break;
 	case 9: //exInStr <fn(string text, int var_id, int begin)>
 	case 10: //exMatch <fn(string text, int var_id, int begin, int str_id)>, edge case: the only command that generates 8 parameters instead of 7
 	{
+		if (native250921) {
+			const auto address = [&](int mode, int raw) {
+				return mode == 0 ? raw : mode == 1 ? ResolveVariableIndirectAddress(raw) : ReadVariableIndirect(raw);
+			};
+			const int output = address(modes[1], args[1]);
+			const int begin = source_number(modes[2], args[2]);
+			// Resolve capture output before numeric writes can change its operand.
+			const int capture_output = op == 10 ? address(modes[3], args[3]) : 0;
+			const int64_t count = last_slot - first_slot + 1;
+			const int64_t output_first = std::abs(static_cast<int64_t>(output));
+			if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+			const auto self_bank = [&]() {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!bank) Output::Error("Failed to create self-variables.");
+				return bank;
+			};
+			Game_ManiacSelfVariables::Bank* output_bank = output < 0 ? self_bank() : nullptr;
+			if (output_bank) output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
+			else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
+			const std::string expr = expand_source(ToString(get_string_source(modes[0], args[0])));
+			std::vector<std::string> captures;
+			for (int64_t index = 0; index < count; ++index) {
+				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+				const int value = Game_Strings::ManiacRegExSearch(read_target(id), expr, begin, op == 10 ? &captures : nullptr);
+				const int slot = static_cast<int>(output_first + index);
+				if (output_bank) output_bank->numbers[slot] = value;
+				else {
+					*Main_Data::game_variables->GetManiacWritable(slot) = value;
+					Game_Map::SetNeedRefreshForVarChange(slot);
+				}
+			}
+			if (op == 10) {
+				const int64_t capture_first = std::abs(static_cast<int64_t>(capture_output));
+				if (capture_first + captures.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
+				auto* bank = capture_output < 0 ? self_bank() : nullptr;
+				if (bank) {
+					bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(capture_first + captures.size() + 1)));
+					bank->string_vector_size = bank->strings.size();
+				} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(capture_first + captures.size()));
+				for (size_t index = 0; index < captures.size(); ++index) {
+					const int slot = static_cast<int>(capture_first + index);
+					if (bank) {
+						bank->strings[slot] = lcf::DBString(captures[index]);
+						Game_ManiacSelfVariables::SetStringPresence(bank, slot, false);
+					} else Main_Data::game_strings->SetManiacRawSlot(slot, captures[index], !captures[index].empty());
+				}
+			}
+			break;
+		}
 		// takes hex
-		std::string expr = ToString(Main_Data::game_strings->GetWithMode(str_param, modes[0], args[0], *Main_Data::game_variables));
+		std::string expr = ToString(get_string_source(modes[0], args[0]));
 		args[1] = ValueOrVariable(modes[1], args[1]); // output var
 		args[2] = ValueOrVariable(modes[2], args[2]); // beginning pos
 
@@ -5377,57 +8601,93 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	enum class ProcessingMode {
 		Constant = 0, // 0 and 1: Parameters read from variables
 		Variable = 1,
-		//VariableIndirect = 2, // Somehow not implemented by ManiacPatch
+		VariableIndirect = 2,
 		Inline = 3, // Parameters are directly provided by the command
 		Expression = 4 // Like 3, but the parameters are calculated from expressions
 	};
 
 	std::vector<int32_t> values;
+	const auto parameter = [&](int index) -> int32_t {
+		return index >= 0 && static_cast<size_t>(index) < com.parameters.size() ? com.parameters[index] : 0;
+	};
+	const uint32_t modes = static_cast<uint32_t>(parameter(0));
+	const auto numeric_mode = [&](int mode, int32_t raw) -> int32_t {
+		return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+	};
 
 	// Create command with basic parameters
 	lcf::rpg::EventCommand cmd;
-	cmd.code = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[1]);
+	cmd.easyrpg_maniac_common_name_cache = ManiacPatch::GetGeneratedCommonNameCache();
+	cmd.code = numeric_mode(modes & 15, parameter(1));
+	cmd.indent = com.indent;
+	if (cmd.code == static_cast<int32_t>(Cmd::Maniac_CallCommand)) {
+		return true; // Native 3019 skips a generated 3019 before building its arguments.
+	}
 
-	cmd.string = lcf::DBString(CommandStringOrVariableBitfield(com, 0, 3, 4));
+	const int text_mode = (modes >> 12) & 15;
+	cmd.string = lcf::DBString(text_mode == 0 ? std::string_view(com.string)
+		: text_mode == 1 ? ReadString(parameter(4)) : ReadString(ReadVariable(parameter(4))));
 
 	// Determine processing mode
-	auto processing_mode = static_cast<ProcessingMode>((com.parameters[0] >> 4) & 0b1111);
+	auto processing_mode = static_cast<ProcessingMode>((modes >> 4) & 15);
 
 	switch (processing_mode) {
 	case ProcessingMode::Constant:
-	case ProcessingMode::Variable: {
-		int start_index = ValueOrVariable(static_cast<int>(processing_mode), com.parameters[2]);
-		int length = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[3]);
-
+	case ProcessingMode::Variable:
+	case ProcessingMode::VariableIndirect:
+	default: {
+		const int start_index = numeric_mode(static_cast<int>(processing_mode), parameter(2));
+		const int length = numeric_mode((modes >> 8) & 15, parameter(3));
+		if (start_index == 0 || length < 1) break;
+		const int64_t high = std::abs(static_cast<int64_t>(start_index)) + length;
+		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+		if (native250921 && high + 1 > UINT32_MAX) {
+			Output::Error("Call Command: Vector length exceeds uint32 range.");
+		}
+		if (!native250921 && high > 1000000) {
+			Output::Warning("Call Command: Array source exceeds safe storage limit");
+			break;
+		}
+		if (start_index < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) break;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(high + 1)));
+		} else {
+			Main_Data::game_variables->EnsureSize(static_cast<size_t>(high + 1));
+		}
 		for (int i = 0; i < length; ++i) {
-			values.push_back(Main_Data::game_variables->Get(start_index + i));
+			const int id = static_cast<int32_t>(start_index < 0
+				? static_cast<uint32_t>(start_index) - static_cast<uint32_t>(i)
+				: static_cast<uint32_t>(start_index) + static_cast<uint32_t>(i));
+			values.push_back(ReadVariable(id));
 		}
 		break;
 	}
 	case ProcessingMode::Inline: {
-		int value_index = 5; // Start of the values
-		int mode_index = com.parameters[2]; // Mode of the values
-		int length = com.parameters[3];
-
+		const int mode_index = parameter(2);
+		const int length = std::max(0, numeric_mode((modes >> 8) & 15, parameter(3)));
+		if (Player::game_config.maniac_version.Get() != 250921 && length > 1000000) {
+			Output::Warning("Call Command: Inline argument count exceeds safe storage limit");
+			break;
+		}
 		for (int i = 0; i < length; ++i) {
-			// The mode is the typical 4 bit packing
-			// Always 4 modes (16 bit) are packing into one parameter
-			// Then the mode_index increments
-			if (i != 0 && i % 4 == 0) {
-				++mode_index;
-			}
-
-			values.push_back(ValueOrVariableBitfield(com, mode_index, i % 4, value_index + i));
+			const int64_t word_index = static_cast<int64_t>(mode_index) + i / 4;
+			const uint32_t word = word_index >= 0 && word_index < com.parameters.size()
+				? static_cast<uint32_t>(com.parameters[static_cast<size_t>(word_index)]) : 0;
+			const int mode = (word >> ((i % 4) * 4)) & 15;
+			values.push_back(numeric_mode(mode, parameter(5 + i)));
 		}
 		break;
 	}
 	case ProcessingMode::Expression: {
-		values = ManiacPatch::ParseExpressions(MakeSpan(com.parameters).subspan(5), *this);
+		if (com.parameters.size() > 5) {
+			values = ManiacPatch::ParseExpressions(MakeSpan(com.parameters).subspan(5), *this);
+		}
 		break;
 	}
-	default:
-		Output::Warning("Call Command: Unsupported Processing Mode: {}", static_cast<int>(processing_mode));
-		return true;
 	}
 
 	// Finalize command parameters
@@ -5444,11 +8704,11 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	Output::Warning("Command parameters:{}", params_str);
 	Output::Info("--------------------\n");*/
 
-	// Our implementation pushes a new frame containing the command instead of invoking it directly.
-	// This is incompatible to Maniacs but has a better compatibility with our code.
-	Push({ cmd }, GetCurrentEventId(), false); //FIXME: add some new flag, so the interpreter debug view (window_interpreter) can differentiate this frame from normal ones
-
-	return true;
+	// Native redispatches the generated command in this interpreter invocation.
+	// A busy command returns false against the original 3019 cursor and is regenerated on retry.
+	const bool result = ExecuteCommand(cmd);
+	ManiacPatch::SetGeneratedCommonNameCache(cmd.easyrpg_maniac_common_name_cache);
+	return result;
 }
 
 bool Game_Interpreter::CommandEasyRpgSetInterpreterFlag(lcf::rpg::EventCommand const& com) {

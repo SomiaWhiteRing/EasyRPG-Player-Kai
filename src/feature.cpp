@@ -19,6 +19,7 @@
 #include "feature.h"
 #include "player.h"
 #include "game_interpreter_shared.h"
+#include "scene_battle.h"
 #include <lcf/data.h>
 
 bool Feature::HasRpg2kBattleSystem() {
@@ -39,6 +40,9 @@ bool Feature::HasRpg2k3BattleSystem() {
 }
 
 bool Feature::HasRow() {
+	if (HasRpg2k3BattleSystem() && Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		if (auto scene = Scene::Find(Scene::Battle)) return !static_cast<Scene_Battle*>(scene.get())->IsManiacRowDisabled();
+	}
 	if (HasRpg2k3BattleSystem() && !lcf::Data::battlecommands.easyrpg_disable_row_feature) {
 		return true;
 	}

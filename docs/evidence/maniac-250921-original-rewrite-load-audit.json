@@ -1,0 +1,26 @@
+{
+  "original_save_sha256": "8dd787419372ef858ec0da67cf6970bc9416439e76fb045db0ef474be2523a9b",
+  "rewritten_save_sha256": "41c7521d7504ddc95418113b2ea56838e7bdecaffaa0edc5cee8c2d2a63634e9",
+  "original_save_length": 3821,
+  "rewritten_save_length": 3890,
+  "root_0x74_sha256": "86e01f6e18d161dbb9973d948f80e4c186e7f9f11e0497006cc7fbb67733eb4c",
+  "manifest_sha256": "2774ad6b66345dcf7d23ce3ce67958b42ab74d6670f8c674352e44732159bff4",
+  "original_runtime_observations": {
+    "original": {
+      "trace_sha256": "9eaa7421a5ed99d926bbd68b846d5d3bc0e3441f0bba98db5f61c4ef5d1b87ab",
+      "first_matching_input_enter_count": 2
+    },
+    "rewritten": {
+      "trace_sha256": "98ce54fd271385adc1f1141653062b06ef7b0ce596e5d3b8f267d2408bc1905c",
+      "first_matching_input_enter_count": 2
+    }
+  },
+  "expected_physical_numeric_slots_after_load": [
+    0,
+    7,
+    0,
+    42,
+    42
+  ],
+  "scope": "One original save rewritten by liblcf then loaded by the original 250921 runtime; Player-authored save interoperability is separate"
+}

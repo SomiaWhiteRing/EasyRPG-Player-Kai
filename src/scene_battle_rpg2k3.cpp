@@ -437,8 +437,8 @@ void Scene_Battle_Rpg2k3::UpdateAnimations() {
 				ally_cursor->SetSrcRect(Rect(sprite_frame * 16, 16, 16, 16));
 
 				ally_cursor->SetVisible(true);
-				ally_cursor->SetX(Player::menu_offset_x + actor->GetBattlePosition().x);
-				ally_cursor->SetY(Player::menu_offset_y + actor->GetBattlePosition().y - 40);
+				ally_cursor->SetX(Main_Data::game_system->GetBattleDisplayOffset().x + actor->GetBattlePosition().x);
+				ally_cursor->SetY(Main_Data::game_system->GetBattleDisplayOffset().y + actor->GetBattlePosition().y - 40);
 
 				if (frame_counter % 30 == 0) {
 					SelectionFlash(actor);
@@ -466,8 +466,8 @@ void Scene_Battle_Rpg2k3::UpdateAnimations() {
 					enemy_cursor->SetSrcRect(Rect(sprite_frame * 16, 0, 16, 16));
 
 					enemy_cursor->SetVisible(true);
-					enemy_cursor->SetX(Player::menu_offset_x + enemy->GetBattlePosition().x + sprite->GetWidth() / 2);
-					enemy_cursor->SetY(Player::menu_offset_y + enemy->GetBattlePosition().y);
+					enemy_cursor->SetX(Main_Data::game_system->GetBattleDisplayOffset().x + enemy->GetBattlePosition().x + sprite->GetWidth() / 2);
+					enemy_cursor->SetY(Main_Data::game_system->GetBattleDisplayOffset().y + enemy->GetBattlePosition().y);
 
 					std::vector<lcf::rpg::State*> ordered_states = enemy->GetInflictedStatesOrderedByPriority();
 					if (ordered_states.size() > 0) {
@@ -501,15 +501,20 @@ void Scene_Battle_Rpg2k3::UpdateAnimations() {
 }
 
 void Scene_Battle_Rpg2k3::DrawFloatText(int x, int y, int color, std::string_view text, Game_Battler* battler, FloatTextType type) {
+	const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
+	// Native DamagePop receives the aligned unit origin, without shake or flight.
+	const int hook_x = Player::IsPatchManiac() ? battler->GetBattlePosition().x - 18 + display_offset.x : x;
+	const int hook_y = Player::IsPatchManiac() ? battler->GetBattlePosition().y + display_offset.y : y;
 	std::stringstream ss(ToString(text));
 	int value = 0;
 	ss >> value;
 	bool should_override = Game_Battle::ManiacBattleHook(
 		Game_Interpreter_Battle::ManiacBattleHookType::DamagePop,
 		battler->GetType() == Game_Battler::Type_Enemy,
-		battler->GetPartyIndex(),
-		x,
-		y,
+		battler->GetType() == Game_Battler::Type_Enemy
+			? static_cast<Game_Enemy*>(battler)->GetTroopMemberId() - 1 : battler->GetManiacHookIndex(),
+		hook_x,
+		hook_y,
 		static_cast<int>(type),
 		value
 	);
@@ -528,9 +533,9 @@ void Scene_Battle_Rpg2k3::DrawFloatText(int x, int y, int color, std::string_vie
 	floating_text->SetBitmap(graphic);
 	floating_text->SetOx(rect.width / 2);
 	floating_text->SetOy(rect.height + 5);
-	floating_text->SetX(Player::menu_offset_x + x);
+	floating_text->SetX(display_offset.x + x);
 	// Move 5 pixel down because the number "jumps" with the intended y as the peak
-	floating_text->SetY(Player::menu_offset_y + y + 5);
+	floating_text->SetY(display_offset.y + y + 5);
 	floating_text->SetZ(Priority_Window + y);
 
 	FloatText float_text;
@@ -579,10 +584,15 @@ void Scene_Battle_Rpg2k3::CreateBattleTargetWindow() {
 
 void Scene_Battle_Rpg2k3::RefreshTargetWindow() {
 	// FIXME: Handle live refresh in traditional when the window is always visible
+	const int selected_index = target_window->GetIndex();
 	auto commands = GetEnemyTargetNames();
 	target_window->ReplaceCommands(std::move(commands));
 	if (!target_window->GetActive()) {
 		target_window->SetIndex(-1);
+	} else if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		// Native dynamic page polling also refreshes this window during input.
+		// Keep the player's selection; SetIndex clips it to the live list.
+		target_window->SetIndex(selected_index);
 	}
 }
 
@@ -614,12 +624,14 @@ void Scene_Battle_Rpg2k3::CreateBattleStatusWindow() {
 
 std::vector<std::string> Scene_Battle_Rpg2k3::GetBattleCommandNames(const Game_Actor* actor) {
 	std::vector<std::string> commands;
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 	if (actor) {
 		for (auto* cmd: actor->GetBattleCommands()) {
+			if (native_250921 && commands.size() == 6) break;
 			commands.push_back(ToString(cmd->name));
 		}
 	}
-	if (Feature::HasRow() && lcf::Data::battlecommands.easyrpg_enable_battle_row_command) {
+	if (Feature::HasRow() && (native_250921 || lcf::Data::battlecommands.easyrpg_enable_battle_row_command)) {
 		commands.push_back(ToString(lcf::Data::terms.row));
 	}
 
@@ -630,6 +642,7 @@ void Scene_Battle_Rpg2k3::SetBattleCommandsDisable(Window_Command& window, const
 	if (actor) {
 		const auto& cmds = actor->GetBattleCommands();
 		for (size_t i = 0; i < cmds.size(); ++i) {
+			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921 && i == 6) break;
 			auto* cmd = cmds[i];
 			if (cmd->type == lcf::rpg::BattleCommand::Type_escape && !IsEscapeAllowedFromActorCommand()) {
 				window.DisableItem(i);
@@ -767,9 +780,13 @@ static bool BattlerReadyToAct(const Game_Battler* battler) {
 
 void Scene_Battle_Rpg2k3::UpdateReadyActors() {
 	const auto& actors = Main_Data::game_party->GetActors();
+	const bool native_maniac = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
 	for (auto actor: actors) {
 		auto position = std::find(atb_order.begin(), atb_order.end(), actor->GetId());
-		if (BattlerReadyToAct(actor)) {
+		// Automatic actors must not enter the manual command menu before the
+		// automatic action selector has consumed their ready gauge.
+		if (BattlerReadyToAct(actor) && (!native_maniac || actor->IsControllable())) {
 			if (position == atb_order.end()) {
 #ifdef EP_DEBUG_BATTLE2K3_STATE_MACHINE
 				Output::Debug("Battle2k3 UpdateReadyActors add={} frame={}", actor->GetId(), Main_Data::game_system->GetFrameCounter());
@@ -828,6 +845,9 @@ void Scene_Battle_Rpg2k3::CreateEnemyActions() {
 	// FIXME: RPG_RT checks animations and event ready flag?
 	for (auto* enemy: Main_Data::game_enemyparty->GetEnemies()) {
 		if (enemy->IsAtbGaugeFull() && !enemy->GetBattleAlgorithm()) {
+			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+				Game_Battle::GetPrimaryInterpreterBattle().SetCurrentActingActorId(-1);
+			}
 			if (!EnemyAi::SetStateRestrictedAction(*enemy)) {
 				if (enemy->GetEnemyAi() == -1) {
 					enemyai_algos[default_enemyai_algo]->SetEnemyAiAction(*enemy);
@@ -861,6 +881,7 @@ void Scene_Battle_Rpg2k3::CreateActorAutoActions() {
 			continue;
 		}
 
+		RecordManiacActingActorContext(*actor, true);
 		Game_Battler* random_target = nullptr;
 		switch (actor->GetSignificantRestriction()) {
 			case lcf::rpg::State::Restriction_attack_ally:
@@ -889,8 +910,15 @@ void Scene_Battle_Rpg2k3::CreateActorAutoActions() {
 }
 
 bool Scene_Battle_Rpg2k3::UpdateAtb() {
-	if (Game_Battle::GetInterpreter().IsRunning() || Game_Message::IsMessageActive()) {
+	if (Game_Battle::IsManiacHookPumping()
+			|| Game_Battle::GetInterpreter().IsRunning() || Game_Message::IsMessageActive()) {
 		return true;
+	}
+	const bool native_maniac = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
+	if (native_maniac) {
+		// RPG_RT selects ready auto actions before their next ATB hook.
+		CreateActorAutoActions();
 	}
 	if (IsAtbAccumulating()) {
 		// FIXME: If one monster can act now, he gets his battle algo set, and we abort updating atb for other monsters
@@ -898,7 +926,9 @@ bool Scene_Battle_Rpg2k3::UpdateAtb() {
 	}
 
 	CreateEnemyActions();
-	CreateActorAutoActions();
+	if (!native_maniac) {
+		CreateActorAutoActions();
+	}
 
 	return true;
 }
@@ -947,6 +977,17 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 
 		CheckBattleEndConditions();
 		UpdateAtb();
+
+		if (Player::IsPatchManiac()
+				&& Player::game_config.maniac_version.Get() == 250921
+				&& !Game_Battle::IsBattleAnimationWaiting()
+				&& !Game_Message::IsMessageActive()) {
+			// Hooks can change a troop condition while no unit can act.
+			// Poll the dynamic conditions independently of action completion.
+			if (!CheckBattleEndAndScheduleEvents(EventTriggerType::eAfterBattleAction, nullptr)) {
+				return false;
+			}
+		}
 	}
 	return true;
 }
@@ -955,6 +996,11 @@ void Scene_Battle_Rpg2k3::vUpdate() {
 	const auto process_scene = UpdateBattleState();
 
 	while (process_scene) {
+		// A pumped callback suspends the action that invoked it. Only the
+		// update above may advance its waits, UI and timers.
+		if (Game_Battle::IsManiacHookPumping()) {
+			break;
+		}
 		// Something ended the battle.
 		if (Scene::instance.get() != this) {
 			break;
@@ -1017,6 +1063,8 @@ bool Scene_Battle_Rpg2k3::CheckBattleEndConditions() {
 
 
 bool Scene_Battle_Rpg2k3::CheckBattleEndAndScheduleEvents(EventTriggerType tt, Game_Battler* source) {
+	// Troop pages belong to the suspended master, never to a hook stack.
+	if (Game_Battle::IsManiacHookPumping()) return false;
 	auto& interp = Game_Battle::GetInterpreterBattle();
 
 	if (interp.IsRunning()) {
@@ -1175,6 +1223,35 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionFi
 		eWaitInput,
 		ePreActor,
 	};
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	if (native_250921) {
+		switch (maniac_party_options) {
+			case 3:
+				for (auto* actor : Main_Data::game_party->GetActors()) {
+					auto& states = actor->GetStates();
+					states.resize(std::max(states.size(), lcf::Data::states.size()));
+					bool can_escape = true;
+					for (size_t i = 0; i < lcf::Data::states.size(); ++i) {
+						const auto& state = lcf::Data::states[i];
+						if (static_cast<uint16_t>(states[i]) != 0
+								&& state.restriction == lcf::rpg::State::Restriction_do_nothing
+								&& state.auto_release_prob == 0) can_escape = false;
+					}
+					if (can_escape) {
+						actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Escape>(actor));
+					}
+				}
+				SetState(State_Escape);
+				break;
+			case 5: SetState(State_AutoBattle); break;
+			case 6: SetState(State_SelectActor); break;
+			case 15: SetState(State_Victory); break;
+			case 23: SetState(State_Defeat); break;
+			default: goto ordinary_options;
+		}
+		return SceneActionReturn::eContinueThisFrame;
+	}
+ordinary_options:
 
 	if (scene_action_substate == eBegin) {
 		ResetWindows(true);
@@ -1247,8 +1324,8 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionFi
 					}
 					break;
 				case Win: // Win
-					for (Game_Enemy* enemy : Main_Data::game_enemyparty->GetEnemies()) {
-						enemy->Kill();
+					if (!native_250921) {
+						for (Game_Enemy* enemy : Main_Data::game_enemyparty->GetEnemies()) enemy->Kill();
 					}
 					SetState(State_Victory);
 					break;
@@ -1334,7 +1411,7 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionAc
 	}
 
 	if (scene_action_substate == eWaitInput) {
-		if (Input::IsTriggered(Input::CANCEL)) {
+		if (Input::IsTriggered(Input::CANCEL) && !IsManiacPartyCancelSuppressed()) {
 			SetActiveActor(-1);
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 			SetState(State_SelectOption);
@@ -1362,7 +1439,7 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionAc
 		}
 
 		if (lcf::Data::battlecommands.battle_type != lcf::rpg::BattleCommands::BattleType_traditional) {
-			if (Input::IsTriggered(Input::CANCEL)) {
+			if (Input::IsTriggered(Input::CANCEL) && !IsManiacPartyCancelSuppressed()) {
 				SetActiveActor(-1);
 				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 				SetState(State_SelectOption);
@@ -1447,11 +1524,12 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionCo
 		if (Input::IsTriggered(Input::DECISION)) {
 			int index = command_window->GetIndex();
 			// Row command always uses the last index
-			if (!Feature::HasRow() || !lcf::Data::battlecommands.easyrpg_enable_battle_row_command || index < command_window->GetRowMax() - 1) {
+			const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+			if (!Feature::HasRow() || (!native_250921 && !lcf::Data::battlecommands.easyrpg_enable_battle_row_command) || index < command_window->GetRowMax() - 1) {
 				const auto* command = active_actor->GetBattleCommand(index);
 
 				if (command) {
-					active_actor->SetLastBattleAction(command->ID);
+					if (!native_250921) active_actor->SetLastBattleAction(command->ID);
 					switch (command->type) {
 						case lcf::rpg::BattleCommand::Type_attack:
 							AttackSelected();
@@ -1483,14 +1561,14 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionCo
 					}
 				}
 			} else {
-				active_actor->SetLastBattleAction(-1);
+				if (!native_250921) active_actor->SetLastBattleAction(-1);
 				// FIXME: Verify how battle interpreter runs with row command
 				RowSelected();
 			}
 			return SceneActionReturn::eWaitTillNextFrame;
 		}
 		if (lcf::Data::battlecommands.battle_type != lcf::rpg::BattleCommands::BattleType_traditional) {
-			if (Input::IsTriggered(Input::CANCEL)) {
+			if (Input::IsTriggered(Input::CANCEL) && !IsManiacPartyCancelSuppressed()) {
 				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 				SetState(State_SelectOption);
 
@@ -1711,6 +1789,12 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionBa
 		}
 
 		auto* battler = battle_actions.front();
+		if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+				&& active_actor == battler) {
+			// A dynamic event can refill the queued actor's ATB before it acts.
+			// Its pending action must finish before it can receive new input.
+			SetActiveActor(-1);
+		}
 		// If we will start a new battle action, first check for state changes
 		// such as death, paralyze, confuse, etc..
 		PrepareBattleAction(battler);
@@ -2022,9 +2106,12 @@ void Scene_Battle_Rpg2k3::SetBattleActionState(BattleActionState state) {
 Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction(Game_BattleAlgorithm::AlgorithmBase* action) {
 	// End any notification started by battle action
 	EndNotification();
-	auto* source = action->GetSource();
 
 	if (action == nullptr) {
+		return BattleActionReturn::eFinished;
+	}
+	auto* source = action->GetSource();
+	if (!source->IsInParty()) {
 		return BattleActionReturn::eFinished;
 	}
 
@@ -2128,7 +2215,8 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 	// Setup enemy targets
 	// FIXME: This is not 100% bug compatible with RPG_RT but pretty close
 	// See: https://github.com/EasyRPG/Player/issues/2405#issuecomment-716298981
-	if (source->GetType() == Game_Battler::Type_Ally) {
+	if ((!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921)
+		&& source->GetType() == Game_Battler::Type_Ally) {
 		auto& interp = Game_Battle::GetInterpreterBattle();
 		auto* actor = static_cast<Game_Actor*>(source);
 		interp.SetCurrentActingActorId(actor->GetId());
@@ -2804,6 +2892,8 @@ void Scene_Battle_Rpg2k3::SpecialSelected() {
 
 	active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::DoNothing>(active_actor));
 
+	RecordManiacActingActorContext(*active_actor);
+
 	ActionSelectedCallback(active_actor);
 }
 
@@ -2814,6 +2904,7 @@ void Scene_Battle_Rpg2k3::EscapeSelected() {
 	}
 	Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 	active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::Escape>(active_actor));
+	RecordManiacActingActorContext(*active_actor);
 	ActionSelectedCallback(active_actor);
 }
 
@@ -2835,6 +2926,7 @@ void Scene_Battle_Rpg2k3::RowSelected() {
 		}
 		active_actor->SetBattlePosition(Game_Battle::Calculate2k3BattlePosition(*active_actor));
 		active_actor->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::DoNothing>(active_actor));
+		RecordManiacActingActorContext(*active_actor);
 		ActionSelectedCallback(active_actor);
 	} else {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));

@@ -92,12 +92,14 @@ int Utils::StrICmp(std::string_view l, std::string_view r) {
 	return l.size() - r.size();
 }
 
-std::u16string Utils::DecodeUTF16(std::string_view str) {
+std::u16string Utils::DecodeUTF16(std::string_view str, bool preserve_surrogates, bool* valid) {
 	std::u16string result;
+	size_t valid_bytes = 0;
 	for (auto it = str.begin(), str_end = str.end(); it < str_end; ++it) {
 		uint8_t c1 = static_cast<uint8_t>(*it);
 		if (c1 < 0x80) {
 			result.push_back(static_cast<uint16_t>(c1));
+			++valid_bytes;
 		}
 		else if (c1 < 0xC2) {
 			continue;
@@ -109,6 +111,7 @@ std::u16string Utils::DecodeUTF16(std::string_view str) {
 			if ((c2 & 0xC0) != 0x80)
 				continue;
 			result.push_back(static_cast<uint16_t>(((c1 & 0x1F) << 6) | (c2 & 0x3F)));
+			valid_bytes += 2;
 		}
 		else if (c1 < 0xF0) {
 			if (str_end-it < 3)
@@ -118,7 +121,7 @@ std::u16string Utils::DecodeUTF16(std::string_view str) {
 			if (c1 == 0xE0) {
 				if ((c2 & 0xE0) != 0xA0)
 					continue;
-			} else if (c1 == 0xED) {
+			} else if (c1 == 0xED && !preserve_surrogates) {
 				if ((c2 & 0xE0) != 0x80)
 					continue;
 			} else {
@@ -130,6 +133,7 @@ std::u16string Utils::DecodeUTF16(std::string_view str) {
 			result.push_back(static_cast<uint16_t>(((c1 & 0x0F) << 12)
 												 | ((c2 & 0x3F) << 6)
 												 |  (c3 & 0x3F)));
+			valid_bytes += 3;
 		}
 		else if (c1 < 0xF5) {
 			if (str_end-it < 4)
@@ -162,8 +166,10 @@ std::u16string Utils::DecodeUTF16(std::string_view str) {
 					0xDC00
 				  | ((c3 & 0x0F) << 6)
 				  |  (c4 & 0x3F)));
+			valid_bytes += 4;
 		}
 	}
+	if (valid) *valid = valid_bytes == str.size();
 	return result;
 }
 
@@ -234,10 +240,17 @@ std::u32string Utils::DecodeUTF32(std::string_view str) {
 	return result;
 }
 
-std::string Utils::EncodeUTF(const std::u16string& str) {
+std::string Utils::EncodeUTF(const std::u16string& str, bool preserve_surrogates) {
 	std::string result;
 	for (auto it = str.begin(), str_end = str.end(); it < str_end; ++it) {
 		uint16_t wc1 = *it;
+		if (preserve_surrogates && wc1 >= 0xd800 && wc1 <= 0xdfff
+			&& !(wc1 < 0xdc00 && str_end - it >= 2 && (it[1] & 0xfc00) == 0xdc00)) {
+			result.push_back(static_cast<char>(0xe0 | (wc1 >> 12)));
+			result.push_back(static_cast<char>(0x80 | ((wc1 >> 6) & 0x3f)));
+			result.push_back(static_cast<char>(0x80 | (wc1 & 0x3f)));
+			continue;
+		}
 		if (wc1 < 0x0080) {
 			result.push_back(static_cast<char>(wc1));
 		}

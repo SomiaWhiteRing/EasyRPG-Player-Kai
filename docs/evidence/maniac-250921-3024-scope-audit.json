@@ -1,0 +1,24 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "3724a59e54122798304b4740377674daf35e8a8272ab534a2a8588b7ee9edd79",
+  "trace_sha256": "7271c4c101dd3b85ff2159a632e788dc787535cbff9b15dc876bda1385aed8a2",
+  "save_sha256": "6f4b0a2f2c7cfb60a0129a515e2779d214a67f52dfa06cbaa13e4c41c2b346b6",
+  "map_sha256": "fa4b4619b0243f6947abe1c00a98ccd1c4ecdeab978bdda7342a462dda40871c",
+  "original_marker_global_numeric_id_1": 99,
+  "original_save_observed_after_enter": 1,
+  "dispatcher_instructions": {
+    "0x463e2": "mov eax, dword ptr [r13]",
+    "0x47d01": "mov al, 1",
+    "0x47d03": "jmp 0x140046ef3"
+  },
+  "effective_branch_ids": [
+    "3024:standalone-default-no-payload"
+  ],
+  "context_observed": "map autostart event",
+  "remaining_contexts": [
+    "map parallel event",
+    "common event",
+    "battle event"
+  ],
+  "scope": "250921 Windows original 3024 with three nonempty arguments and nonempty Text in one map autostart event advances to ControlVars 99 and 3002 save. Reviewed static command contract identifies independent 3024 as a default path with no parameter/Text consumer. Scheduling and Player parity in other interpreter contexts remain separate acceptance work."
+}

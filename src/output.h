@@ -20,6 +20,8 @@
 
 // Headers
 #include <string>
+#include <string_view>
+#include <cstdint>
 #include <iosfwd>
 #include <fmt/format.h>
 #include "filesystem_stream.h"
@@ -39,6 +41,8 @@ using LogCallbackFn = void (*)(LogLevel lvl, std::string const& message,
  * Output Namespace.
  */
 namespace Output {
+	bool IsManiacFileOutputAvailable();
+	void BeginManiacFileOutput();
 	/** @return the configurated log level */
 	LogLevel GetLogLevel();
 
@@ -115,6 +119,13 @@ namespace Output {
 	 * @param userdata passed as is to callback
 	 */
 	void SetLogCallback(LogCallbackFn fn, LogCallbackUserData userdata = nullptr);
+
+	bool ManiacConsoleOpen(bool update_window = true);
+	void ManiacConsoleClose();
+	bool ManiacConsoleWrite(std::string_view text);
+	bool ManiacConsoleRead(int capacity, std::string& text);
+	bool ManiacConsoleColor(uint32_t options, int foreground, int background);
+	bool ManiacConsoleFocus(bool console);
 
 	/** @return the Loglevel as string */
 	std::string LogLevelToString(LogLevel lvl);

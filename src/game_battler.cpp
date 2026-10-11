@@ -23,6 +23,7 @@
 #include "player.h"
 #include "game_battler.h"
 #include "game_actor.h"
+#include "game_enemy.h"
 #include "game_enemyparty.h"
 #include "game_battle.h"
 #include "game_party.h"
@@ -45,6 +46,29 @@
 #include "rand.h"
 
 Game_Battler::Game_Battler() {
+}
+
+void Game_Battler::SetBattleAlgorithm(BattleAlgorithmRef action) {
+	battle_algorithm = action;
+	if (!action || !Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return;
+	using Game_BattleAlgorithm::Type;
+	const auto type = action->GetType();
+	if (type != Type::Normal && type != Type::Skill && type != Type::Item && type != Type::SelfDestruct) return;
+	if (type == Type::Skill) {
+		const auto skill_type = static_cast<Game_BattleAlgorithm::Skill*>(action.get())->GetSkill().type;
+		if (skill_type >= lcf::rpg::Skill::Type_teleport && skill_type <= lcf::rpg::Skill::Type_switch) {
+			maniac_target_type = 0;
+			return;
+		}
+	}
+	if (auto* target = action->GetOriginalSingleTarget()) {
+		maniac_target_type = target->GetType() == Type_Enemy ? 3 : 1;
+		maniac_target_index = target->GetPartyIndex();
+	} else if (auto* party = action->GetOriginalPartyTarget()) {
+		maniac_target_type = party == Main_Data::game_enemyparty.get() ? 4 : 2;
+	} else {
+		maniac_target_type = 0;
+	}
 }
 
 bool Game_Battler::HasState(int state_id) const {
@@ -348,7 +372,11 @@ bool Game_Battler::AddState(int state_id, bool allow_battle_states) {
 		return was_added;
 	}
 
-	if (GetSignificantRestriction() != lcf::rpg::State::Restriction_normal) {
+	const bool native250921 = Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921;
+	const bool state_cancels_action = native250921 ? !CanManiacMove()
+		: GetSignificantRestriction() != lcf::rpg::State::Restriction_normal;
+	if (state_cancels_action) {
 		SetIsDefending(false);
 		SetCharged(false);
 		if (GetBattleAlgorithm() != nullptr
@@ -362,17 +390,27 @@ bool Game_Battler::AddState(int state_id, bool allow_battle_states) {
 		auto& skill = algo->GetSkill();
 		// Only remove the action when it is a now invalid skill. Skills triggered through items are not affected.
 		if (!algo->GetItem() && !IsSkillUsable(skill.ID)) {
-			SetCharged(false);
+			// Native invalidates the skill action without clearing the charge.
+			if (!native250921) SetCharged(false);
 			this->SetBattleAlgorithm(std::make_shared<Game_BattleAlgorithm::None>(this));
 		}
 	}
 
-	Game_Battle::ManiacBattleHook(
-		Game_Interpreter_Battle::ManiacBattleHookType::SetState,
-		GetType() == Game_Battler::Type_Enemy,
-		GetPartyIndex(),
-		state_id
-	);
+	int hook_value = state_id;
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		// Native forwards the live state counter returned after adding/pruning.
+		const auto& states = GetStates();
+		hook_value = state_id <= static_cast<int>(states.size())
+			? static_cast<uint16_t>(states[state_id - 1]) : 0;
+	}
+	if (hook_value != 0) {
+		Game_Battle::ManiacBattleHook(
+			Game_Interpreter_Battle::ManiacBattleHookType::SetState,
+			GetType() == Game_Battler::Type_Enemy,
+			GetManiacHookIndex(),
+			hook_value
+		);
+	}
 
 	return was_added;
 }
@@ -582,7 +620,7 @@ int Game_Battler::GetDisplayX() const {
 	}
 
 	int shake_pos = shake_x + shake.position;
-	return Player::menu_offset_x + ((GetBattlePosition().x + shake_pos) * MENU_WIDTH / MENU_WIDTH);
+	return Main_Data::game_system->GetBattleDisplayOffset().x + GetBattlePosition().x + shake_pos;
 }
 
 int Game_Battler::GetDisplayY() const {
@@ -592,7 +630,7 @@ int Game_Battler::GetDisplayY() const {
 	}
 
 	int shake_pos = shake_y;
-	return Player::menu_offset_y + ((GetBattlePosition().y + GetFlyingOffset() + shake_pos) * MENU_HEIGHT / MENU_HEIGHT);
+	return Main_Data::game_system->GetBattleDisplayOffset().y + GetBattlePosition().y + GetFlyingOffset() + shake_pos;
 }
 
 Game_Party_Base& Game_Battler::GetParty() const {
@@ -605,6 +643,24 @@ Game_Party_Base& Game_Battler::GetParty() const {
 
 int Game_Battler::GetPartyIndex() {
 	return GetParty().GetMemberIndex(this);
+}
+
+int Game_Battler::GetManiacHookIndex() {
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		if (GetType() == Type_Enemy) {
+			return static_cast<Game_Enemy*>(this)->GetTroopMemberId() - 1;
+		}
+		return std::max(0, GetPartyIndex());
+	}
+	return GetPartyIndex();
+}
+
+Point Game_Battler::GetManiacParamHookPosition() const {
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		const auto position = GetBattlePosition();
+		return {static_cast<int32_t>(static_cast<uint32_t>(position.x) - 18u), position.y};
+	}
+	return {GetDisplayX(), GetDisplayY()};
 }
 
 void Game_Battler::UpdateBattle() {
@@ -684,10 +740,34 @@ int Game_Battler::ShiftAttributeRate(int attribute_id, int shift) {
 }
 
 int Game_Battler::GetAttributeRateShift(int attribute_id) const {
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		// Native ordinary reads prepare the whole element bank with byte 1.
+		attribute_shift.resize(std::max(attribute_shift.size(), lcf::Data::attributes.size()));
+	}
 	if (attribute_id < 1 || attribute_id > static_cast<int>(attribute_shift.size())) {
 		return 0;
 	}
 	return attribute_shift[attribute_id - 1];
+}
+
+std::vector<int32_t> Game_Battler::GetManiacAttributeRates() const {
+	std::vector<int32_t> values;
+	values.reserve(attribute_shift.size() + 1);
+	values.push_back(static_cast<int32_t>(attribute_shift.size()));
+	for (const auto shift : attribute_shift) {
+		values.push_back(static_cast<uint8_t>(shift + 1));
+	}
+	return values;
+}
+
+bool Game_Battler::CanManiacMove() {
+	auto& states = GetStates();
+	states.resize(std::max(states.size(), lcf::Data::states.size()));
+	for (size_t i = 0; i < lcf::Data::states.size(); ++i) {
+		if (static_cast<uint16_t>(states[i]) != 0
+			&& lcf::Data::states[i].restriction == lcf::rpg::State::Restriction_do_nothing) return false;
+	}
+	return true;
 }
 
 int Game_Battler::CanShiftAttributeRate(int attribute_id, int shift) const {

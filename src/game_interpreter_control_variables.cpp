@@ -18,12 +18,16 @@
 #include "game_interpreter_shared.h"
 #include "game_interpreter_control_variables.h"
 #include "game_actors.h"
+#include "game_battle.h"
 #include "game_enemyparty.h"
+#include "game_event.h"
 #include "game_ineluki.h"
 #include "game_interpreter.h"
 #include "game_party.h"
 #include "game_player.h"
 #include "game_system.h"
+#include "game_variables.h"
+#include "game_vehicle.h"
 #include "main_data.h"
 #include "output.h"
 #include "player.h"
@@ -34,7 +38,39 @@
 #include <cstdint>
 #include <lcf/rpg/savepartylocation.h>
 
+namespace {
+
+bool IsManiac250921() {
+	return Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+}
+
+int SignedBits(uint32_t bits) {
+	return bits <= INT32_MAX ? static_cast<int>(bits) : static_cast<int>(static_cast<int64_t>(bits) - (int64_t{1} << 32));
+}
+
+int TruncateNative(double value) {
+	// CVTTSD2SI returns the indefinite integer for NaN or an out-of-range result.
+	if (!(value >= INT32_MIN && value < static_cast<double>(INT32_MAX) + 1.0)) return INT32_MIN;
+	return static_cast<int>(value);
+}
+
+int BoundNative(double value) {
+	value = std::max(value, static_cast<double>(Main_Data::game_variables->GetMinValue()));
+	value = std::min(value, static_cast<double>(Main_Data::game_variables->GetMaxValue()));
+	return TruncateNative(value);
+}
+
+int BoundNative(int64_t value) {
+	return static_cast<int>(std::clamp(value, static_cast<int64_t>(Main_Data::game_variables->GetMinValue()),
+		static_cast<int64_t>(Main_Data::game_variables->GetMaxValue())));
+}
+
+}
+
 int ControlVariables::Random(int value, int value2) {
+	if (Player::IsPatchManiac()) {
+		return Main_Data::ManiacRandomInclusive(value, value2);
+	}
 	int rmax = std::max(value, value2);
 	int rmin = std::min(value, value2);
 
@@ -61,6 +97,7 @@ int ControlVariables::Actor(int op, int actor_id) {
 	auto actor = Main_Data::game_actors->GetActor(actor_id);
 
 	if (!actor) {
+		if (IsManiac250921()) Output::Error("ControlVariables::Actor: Actor {} was not found.", actor_id);
 		Output::Warning("ControlVariables::Actor: Bad actor_id {}", actor_id);
 		return 0;
 	}
@@ -135,8 +172,12 @@ int ControlVariables::Actor(int op, int actor_id) {
 		case 16:
 			// ATB
 			if (Player::IsPatchManiac()) {
+				if (IsManiac250921()) return std::min(actor->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
 				return actor->GetAtbGauge();
 			}
+			break;
+		case 17:
+			if (IsManiac250921()) return actor->GetManiacNextExp();
 			break;
 	}
 
@@ -148,6 +189,7 @@ int ControlVariables::Party(int op, int party_idx) {
 	auto actor = Main_Data::game_party->GetActor(party_idx);
 
 	if (!actor) {
+		if (IsManiac250921()) return ControlVariables::Actor(op, 0);
 		Output::Warning("ControlVariables::Party: Bad party_idx {}", party_idx);
 		return 0;
 	}
@@ -157,6 +199,7 @@ int ControlVariables::Party(int op, int party_idx) {
 
 int ControlVariables::Event(int op, int event_id, const Game_BaseInterpreterContext& interpreter) {
 	auto character = interpreter.GetCharacter(event_id, "ControlVariables::Event");
+	if (!character && IsManiac250921()) Output::Error("ControlVariables::Event: Character {} was not found.", event_id);
 	if (character) {
 		switch (op) {
 			case 0:
@@ -208,6 +251,13 @@ int ControlVariables::Event(int op, int event_id, const Game_BaseInterpreterCont
 			}
 			case 6:
 				// Event ID
+				if (IsManiac250921()) {
+					switch (character->GetType()) {
+						case Game_Character::Player: return Game_Character::CharPlayer;
+						case Game_Character::Vehicle: return Game_Character::CharPlayer + static_cast<Game_Vehicle*>(character)->GetVehicleType();
+						case Game_Character::Event: return static_cast<Game_Event*>(character)->GetId();
+					}
+				}
 				return Player::IsPatchManiac() ? interpreter.GetThisEventId() : 0;
 		}
 
@@ -288,6 +338,7 @@ int ControlVariables::Other(int op) {
 		case 13:
 			// Patch version
 			if (Player::IsPatchManiac()) {
+				if (IsManiac250921()) return SignedBits(250921u | (Game_Battle::IsBattleRunning() ? 0x80000000u : 0u));
 				// Latest version before the engine rewrite
 				return 200128;
 			}
@@ -302,6 +353,7 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 	auto enemy = Main_Data::game_enemyparty->GetEnemy(enemy_idx);
 
 	if (!enemy) {
+		if (IsManiac250921()) Output::Error("ControlVariables::Enemy: Enemy index {} was not found.", enemy_idx);
 		Output::Warning("ControlVariables::Enemy: Bad enemy_idx {}", enemy_idx);
 		return 0;
 	}
@@ -348,6 +400,7 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 		case 9:
 			// ATB
 			if (Player::IsPatchManiac()) {
+				if (IsManiac250921()) return std::min(enemy->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
 				return enemy->GetAtbGauge();
 			}
 			break;
@@ -358,10 +411,16 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 }
 
 int ControlVariables::Pow(int arg1, int arg2) {
+	if (IsManiac250921()) return BoundNative(std::pow(arg1, arg2));
 	return static_cast<int>(std::pow(arg1, arg2));
 }
 
 int ControlVariables::Sqrt(int arg, int mul) {
+	if (IsManiac250921()) {
+		const int magnitude = arg < 0 ? SignedBits(0u - static_cast<uint32_t>(arg)) : arg;
+		const int result = BoundNative(std::sqrt(static_cast<double>(magnitude)) * mul);
+		return arg < 0 ? SignedBits(0u - static_cast<uint32_t>(result)) : result;
+	}
 	// This is not how negative sqrt works, just following the implementation here
 	int res = static_cast<int>(sqrt(abs(arg)) * mul);
 	if (arg < 0) {
@@ -371,6 +430,7 @@ int ControlVariables::Sqrt(int arg, int mul) {
 }
 
 int ControlVariables::Sin(int arg1, int arg2, int mul) {
+	if (IsManiac250921()) return TruncateNative(std::sin((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
 	float res = static_cast<float>(arg1);
 	if (arg2 != 0) {
 		res /= static_cast<float>(arg2);
@@ -379,6 +439,7 @@ int ControlVariables::Sin(int arg1, int arg2, int mul) {
 }
 
 int ControlVariables::Cos(int arg1, int arg2, int mul) {
+	if (IsManiac250921()) return TruncateNative(std::cos((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
 	float res = static_cast<float>(arg1);
 	if (arg2 != 0) {
 		res /= static_cast<float>(arg2);
@@ -387,6 +448,7 @@ int ControlVariables::Cos(int arg1, int arg2, int mul) {
 }
 
 int ControlVariables::Atan2(int arg1, int arg2, int mul) {
+	if (IsManiac250921()) return TruncateNative(std::atan2(arg1, arg2) * 57.2957795131 * mul);
 	return static_cast<int>(std::atan2(arg1, arg2) * 180.f / M_PI * mul);
 }
 
@@ -399,10 +461,28 @@ int ControlVariables::Max(int arg1, int arg2) {
 }
 
 int ControlVariables::Abs(int arg) {
+	if (IsManiac250921()) return arg < 0 ? SignedBits(0u - static_cast<uint32_t>(arg)) : arg;
 	return abs(arg);
 }
 
 int ControlVariables::Binary(int op, int arg1, int arg2) {
+	if (IsManiac250921()) {
+		const int64_t a = arg1, b = arg2 == 0 ? 1 : arg2;
+		const uint32_t lhs = static_cast<uint32_t>(arg1), rhs = static_cast<uint32_t>(arg2);
+		switch (op) {
+			case 1: return BoundNative(a + arg2);
+			case 2: return BoundNative(a - arg2);
+			case 3: return BoundNative(a * arg2);
+			case 4: return BoundNative(a / b);
+			case 5: return BoundNative(a % b);
+			case 6: return SignedBits(lhs | rhs);
+			case 7: return SignedBits(lhs & rhs);
+			case 8: return SignedBits(lhs ^ rhs);
+			case 9: return SignedBits(lhs << (rhs & 31));
+			case 10: return SignedBits(lhs >> (rhs & 31));
+			default: return 0;
+		}
+	}
 	// 64 Bit for overflow protection
 	int64_t result = 0;
 
@@ -457,6 +537,7 @@ int ControlVariables::Binary(int op, int arg1, int arg2) {
 }
 
 int ControlVariables::Clamp(int arg1, int arg2, int arg3) {
+	if (IsManiac250921()) return std::min(std::max(arg1, arg2), arg3);
 	return Utils::Clamp(arg1, arg2, arg3);
 }
 
@@ -469,7 +550,8 @@ int ControlVariables::Muldiv(int arg1, int arg2, int arg3) {
 		arg3_64 = 1;
 	}
 
-	return static_cast<int>(arg1_64 * arg2_64 / arg3_64);
+	const int64_t result = arg1_64 * arg2_64 / arg3_64;
+	return IsManiac250921() ? BoundNative(result) : static_cast<int>(result);
 }
 
 int ControlVariables::Divmul(int arg1, int arg2, int arg3) {
@@ -481,9 +563,11 @@ int ControlVariables::Divmul(int arg1, int arg2, int arg3) {
 		arg2_d = 1.0;
 	}
 
-	return static_cast<int>(arg1_64 / arg2_d * arg3_64);
+	const double result = arg1_64 / arg2_d * arg3_64;
+	return IsManiac250921() ? BoundNative(result) : static_cast<int>(result);
 }
 
 int ControlVariables::Between(int arg1, int arg2, int arg3) {
+	if (IsManiac250921()) return arg1 >= arg2 && arg1 <= arg3 ? 1 : 0;
 	return (arg1 >= arg2 && arg2 <= arg3) ? 0 : 1;
 }

@@ -25,6 +25,7 @@
 #include <lcf/rpg/enemy.h>
 #include <lcf/rpg/enemyaction.h>
 #include <lcf/rpg/troopmember.h>
+#include <optional>
 
 /**
  * Represents a single enemy in the battle scene
@@ -33,6 +34,9 @@ class Game_Enemy final : public Game_Battler
 {
 public:
 	explicit Game_Enemy(const lcf::rpg::TroopMember* tm);
+
+	void SetName(std::string name);
+	void Retire();
 
 	const std::vector<int16_t>& GetStates() const override;
 	std::vector<int16_t>& GetStates() override;
@@ -277,7 +281,9 @@ public:
 
 protected:
 	const lcf::rpg::Enemy* enemy = nullptr;
-	const lcf::rpg::TroopMember* troop_member = nullptr;
+	lcf::rpg::TroopMember troop_member;
+	std::optional<std::string> name_override;
+	bool in_party = true;
 	std::vector<int16_t> states;
 	int hp = 0;
 	int sp = 0;
@@ -323,7 +329,7 @@ inline int Game_Enemy::GetId() const {
 }
 
 inline int Game_Enemy::GetTroopMemberId() const {
-	return troop_member->ID;
+	return troop_member.ID;
 }
 
 inline int Game_Enemy::GetBaseMaxHp() const {
@@ -367,7 +373,7 @@ inline std::vector<int16_t>& Game_Enemy::GetStates() {
 }
 
 inline std::string_view Game_Enemy::GetName() const {
-	return enemy->name;
+	return name_override ? std::string_view(*name_override) : std::string_view(enemy->name);
 }
 
 inline std::string_view Game_Enemy::GetSpriteName() const {
@@ -375,8 +381,7 @@ inline std::string_view Game_Enemy::GetSpriteName() const {
 }
 
 inline bool Game_Enemy::IsInParty() const {
-	// Enemies can never be removed from enemy party
-	return true;
+	return in_party;
 }
 
 inline const lcf::rpg::Enemy& Game_Enemy::GetDbEnemy() const {

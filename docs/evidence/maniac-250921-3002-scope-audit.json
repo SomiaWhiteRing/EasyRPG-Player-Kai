@@ -1,0 +1,63 @@
+{
+  "original_runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_source_sha256": {
+    "evidence/NativeBatch01-250921.md": "8724a645a1cd46b056a276915617b9810f4746e49fc7ea346831bcc04b18be94",
+    "evidence/runtime-250921/00024f10.c": "387ab744ffb113fc0a55a89922bd4f61f9f47149326e542ff8cfd7cd770feb60",
+    "analysis-work/reports/03002-e4a5aa9b6da20017481e8f5f036903ca2dfe7a3c3e2cacd78cafcc4a85241bf3.json": "7baf0dfc469b795997c8b034a352f20d519295d2a9f1de7cc95873f5412455c6"
+  },
+  "dispatch_and_handler_instructions": {
+    "0x4677b": "call 0x24f10",
+    "0x46780": "mov al, 1",
+    "0x24f3b": "cmp edx, 1",
+    "0x24f50": "je 0x24fb7",
+    "0x24f55": "cmp dword ptr [rax], 0",
+    "0x24f60": "call 0x17d7c0",
+    "0x24f80": "cmp eax, ecx",
+    "0x24f8e": "test edi, edi",
+    "0x24f92": "call 0xc8ec0",
+    "0x24f97": "cmp edi, 0x10",
+    "0x24f9c": "mov dword ptr [rip + 0x25569a], edi",
+    "0x24fa2": "inc dword ptr [rip + 0x255690]",
+    "0x24faa": "call 0x82cb0",
+    "0x24faf": "mov dword ptr [rsp + 0x58], 1",
+    "0x24fc7": "cmp ecx, 2",
+    "0x24fcf": "cmp dword ptr [rax + 8], 0",
+    "0x24fd5": "cmp ecx, 3",
+    "0x24fda": "mov ecx, dword ptr [rax + 0xc]",
+    "0x24fe5": "call 0x8c9e0"
+  },
+  "effective_branch_ids": [
+    "3002:direct-slot",
+    "3002:indirect-global-slot",
+    "3002:indirect-negative-self-slot",
+    "3002:nonpositive-or-missing-slot",
+    "3002:result-disabled",
+    "3002:result-enabled-signed-destination",
+    "3002:result-enabled-missing-destination",
+    "3002:positive-slot-save-count-last-slot-frequency"
+  ],
+  "parameter_rule": "A0=0 uses A1 directly; any nonzero A0 resolves A1 through the positive global variable or negative self accessor. Missing A1 resolves as zero. A2 requires at least three original arguments and a nonzero flag; A3 defaults to zero when absent. Additional arguments and Text are not read by this consumer.",
+  "context_rule": "The shared 3002 dispatcher returns immediate success; map foreground, parallel, called common and battle event runners can reach it. A 3019-generated 3002 is an additional candidate production route requiring runtime verification. The save serializer observes the active runtime state, so checkpoint and restoration fidelity remain context dependent.",
+  "remaining_questions": [
+    "Player direct, indirect global and negative-self slot selection, invalid slots, and short records against fixed original traces",
+    "Player save count, last-slot boundary and filename beyond two digits",
+    "Frequency guard and exception/error behavior in the original and Player",
+    "result-disabled and signed result-enabled delivery across event contexts, including battle, and restore continuation",
+    "3019-generated 3002 argument, Text and caller-frame behavior",
+    "full payload and cross-runtime save/load fidelity across additional frames and bank types",
+    "241028 and Web/Android are separately scoped"
+  ],
+  "acceptance_ids": [
+    "W11-008",
+    "W11-009",
+    "W11-015",
+    "W11-016",
+    "W11-017",
+    "W11-018",
+    "W11-019",
+    "W11-020",
+    "W11-021",
+    "W11-022"
+  ],
+  "scope": "This is a 250921 Windows branch inventory and reviewed native control-flow binding. It is not Player feature acceptance. The existing W11-008/W11-009 evidence proves only their named result timing and negative self destination observations; battle snapshot and restoration also have separate acceptance conditions."
+}

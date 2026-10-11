@@ -1,0 +1,31 @@
+{
+  "project": "QuickJS-NG",
+  "release": "v0.10.1",
+  "commit": "3c9afc9943323ee9c7dbd123c0cd991448f4b6c2",
+  "source": "https://github.com/quickjs-ng/quickjs/tree/3c9afc9943323ee9c7dbd123c0cd991448f4b6c2",
+  "release_url": "https://github.com/quickjs-ng/quickjs/releases/tag/v0.10.1",
+  "archive_sha256": "4e917eea3bb6051a0551fdd3aac45199ff705fa08920c15b824a08c5fbb032e4",
+  "license": "MIT; see LICENSE",
+  "selection": "unmodified core and required headers only; no upstream tests/CLI/libc",
+  "files": {
+    "cutils.c": "7d9f51469daeba039562a48e134a00403be51ea858d0bd98a5b0e7f64f3ed3d4",
+    "cutils.h": "5f2cbc57b1c7a734a13b4007df840d99a9b4fb0f16ecb245c8ff497d392076f8",
+    "libregexp.c": "6a9e9fbd27e98900937ef1334380d416bc00e6deed49156540d79c7b20247f28",
+    "libregexp.h": "d71f4fef315669351e3b66d06d326d1df1d4c46cc10bb10370219e74cd5f9015",
+    "libregexp-opcode.h": "c5ee518885eb6e720537b6df5565ddc2bcaadbda512f3fc072adc96fb24a7648",
+    "libunicode.c": "97eb7dff52a8984e68636b103e0f0238b889931681b8beb9e7b152a5a1633a02",
+    "libunicode.h": "70f9f38b1cd10186d22e30d5f604465f4747662701f3310e089e5749060f4d4f",
+    "libunicode-table.h": "edf404e2092c680b6bc88835db79a5834f688be6b6c5d1c1b91da9ecf29deba9",
+    "list.h": "cb6e24e8ee54bccdd66234fe54cd702d1160b9841db2b9b9adeb5003afe301d5",
+    "quickjs.c": "c9dcb1de0f977c329fe69fd716d49df30552958d4abb8289faa1df37d8dc8378",
+    "quickjs.h": "fef1e155a7e9bbdda23c2ec911f2336885a399b381702b51a8863b3a24bc6bc3",
+    "quickjs-c-atomics.h": "29883c742a5c512278fce54d19b1b9af949006e1d7dfc9ffa2e0946b184d8c5c",
+    "quickjs-atom.h": "fb19582f01f30983511591058f0075634dfea70125edbb28ce80ba16deaa1f9a",
+    "quickjs-opcode.h": "c246039c7b0db92fe37f5eac3764368d4e9d51cae35ccc0c611e175952966375",
+    "builtin-array-fromasync.h": "f2034633cb7ea13b1d52eac50776d14dcc37c50fd46bfaa2efad44904b957520",
+    "xsum.c": "cb53ef5bc45bbf3d9eb11b5eb61c23b5a915c0f2f8b6f35570272678cdbf8ab7",
+    "xsum.h": "1f846ed3065c4f712d14e687fb0823606661da68db7cd58bfc561902cf187bb6",
+    "LICENSE": "98de27cc1e8c21a61cb242021aeb5b3711d694fab59fd75ad5b84c36b2c86b7e",
+    "README.md": "fe2760de5a67464245431d4916c9ad190a29ecc041e0f6c28bcce5d0d6fbfc3b"
+  }
+}

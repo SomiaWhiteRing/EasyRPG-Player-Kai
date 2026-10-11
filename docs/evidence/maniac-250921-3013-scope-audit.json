@@ -1,0 +1,202 @@
+{
+  "original_runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_source_sha256": {
+    "commands/03013.md": "a39d5e3327ee03138a71c17c4dab1883344bf3c25fe656cef6d9479831387dad",
+    "evidence/VariableArray-250921.md": "c75b2151e0d412e82b906d095fa754f81681c26a947a7775356c68e26719f056",
+    "evidence/runtime-250921/0003f620.c": "cc013ced6194d3dc7a2a78286406f0d6b372b888795d38fcd8ee80d93ac90025",
+    "analysis-work/reports/03013-fdc030ef232bf45d923ac72371dac3d95869b3ff46fca95b5c9d7387ee1e58f2.json": "5cc8bdc0dc45abb9eebe309f49ef681b6b12476433c6324a4f05f9fc4c0371c7"
+  },
+  "consumer_and_helper_windows": [
+    {
+      "first_rva": "0x3f620",
+      "end_rva_exclusive": "0x404a1",
+      "instructions": 1114,
+      "sha256": "baa8350b15860770d1889463b9f9364a8aa9b18e65e539761d4a3e9060229d5d"
+    },
+    {
+      "first_rva": "0x4a900",
+      "end_rva_exclusive": "0x4abcc",
+      "instructions": 212,
+      "sha256": "c45e65acd0bb64a91d8cd84b14ed77b54af82bc843dcd99118d5111deb10d779"
+    },
+    {
+      "first_rva": "0x49e20",
+      "end_rva_exclusive": "0x4a0ec",
+      "instructions": 212,
+      "sha256": "a735b0bd4c22c2bd1f89ff1305aefecc1075db6cb4e2b46fa7572d4102bd7571"
+    },
+    {
+      "first_rva": "0x3f440",
+      "end_rva_exclusive": "0x3f530",
+      "instructions": 82,
+      "sha256": "6a76e9a86a31b1d8c28038c93c49a1a61cff59c5ba2dac682066a5aabfb14c5c"
+    },
+    {
+      "first_rva": "0x3f530",
+      "end_rva_exclusive": "0x3f620",
+      "instructions": 82,
+      "sha256": "7f7b5419bb5b6868961c8fd67791e56c6dd937ada5969b8e62680bd37498bdb5"
+    },
+    {
+      "first_rva": "0x37bd0",
+      "end_rva_exclusive": "0x37cb8",
+      "instructions": 74,
+      "sha256": "b514e60b65a74edb138bbecb345ba3399874a64cb20121157c9debdccc303927"
+    },
+    {
+      "first_rva": "0x8c300",
+      "end_rva_exclusive": "0x8c3aa",
+      "instructions": 49,
+      "sha256": "7a1802c55fc29b348982dc35fea83657aaa37f131b068eb89cbf923229245311"
+    },
+    {
+      "first_rva": "0x8c730",
+      "end_rva_exclusive": "0x8c800",
+      "instructions": 70,
+      "sha256": "543b3b451b895079b1f62a15e472975976baa5a3f970e0760e829f08b644d3b4"
+    },
+    {
+      "first_rva": "0xca4f0",
+      "end_rva_exclusive": "0xca589",
+      "instructions": 49,
+      "sha256": "16b2b3b3cdfc14c74a0b76dbf85ac05c44fe4f2412f79e306c400d630d211a2d"
+    },
+    {
+      "first_rva": "0x1f9ae0",
+      "end_rva_exclusive": "0x1fa14d",
+      "instructions": 342,
+      "sha256": "0ebaf9bd41dcbf83fc22ee73749d80a8d1844ad3a5bf9195c4952b2c9117839a"
+    },
+    {
+      "first_rva": "0x4abd0",
+      "end_rva_exclusive": "0x4ad3a",
+      "instructions": 122,
+      "sha256": "4fc9c35568983b8ed3c6bd8e86d1dd8d601ad06c2600937d0f1d268ed39f0d10"
+    },
+    {
+      "first_rva": "0x4ad40",
+      "end_rva_exclusive": "0x4aeaa",
+      "instructions": 122,
+      "sha256": "2fe381c4537973212238ba55b9fcd9a6a457deea897745f3a8b40aa511ce5719"
+    }
+  ],
+  "shared_dispatch_call": {
+    "0x461cb": "4c8bc3",
+    "0x461ce": "498bd6",
+    "0x461d1": "498bcd",
+    "0x461d4": "e84794ffff",
+    "0x461d9": "e9f0010000"
+  },
+  "dispatch_and_consumer_instructions": {
+    "0x3f62d": {
+      "instruction": "mov edi, dword ptr [r8 + 0x20]",
+      "bytes": "418b7820"
+    },
+    "0x3f636": {
+      "instruction": "cmp edi, 1",
+      "bytes": "83ff01"
+    },
+    "0x3f646": {
+      "instruction": "and ecx, 0xf",
+      "bytes": "83e10f"
+    },
+    "0x3f658": {
+      "instruction": "call 0x1400ca4f0",
+      "bytes": "e893ae0800"
+    },
+    "0x3f6cd": {
+      "instruction": "shr ecx, 4",
+      "bytes": "c1e904"
+    },
+    "0x3f6d7": {
+      "instruction": "je 0x14003f78e",
+      "bytes": "0f84b1000000"
+    },
+    "0x3f6e0": {
+      "instruction": "je 0x14003f766",
+      "bytes": "0f8480000000"
+    },
+    "0x40456": {
+      "instruction": "cmp byte ptr [rip + 0x228fee], bl",
+      "bytes": "381dee8f2200"
+    },
+    "0x40478": {
+      "instruction": "call 0x140061b20",
+      "bytes": "e8a3160200"
+    }
+  },
+  "fixed_table_and_limit_bytes": {
+    "0x37cb8": "f27b03001c7c0300277c0300337c03006a7c0300937c0300997c03009f7c0300a57c0300ad7c0300",
+    "0x257f30": "ffffff7f00000080"
+  },
+  "effective_branch_to_acceptance": {
+    "3013:base-literal-single-indirect-signed-self": "W03-010",
+    "3013:count-and-operand-numeric-versus-address": "W03-010",
+    "3013:zero-base-nonpositive-count-and-unknown-operation": "W03-010",
+    "3013:copy-swap-reverse-and-overlap": "W03-011",
+    "3013:single-and-paired-sort-signed-alias-and-negative-self": "W03-012",
+    "3013:single-and-paired-shuffle-lcg-and-alias": "W03-013",
+    "3013:enumerate-fill-and-numeric-wrap": "W03-014",
+    "3013:arithmetic-bitwise-shifts-clamp-and-zero-divisor": "W03-015",
+    "3013:dereference-signed-bank-polarity": "W03-016",
+    "3013:refresh-driver-context-and-operation-exclusions": "W03-017"
+  },
+  "operation_to_acceptance": {
+    "0": "W03-011",
+    "1": "W03-011",
+    "2": "W03-012",
+    "3": "W03-012",
+    "4": "W03-013",
+    "5": "W03-014",
+    "6": "W03-015",
+    "7": "W03-015",
+    "8": "W03-015",
+    "9": "W03-015",
+    "10": "W03-015",
+    "11": "W03-015",
+    "12": "W03-015",
+    "13": "W03-015",
+    "14": "W03-015",
+    "15": "W03-015",
+    "16": "W03-016",
+    "17": "W03-012",
+    "18": "W03-012",
+    "19": "W03-013",
+    "20": "W03-014",
+    "21": "W03-011",
+    "22": "W03-011"
+  },
+  "parameter_rule": "A0 operation 0..22; A1 low nibbles independently select signed A2 base, A3 count and A4 operand modes. Base addressing differs from ordinary numeric lookup: mode 1 forces a negative reference's result into the current self bank; 2..15 use ca4f0 and preserve self polarity through both reads. Count and numeric operand use literal/one-read/two-read. Missing fields read zero; extra Args, unused high flag bits and Text are retained but have no payload role.",
+  "guard_and_storage_rule": "A2 base and A3 count resolve before A0 dispatch. Base zero, signed count<=0 or A0 outside 0..22 return. Array helpers grow global or current self banks, including source arrays and an extra slot. Binary operations require resolved A4!=0; copy 0/22 and swap 1 prepare pointers before this check, other binary operations check first. Extreme signed ranges and copy byte counts retain original overflow/error behavior and require explicit safe-deviation verification.",
+  "operation_rule": "0/22 are directional memmove copies; 1 swaps forward in place; 2/3 signed single sort have an unsafe negative-self base defect; 4/19 use the shared LCG with final singleton draw; 5 enumerates with uint32 wrap; 6..15 arithmetic/bitwise/shift via 37bd0, with divide/remainder zero divisor replaced by 1, signed clamp for 6..10 and raw32 for 11..15; 16 dereferences with A2-sign-dependent reference polarity; 17/18 paired sort keys then values; 20 fills; 21 reverses. Alias order is operation specific.",
+  "context_and_refresh_rule": "Shared dispatcher reaches map autostart/parallel, called common and battle event lists; a 3019-generated 3013 is also a candidate route. Operations 0..15,17..20,22 can invoke per-map-event 61b20 refresh when driver byte 26944a is zero; 16 and 21 skip this explicit refresh; guarded no-ops do not add refresh. Runtime behavior and save/restart acceptance remain separate.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page",
+    "3019-generated candidate"
+  ],
+  "remaining_questions": [
+    "W03-010: all mode/short-record/guard/array-preparation and signed boundary parity.",
+    "W03-011: copy/swap/reverse overlap, alias and zero-A4 preparation order.",
+    "W03-012: signed single/paired sort, duplicate keys, alias and negative-self safe deviation.",
+    "W03-013: shared LCG seed/start/restore and single/paired shuffle swap order.",
+    "W03-014: enumerate/fill numeric A4 modes and uint32 wrap.",
+    "W03-015: all arithmetic/bitwise/shift operators, clamp and zero-divisor edges.",
+    "W03-016: dereference source-bank polarity, alias and INT_MIN.",
+    "W03-017: driver-dependent map event refresh, all applicable contexts and save/restart effects.",
+    "241028 Windows, 250921 Web and Android are separately scoped."
+  ],
+  "acceptance_ids": [
+    "W03-010",
+    "W03-011",
+    "W03-012",
+    "W03-013",
+    "W03-014",
+    "W03-015",
+    "W03-016",
+    "W03-017"
+  ],
+  "scope": "250921 Windows opcode 3013 branch inventory only. Fixed original bytes and reviewed contract do not establish Player feature parity; old Player-only tests are partial evidence."
+}

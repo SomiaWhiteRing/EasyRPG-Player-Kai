@@ -1,0 +1,41 @@
+{
+  "versions": {
+    "241028": {
+      "player_sha256": "fd80779036ac90bb288bfe1be0320edd8ddddbfb676accef15aa8bfa0b39a5e2",
+      "trace_sha256": "e190ab91b2b9983ee134c4d3792dfdd3c694609be434d3494725f99d8d35f115",
+      "save_sha256": "c7babc850336107694d96df3a303336b562f559ab78dd2d4943b556ea40c44ef",
+      "saved_global_variables_1_and_2": [
+        0,
+        99
+      ],
+      "saved_map_self_banks": []
+    },
+    "250921": {
+      "player_sha256": "fd80779036ac90bb288bfe1be0320edd8ddddbfb676accef15aa8bfa0b39a5e2",
+      "trace_sha256": "26d1bf844815574d5bb5d71ef6dcdf5b3e6aae63a252371f3d9ff071572c11e8",
+      "save_sha256": "0eb60c30e366e20ae9278985609b5649739f12cd328fe4d9c15bd7b55c4651a7",
+      "saved_global_variables_1_and_2": [
+        42,
+        99
+      ],
+      "saved_map_self_banks": [
+        [
+          {
+            "map_id": 1,
+            "events": [
+              {
+                "event_id": 1,
+                "numbers_positive_slots": [
+                  42,
+                  0
+                ]
+              }
+            ],
+            "other_map_fields_hex": {}
+          }
+        ]
+      ]
+    }
+  },
+  "scope": "Player CLI-selected release reproduces the observed negative direct ControlVars target and subsequent read/save results; Player save vectors may include trailing zero slots."
+}

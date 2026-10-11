@@ -136,6 +136,8 @@ void Game_Actor::SetSaveData(lcf::rpg::SaveActor save) {
 	}
 
 	data = std::move(save);
+	maniac_name_present = false;
+	maniac_title_present = false;
 
 	if (Player::IsRPG2k()) {
 		data.two_weapon = dbActor->two_weapon;
@@ -662,6 +664,30 @@ int Game_Actor::GetBaseExp(int level) const {
 
 int Game_Actor::GetNextExp() const {
 	return GetNextExp(GetLevel());
+}
+
+int Game_Actor::GetManiacNextExp() const {
+	// 250921 0x719e0 computes this threshold independently of the level cap
+	// and uses 10000000 as its over-limit sentinel.
+	const auto* klass = lcf::ReaderUtil::GetElement(lcf::Data::classes, data.class_id);
+	const int base = klass ? klass->exp_base : dbActor->exp_base;
+	const int inflation = klass ? klass->exp_inflation : dbActor->exp_inflation;
+	const int correction = klass ? klass->exp_correction : dbActor->exp_correction;
+	const int level = GetLevel();
+	const auto multiply32 = [](int lhs, int rhs) {
+		const uint32_t bits = static_cast<uint32_t>(lhs) * static_cast<uint32_t>(rhs);
+		return bits <= INT32_MAX ? static_cast<int>(bits) : static_cast<int>(static_cast<int64_t>(bits) - (int64_t{1} << 32));
+	};
+	const double fixed_base = static_cast<double>(level) * base;
+	double accumulated_inflation = 0;
+	int result = 0;
+	for (int i = 1; i <= level; ++i) {
+		accumulated_inflation += multiply32(i, inflation);
+		const double value = (static_cast<double>(multiply32(level, correction)) + fixed_base) + accumulated_inflation;
+		result = value >= INT32_MIN && value < 2147483648.0 ? static_cast<int>(value) : INT32_MIN;
+		if (result > 9999999) return 10000000;
+	}
+	return result;
 }
 
 int Game_Actor::GetNextExp(int level) const {

@@ -214,6 +214,12 @@ public:
 	 */
 	int GetAttributeRateShift(int attribute_id) const;
 
+	/** Returns the currently stored Maniac element bytes without expanding them. */
+	std::vector<int32_t> GetManiacAttributeRates() const;
+
+	/** Native 250921 state predicate, independent of HP and visibility. */
+	bool CanManiacMove();
+
 	/**
 	 * Checks if the battler is immune to attribute downshifts.
 	 *
@@ -775,6 +781,8 @@ public:
 	 * @return Index of this member in their party.
 	 */
 	int GetPartyIndex();
+	int GetManiacHookIndex();
+	Point GetManiacParamHookPosition() const;
 
 	/**
 	 * Gets the maximal atb gauge value.
@@ -798,6 +806,9 @@ public:
 	 * @param value the new value to set
 	 */
 	void SetAtbGauge(int value);
+
+	/** Sets the raw 250921 gauge without applying the ordinary gauge clamp. */
+	void SetManiacAtbGauge(int value) { gauge = value; }
 
 	/**
 	 * Increments the gauge by specified amount.
@@ -839,6 +850,9 @@ public:
 	 * @param battle_algorithm New algorithm to assign
 	 */
 	void SetBattleAlgorithm(const BattleAlgorithmRef battle_algorithm);
+	int GetManiacTargetType() const { return maniac_target_type; }
+	int GetManiacTargetIndex() const { return maniac_target_index; }
+	void SetManiacTargetIndex(int index) { maniac_target_index = index; }
 
 	/** @return the battle sprite for the battler */
 	Sprite_Battler* GetBattleSprite() const;
@@ -945,6 +959,9 @@ protected:
 
 	/** Battle action for next turn */
 	BattleAlgorithmRef battle_algorithm;
+	// Native action records retain these fields across non-target actions.
+	int maniac_target_type = 0;
+	int maniac_target_index = 0;
 	int atk_modifier = 0;
 	int def_modifier = 0;
 	int spi_modifier = 0;
@@ -962,7 +979,7 @@ protected:
 
 	std::unique_ptr<Sprite_Battler> battle_sprite;
 	std::unique_ptr<Sprite_Weapon> weapon_sprite;
-	std::vector<int> attribute_shift;
+	mutable std::vector<int> attribute_shift;
 
 	int battle_order = 0;
 
@@ -1103,10 +1120,6 @@ inline int Game_Battler::GetFlyingOffset() const {
 
 inline const BattleAlgorithmRef Game_Battler::GetBattleAlgorithm() const {
 	return battle_algorithm;
-}
-
-inline void Game_Battler::SetBattleAlgorithm(BattleAlgorithmRef battle_algorithm) {
-	this->battle_algorithm = battle_algorithm;
 }
 
 inline Sprite_Battler* Game_Battler::GetBattleSprite() const {

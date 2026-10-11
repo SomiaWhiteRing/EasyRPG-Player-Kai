@@ -21,6 +21,8 @@
 #include <emscripten/bind.h>
 #include <lcf/lsd/reader.h>
 #include <sstream>
+#include <cstdint>
+#include <cstdlib>
 
 #include "system.h"
 #include "async_handler.h"
@@ -30,6 +32,74 @@
 #include "player.h"
 #include "scene_save.h"
 #include "output.h"
+
+EM_JS(bool, ConsoleCommandJs, (const char* op, const char* text, size_t size, int options, int foreground, int background), {
+	return Module.consoleCommand({op: UTF8ToString(op),
+		text: text ? new TextDecoder().decode(HEAPU8.subarray(text, text + size)) : '',
+		options, foreground, background});
+});
+
+EM_JS(uint32_t, ConsoleGenerationJs, (), {
+	return Module.getConsoleGeneration();
+});
+
+bool Emscripten_Interface::ConsoleOpen(bool update_window) {
+	const auto title = "Console - " + Player::game_title;
+	return ConsoleCommandJs("open", title.data(), title.size(), update_window, 0, 0);
+}
+
+void Emscripten_Interface::ConsoleClose() {
+	ConsoleCommandJs("close", nullptr, 0, 0, 0, 0);
+}
+
+bool Emscripten_Interface::ConsoleWrite(std::string_view text) {
+	return ConsoleCommandJs("write", text.data(), text.size(), 0, 0, 0);
+}
+
+bool Emscripten_Interface::ConsoleColor(uint32_t options, int foreground, int background) {
+	return ConsoleCommandJs("color", nullptr, 0, options, foreground, background);
+}
+
+bool Emscripten_Interface::ConsoleFocus(bool console) {
+	return ConsoleCommandJs("focus", nullptr, 0, console, 0, 0);
+}
+
+uint32_t Emscripten_Interface::ConsoleGeneration() {
+	return ConsoleGenerationJs();
+}
+
+EM_ASYNC_JS(uintptr_t, ReadConsoleLineJs, (const char* title), {
+	const caption = UTF8ToString(title);
+	let value;
+	try { value = await Module.readConsoleLine(caption); }
+	catch { return 0; }
+	if (typeof value !== 'string') return 0;
+	const line = value + '\r\n';
+	const pointer = _malloc(4 + line.length * 2);
+	if (!pointer) return 0;
+	HEAPU32[pointer >>> 2] = line.length;
+	for (let i = 0; i < line.length; ++i) HEAPU16[((pointer + 4) >>> 1) + i] = line.charCodeAt(i);
+	return pointer;
+});
+
+bool Emscripten_Interface::ReadConsoleLine(std::u16string& line) {
+	const auto title = "Console - " + Player::game_title;
+	const auto pointer = ReadConsoleLineJs(title.c_str());
+	if (!pointer) return false;
+	const auto* count = reinterpret_cast<const uint32_t*>(pointer);
+	const auto* units = reinterpret_cast<const char16_t*>(pointer + 4);
+	line.assign(units, units + *count);
+	std::free(reinterpret_cast<void*>(pointer));
+	return true;
+}
+
+EM_ASYNC_JS(bool, ConfirmFileOutputJs, (), {
+	return await Module.confirmFileOutput();
+});
+
+bool Emscripten_Interface::ConfirmManiacFileOutput() {
+	return ConfirmFileOutputJs();
+}
 
 void Emscripten_Interface::Reset() {
 	Player::reset_flag = true;
@@ -94,7 +164,7 @@ bool Emscripten_Interface_Private::UploadSavegameStep2(int slot, int buffer_addr
 
 	std::istream is(new Filesystem_Stream::InputMemoryStreamBufView(lcf::Span<uint8_t>(reinterpret_cast<uint8_t*>(buffer_addr), size)));
 
-	if (!lcf::LSD_Reader::Load(is)) {
+	if (!lcf::LSD_Reader::Load(is, "", Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921)) {
 		Output::Warning("Selected file is not a valid savegame");
 		return false;
 	}

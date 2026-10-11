@@ -477,10 +477,36 @@ void GenericAudio::Decode(uint8_t* output_buffer, int buffer_length) {
 			}
 		}
 
+#ifndef _WIN32
+		const float gain = GetManiacOutputGain();
+		if (gain != 1.0f) {
+			for (int i = 0; i < buffer_length / 2; ++i)
+				sample_buffer[i] = static_cast<int16_t>(sample_buffer[i] * gain);
+		}
+#endif
 		memcpy(output_buffer, sample_buffer.data(), buffer_length);
 	} else {
 		memset(output_buffer, '\0', buffer_length);
 	}
+}
+
+bool GenericAudio::SetManiacVolume(int volume) {
+#ifdef _WIN32
+	return AudioInterface::SetManiacVolume(volume);
+#else
+	const float gain = static_cast<float>(std::clamp(volume, 0, 1000) * 0.01);
+	if (gain > 1.0f) return false;
+	maniac_output_gain.store(gain);
+	return true;
+#endif
+}
+
+int GenericAudio::GetManiacVolume() const {
+#ifdef _WIN32
+	return AudioInterface::GetManiacVolume();
+#else
+	return static_cast<int>(static_cast<double>(GetManiacOutputGain()) * 100);
+#endif
 }
 
 void GenericAudio::BgmChannel::Stop() {

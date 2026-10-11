@@ -1,0 +1,46 @@
+{
+  "input_file_hashes": {
+    "RPG_RT.ldb": "805d24bb27059692f7250d65bd83ab54e6ac2c404ddb00e49d6dc5884f4a5f89",
+    "RPG_RT.lmt": "49520efc6a741a730185380c557bc1a5c7b3ab04834068550031f94e528d7f19",
+    "Map0001.lmu": "c50c50bdd0bdd04e5edfc75015a1b106ce03642825ac793e4c2f0df86579a0ff",
+    "ChipSet/probe.png": "38cf4e0cef5d2c476c459eceb80390a6653a7ced0613b9080f15cd8162fc6679"
+  },
+  "versions": {
+    "241028": {
+      "reference_sha256": "49ba424f3ff1fa7d4fc1334eea272fde4e437d07a6901dc6b87efb95383ec44d",
+      "manifest_sha256": "e46f67fc92cc77854e048ea147d4232336588dadb1a6ba4fa57973b6ee33ddce",
+      "trace_sha256": "9058321054e90ab91eb6af65a321c3e5e95da01ed624996ebc145ca5225bd908",
+      "save_sha256": "243268e19571ad4a641e49766bb16cad863502d84f84d0e944e8d14a1c26b886",
+      "saved_global_variables_1_and_2": [
+        0,
+        99
+      ],
+      "saved_map_self_banks": []
+    },
+    "250921": {
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "9e5d8085c8718b591e82e0710a7b10b3b7eb849865adc777b7b1f9f125d182d0",
+      "trace_sha256": "cd8c3f2803c157ebd106cff15ef53fe816252435000db25def82f41e0167c1a6",
+      "save_sha256": "0c10ad7bf74a291f93da678bfdc84bcc0a17814951897123a3aabe84b0fb0e0d",
+      "saved_global_variables_1_and_2": [
+        42,
+        99
+      ],
+      "saved_map_self_banks": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    }
+  },
+  "scope": "Same ControlVars negative-self write/read and later marker 99: 241028 saves V1=0 without 0x74; 250921 saves V1=42 and map self=42"
+}

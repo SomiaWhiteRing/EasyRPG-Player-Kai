@@ -25,6 +25,7 @@
 #include "window_selectable.h"
 #include "pending_message.h"
 #include "async_op.h"
+#include "game_message.h"
 
 /**
  * Window Message Class.
@@ -48,6 +49,7 @@ public:
 	 * non-displayed from Game_Message.
 	 */
 	void StartMessageProcessing(PendingMessage pm);
+	void SetManiacHookCaller(Game_Message::ManiacHookCaller caller) { maniac_hook_caller = caller; }
 
 	/**
 	 * Ends the message processing.
@@ -94,6 +96,7 @@ public:
 	 * CommandCode parsing.
 	 */
 	virtual void UpdateMessage();
+	void ReloadManiacFace();
 
 	/**
 	 * Stub. For choice.
@@ -139,12 +142,22 @@ public:
 	void SetMaxLinesPerPage(int lines);
 
 protected:
+	void DrawContents(Bitmap& dst) override;
+	void ProcessManiacFace(const char* end);
+	void OnManiacFaceReady(FileRequestResult* result);
+	void UpdateManiacFaceBitmap();
+	BitmapRef maniac_faceset;
+	BitmapRef maniac_face;
+	BitmapRef maniac_glyphs;
 	/** Async operation */
 	AsyncOp aop;
 	/** X-position of next char. */
 	int contents_x = 0;
 	/** Y-position of next char. */
 	int contents_y = 0;
+	Game_Message::ManiacHookCaller maniac_hook_caller;
+	int maniac_face_x = 0;
+	int maniac_face_y = 0;
 	/** Current number of lines on this page. */
 	int line_count = 0;
 	/** Maximum number of lines per page */
@@ -155,12 +168,14 @@ protected:
 	std::string text;
 	/** Text color. */
 	int text_color = 0;
+	int maniac_text_color_row = -1;
 	/** Current speed modifier. */
 	int speed = 1;
 	/** Used by Message kill command \^. */
 	bool kill_page = false;
 	/** If instant speed is enabled */
 	bool instant_speed = false;
+	bool maniac_rshift_forced = false;
 
 	// FIXME: This hacky flags exist because RPG_RT likely animates the message window
 	// after the game loop finishes. Our code isn't structured that way, so we must hack
@@ -190,7 +205,8 @@ protected:
 
 	std::vector<Font::ShapeRet> shape_ret;
 
-	bool DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont);
+	Point ProcessManiacGlyphHook(std::string_view token, std::array<int32_t, 2>& colors);
+	bool DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont, std::string_view token, bool maniac_icon = false);
 	bool DrawGlyph(Font& font, const Bitmap& system, const Font::ShapeRet& shape);
 	void IncrementLineCharCounter(int width);
 

@@ -1,0 +1,216 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "initializer_rva": "0x181650",
+  "host_registration_calls": {
+    "0x18197d": "0x1803e0",
+    "0x181982": "0x17e030"
+  },
+  "direct_top_level_names": {
+    "rm2k3": 1574538,
+    "console": 1575861,
+    "include": 1579140
+  },
+  "bindings": [
+    {
+      "object": "global",
+      "name": "getv",
+      "name_lea_rva": "0x180466",
+      "name_rva": "0x231c28",
+      "callback_lea_rva": "0x18047e",
+      "callback_rva": "0x17ede0",
+      "registration_magic": 0,
+      "registration_magic_mov_rva": "0x180471"
+    },
+    {
+      "object": "global",
+      "name": "gets",
+      "name_lea_rva": "0x1804ac",
+      "name_rva": "0x231c20",
+      "callback_lea_rva": "0x18047e",
+      "callback_rva": "0x17ede0",
+      "registration_magic": 1,
+      "registration_magic_mov_rva": "0x1804b7"
+    },
+    {
+      "object": "global",
+      "name": "gett",
+      "name_lea_rva": "0x1804eb",
+      "name_rva": "0x231c18",
+      "callback_lea_rva": "0x18047e",
+      "callback_rva": "0x17ede0",
+      "registration_magic": 2,
+      "registration_magic_mov_rva": "0x1804f6"
+    },
+    {
+      "object": "global",
+      "name": "setv",
+      "name_lea_rva": "0x18052a",
+      "name_rva": "0x231c10",
+      "callback_lea_rva": "0x180542",
+      "callback_rva": "0x17f510",
+      "registration_magic": 0,
+      "registration_magic_mov_rva": "0x180535"
+    },
+    {
+      "object": "global",
+      "name": "sets",
+      "name_lea_rva": "0x180570",
+      "name_rva": "0x231c4c",
+      "callback_lea_rva": "0x180542",
+      "callback_rva": "0x17f510",
+      "registration_magic": 1,
+      "registration_magic_mov_rva": "0x18057b"
+    },
+    {
+      "object": "global",
+      "name": "sett",
+      "name_lea_rva": "0x1805af",
+      "name_rva": "0x231c44",
+      "callback_lea_rva": "0x180542",
+      "callback_rva": "0x17f510",
+      "registration_magic": 2,
+      "registration_magic_mov_rva": "0x1805ba"
+    },
+    {
+      "object": "rm2k3",
+      "name": "getPicture",
+      "name_lea_rva": "0x18060c",
+      "name_rva": "0x231c38",
+      "callback_lea_rva": "0x18062a",
+      "callback_rva": "0x180e20",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "id",
+      "name_lea_rva": "0x17e091",
+      "name_rva": "0x231804",
+      "callback_lea_rva": "0x17e0af",
+      "callback_rva": "0x17e5d0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "file",
+      "name_lea_rva": "0x17e0c0",
+      "name_rva": "0x2317fc",
+      "callback_lea_rva": "0x17e0cf",
+      "callback_rva": "0x17e6f0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "scale",
+      "name_lea_rva": "0x17e0e5",
+      "name_rva": "0x2317f4",
+      "callback_lea_rva": "0x17e15d",
+      "callback_rva": "0x17ea80",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "show",
+      "name_lea_rva": "0x17e16b",
+      "name_rva": "0x2317ec",
+      "callback_lea_rva": "0x17e1ae",
+      "callback_rva": "0x17ebd0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "move",
+      "name_lea_rva": "0x17e1bc",
+      "name_rva": "0x231c08",
+      "callback_lea_rva": "0x17e1ff",
+      "callback_rva": "0x17ed10",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "Rm2k3_Picture",
+      "name": "erase",
+      "name_lea_rva": "0x17e20d",
+      "name_rva": "0x231c00",
+      "callback_lea_rva": "0x17e240",
+      "callback_rva": "0x17edb0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "console",
+      "name": "log",
+      "name_lea_rva": "0x1809c4",
+      "name_rva": "0x22fb08",
+      "callback_lea_rva": "0x1809cb",
+      "callback_rva": "0x17ffc0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "console",
+      "name": "input",
+      "name_lea_rva": "0x180acc",
+      "name_rva": "0x231c70",
+      "callback_lea_rva": "0x180ad3",
+      "callback_rva": "0x1801d0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    },
+    {
+      "object": "global",
+      "name": "include",
+      "name_lea_rva": "0x181884",
+      "name_rva": "0x231c58",
+      "callback_lea_rva": "0x181895",
+      "callback_rva": "0x1812f0",
+      "registration_magic": null,
+      "registration_magic_mov_rva": null
+    }
+  ],
+  "secondary_callbacks": [
+    {
+      "object": "Rm2k3_Picture",
+      "name": "file",
+      "callback_lea_rva": "0x17e0da",
+      "callback_rva": "0x17e8f0"
+    }
+  ],
+  "accessor_dispatch": [
+    {
+      "name": "getv",
+      "call_site_rva": "0x17f3f8",
+      "game_storage_target_rva": "0x8c560"
+    },
+    {
+      "name": "gets",
+      "call_site_rva": "0x17f3cd",
+      "game_storage_target_rva": "0x8c070"
+    },
+    {
+      "name": "gett",
+      "call_site_rva": "0x17f214",
+      "game_storage_target_rva": "0x8cac0"
+    },
+    {
+      "name": "setv",
+      "call_site_rva": "0x17f867",
+      "game_storage_target_rva": "0x8c9e0"
+    },
+    {
+      "name": "sets",
+      "call_site_rva": "0x17ff71",
+      "game_storage_target_rva": "0x8c100"
+    },
+    {
+      "name": "sett",
+      "call_site_rva": "0x17fc23",
+      "game_storage_target_rva": "0x8cca0"
+    }
+  ],
+  "scope": "Static direct-name/callback registration, including picture id getter and file getter/setter, plus six game-storage call sites. Picture descriptor fields are independently checked against live startup descriptors and native accessor names by the registration closure/dynamic-name audits. Runtime typeof and own-property probes place getv/gets/gett/setv/sets/sett globally and input under console; neither is an rm2k3 property. Array/proxy handling, coercion, exact QuickJS release, and control-exception lifecycle are not concluded. Registration reachability is audited separately."
+}

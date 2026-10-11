@@ -33,6 +33,7 @@
 #include "game_screen.h"
 #include "game_pictures.h"
 #include "game_variables.h"
+#include "game_maniac_self_variables.h"
 #include <lcf/rpg/system.h>
 #include <lcf/lsd/reader.h>
 #include "player.h"
@@ -102,6 +103,13 @@ void Scene_Map::StartFromSave(int from_save_id) {
 	Start();
 }
 
+void Scene_Map::UpdateManiacLoadDelay() {
+	if (!maniac_reset_presentation_wait) return;
+	// Reset's native release gate does not issue another title-reset request.
+	Player::reset_flag = false;
+	if (Input::IsRawKeyPressed(Input::Keys::F12)) SetDelayFrames(20);
+}
+
 void Scene_Map::Start2(MapUpdateAsyncContext actx) {
 	PreUpdate(actx);
 
@@ -124,7 +132,8 @@ void Scene_Map::Start2(MapUpdateAsyncContext actx) {
 	// We do the start game fade in transition here instead of TransitionIn callback,
 	// in order to make async logic work properly.
 	auto& transition = Transition::instance();
-	if (transition.IsErasedNotActive()) {
+	if (transition.IsErasedNotActive() && !(Player::IsPatchManiac()
+		&& Player::game_config.maniac_version.Get() == 250921 && Main_Data::game_system->HasManiacMapStartup())) {
 		transition.InitShow(Transition::TransitionFadeIn, this);
 	}
 
@@ -160,6 +169,8 @@ void Scene_Map::UpdateGraphics() {
 
 void Scene_Map::TransitionIn(SceneType prev_scene) {
 	auto& transition = Transition::instance();
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+		&& Main_Data::game_system->HasManiacMapStartup()) return;
 
 	// Teleport already setup a transition.
 	if (transition.IsActive()) {
@@ -245,7 +256,19 @@ void Scene_Map::PreUpdateForegroundEvents(MapUpdateAsyncContext& actx) {
 	UpdateGraphics();
 }
 
+void Scene_Map::QueueManiacLoad(AsyncOp operation) {
+	maniac_pending_load = operation;
+}
+
 void Scene_Map::vUpdate() {
+	if (maniac_pending_load.IsActive()) {
+		const auto operation = maniac_pending_load;
+		maniac_pending_load = {};
+		// The battle caller has unwound before the existing map loader
+		// replaces game objects and starts the saved continuation.
+		OnAsyncSuspend([]() {}, operation, false);
+		return;
+	}
 	if (activate_inn) {
 		UpdateInn();
 		return;
@@ -256,6 +279,16 @@ void Scene_Map::vUpdate() {
 }
 
 void Scene_Map::UpdateStage1(MapUpdateAsyncContext actx) {
+	if (!actx.IsActive() && Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+		&& Main_Data::game_system->AdvanceManiacMapStartup()) {
+		auto& transition = Transition::instance();
+		if (transition.IsErasedNotActive()) {
+			// The pinned startup fade raises brightness by ten per common tick.
+			transition.InitShow(Transition::TransitionFadeIn, this, 10);
+			AsyncNext([this, actx]() { UpdateStage1(actx); });
+			return;
+		}
+	}
 	Game_Map::Update(actx);
 	UpdateGraphics();
 
@@ -425,13 +458,32 @@ void Scene_Map::OnAsyncSuspend(F&& f, AsyncOp aop, bool is_preupdate) {
 		if (aop.GetSaveResultVar() > 0) {
 			Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
 			Game_Map::SetNeedRefresh(true);
+		} else if (ApplyManiacSaveResult(aop, success,
+			Main_Data::game_maniac_self_variables.get())) {
+			Game_Map::SetNeedRefresh(true);
 		}
 	}
 
 	if (aop.GetType() == AsyncOp::eLoad) {
 		auto savefs = FileFinder::Save();
 		std::string save_name = Scene_Save::GetSaveFilename(savefs, aop.GetSaveSlot());
+		if (aop.GetLoadPresentation() == 1) {
+			Transition::instance().InitErase(Transition::TransitionCutOut, this, 0);
+			maniac_reset_presentation_wait = true;
+			SetDelayFrames(20);
+			AsyncNext([this, save_name, slot = aop.GetSaveSlot()]() {
+				maniac_reset_presentation_wait = false;
+				Player::reset_flag = false;
+				Player::LoadSavegame(save_name, slot);
+			});
+			return;
+		}
 		Player::LoadSavegame(save_name, aop.GetSaveSlot());
+		if (aop.GetLoadPresentation() == 2) {
+			// StartFromSave owns the new map continuation. Retire the old
+			// update context even when reset presentation was skipped.
+			return;
+		}
 	}
 
 	if (aop.GetType() == AsyncOp::eCloneMapEvent) {

@@ -17,6 +17,7 @@
 
 // Headers
 #include <sstream>
+#include <limits>
 
 #ifdef EMSCRIPTEN
 #  include <emscripten.h>
@@ -31,6 +32,9 @@
 #include "game_switches.h"
 #include "game_variables.h"
 #include "game_strings.h"
+#include "game_maniac_self_variables.h"
+#include "maniac_original_save.h"
+#include "maniac_patch.h"
 #include "game_party.h"
 #include "game_actors.h"
 #include "game_system.h"
@@ -83,6 +87,9 @@ bool Scene_Save::Save(const FilesystemView& fs, int slot_id, bool prepare_save) 
 	auto save_stream = FileFinder::Save().OpenOutputStream(filename);
 
 	if (!save_stream) {
+		if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+			Output::Error("Failed saving to {}", filename);
+		}
 		Output::Warning("Failed saving to {}", filename);
 		return false;
 	}
@@ -144,6 +151,42 @@ bool Scene_Save::Save(std::ostream& os, int slot_id, bool prepare_save) {
 	save.screen = Main_Data::game_screen->GetSaveData();
 	save.pictures = Main_Data::game_pictures->GetSaveData();
 	save.easyrpg_data.windows = Main_Data::game_windows->GetSaveData();
+	save.easyrpg_data.maniac_random_seed = Main_Data::maniac_random_seed;
+	save.easyrpg_data.maniac_global_switch_raw = Main_Data::game_switches->GetManiacRawSaveData();
+	save.easyrpg_data.maniac_global_variable_zero = Main_Data::game_variables->GetManiacRawSlot(0);
+	const auto zero_string = Main_Data::game_strings->GetManiacZeroSaveData();
+	save.easyrpg_data.maniac_global_string_zero_present = !zero_string.empty();
+	if (!zero_string.empty()) save.easyrpg_data.maniac_global_string_zero = zero_string.front();
+	save.easyrpg_data.maniac_global_string_empty_slots = Main_Data::game_strings->GetManiacEmptySlotSaveData();
+	save.easyrpg_data.maniac_global_string_vector_size = static_cast<int32_t>(std::min<size_t>(
+		Main_Data::game_strings->GetManiacVectorSize(), std::numeric_limits<int32_t>::max()));
+	save.system.maniac_global_scalars_active = false;
+	save.easyrpg_data.maniac_global_variables.clear();
+	save.easyrpg_data.maniac_global_switches.clear();
+	if (Player::IsPatchManiac()) {
+		if (Player::game_config.maniac_version.Get() == 250921 && !ManiacOriginalSave::EncodeObservedGlobalScalars(save)) {
+			Output::Warning("Cannot encode Maniac global numeric/switch state in the observed original save format");
+			return false;
+		}
+		if (!ManiacOriginalSave::EncodeObservedGlobals(save)) {
+			Output::Warning("Cannot encode Maniac global strings in the observed original save format");
+			return false;
+		}
+		auto strings = Main_Data::game_strings->GetLcfData();
+		strings.insert(strings.begin(), zero_string.empty() ? lcf::DBString{} : zero_string.front());
+		save.easyrpg_data.maniac_global_string_raw_bytes = ManiacStringStorage::Encode(strings);
+		save.easyrpg_data.maniac_generated_common_name_cache = ManiacPatch::GetGeneratedCommonNameCache();
+	}
+	if (Main_Data::game_maniac_self_variables) {
+		save.easyrpg_data.maniac_self_variable_banks = Main_Data::game_maniac_self_variables->GetSerializableSaveData();
+		if (Player::IsPatchManiac()
+			&& !save.easyrpg_data.maniac_self_variable_banks.empty()
+			&& !ManiacOriginalSave::EncodeObservedBanks(
+				save.easyrpg_data.maniac_self_variable_banks, save.maniac_original_bank_bytes)) {
+			Output::Warning("Cannot encode Maniac self banks in the observed original save format");
+			return false;
+		}
+	}
 
 	save.system.scene = Scene::instance ? Scene::rpgRtSceneFromSceneType(Scene::instance->type) : -1;
 

@@ -1,0 +1,124 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "a4ac9aeb8d5ac66f030eb76e384f63110be1c83ce3e47a034920b99dc4357938",
+  "trace_sha256": "0ce7c51007c7fa89631bd16a35ea90b1fdb2cbfe0b4bbb618108e815145a05fb",
+  "save_sha256": "766a7aedcb68cac409f0aa5f9cbce661833fd6dfc72e6eb7f64b02dc413fb001",
+  "map_sha256": "3f719b244677ee458c080ed55a511705c1b8c0ab0efe3b34d13d1def5329842d",
+  "sample_count": 45,
+  "transitions": [
+    {
+      "input_enter_count": 0,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 1,
+      "stage": "before_load_script_42"
+    },
+    {
+      "input_enter_count": 3,
+      "stage": "before_load_script_43"
+    },
+    {
+      "input_enter_count": 4,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 5,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 7,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 9,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 11,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 13,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 15,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 17,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 19,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 21,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 22,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 23,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 25,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 26,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 28,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 29,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 30,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 32,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 33,
+      "stage": "initial"
+    },
+    {
+      "input_enter_count": 34,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 36,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 38,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 40,
+      "stage": "after_load_script_43"
+    },
+    {
+      "input_enter_count": 42,
+      "stage": "after_load_script_undefined"
+    },
+    {
+      "input_enter_count": 44,
+      "stage": "after_load_script_43"
+    }
+  ],
+  "load_reset_call_rva": "0x1fcb35",
+  "scope": "250921 Windows original 3002 saves while JS global property is 42; subsequent 3030 reads 42, mutation to 43 is observed, and 3003 load resets the numeric vector and JS context. Resumed event commands read undefined as sentinel 99 before reassigning 43. This is one valid save slot and one auto event; other save modes remain separate."
+}

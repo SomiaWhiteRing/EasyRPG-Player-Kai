@@ -70,6 +70,16 @@ void WebAudio::SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) 
   Command({{"op","se"},{"path",se->GetName()},{"volume",volume},{"pitch",pitch}});
 }
 void WebAudio::SE_Stop() { Command({{"op","se-stop"}}); }
+bool WebAudio::SetManiacVolume(int volume) {
+  const float gain = static_cast<float>(std::clamp(volume, 0, 1000) * 0.01);
+  if (gain > 1.0f) return false;
+  maniac_output_gain.store(gain);
+  EM_ASM({ postMessage({type:'master-volume', gain:$0}); }, gain);
+  return true;
+}
+int WebAudio::GetManiacVolume() const {
+  return static_cast<int>(static_cast<double>(GetManiacOutputGain()) * 100);
+}
 void WebAudio::SetFluidsynthSoundfont(std::string_view sf) {
   cfg.soundfont.Set(ToString(sf));
   last_config.clear();

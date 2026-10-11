@@ -107,6 +107,11 @@ std::string PendingMessage::ApplyTextInsertingCommands(std::string input, uint32
 	const char* start_copy = iter;
 	while (iter != end) {
 		auto ret = Utils::UTF8Next(iter, end);
+		if (Player::IsPatchManiac() && *iter == '$') {
+			// Keep the numeric icon token intact until the glyph consumer reads its caller bank.
+			iter = Game_Message::ManiacIconEnd(iter, end);
+			continue;
+		}
 		if (ret.ch != escape_char) {
 			iter = ret.next;
 			continue;

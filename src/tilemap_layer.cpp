@@ -27,6 +27,7 @@
 #include "compiler.h"
 #include "game_map.h"
 #include "game_system.h"
+#include "utils.h"
 #include "drawable_mgr.h"
 #include "baseui.h"
 
@@ -669,6 +670,202 @@ BitmapRef TilemapLayer::GenerateAutotiles(int count, const std::unordered_map<ui
 	return tiles;
 }
 
+namespace {
+int ManiacTileType(int tile) {
+	if (tile < 0) return -1;
+	if (tile < 3000) return tile / 1000;
+	if (tile < 4000) return 3 + (tile - 3000) / 50;
+	if (tile < 5000) return 6 + (tile - 4000) / 50;
+	return tile - 4982;
+}
+
+int ManiacTileBase(int type) {
+	if (type < 3) return type * 1000;
+	if (type < 6) return (type + 57) * 50;
+	if (type < 18) return (type + 74) * 50;
+	return type + 4982;
+}
+
+int ManiacAutotileLink(const Bitmap& chipset) {
+	// 250921's tileset loader (0x7c270) compares each D block with this reference tile.
+	if (chipset.GetWidth() < 480 || chipset.GetHeight() < 256) return -1;
+	for (int type = 6; type < 18; ++type) {
+		const int block = type - 6;
+		const int sx = (block < 4 ? (block % 2) * 3 : 6 + (block % 2) * 3) * 16;
+		const int sy = (block < 4 ? 8 + (block / 2) * 4 : ((block - 4) / 2) * 4) * 16;
+		bool equal = true;
+		for (int y = 0; y < 16 && equal; ++y) {
+			for (int x = 0; x < 16; ++x) {
+				if (chipset.GetColorAt(sx + x, sy + y) != chipset.GetColorAt(16 + x, 128 + y)) {
+					equal = false;
+					break;
+				}
+			}
+		}
+		if (equal) return type;
+	}
+	return -1;
+}
+
+template<typename T>
+void UpdateManiacAutotile(std::vector<T>& tiles, int width, int height, int x, int y, uint8_t mask, int link,
+	bool loop_horizontal = false, bool loop_vertical = false) {
+	// Original mask/shape tables at 0x2251b8 / 0x214e20. The rectangle is built row by row.
+	static constexpr uint8_t old_masks[50] = {
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		25, 27, 29, 31, 35, 39, 43, 47, 70, 78, 71, 79, 140, 141, 142, 143,
+		95, 175, 59, 63, 103, 111, 206, 207, 157, 159, 127, 191, 223, 239, 255, 0,
+		0, 0,
+	};
+	static constexpr uint8_t shapes[256] = {
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		16, 16, 17, 17, 18, 18, 19, 19, 16, 16, 17, 17, 18, 18, 19, 19,
+		20, 20, 20, 20, 21, 21, 21, 21, 22, 22, 22, 22, 23, 23, 23, 23,
+		34, 34, 34, 34, 35, 35, 35, 35, 34, 34, 34, 34, 35, 35, 35, 35,
+		24, 26, 24, 26, 24, 26, 24, 26, 25, 27, 25, 27, 25, 27, 25, 27,
+		32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+		36, 36, 36, 36, 36, 36, 36, 36, 37, 37, 37, 37, 37, 37, 37, 37,
+		42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+		28, 29, 30, 31, 28, 29, 30, 31, 28, 29, 30, 31, 28, 29, 30, 31,
+		40, 40, 41, 41, 40, 40, 41, 41, 40, 40, 41, 41, 40, 40, 41, 41,
+		33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33,
+		43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43,
+		38, 39, 38, 39, 38, 39, 38, 39, 38, 39, 38, 39, 38, 39, 38, 39,
+		44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44, 44,
+		45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45,
+		46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+	};
+	static constexpr int dx[8] = {-1, 1, 1, -1, -1, 0, 1, 0};
+	static constexpr int dy[8] = {-1, -1, 1, 1, 0, -1, 0, 1};
+	if (loop_horizontal) x = Utils::PositiveModulo(x, width);
+	if (loop_vertical) y = Utils::PositiveModulo(y, height);
+	if (x < 0 || y < 0 || x >= width || y >= height) return;
+	auto& tile = tiles[static_cast<size_t>(y) * width + x];
+	if (tile < 0 || tile >= 5000) return;
+	const int type = ManiacTileType(tile);
+	const int old_mask = tile % 50 == 49 ? 0 : old_masks[tile % 50];
+	int neighbors[8];
+	int new_mask = 0;
+	for (int i = 0; i < 8; ++i) {
+		int nx = x + dx[i], ny = y + dy[i];
+		if (loop_horizontal) nx = Utils::PositiveModulo(nx, width);
+		if (loop_vertical) ny = Utils::PositiveModulo(ny, height);
+		const int other = nx < 0 || ny < 0 || nx >= width || ny >= height
+			? -1 : ManiacTileType(tiles[static_cast<size_t>(ny) * width + nx]);
+		neighbors[i] = other;
+		const int mapped = other < 0 || other >= 18 ? -1 : other < 6 ? 0 : link;
+		if (other != -1 && type != other && type != mapped && (type >= 6 || other >= 6))
+			new_mask |= 1 << i;
+	}
+	const int merged = (new_mask & mask) | (old_mask & ~mask);
+	int corners = 0;
+	if (type < 3) {
+		static constexpr int corner[4] = {0, 1, 3, 2};
+		static constexpr int side_a[4] = {4, 5, 4, 7};
+		static constexpr int side_b[4] = {5, 6, 7, 6};
+		for (int i = 0; i < 4; ++i) {
+			const bool water_corner = type < 2
+				? neighbors[side_a[i]] == 2 && neighbors[side_b[i]] == 2 && !(merged & (1 << corner[i]))
+				: neighbors[corner[i]] < 2 && neighbors[side_a[i]] < 2 && neighbors[side_b[i]] < 2;
+			if (water_corner) corners |= 1 << i;
+		}
+	}
+	tile = ManiacTileBase(type) + shapes[merged] + 50 * corners;
+}
+
+void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int tile, int time, int animation_type, int animation_speed) {
+	if (tile < 0) return;
+	if (tile < 3000) {
+		const int block = tile / 1000;
+		const int corners = (tile % 1000) / 50;
+		const int shape = tile % 50;
+		if (shape >= 47) return;
+		int phase = time / (animation_speed == 0 ? 24 : 12);
+		phase = animation_type == 0 ? phase & 3 : phase % 3;
+		if (phase == 3) phase = 1;
+		for (int row = 0; row < 2; ++row) {
+			for (int col = 0; col < 2; ++col) {
+				int bit = (corners >> (row * 2 + col)) & 1;
+				int cx = block == 1 ? 6 : 0;
+				int cy = BlockA_Subtiles_IDS[shape][row][col];
+				if (cy < 0) {
+					cx = 0;
+					cy = 4 + (block == 2 ? bit ^ 3 : bit);
+				}
+				if (corners && shape && bit) {
+					cx = 0;
+					cy = 4 + (block == 2 ? bit * 2 : bit);
+				}
+				cx = static_cast<uint8_t>(cx + 2 * phase + col);
+				cy = cy * 2 + row;
+				dst.Blit(x + 8 * col, y + 8 * row, chipset, Rect(cx * 8, cy * 8, 8, 8), 255);
+			}
+		}
+	} else if (tile < 4000) {
+		const int phase = (time / 6) & 3;
+		dst.Blit(x, y, chipset, Rect((3 + (tile - 3000) / 50) * 16, (4 + phase) * 16, 16, 16), 255);
+	} else if (tile < 5000) {
+		const int block = (tile - 4000) / 50;
+		const int shape = tile % 50;
+		const int bx = block < 4 ? (block % 2) * 3 : 6 + (block % 2) * 3;
+		const int by = block < 4 ? 8 + (block / 2) * 4 : ((block - 4) / 2) * 4;
+		for (int row = 0; row < 2; ++row) {
+			for (int col = 0; col < 2; ++col) {
+				const auto& q = BlockD_Subtiles_IDS[shape][row][col];
+				const Rect src((bx + q[0]) * 16 + col * 8, (by + q[1]) * 16 + row * 8, 8, 8);
+				dst.Blit(x + col * 8, y + row * 8, chipset, src, 255);
+			}
+		}
+	} else {
+		const bool upper = tile >= 10000;
+		const int index = tile - (upper ? 10000 : 5000);
+		if (index < 0 || index >= 144) return;
+		int col, row;
+		if (upper) {
+			col = index < 48 ? 18 + index % 6 : 24 + (index - 48) % 6;
+			row = index < 48 ? 8 + index / 6 : (index - 48) / 6;
+		} else {
+			col = index < 96 ? 12 + index % 6 : 18 + (index - 96) % 6;
+			row = index < 96 ? index / 6 : (index - 96) / 6;
+		}
+		dst.Blit(x, y, chipset, Rect(col * 16, row * 16, 16, 16), 255);
+	}
+}
+} // namespace
+
+void TilemapLayer::DrawManiacTileRectangle(Bitmap& dst, const Bitmap& chipset, Rect rectangle,
+	std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed) {
+	static constexpr int lower_tiles[18] = {
+		0, 1000, 2000, 3000, 3074, 3100, 4000, 4050, 4100,
+		4150, 4200, 4250, 4300, 4350, 4400, 4450, 4500, 4550
+	};
+	const bool autotile = !upper && !(options & 1);
+	const int link = autotile ? ManiacAutotileLink(chipset) : -1;
+	std::vector<int32_t> tiles(source.size(), 0);
+	for (int y = 0; y < rectangle.height; ++y) {
+		for (int x = 0; x < rectangle.width; ++x) {
+			const size_t index = static_cast<size_t>(y) * rectangle.width + x;
+			const uint32_t value = source[index];
+			tiles[index] = upper ? (value < 144 ? 10000 + value : 10000)
+				: value < 18 ? lower_tiles[value] : value < 162 ? value + 4982 : 5143;
+			if (autotile) {
+				UpdateManiacAutotile(tiles, rectangle.width, rectangle.height, x, y, 255, link);
+				static constexpr int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
+				static constexpr int dy[8] = {-1, -1, -1, 0, 1, 1, 1, 0};
+				static constexpr uint8_t mask[8] = {4, 140, 8, 25, 1, 35, 2, 70};
+				for (int i = 0; i < 8; ++i)
+					UpdateManiacAutotile(tiles, rectangle.width, rectangle.height, x + dx[i], y + dy[i], mask[i], link);
+			}
+		}
+	}
+	for (int y = 0; y < rectangle.height; ++y) {
+		for (int x = 0; x < rectangle.width; ++x) {
+			DrawManiacChipsetTile(dst, chipset, rectangle.x + x * 16, rectangle.y + y * 16,
+				tiles[static_cast<size_t>(y) * rectangle.width + x], time, animation_type, animation_speed);
+		}
+	}
+}
+
 void TilemapLayer::SetChipset(BitmapRef const& nchipset) {
 	chipset = nchipset;
 	chipset_effect = Bitmap::Create(chipset->width(), chipset->height());
@@ -741,8 +938,28 @@ void TilemapLayer::SetMapTileDataAt(int x, int y, int tile_id, bool disable_auto
 	substitutions = Game_Map::GetTilesLayer(layer);
 
 	bool is_autotile = IsTileFromBlock(tile_id, BLOCK_A) || IsTileFromBlock(tile_id, BLOCK_B) || IsTileFromBlock(tile_id, BLOCK_D);
+	const bool native250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 
-	if (disable_autotile || !is_autotile) {
+	if (native250921 && !disable_autotile) {
+		const bool loop_horizontal = Game_Map::LoopHorizontal();
+		const bool loop_vertical = Game_Map::LoopVertical();
+		const int link = chipset ? ManiacAutotileLink(*chipset) : -1;
+		map_data[static_cast<size_t>(y) * width + x] = static_cast<short>(tile_id);
+		UpdateManiacAutotile(map_data, width, height, x, y, 255, link, loop_horizontal, loop_vertical);
+		RecreateTileDataAt(x, y, map_data[static_cast<size_t>(y) * width + x]);
+		// Native updates only the affected mask bits of each existing neighbor.
+		static constexpr int dx[8] = {-1, 0, 1, 1, 1, 0, -1, -1};
+		static constexpr int dy[8] = {-1, -1, -1, 0, 1, 1, 1, 0};
+		static constexpr uint8_t mask[8] = {4, 140, 8, 25, 1, 35, 2, 70};
+		for (int i = 0; i < 8; ++i) {
+			int nx = x + dx[i], ny = y + dy[i];
+			if (loop_horizontal) nx = Utils::PositiveModulo(nx, width);
+			if (loop_vertical) ny = Utils::PositiveModulo(ny, height);
+			if (!IsInMapBounds(nx, ny)) continue;
+			UpdateManiacAutotile(map_data, width, height, nx, ny, mask[i], link, loop_horizontal, loop_vertical);
+			RecreateTileDataAt(nx, ny, map_data[static_cast<size_t>(ny) * width + nx]);
+		}
+	} else if (disable_autotile || !is_autotile) {
 		RecreateTileDataAt(x, y, tile_id);
 	} else {
 		// Recalculate the replaced tile itself + every neighboring tile
@@ -752,7 +969,6 @@ void TilemapLayer::SetMapTileDataAt(int x, int y, int tile_id, bool disable_auto
 				{-1,  1}, { 0,  1}, { 1,  1}
 		};
 
-		// TODO: make it work for AB autotiles
 		RecalculateAutotile(x, y, tile_id);
 
 		for (const auto& adj : adjacent) {

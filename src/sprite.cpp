@@ -140,6 +140,22 @@ BitmapRef Sprite::Refresh(Rect& rect) {
 	}
 }
 
+BitmapRef Sprite::GetPreparedBitmap(Rect& rect) const {
+	// A newly assigned backing must not expose effects belonging to the previous image.
+	if (bitmap_changed) return bitmap;
+	if (bitmap_frame) rect = bitmap_frame->GetRect();
+	if (bitmap_effects) {
+		if (!bitmap_frame) {
+			rect.x -= bitmap_effects_src_rect.x;
+			rect.y -= bitmap_effects_src_rect.y;
+		}
+		if (current_flip_x) rect.x = bitmap_effects->GetWidth() - rect.x - rect.width;
+		if (current_flip_y) rect.y = bitmap_effects->GetHeight() - rect.y - rect.height;
+		return bitmap_effects;
+	}
+	return bitmap_frame ? bitmap_frame : bitmap;
+}
+
 void Sprite::SetBitmap(BitmapRef const& nbitmap) {
 	bitmap = nbitmap;
 	bitmap_frame.reset();

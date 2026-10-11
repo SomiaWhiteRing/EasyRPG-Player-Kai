@@ -1,0 +1,11 @@
+{
+  "original_lsd_sha256": "f22e18289787b771a517ae967bd96feb0419f1b5cf1d2ded6d5320cdf1af0b35",
+  "rewritten_lsd_sha256": "b21bfc924ebd46bb5e83cbea9b8e654b8df5aeec196b4ccff1271e77d143447d",
+  "original_lsd_length": 4761,
+  "rewritten_lsd_length": 4849,
+  "root_0x74_payload_length": 53,
+  "root_0x74_payload_sha256": "a5c1755cbbec45a427f82249ea400a0aca571ddd0958dcfa44d078a5b278193a",
+  "root_0x74_payload_identical": true,
+  "test": "Maniac original save fixture exposes serialized state",
+  "scope": "Raw 0x74 payload preservation only; no Player runtime restore or whole-file identity"
+}

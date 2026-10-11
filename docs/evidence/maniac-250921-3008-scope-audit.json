@@ -1,0 +1,356 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "source_sha256": {
+    "commands/03008.md": "0b0a183af83e02b30b0dde92022a4def572e351d225ae4a78948f90c275805e3",
+    "evidence/runtime-250921/0003de00.c": "603baf43055f182535db16f8d93b0694a3499086798e742115f41b1cb4de2560",
+    "evidence/NativeBatch06-250921.md": "28e131cfa55e8d1a4d24decb96d2eb2e56ebcb80f4b775a8104cd15412ac005f",
+    "analysis-work/reports/03008-82dacacf8e39b8211228debc1a03ffb89ddd846ee1fd3dbb5ea01f978c1b1a5e.json": "82af16a1e04081aea2779eb8806591b50a921467ce0d3fa85a264217354c3c29"
+  },
+  "machine_windows": [
+    {
+      "begin_rva": "0x461be",
+      "end_rva_exclusive": "0x461cb",
+      "sha256": "3544e87d2fa5e740673a8ccc7f4fd1da459508fc015dee7b009b7a3cc5a74cb5",
+      "instruction_count": 3,
+      "decoded_bytes": 13,
+      "key_sites": [
+        {
+          "rva": "0x461c1",
+          "instruction": "call 0x14003de00",
+          "bytes": "e83a7cffff"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x3de00",
+      "end_rva_exclusive": "0x3e6bc",
+      "sha256": "1bd1ae00b4990b9733e0b0810d2eff9f08f9e3274e3e6730cba93423dd698cfa",
+      "instruction_count": 635,
+      "decoded_bytes": 2236,
+      "key_sites": [
+        {
+          "rva": "0x3df3d",
+          "instruction": "jae 0x14003e6ac",
+          "bytes": "0f8369070000"
+        },
+        {
+          "rva": "0x3df76",
+          "instruction": "cmp ecx, 3",
+          "bytes": "83f903"
+        },
+        {
+          "rva": "0x3df79",
+          "instruction": "jl 0x14003dfec",
+          "bytes": "7c71"
+        },
+        {
+          "rva": "0x3df98",
+          "instruction": "jne 0x14003e691",
+          "bytes": "0f85f3060000"
+        },
+        {
+          "rva": "0x3dfec",
+          "instruction": "cmp dword ptr [r15 + 0x78], ebx",
+          "bytes": "41395f78"
+        },
+        {
+          "rva": "0x3dff0",
+          "instruction": "jg 0x14003df7b",
+          "bytes": "7f89"
+        },
+        {
+          "rva": "0x3e47c",
+          "instruction": "call 0x14006cc10",
+          "bytes": "e88fe70200"
+        },
+        {
+          "rva": "0x3e491",
+          "instruction": "call 0x1401d87e0",
+          "bytes": "e84aa31900"
+        },
+        {
+          "rva": "0x3e611",
+          "instruction": "call 0x14008c9e0",
+          "bytes": "e8cae30400"
+        },
+        {
+          "rva": "0x3e62a",
+          "instruction": "call 0x14008c9e0",
+          "bytes": "e8b1e30400"
+        },
+        {
+          "rva": "0x3e643",
+          "instruction": "call 0x14008c9e0",
+          "bytes": "e898e30400"
+        },
+        {
+          "rva": "0x3e65c",
+          "instruction": "call 0x14008c9e0",
+          "bytes": "e87fe30400"
+        },
+        {
+          "rva": "0x3e684",
+          "instruction": "call 0x140061b20",
+          "bytes": "e897340200"
+        },
+        {
+          "rva": "0x3e6ab",
+          "instruction": "ret",
+          "bytes": "c3"
+        },
+        {
+          "rva": "0x3e6b6",
+          "instruction": "call 0x1400c8f60",
+          "bytes": "e8a5a80800"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x6cc10",
+      "end_rva_exclusive": "0x6d461",
+      "sha256": "c5e74f65b0c6d24debc87b16b116d6393422f32a3c0797beddfbcef59d6208da",
+      "instruction_count": 516,
+      "decoded_bytes": 2129,
+      "key_sites": [
+        {
+          "rva": "0x6cc8b",
+          "instruction": "imul edx, r10d",
+          "bytes": "410fafd2"
+        },
+        {
+          "rva": "0x6cceb",
+          "instruction": "test r14d, r14d",
+          "bytes": "4585f6"
+        },
+        {
+          "rva": "0x6ccfd",
+          "instruction": "test ebx, ebx",
+          "bytes": "85db"
+        },
+        {
+          "rva": "0x6cd0e",
+          "instruction": "test edx, edx",
+          "bytes": "85d2"
+        },
+        {
+          "rva": "0x6cd1d",
+          "instruction": "call 0x14008c800",
+          "bytes": "e8defa0100"
+        },
+        {
+          "rva": "0x6cd7e",
+          "instruction": "and cl, 1",
+          "bytes": "80e101"
+        },
+        {
+          "rva": "0x6cd81",
+          "instruction": "test byte ptr [rsp + 0xe0], 2",
+          "bytes": "f68424e000000002"
+        },
+        {
+          "rva": "0x6cdbf",
+          "instruction": "idiv dword ptr [r15 + 0xd8]",
+          "bytes": "41f7bfd8000000"
+        },
+        {
+          "rva": "0x6cf66",
+          "instruction": "and eax, 0xffffff",
+          "bytes": "25ffffff00"
+        },
+        {
+          "rva": "0x6d45c",
+          "instruction": "jmp 0x14006cfbe",
+          "bytes": "e95dfbffff"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x8c9e0",
+      "end_rva_exclusive": "0x8ca80",
+      "sha256": "e4f9b2e55bf6174587026b439ebd379f361a08a2f84e3143ee336daf707c6122",
+      "instruction_count": 47,
+      "decoded_bytes": 160,
+      "key_sites": [
+        {
+          "rva": "0x8ca01",
+          "instruction": "call 0x14017d740",
+          "bytes": "e83a0d0f00"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x8c800",
+      "end_rva_exclusive": "0x8c9e0",
+      "sha256": "fb700b9ebce81ed308c1a16d6190abc000abf3a62ea32d677d3bffd014e2b7b8",
+      "instruction_count": 159,
+      "decoded_bytes": 480,
+      "key_sites": [
+        {
+          "rva": "0x8c818",
+          "instruction": "call 0x14017d740",
+          "bytes": "e8230f0f00"
+        },
+        {
+          "rva": "0x8c85d",
+          "instruction": "jmp 0x14008c900",
+          "bytes": "e99e000000"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x463ce",
+      "end_rva_exclusive": "0x463f4",
+      "sha256": "3da0d6b60c895d16706be68bfa066eb223733d36324988829c76b03ba75d3c58",
+      "instruction_count": 7,
+      "decoded_bytes": 38,
+      "key_sites": [
+        {
+          "rva": "0x463ce",
+          "instruction": "cmp byte ptr [rip + 0x223075], r15b",
+          "bytes": "44383d75302200"
+        },
+        {
+          "rva": "0x463d5",
+          "instruction": "je 0x140047d01",
+          "bytes": "0f8426190000"
+        },
+        {
+          "rva": "0x463ef",
+          "instruction": "jmp 0x1400458e0",
+          "bytes": "e9ecf4ffff"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x1d87e0",
+      "end_rva_exclusive": "0x1d880a",
+      "sha256": "74d0968705e7aaaddbda2aa6d8a1173e90661b1ffac4916fe2fec1947414585f",
+      "instruction_count": 10,
+      "decoded_bytes": 42,
+      "key_sites": [
+        {
+          "rva": "0x1d87ef",
+          "instruction": "call 0x1401e8c4c",
+          "bytes": "e858040100"
+        },
+        {
+          "rva": "0x1d8800",
+          "instruction": "call 0x1401ebe00",
+          "bytes": "e8fb350100"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x1e8c4c",
+      "end_rva_exclusive": "0x1e8cad",
+      "sha256": "c4c3f3a523b3e9b657076e593e16050de11f300261b6af8a29b1756ce369536a",
+      "instruction_count": 32,
+      "decoded_bytes": 97,
+      "key_sites": []
+    },
+    {
+      "begin_rva": "0x1ebe00",
+      "end_rva_exclusive": "0x1ebf2f",
+      "sha256": "18b7a6cbb52be4c0e351866a52b0a259a0cf2a0774968f178e0f24f1351bda77",
+      "instruction_count": 75,
+      "decoded_bytes": 303,
+      "key_sites": [
+        {
+          "rva": "0x1ebe12",
+          "instruction": "call 0x1401edae8",
+          "bytes": "e8d11c0000"
+        }
+      ]
+    },
+    {
+      "begin_rva": "0x1edb51",
+      "end_rva_exclusive": "0x1edb8a",
+      "sha256": "31aec01aa553c7624734c4d743f7bd130e395dbe6a0d20e5eb244626152f6214",
+      "instruction_count": 17,
+      "decoded_bytes": 57,
+      "key_sites": [
+        {
+          "rva": "0x1edb54",
+          "instruction": "mov r10d, 0x6000",
+          "bytes": "41ba00600000"
+        },
+        {
+          "rva": "0x1edb5f",
+          "instruction": "cmp eax, 0x2000",
+          "bytes": "3d00200000"
+        },
+        {
+          "rva": "0x1edb66",
+          "instruction": "cmp eax, 0x4000",
+          "bytes": "3d00400000"
+        },
+        {
+          "rva": "0x1edb70",
+          "instruction": "mov ecx, 0x300",
+          "bytes": "b900030000"
+        },
+        {
+          "rva": "0x1edb7a",
+          "instruction": "mov ecx, 0x200",
+          "bytes": "b900020000"
+        },
+        {
+          "rva": "0x1edb81",
+          "instruction": "mov ecx, 0x100",
+          "bytes": "b900010000"
+        }
+      ]
+    }
+  ],
+  "opcode_mapping": {
+    "opcode": 3008,
+    "normalized_selector": 1282,
+    "selector_byte_rva": "0x47eac",
+    "slot": 14,
+    "target_slot_rva": "0x47d8c",
+    "branch_rva": "0x461be",
+    "consumer_rva": "0x3de00"
+  },
+  "effective_branch_ids": [
+    "3008:packed-picture-reference-and-invalid-id",
+    "3008:geometry-type0-base-size",
+    "3008:geometry-type1-current-scale",
+    "3008:geometry-type2-target-scale",
+    "3008:inactive-and-unknown-type-boundaries",
+    "3008:pixel-rectangle-buffer-alpha-and-contiguous-output",
+    "3008:geometry-refresh-and-shared-pf-continuation"
+  ],
+  "branch_acceptance_ids": {
+    "3008:packed-picture-reference-and-invalid-id": "W06-008;W06-009",
+    "3008:geometry-type0-base-size": "W06-008",
+    "3008:geometry-type1-current-scale": "W06-008",
+    "3008:geometry-type2-target-scale": "W06-008",
+    "3008:inactive-and-unknown-type-boundaries": "W06-008;W06-009",
+    "3008:pixel-rectangle-buffer-alpha-and-contiguous-output": "W06-009",
+    "3008:geometry-refresh-and-shared-pf-continuation": "W06-010"
+  },
+  "acceptance_ids": [
+    "W06-008",
+    "W06-009",
+    "W06-010"
+  ],
+  "reference_and_record_rule": "A0 nibble0 resolves A3 picture ID: 0 literal, 1 signed global/current-self variable, all other values indirect with negative first reference forcing the intermediate negative absolute. Validate unsigned(ID-1) against picture count before inspecting A1, so missing/invalid ID is an original non-returning Picture error even for unknown type. Missing consumed words default zero; Text is never read. Keep original Args count, unused A8 in geometry, extra words, Text and unknown packed bits.",
+  "geometry_rule": "A1 signed<3 checks active width +78 first. Inactive picture initializes X/Y/W/H to zero and still writes, even for negative unknown A1; active unknown types and all unknown positive types >=4 return without writes/refresh. Type0 rounds current XY +10/+18 and uses raw frame size +e0/+e4; type1 rounds current XY and frame size times current double scale +20/+28 /100; type2 rounds target XY +60/+68 and frame size times integer target scale +ac/+b0 /100. Rounding is helper1d87e0 with MXCSR-dependent mode followed by cvttsd2si, not an assumed fixed rounding rule.",
+  "format_and_write_rule": "Whole A2=1 subtracts signed-truncated W/2,H/2 from center; A2=2 then replaces W/H with left+W/top+H without minus1; other values preserve center/size. Raw signed A4..A7 go to 8c9e0 in X,Y,W,H order, including global slot0 and negative self, so alias destinations overwrite earlier results. At pf=0 geometry calls 61b20 for current map events; pf!=0 skips refresh.",
+  "pixel_rule": "Type3 resolves A4 X, A5 Y, A6 W, A7 H, A8 signed base through A0 nibbles1..5 in order, then 6cc10 takes A2 low byte. Require positive W/H, positive int32(W*H) and nonempty clipped intersection before 8c800 destination allocation; failed tests leave all destinations unchanged. Otherwise output W*H row-major slots with requested stride W and zero outside padding. Base0 is global physical slot0; negative is self storage. Bit0 picks original versus existing processed buffer with sheet-frame offsets dependent on image+60; bit1 strips copied alpha via 0x00ffffff. Other bits ignored; padding remains zero. No scale/rotation transform or geometry-style refresh occurs. Inconsistent internal picture buffers and arithmetic overflow remain original unsafe boundaries for dynamic safe-policy acceptance.",
+  "schedule_rule": "No opcode-owned wait. Consumer returns to shared 463ce gate: pf=0 success, pf!=0 same-invocation refetch. Player currently introduces async image-load repeat and only geometry/global assignments; those differences are not accepted by this scope audit.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "context_evidence": "No 3008-specific context guard between shared selector and consumer; these are static candidates, not observed executions.",
+  "remaining_questions": [
+    "W06-008: fixed original/Player picture references, types/format, active/inactive/unknown boundaries, rounding, raw signed destination order/alias and record retention.",
+    "W06-009: fixed original/Player packed pixel operands, clip/no-write/padding, original/processed sheet frame buffers, alpha flags, contiguous slot0/self storage and unsafe boundary policy.",
+    "W06-010: fixed original/Player geometry versus pixel refresh, pf branches, pending-image timing, command budget and saved continuation in applicable contexts.",
+    "W06-007 retains other picture commands; 241028, Web and Android remain independent."
+  ],
+  "scope": "250921 Windows 3008 static scope only; no Player feature, dynamic rendering or save/platform acceptance is claimed."
+}

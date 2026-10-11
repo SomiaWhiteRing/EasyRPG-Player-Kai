@@ -111,11 +111,14 @@ struct ManiacAnimationParams {
 	int target_id = 0;
 	int x = 0;
 	int y = 0;
-	// Binding uses 0 = variable, 1 = indirect variable, unlike fixed positions.
+	// Legacy saved binding selectors; new commands resolve the address once.
 	int x_mode = 0;
 	int y_mode = 0;
 	bool invert = false;
 	bool keep = false;
+	int self_scope = 0;
+	int self_map_id = 0;
+	int self_event_id = 0;
 };
 
 class BattleAnimationMap : public BattleAnimation {

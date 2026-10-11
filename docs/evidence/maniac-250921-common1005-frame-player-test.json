@@ -1,0 +1,10 @@
+{
+  "runner_sha256": "ccc41a55ac3c98f965bcddff24514e379fb3f4c21c15611054ed49531729063b",
+  "command": [
+    "--no-colors",
+    "--test-case=Maniac 1005 creates fresh fields without copying a dirty caller"
+  ],
+  "exit_code": 0,
+  "output": "[doctest] doctest version is \"2.4.6\"\n[doctest] run with \"--help\" for options\n===============================================================================\n[doctest] test cases:  1 |  1 passed | 0 failed | 458 skipped\n[doctest] assertions: 10 | 10 passed | 0 failed |\n[doctest] Status: SUCCESS!\n",
+  "source_sha256": "c745399302fa62fe9f07e2f2ffafa72ffd29f82ca02a40a58d0a84882312243d"
+}

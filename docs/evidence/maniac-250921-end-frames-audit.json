@@ -1,0 +1,283 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+  "cases": [
+    {
+      "mode": "auto",
+      "runtime": "original",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1,
+            1
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                1
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2,
+            2
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                2
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "auto",
+      "runtime": "player",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                1,
+                0
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2,
+            2,
+            0
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                2,
+                0
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "parallel",
+      "runtime": "original",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1,
+            1
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                1
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2,
+            2
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                2
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "parallel",
+      "runtime": "player",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                1,
+                0
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2,
+            2,
+            0
+          ],
+          "common_self": [
+            {
+              "common_event_id": 3,
+              "numbers_positive_slots": [
+                2,
+                0
+              ]
+            }
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": "250921 Windows mode 0 nested and mode 1 nested/single End Command at the standard LCF terminator. Parent continuation and separate map/common self banks match across two rounds. Original observes depth 2 to 1, and mode 1 depth 1 to 0. Battle mode 2 remains separate."
+}

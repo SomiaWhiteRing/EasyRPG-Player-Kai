@@ -1,0 +1,169 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_sources_sha256": {
+    "commands/01006.md": "416b0e46611a2e5ab50574cb2081cf096beff2945a808fe7d7a5ed534db87077",
+    "evidence/runtime-250921/0001d2b0.c": "4e2e0b9d1d89a2659514c30beef0165b418d239fa51d60f0036861500516ea38",
+    "evidence/native-250921/0004bb60.c": "58afceba30a0742503a02ba7a79283e597df269c0841dcc0dda72c90c3331dbf"
+  },
+  "dispatch_and_handler_instructions": {
+    "0x46a60": {
+      "instruction": "call 0x1d2b0",
+      "bytes": "e84b68fdff"
+    },
+    "0x46a65": {
+      "instruction": "mov al, 1",
+      "bytes": "b001"
+    },
+    "0x1d2c5": {
+      "instruction": "cmp edx, 3",
+      "bytes": "83fa03"
+    },
+    "0x1d2d8": {
+      "instruction": "cmp edx, 2",
+      "bytes": "83fa02"
+    },
+    "0x1d2f6": {
+      "instruction": "and ecx, 0xf",
+      "bytes": "83e10f"
+    },
+    "0x1d2ff": {
+      "instruction": "cmp ecx, 1",
+      "bytes": "83f901"
+    },
+    "0x1d317": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e8a4041600"
+    },
+    "0x1d32e": {
+      "instruction": "cmovs ecx, eax",
+      "bytes": "0f48c8"
+    },
+    "0x1d361": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e85a041600"
+    },
+    "0x1d38f": {
+      "instruction": "call 0x17d7c0",
+      "bytes": "e82c041600"
+    },
+    "0x1d3c6": {
+      "instruction": "cmp byte ptr [rip + 0x25bd64], bl",
+      "bytes": "381d64bd2500"
+    },
+    "0x1d3cc": {
+      "instruction": "je 0x1d52c",
+      "bytes": "0f845a010000"
+    },
+    "0x1d3d2": {
+      "instruction": "test edi, edi",
+      "bytes": "85ff"
+    },
+    "0x1d3da": {
+      "instruction": "sub edi, 1",
+      "bytes": "83ef01"
+    },
+    "0x1d3df": {
+      "instruction": "cmp edi, 1",
+      "bytes": "83ff01"
+    },
+    "0x1d3e8": {
+      "instruction": "cmp dword ptr [rip + 0x25bcbd], 3",
+      "bytes": "833dbdbc250003"
+    },
+    "0x1d3fe": {
+      "instruction": "jbe 0x1d53c",
+      "bytes": "0f8638010000"
+    },
+    "0x1d40f": {
+      "instruction": "cmp byte ptr [rcx + 0xe8], bl",
+      "bytes": "3899e8000000"
+    },
+    "0x1d41b": {
+      "instruction": "cmp dword ptr [rcx + 0x20], ebx",
+      "bytes": "395920"
+    },
+    "0x1d433": {
+      "instruction": "jmp 0x18eb90",
+      "bytes": "e958171700"
+    },
+    "0x1d438": {
+      "instruction": "test sil, 1",
+      "bytes": "40f6c601"
+    },
+    "0x1d43e": {
+      "instruction": "cmp dword ptr [rip + 0x25bc67], 3",
+      "bytes": "833d67bc250003"
+    },
+    "0x1d452": {
+      "instruction": "mov dword ptr [rip + 0x25bc24], 0x64",
+      "bytes": "c70524bc250064000000"
+    },
+    "0x1d483": {
+      "instruction": "call 0x18eb90",
+      "bytes": "e808171700"
+    },
+    "0x1d4a0": {
+      "instruction": "test sil, 1",
+      "bytes": "40f6c601"
+    },
+    "0x1d4a6": {
+      "instruction": "cmp dword ptr [rip + 0x25bbff], 4",
+      "bytes": "833dffbb250004"
+    },
+    "0x1d4c5": {
+      "instruction": "mov dword ptr [rip + 0x25bbb1], 0x64",
+      "bytes": "c705b1bb250064000000"
+    },
+    "0x1d4cf": {
+      "instruction": "mov byte ptr [rip + 0x25bc6f], bl",
+      "bytes": "881d6fbc2500"
+    },
+    "0x1d4ff": {
+      "instruction": "call 0x924a0",
+      "bytes": "e89c4f0700"
+    },
+    "0x1d50b": {
+      "instruction": "call 0x18eb90",
+      "bytes": "e880161700"
+    },
+    "0x1d545": {
+      "instruction": "call 0xc8fc0",
+      "bytes": "e876ba0a00"
+    }
+  },
+  "handler_bytes_sha256": "286d1128b11d2ef4e59cd2dfe56308ead82584321400fa4714227aa60bb8c189",
+  "effective_branch_ids": [
+    "1006:literal-enemy-index",
+    "1006:single-global-or-negative-self-index",
+    "1006:double-global-or-negative-self-index",
+    "1006:outside-battle-no-effect",
+    "1006:party-escape-option-and-condition",
+    "1006:troop-escape-option-and-condition",
+    "1006:single-enemy-condition-active-positive-hp",
+    "1006:single-enemy-invalid-index-error",
+    "1006:unknown-target-no-effect"
+  ],
+  "parameter_rule": "A0 is literal target 0/1/2; other values perform no target effect. A1 is an index resolved before battle/target checks. A3 low nibble 0 is literal, 1 one numeric read, 2..15 two numeric reads. Negative references use self, with a negative first reference preserving nonpositive address sign for the second lookup. Missing A0/A1/A2/A3 are zero; zero/out-of-range numeric references resolve zero. Only A2 bit 0 is used; other option bits, A3 high bits, extra Args and Text have no payload effect.",
+  "context_rule": "Shared dispatch has no owner-mode restriction. Parameter evaluation precedes the battle-active byte check at 0x279130. If the byte is zero the handler returns without battle effects. Map/common/battle and 3019-produced records therefore require contextual verification; base Player currently only dispatches this opcode in its battle interpreter.",
+  "target_rules": {
+    "party": "Target 0 skips only when A2 bit 0 is set and battle condition 0x2790ac is 4. Otherwise writes 100 to 0x279080 and zero to 0x279144; enumerates party actors and invokes 0x18eb90 only when predicate 0x924a0 is false.",
+    "troop": "Target 1 skips only when A2 bit 0 is set and condition is 3. Otherwise writes 100 to 0x279080 and invokes 0x18eb90 for every enemy with +0xe8 nonzero and +0x20 positive.",
+    "single_enemy": "Target 2 skips unconditionally in condition 3, regardless of A2. Otherwise interprets resolved index as unsigned for bounds checking; invalid/negative index enters nonreturning 0xc8fc0 error. Valid active (+0xe8) positive-HP (+0x20) target invokes 0x18eb90; this branch does not write the two party/troop control globals."
+  },
+  "remaining_questions": [
+    "W07-004: dynamically verify literal/single/double index selection, all A3 low nibbles, signed self references, short arrays, ignored data, and no-battle/unknown-target continuation in shared/static/3019 contexts.",
+    "W07-005: dynamically confirm party/troop/single side effects, battle condition IDs 3/4 and option polarity, helper 0x924a0 predicate and 0x18eb90 timing/audio/status/escape outcome, dead/hidden actors and enemies, empty groups, invalid index error ordering, parent continuation and save/resume behavior.",
+    "241028, Web and Android retain their independent version/platform scope; this audit does not establish parity for them."
+  ],
+  "acceptance_ids": [
+    "W07-004",
+    "W07-005"
+  ],
+  "player_gaps": [
+    "Current battle handler reads literal A1 and ignores A3.",
+    "Current option==0 check differs from original A2 bit-0 polarity for target 0/1; current target 2 option bypass differs from original unconditional condition-3 guard.",
+    "Current invalid enemy index warns and continues; original selected invalid-index path errors.",
+    "Party force_flee_enabled, enemy hidden/death timer and escape sound require outcome/timing verification against original helpers."
+  ],
+  "scope": "250921 Windows opcode 1006 scope audit only. Parameters, top-level effects, helper consumers and explicit open proof questions are assigned; no Player feature is closed by this static evidence."
+}

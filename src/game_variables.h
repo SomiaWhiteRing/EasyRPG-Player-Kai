@@ -23,6 +23,7 @@
 #include "compiler.h"
 #include "string_view.h"
 #include <cstdint>
+#include <limits>
 #include <string>
 
 /**
@@ -52,6 +53,10 @@ public:
 	std::vector<Var_t> GetRange(int variable_id, int length);
 
 	Var_t Set(int variable_id, Var_t value);
+	/** Writable raw slot for Maniac commands whose assignment bypasses the configured value bounds. */
+	Var_t* GetManiacWritable(int variable_id);
+	Var_t GetManiacRawSlot(int variable_id) const;
+	void EnsureSize(size_t size);
 	Var_t Add(int variable_id, Var_t value);
 	Var_t Sub(int variable_id, Var_t value);
 	Var_t Mult(int variable_id, Var_t value);
@@ -158,6 +163,7 @@ private:
 		void WriteArray(const int first_id_a, const int last_id_a, const int first_id_b, F&& op);
 
 	Variables_t _variables;
+	Var_t _maniac_zero_variable = 0;
 	Var_t _min = 0;
 	Var_t _max = 0;
 	size_t lower_limit = 0;
@@ -166,6 +172,15 @@ private:
 
 inline void Game_Variables::SetData(Variables_t v) {
 	_variables = std::move(v);
+	_maniac_zero_variable = 0;
+}
+
+inline void Game_Variables::EnsureSize(size_t size) {
+	if (_variables.size() < size) _variables.resize(size);
+}
+
+inline Game_Variables::Var_t Game_Variables::GetManiacRawSlot(int variable_id) const {
+	return variable_id == 0 ? _maniac_zero_variable : Get(variable_id);
 }
 
 inline const Game_Variables::Variables_t& Game_Variables::GetData() const {
@@ -177,11 +192,11 @@ inline void Game_Variables::SetLowerLimit(size_t limit) {
 }
 
 inline int Game_Variables::GetSize() const {
-	return static_cast<int>(_variables.size());
+	return static_cast<int>(std::min(_variables.size(), static_cast<size_t>(std::numeric_limits<int>::max())));
 }
 
 inline int Game_Variables::GetSizeWithLimit() const {
-	return std::max<int>(lower_limit, _variables.size());
+	return std::max<int>(lower_limit, GetSize());
 }
 
 inline bool Game_Variables::IsValid(int variable_id) const {
@@ -196,7 +211,7 @@ inline Game_Variables::Var_t Game_Variables::Get(int variable_id) const {
 	if (EP_UNLIKELY(ShouldWarn(variable_id, variable_id))) {
 		WarnGet(variable_id);
 	}
-	if (variable_id <= 0 || variable_id > static_cast<int>(_variables.size())) {
+	if (variable_id <= 0 || static_cast<size_t>(variable_id) > _variables.size()) {
 		return 0;
 	}
 	return _variables[variable_id - 1];

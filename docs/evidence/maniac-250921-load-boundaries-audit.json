@@ -1,0 +1,452 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "508be648df38a9ca0d368194937ec515ec436bca58ab7201f8d7674df5c2477b",
+  "seed_sha256": {
+    "7": "d38b624c4116acdf8032e1d9fbe69212aa5dff992939742251a4f19bb67e7ab0",
+    "9": "87d878fd0a38eacc620ea9fc16746d4fa611162ea0f94d55eec8bdf17c124983"
+  },
+  "skipped_parameters": [
+    [],
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      -1
+    ],
+    [
+      0,
+      666
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      -2,
+      0
+    ]
+  ],
+  "cases": [
+    {
+      "case": 0,
+      "parameters": [
+        0,
+        7
+      ],
+      "runtime": "original",
+      "preload_sha256": "449ccdd26481b9cd4323cdfb6ac938d115ff2c9a07a46b7a15da45920b9c3b53",
+      "postload_sha256": "e95f653ff617ca0a233489e9125c093071a5ae89b7e9d2b0089cddb099fe432c",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 0,
+      "parameters": [
+        0,
+        7
+      ],
+      "runtime": "player",
+      "preload_sha256": "62e4a1937c7c1f29040a0aad17827f868e7b4f4465001476e6018eb16eeca8ff",
+      "postload_sha256": "3e89f16544f8ff74bdf9a2175d137bc2c3df0d07865f3844b363febf0126feec",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 1,
+      "parameters": [
+        0,
+        7,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "c8175a4118094fd42879dc9418b425f4af9dafcc3971d561d23dc14c9429820e",
+      "postload_sha256": "d9b2d663a0e48521a42def22cb7060524f088c1490ea7656c8b5520bf15524b4",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 1,
+      "parameters": [
+        0,
+        7,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "887a3b8c2809c4104cb5aacefaea3830cccab81babcb43978cbb555ebef74c91",
+      "postload_sha256": "e4069d844312c820241563ac176a47a05698427091a7a310b09d469193fc26f8",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 2,
+      "parameters": [
+        0,
+        7,
+        0,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "f5cfa43a2fe1fbf3df319a1071b1c548e3b0bab8ba9f1d187ed52e04675869ea",
+      "postload_sha256": "e2684e817c810414015f19322a02751b9261e1959fa93164fd710dac82191617",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 2,
+      "parameters": [
+        0,
+        7,
+        0,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "fe3fb972ccc7c0b6d5ad32d1a30ad221b0c09f76d4b400ff8a3bb1b84f5c7e0b",
+      "postload_sha256": "bc714e5d0c6a2647cacd0b7f98d5d22925ac7465ad70a2fd1239cf3bd448a74e",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 3,
+      "parameters": [
+        1,
+        2,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "a362a0abb0df6edf55ce6e71c34c434a843811fc88d41917a130cee0c2f358ea",
+      "postload_sha256": "757baeebedb1ebaedab8ec368aca4975e65941ca60152b6f8e9cdd0429a50919",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 3,
+      "parameters": [
+        1,
+        2,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "abf9925a97116fda0c76ab87a5ca457a9c3fdc286700b255bae7a779afc14574",
+      "postload_sha256": "9898f7b6b637f84e4473dad394fd44a4592dff2a6d696600b1708813b2b01c0b",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 4,
+      "parameters": [
+        2,
+        2,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "8d6a9328c39769870111beae0aa067b961ec6ce0e07596327303a733fd4fceea",
+      "postload_sha256": "8b04dc9b5399f439c2995fdc0e2f790ec18940758a6e6486ee74581f4bd163b4",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 4,
+      "parameters": [
+        2,
+        2,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "9fde7b086e331e5a0f3eb404e63a4b118cc7fa989cc53eea51c846549ed2a571",
+      "postload_sha256": "d18f83e3aad7bd2cdca0553275dc59a39e317b7c3328f86f3569eb8839c84feb",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 5,
+      "parameters": [
+        91,
+        -1,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "2b143836bb02e8ae530c147913e9847cc58bdb5dbac9273b17c55e969abf2b68",
+      "postload_sha256": "847e9234c8b7eb1a40994bda2dde75be9759cc1ccd4cbfc36e8ee5cdfd8a1c8e",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 5,
+      "parameters": [
+        91,
+        -1,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "dbf66d3ad1398b48d3f9f1d292db4128f45cce14a819b5b448cdf80803966bb4",
+      "postload_sha256": "17a35b7f8b5ea5aa7cfeab5e7c1d76d84f85fd7a1276b1f5ed253f069fe36433",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 6,
+      "parameters": [
+        -3,
+        2,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "0115abc298bd6c90b97de78912e7654ba5802422675f69d9053d53a045ec6aed",
+      "postload_sha256": "548d164463b0ecaa2bcded1a1f6c5430a78f9f89ead85c396744cf4aa9e2830d",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 6,
+      "parameters": [
+        -3,
+        2,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "f13f838dc64d0b44a65b0364c3ea342404f9bcc24f22b9c537efa542c73c2dc7",
+      "postload_sha256": "3496a62510effc4d8464f2cf575d41230cc5d1ed4a9d7897f41058b0c6a8500c",
+      "selected_slot": 7,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        707,
+        99
+      ]
+    },
+    {
+      "case": 7,
+      "parameters": [
+        0,
+        9,
+        0
+      ],
+      "runtime": "original",
+      "preload_sha256": "4c486f75a753a9da79e18ca92e7d654e1ab7da5cb7e8470e1d2baa1ef9455fd8",
+      "postload_sha256": "f678ce174304aa5530b9880cbf315fe79ef1ca55ba325e8b88dbaf3fdf7f911b",
+      "selected_slot": 9,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        909,
+        99
+      ]
+    },
+    {
+      "case": 7,
+      "parameters": [
+        0,
+        9,
+        0
+      ],
+      "runtime": "player",
+      "preload_sha256": "e0aa89293b55c39ddeec03433d81994d1a6dc383a266eb0bed1a419a176d175f",
+      "postload_sha256": "db79ecb37856bc7283960812340ae84196403cb5f3abb93245e804f9eacdd479",
+      "selected_slot": 9,
+      "preload_markers": [
+        111,
+        7,
+        10,
+        0,
+        0,
+        0,
+        9
+      ],
+      "postload_markers": [
+        909,
+        99
+      ]
+    }
+  ],
+  "scope": "Ten skipped zero/short/nonpositive/missing-slot commands, then eight direct, positive-global, negative-self, and arbitrary-nonzero-mode Load selections with two- through four-field records and nonempty ignored Text. Both runtimes first save skipped-command marker 10 and then restore the selected original seed's distinct 707/909 marker and continuation marker 99. Header bypass and A3 presentation remain separate."
+}

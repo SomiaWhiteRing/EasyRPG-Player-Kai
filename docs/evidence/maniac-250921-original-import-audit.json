@@ -1,0 +1,102 @@
+{
+  "checks": [
+    {
+      "save": "maniac-250921-original-save01.lsd",
+      "sha256": "f22e18289787b771a517ae967bd96feb0419f1b5cf1d2ded6d5320cdf1af0b35",
+      "case": "Maniac original save fixture exposes serialized state",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self.lsd",
+      "sha256": "84f3e9373d80385207a2b70e02f0df2080217497ca5b5e04cef03b1f1b2f68e0",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-event2.lsd",
+      "sha256": "0eacc10ada44db3fc4bd20d230a6c4c3471bd1c56edaefb7af4f829e1b202a87",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-string.lsd",
+      "sha256": "fc243f797d79adb28da391fbedb9893c98cc143f75e021c7acebb90971e3d78d",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-strings.lsd",
+      "sha256": "81f21ab58bfadf5716eecff36f7cf2011ebdae81706e14a6b018fc00081658cc",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-resume.lsd",
+      "sha256": "8dd787419372ef858ec0da67cf6970bc9416439e76fb045db0ef474be2523a9b",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-two-events.lsd",
+      "sha256": "ec9775a848cc446b90d1d9ea45a061e347ad50960b0e0f1177cf01dfc588ebf3",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-two-maps.lsd",
+      "sha256": "8fc1497998c1f440281be3a965a8edd2dd3dfbca86bcf71ead9629e21eae9e57",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-switch.lsd",
+      "sha256": "b3f98e5a6b9def402698c1c7dfcf4f0dc25299394c8320a92157785c7a90a4a2",
+      "case": "Maniac original map bank samples import observed sparse strings",
+      "result": "passed"
+    },
+    {
+      "save": "maniac-250921-original-save-map-self-resume.lsd",
+      "sha256": "8dd787419372ef858ec0da67cf6970bc9416439e76fb045db0ef474be2523a9b",
+      "case": "Maniac original self bank resumes the next variable command in Player",
+      "result": "passed"
+    }
+  ],
+  "original_resume_manifest_sha256": "c2f9af1e451545f667ef4bdf1c18c85e3421e8c10d871873a81797a7592b358d",
+  "original_resume_trace_sha256": "860b23d2c6205de74dce833c4063c3f41ef02da49f5e88cb933df824b0945415",
+  "original_after_save_physical_slots": [
+    7,
+    7,
+    0,
+    42,
+    42
+  ],
+  "player_after_load_global_id_4": 42,
+  "map_switch_saved_party_map_id": 2,
+  "map_switch_saved_map_banks": [
+    {
+      "map_id": 1,
+      "events": [
+        {
+          "event_id": 1,
+          "numbers_positive_slots": [
+            42
+          ]
+        }
+      ],
+      "other_map_fields_hex": {}
+    },
+    {
+      "map_id": 2,
+      "events": [
+        {
+          "event_id": 2,
+          "numbers_positive_slots": [
+            43
+          ]
+        }
+      ],
+      "other_map_fields_hex": {}
+    }
+  ],
+  "scope": "Observed 250921 map/common bank fields, one map numeric command continuation, and bank persistence across an actual map transfer"
+}

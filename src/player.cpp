@@ -56,6 +56,9 @@
 #include "game_system.h"
 #include "game_variables.h"
 #include "game_strings.h"
+#include "game_maniac_self_variables.h"
+#include "maniac_original_save.h"
+#include "maniac_patch.h"
 #include "game_targets.h"
 #include "game_windows.h"
 #include "graphics.h"
@@ -107,7 +110,9 @@ namespace Player {
 	int exit_code = EXIT_SUCCESS;
 	bool exit_flag = false;
 	bool reset_flag = false;
-	bool debug_flag;
+	uint8_t debug_flag;
+	uint8_t maniac_testplay_selector = 0;
+	bool maniac_rshift_message = false;
 	bool startup_debug_flag;
 	bool hide_title_flag;
 	int load_game_id;
@@ -247,6 +252,9 @@ void Player::Run() {
 }
 
 void Player::MainLoop() {
+	static uint32_t maniac_draw_counter = 0;
+	static bool maniac_skip_draw = false;
+	if (!IsPatchManiac() || !Main_Data::game_system) maniac_skip_draw = false;
 	Instrumentation::FrameScope iframe;
 
 	const auto frame_time = Game_Clock::now();
@@ -260,6 +268,8 @@ void Player::MainLoop() {
 		return;
 	}
 
+	if (DisplayUi->IsFocusPaused()) return;
+
 	int num_updates = 0;
 	while (Game_Clock::NextGameTimeStep()) {
 		if (num_updates > 0) {
@@ -272,10 +282,21 @@ void Player::MainLoop() {
 			}
 		}
 
+		if (DisplayUi->IsFocusPaused()) break;
+
 		Scene::old_instances.clear();
 		Scene::instance->MainFunction();
 
 		Graphics::GetMessageOverlay().Update();
+
+		// Advance after each logical frame; extra host refreshes retain this decision.
+		if (IsPatchManiac() && Main_Data::game_system) {
+			maniac_skip_draw = (maniac_draw_counter & Main_Data::game_system->GetManiacFrameSkipMask()) != 0;
+			if (maniac_skip_draw) maniac_draw_counter = 0;
+			else ++maniac_draw_counter;
+		} else {
+			maniac_skip_draw = false;
+		}
 
 		++num_updates;
 	}
@@ -285,7 +306,7 @@ void Player::MainLoop() {
 	}
 
 	Cache::UpdatePicturePreload();
-	Player::Draw();
+	if (!maniac_skip_draw) Player::Draw();
 
 	Scene::old_instances.clear();
 
@@ -376,6 +397,9 @@ void Player::Update(bool update_scene) {
 
 	Audio().Update();
 	Input::Update();
+	if (Scene::instance->type == Scene::Map) {
+		static_cast<Scene_Map*>(Scene::instance.get())->UpdateManiacLoadDelay();
+	}
 
 	// Game events can query full screen status and change their behavior, so this needs to
 	// be a game key and not a system key.
@@ -427,6 +451,8 @@ int Player::GetFrames() {
 }
 
 void Player::Exit() {
+	if (DisplayUi && IsPatchManiac() && game_config.maniac_version.Get() == 250921)
+		DisplayUi->SaveManiacVideoDefaults();
 	if (player_config.settings_autosave.Get()) {
 		Scene_Settings::SaveConfig(true);
 	}
@@ -442,6 +468,9 @@ void Player::Exit() {
 
 Game_Config Player::ParseCommandLine() {
 	debug_flag = false;
+	maniac_testplay_selector = 0;
+	maniac_rshift_message = false;
+	Game_Clock::SetTargetGameFps(DEFAULT_FPS);
 	startup_debug_flag = false;
 	hide_title_flag = false;
 	exit_flag = false;
@@ -694,7 +723,12 @@ Game_Config Player::ParseCommandLine() {
 }
 
 void Player::UpdateDebugFlag() {
-	debug_flag = startup_debug_flag || player_config.extra_force_testplay.Get();
+	debug_flag = IsPatchManiac() && maniac_testplay_selector > 0
+		? maniac_testplay_selector - 1 : startup_debug_flag || player_config.extra_force_testplay.Get();
+}
+
+void Player::SetTargetFps(int fps) {
+	if (DisplayUi) DisplayUi->SetFrameLimit(fps);
 }
 
 void Player::CreateGameObjects() {
@@ -854,7 +888,22 @@ void Player::CreateGameObjects() {
 		}
 	}
 
+	// All Maniac games use the backwards-compatible 250921 implementation.
+	// Normalize after auto-detection so legacy CLI/INI version hints cannot
+	// select an older path, and before defaults and game objects read it.
+	if (game_config.patch_maniac.Get() > 0) {
+		game_config.maniac_version.Set(250921);
+	}
+
 	game_config.PrintActivePatches();
+	if (IsPatchManiac() && game_config.maniac_version.Get() == 250921) {
+		int fullscreen_override = -1;
+		for (const auto& arg : arguments) {
+			if (arg == "--window" || arg == "Window") fullscreen_override = 0;
+			else if (arg == "--fullscreen" || arg == "FullScreen") fullscreen_override = 1;
+		}
+		DisplayUi->LoadManiacVideoDefaults(fullscreen_override);
+	}
 
 	ResetGameObjects();
 
@@ -951,6 +1000,7 @@ void Player::ResetGameObjects() {
 	Main_Data::game_variables->SetLowerLimit(lcf::Data::variables.size());
 
 	Main_Data::game_strings = std::make_unique<Game_Strings>();
+	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 
 	// 清空消息历史记录
 	Game_Message::ClearMessageHistory();
@@ -973,6 +1023,7 @@ void Player::ResetGameObjects() {
 	Main_Data::game_quit = std::make_unique<Game_Quit>();
 	Main_Data::game_switches_global = std::make_unique<Game_Switches>();
 	Main_Data::game_variables_global = std::make_unique<Game_Variables>(min_var, max_var);
+	Main_Data::game_strings_global = std::make_unique<Game_Strings>();
 	Main_Data::game_dynrpg = std::make_unique<Game_DynRpg>();
 	Main_Data::game_ineluki = std::make_unique<Game_Ineluki>();
 	Main_Data::game_destiny = std::make_unique<Game_Destiny>();
@@ -1173,7 +1224,7 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 		return;
 	}
 
-	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, encoding);
+	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
 
 	if (!save.get()) {
 		Output::ErrorStr(lcf::LcfReader::GetError());
@@ -1212,15 +1263,60 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 		save->airship_location.animation_type = Game_Character::AnimType::AnimType_non_continuous;
 	}
 
+	if (Player::IsPatchManiac()) {
+		if (Player::game_config.maniac_version.Get() == 250921 && !ManiacOriginalSave::ImportObservedGlobalScalars(*save)) {
+			Output::Error("Invalid Player Maniac global numeric/switch state in {}", save_name);
+			return;
+		}
+		if (!ManiacOriginalSave::ImportObservedGlobals(*save)) {
+			Output::Error("Unsupported Maniac original global string data in {}", save_name);
+			return;
+		}
+		if (!ManiacOriginalSave::ImportObservedBanks(*save)) {
+			Output::Error("Unsupported Maniac original self-bank data in {}", save_name);
+			return;
+		}
+	}
+
 	if (!load_on_map) {
 		Scene::PopUntil(Scene::Title);
 	}
 
+	// Direct startup loads can skip Scene_Title::Start, which applies the INI size.
+	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+			&& Player::has_custom_resolution) {
+		Player::ChangeResolution(Player::screen_width, Player::screen_height);
+	}
+
 	Main_Data::game_switches->SetLowerLimit(lcf::Data::switches.size());
 	Main_Data::game_switches->SetData(std::move(save->system.switches));
+	Main_Data::game_switches->SetManiacRawSaveData(save->easyrpg_data.maniac_global_switch_raw);
 	Main_Data::game_variables->SetLowerLimit(lcf::Data::variables.size());
 	Main_Data::game_variables->SetData(std::move(save->system.variables));
+	*Main_Data::game_variables->GetManiacWritable(0) = save->easyrpg_data.maniac_global_variable_zero;
+	if (!save->easyrpg_data.maniac_global_string_raw_bytes.empty()) {
+		std::vector<lcf::DBString> strings;
+		if (!ManiacStringStorage::Decode(save->easyrpg_data.maniac_global_string_raw_bytes, strings) || strings.empty()) {
+			Output::Error("Invalid Player Maniac global string data in {}", save_name);
+		}
+		save->easyrpg_data.maniac_global_string_zero = strings.front();
+		strings.erase(strings.begin());
+		save->system.maniac_strings = std::move(strings);
+	}
 	Main_Data::game_strings->SetData(std::move(save->system.maniac_strings));
+	Main_Data::game_strings->SetManiacEmptySlotSaveData(save->easyrpg_data.maniac_global_string_empty_slots);
+	Main_Data::game_strings->SetManiacVectorSize(save->easyrpg_data.maniac_global_string_vector_size);
+	Main_Data::game_strings->SetManiacZeroSaveData(
+		save->easyrpg_data.maniac_global_string_zero_present
+			? std::vector<lcf::DBString>{save->easyrpg_data.maniac_global_string_zero}
+			: std::vector<lcf::DBString>{});
+	if (!Main_Data::game_maniac_self_variables->SetSaveData(std::move(save->easyrpg_data.maniac_self_variable_banks))) {
+		Output::Error("Invalid Player Maniac self string data in {}", save_name);
+	}
+	if (save->easyrpg_data.version > 0) {
+		ManiacPatch::SetGeneratedCommonNameCache(save->easyrpg_data.maniac_generated_common_name_cache);
+	}
+	Main_Data::maniac_random_seed = save->easyrpg_data.maniac_random_seed;
 	Main_Data::game_system->SetupFromSave(std::move(save->system));
 	Main_Data::game_actors->SetSaveData(std::move(save->actors));
 	Main_Data::game_party->SetupFromSave(std::move(save->inventory));

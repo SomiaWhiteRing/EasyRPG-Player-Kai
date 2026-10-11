@@ -1,0 +1,45 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_contract_sha256": "a6cd62fe77dbba2f9c556d5665bec6b531bf307fe9a36f59fd703bbb2979b9bb",
+  "reviewed_end_markers_sha256": "0cb0a5130b1d4d13fbdecf8b7e61fd63e16842aac0462124be63872cd53cf207",
+  "reviewed_report_sha256": "1356ff7d14f395ae6a9a55e421de669e398fd9ec3927e06d4f1d219377bc5e3e",
+  "dispatch_instructions": {
+    "0x463e2": {
+      "instruction": "mov eax, dword ptr [r13]",
+      "bytes": "418b4500"
+    },
+    "0x463e6": {
+      "instruction": "sub eax, 1",
+      "bytes": "83e801"
+    },
+    "0x463e9": {
+      "instruction": "js 0x140047d15",
+      "bytes": "0f8826190000"
+    },
+    "0x463ef": {
+      "instruction": "jmp 0x1400458e0",
+      "bytes": "e9ecf4ffff"
+    }
+  },
+  "effective_branch_ids": [
+    "10:valid-frame-next-fetch"
+  ],
+  "invalid_state_branch": "A zero-depth interpreter reaches 0x47d15, an error path outside valid event execution; not a supported command mode.",
+  "parameter_rule": "Opcode 10 is an encoded event-list record and may retain arbitrary legacy Args/Text/indent. This dispatcher block reads none of its Args or Text. The shared fetch has already advanced the cursor before dispatch; opcode 10 immediately returns to fetch in the same dispatcher invocation. The opcode 0 file terminator is a separate command.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "runtime_context_evidence": "The shared 250921 dispatch site is not mode-gated. Existing fixed map/common fixtures contain opcode 10 records, but this scope audit does not claim original/Player dynamic parity for all contexts.",
+  "remaining_questions": [
+    "Original and Player same-invocation next-command scheduling and parent scan behavior for opcode 10 across map/common/battle contexts, including unusual retained Args/Text/indent, require W02-021.",
+    "Parent command-specific branch scans and loop/label behavior remain in W02-013 or other named command leaves; opcode 10 scope does not close them.",
+    "241028 consumers and Web/Android execution remain separate version/platform acceptance scopes."
+  ],
+  "acceptance_ids": [
+    "W02-021"
+  ],
+  "scope": "Fixed 250921 Windows opcode 10 End Nest effective runtime branch scope only. No Player feature parity is claimed."
+}

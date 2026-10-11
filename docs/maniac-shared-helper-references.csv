@@ -1,0 +1,249 @@
+﻿helper,file,line,source_excerpt,reference_kind,owner_function,review_status
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,1059,"Main_Data::game_system->SetMessageFaceName(ToString(CommandStringOrVariableBitfield(com, 3, 0, 4)));",consumer_call,Game_Interpreter::CommandChangeFaceGraphic,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1060,"Main_Data::game_system->SetMessageFaceIndex(ValueOrVariableBitfield(com, 3, 1, 0));",consumer_call,Game_Interpreter::CommandChangeFaceGraphic,待核对局部模式语义
+DecodeTargetEvaluationMode,src/game_interpreter.cpp,1180,bool target_eval_result = DecodeTargetEvaluationMode<,consumer_call,Game_Interpreter::CommandControlSwitches,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1331,"arg1 = ValueOrVariableBitfield(com.parameters[7], 0, arg1);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1332,"arg2 = ValueOrVariableBitfield(com.parameters[7], 1, arg2);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1342,"item = ValueOrVariable(com.parameters[7], item);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1351,"actor_id = ValueOrVariable(com.parameters[7], actor_id);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1360,"event_id = ValueOrVariable(com.parameters[7], event_id);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1372,"enemy_id = ValueOrVariable(com.parameters[7], enemy_id);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1382,"party_idx = ValueOrVariable(com.parameters[7], party_idx);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1396,"int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1397,"int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1403,"int arg = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1410,"int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1411,"int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[8]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1418,"int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1419,"int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[8]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1426,"int arg1 = ValueOrVariableBitfield(com.parameters[8], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1427,"int arg2 = ValueOrVariableBitfield(com.parameters[8], 1, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1434,"int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1435,"int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1441,"int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1442,"int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1448,"int arg = ValueOrVariableBitfield(com.parameters[6], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1454,"int arg1 = ValueOrVariableBitfield(com.parameters[8], 0, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1455,"int arg2 = ValueOrVariableBitfield(com.parameters[8], 1, com.parameters[7]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1462,"int arg1 = ValueOrVariableBitfield(mode, 0, com.parameters[6]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1463,"int arg2 = ValueOrVariableBitfield(mode, 1, com.parameters[7]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1466,"value = ValueOrVariableBitfield(mode, 2, com.parameters[8]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,1468,"value = ValueOrVariableBitfield(mode, 3, com.parameters[9]);",consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+DecodeTargetEvaluationMode,src/game_interpreter.cpp,1496,target_eval_result = DecodeTargetEvaluationMode<,consumer_call,Game_Interpreter::CommandControlVariables,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1778,"int value = ValueOrVariable(operand_type, operand);",consumer_call,Game_Interpreter::OperateValue,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1853,"seconds = ValueOrVariable(com.parameters[1],",consumer_call,Game_Interpreter::CommandTimerOperation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,1924,"int id = ValueOrVariable(com.parameters[1], com.parameters[2]);",consumer_call,Game_Interpreter::CommandChangePartyMember,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2065,"int skill_id = ValueOrVariable(com.parameters[3], com.parameters[4]);",consumer_call,Game_Interpreter::CommandChangeSkills,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2085,"item_id = ValueOrVariable(com.parameters[3],",consumer_call,Game_Interpreter::CommandChangeEquipment,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2145,"int amount = ValueOrVariable(com.parameters[3],",consumer_call,Game_Interpreter::CommandChangeHP,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2171,"int amount = ValueOrVariable(com.parameters[3], com.parameters[4]);",consumer_call,Game_Interpreter::CommandChangeSP,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2294,"int duration = ValueOrVariable(mode, com.parameters[0]);",consumer_call,Game_Interpreter::CommandWait,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2319,"music.name = ToString(CommandStringOrVariableBitfield(com, 4, 0, 5));",consumer_call,Game_Interpreter::CommandPlayBGM,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2321,"music.fadein = ValueOrVariableBitfield(com, 4, 1, 0);",consumer_call,Game_Interpreter::CommandPlayBGM,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2322,"music.volume = ValueOrVariableBitfield(com, 4, 2, 1);",consumer_call,Game_Interpreter::CommandPlayBGM,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2323,"music.tempo = ValueOrVariableBitfield(com, 4, 3, 2);",consumer_call,Game_Interpreter::CommandPlayBGM,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2324,"music.balance = ValueOrVariableBitfield(com, 4, 4, 3);",consumer_call,Game_Interpreter::CommandPlayBGM,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2338,"sound.name = ToString(CommandStringOrVariableBitfield(com, 3, 0, 4));",consumer_call,Game_Interpreter::CommandPlaySound,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2340,"sound.volume = ValueOrVariableBitfield(com, 3, 1, 0);",consumer_call,Game_Interpreter::CommandPlaySound,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2341,"sound.tempo = ValueOrVariableBitfield(com, 3, 2, 1);",consumer_call,Game_Interpreter::CommandPlaySound,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2342,"sound.balance = ValueOrVariableBitfield(com, 3, 3, 2);",consumer_call,Game_Interpreter::CommandPlaySound,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2592,"int id = ValueOrVariableBitfield(com, 1, 0, 0);",consumer_call,Game_Interpreter::CommandChangeHeroName,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2600,"actor->SetName(ToString(CommandStringOrVariableBitfield(com, 1, 1, 2)));",consumer_call,Game_Interpreter::CommandChangeHeroName,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2605,"int id = ValueOrVariableBitfield(com, 1, 0, 0);",consumer_call,Game_Interpreter::CommandChangeHeroTitle,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2613,"actor->SetTitle(ToString(CommandStringOrVariableBitfield(com, 1, 1, 2)));",consumer_call,Game_Interpreter::CommandChangeHeroTitle,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2618,"int id = ValueOrVariableBitfield(com, 3, 0, 0);",consumer_call,Game_Interpreter::CommandChangeSpriteAssociation,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2626,"auto file = ToString(CommandStringOrVariableBitfield(com, 3, 1, 4));",consumer_call,Game_Interpreter::CommandChangeSpriteAssociation,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2627,"int idx = ValueOrVariableBitfield(com, 3, 2, 1);",consumer_call,Game_Interpreter::CommandChangeSpriteAssociation,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2636,"int id = ValueOrVariableBitfield(com, 2, 0, 0);",consumer_call,Game_Interpreter::CommandChangeActorFace,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,2644,"ToString(CommandStringOrVariableBitfield(com, 2, 1, 3)),",consumer_call,Game_Interpreter::CommandChangeActorFace,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,2645,"ValueOrVariableBitfield(com, 2, 2, 1));",consumer_call,Game_Interpreter::CommandChangeActorFace,待核对局部模式语义
+CommandStringOrVariable,src/game_interpreter.cpp,2691,"Main_Data::game_system->SetSystemGraphic(ToString(CommandStringOrVariable(com, 2, 3)),",consumer_call,Game_Interpreter::CommandChangeSystemGraphics,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2733,"int map_id = ValueOrVariable(com.parameters[1], com.parameters[2]);",consumer_call,Game_Interpreter::CommandSetVehicleLocation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2734,"int x = ValueOrVariable(com.parameters[1], com.parameters[3]);",consumer_call,Game_Interpreter::CommandSetVehicleLocation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2735,"int y = ValueOrVariable(com.parameters[1], com.parameters[4]);",consumer_call,Game_Interpreter::CommandSetVehicleLocation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2785,"const auto x = ValueOrVariable(mode, com.parameters[2]);",consumer_call,Game_Interpreter::CommandChangeEventLocation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2786,"const auto y = ValueOrVariable(mode, com.parameters[3]);",consumer_call,Game_Interpreter::CommandChangeEventLocation,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2828,"int x = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandStoreTerrainID,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2829,"int y = ValueOrVariable(com.parameters[0], com.parameters[2]);",consumer_call,Game_Interpreter::CommandStoreTerrainID,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2837,"int x = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandStoreEventID,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,2838,"int y = ValueOrVariable(com.parameters[0], com.parameters[2]);",consumer_call,Game_Interpreter::CommandStoreEventID,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3231,"params.position_x = ValueOrVariable(pos_mode, com.parameters[2]);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3232,"params.position_y = ValueOrVariable(pos_mode, com.parameters[3]);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3266,"pic_id = ValueOrVariableBitfield(com.parameters[17], 0, pic_id);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+CommandStringOrVariableBitfield,src/game_interpreter.cpp,3267,"params.name = ToString(CommandStringOrVariableBitfield(com, 17, 2, 30));",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3269,"pic_id = ValueOrVariable(com.parameters[17], pic_id);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3281,"params.red = ValueOrVariableBitfield(com.parameters[17], 3, params.red);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3282,"params.green = ValueOrVariableBitfield(com.parameters[17], 3,  params.green);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3283,"params.blue = ValueOrVariableBitfield(com.parameters[17], 3, params.blue);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3284,"params.saturation = ValueOrVariableBitfield(com.parameters[17], 3,  params.saturation);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3287,"params.magnify_width = ValueOrVariableBitfield(com.parameters[20], 0, params.magnify_width);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3291,"params.magnify_height = ValueOrVariableBitfield((com.parameters[20] >> 1), 1, com.parameters[31]);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3296,"params.top_trans = ValueOrVariable(com.parameters[21], params.top_trans);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3308,"params.spritesheet_frame = ValueOrVariable(com.parameters[24], com.parameters[25]) - 1;",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3331,"params.effect_power = ValueOrVariableBitfield(com.parameters[16], 0, params.effect_power);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3332,"int divisor = ValueOrVariableBitfield(com.parameters[16], 1, com.parameters[15]);",consumer_call,Game_Interpreter::CommandShowPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3380,"params.position_x = ValueOrVariable(pos_mode, com.parameters[2]);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3381,"params.position_y = ValueOrVariable(pos_mode, com.parameters[3]);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3434,"pic_id = ValueOrVariable(ManiacBitmask(com.parameters[17], 0xFF), pic_id);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3441,"params.red = ValueOrVariableBitfield(com.parameters[17], 3, params.red);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3442,"params.green = ValueOrVariableBitfield(com.parameters[17], 3,  params.green);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3443,"params.blue = ValueOrVariableBitfield(com.parameters[17], 3, params.blue);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3444,"params.saturation = ValueOrVariableBitfield(com.parameters[17], 3,  params.saturation);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3447,"params.magnify_width = ValueOrVariableBitfield(com.parameters[20], 0, params.magnify_width);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3452,"params.magnify_height = ValueOrVariableBitfield((com.parameters[20] >> 1), 1, com.parameters[18]);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3457,"params.top_trans = ValueOrVariable(com.parameters[21], params.top_trans);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3475,"params.duration = ValueOrVariableBitfield(com.parameters[17], 2, params.duration);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3482,"params.effect_power = ValueOrVariableBitfield(com.parameters[4], 0, params.effect_power);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3483,"int divisor = ValueOrVariableBitfield(com.parameters[4], 1, com.parameters[7]);",consumer_call,Game_Interpreter::CommandMovePicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3542,"pic_id = ValueOrVariable(id_type, pic_id);",consumer_call,Game_Interpreter::CommandErasePicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,3611,"int event_id = ValueOrVariableBitfield(com.parameters[2], 2, com.parameters[0]);",consumer_call,Game_Interpreter::CommandMoveEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,3974,"value2 = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,4004,"item_id = ValueOrVariable(com.parameters[3], item_id);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,4023,"actor_id = ValueOrVariable(com.parameters[4], actor_id);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,4080,"chara_id = ValueOrVariable(com.parameters[3], chara_id);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,4180,"value2 = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+GetWithMode,src/game_interpreter.cpp,4196,"std::string_view str_l = Main_Data::game_strings->GetWithMode(str_param, modes[0]+1, com.parameters[2], *Main_Data::game_variables);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+GetWithMode,src/game_interpreter.cpp,4197,"std::string_view str_r = Main_Data::game_strings->GetWithMode(str_param, modes[1], com.parameters[3], *Main_Data::game_variables);",consumer_call,Game_Interpreter::CommandConditionalBranch,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4265,"int begin_arg = ValueOrVariableBitfield(com.parameters[1], 0, com.parameters[2]);",consumer_call,Game_Interpreter::CommandLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4266,"int end_arg = ValueOrVariableBitfield(com.parameters[1], 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4290,"check_beg = ValueOrVariableBitfield(com.parameters[1], 0, com.parameters[2]);",consumer_call,Game_Interpreter::CommandLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4291,"check_end = ValueOrVariableBitfield(com.parameters[1], 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4407,"check_cur = ValueOrVariableBitfield(com.parameters[1], 0, com.parameters[2]);",consumer_call,Game_Interpreter::CommandEndLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4408,"check_end = ValueOrVariableBitfield(com.parameters[1], 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandEndLoop,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,4451,"event_id = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[2]);",consumer_call,Game_Interpreter::CommandEraseEvent,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5270,"tile_coords.x = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5271,"tile_coords.y = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5272,"tile_coords.width = ValueOrVariableBitfield(com.parameters[0], 3, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5273,"tile_coords.height = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[6]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5306,"event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5326,"event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacGetGameInfo,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,5433,"int save_number = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandManiacGetSaveInfo,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,5478,"int pic_id = ValueOrVariable(com.parameters[7], com.parameters[param]);",consumer_call,Game_Interpreter::CommandManiacGetSaveInfo,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,5517,": ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandManiacSave,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,5556,": ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandManiacLoad,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5669,"int pic_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[1]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5679,"params.position_x = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[2]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5680,"params.position_y = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5681,"params.magnify_width = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5682,"params.top_trans = ValueOrVariableBitfield(com.parameters[0], 3, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5694,"params.magnify_width = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5698,"params.magnify_height = ValueOrVariableBitfield((com.parameters[0] >> 1), 7, com.parameters[23]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5718,"params.effect_power = ValueOrVariableBitfield(flags, 6, params.effect_power);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5719,"int divisor = ValueOrVariableBitfield(flags, 7, com.parameters[21]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5742,"params.width = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[18]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5743,"params.height = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[19]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,5754,"text.font_size = ValueOrVariableBitfield(com.parameters[0], 5, com.parameters[20]);",consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+GetWithMode,src/game_interpreter.cpp,5778,text.text = ToString(Main_Data::game_strings->GetWithMode(,consumer_call,Game_Interpreter::CommandManiacShowStringPicture,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,5808,"int pic_id = ValueOrVariable(com.parameters[0], com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacGetPictureInfo,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6075,"int key_id = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacKeyInputProcEx,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6096,"int tile_index = ValueOrVariableBitfield(mode, 0, com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacRewriteMap,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6097,"int x_start = ValueOrVariableBitfield(mode, 1, com.parameters[4]);",consumer_call,Game_Interpreter::CommandManiacRewriteMap,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6098,"int y_start = ValueOrVariableBitfield(mode, 2, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacRewriteMap,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6099,"int width = ValueOrVariableBitfield(mode, 3, com.parameters[6]);",consumer_call,Game_Interpreter::CommandManiacRewriteMap,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6100,"int height = ValueOrVariableBitfield(mode, 4, com.parameters[7]);",consumer_call,Game_Interpreter::CommandManiacRewriteMap,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6219,"int game_state_idx = ValueOrVariableBitfield(com.parameters[1], 0, com.parameters[3]);",consumer_call,Game_Interpreter::CommandManiacControlGlobalSave,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6220,"int global_save_idx = ValueOrVariableBitfield(com.parameters[1], 1, com.parameters[4]);",consumer_call,Game_Interpreter::CommandManiacControlGlobalSave,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter.cpp,6221,"int length = ValueOrVariableBitfield(com.parameters[1], 2, com.parameters[5]);",consumer_call,Game_Interpreter::CommandManiacControlGlobalSave,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6268,"//int value = ValueOrVariable(com.parameters[0], com.parameters[2]);",comment,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter.cpp,6311,"if (!DecodeTargetEvaluationMode<false, true, false, true, false>(com, string_id_0, string_id_1)) {",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6368,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6374,"args[0] = ValueOrVariable(modes[0], args[0]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6375,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6383,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6394,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6398,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6416,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6436,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6437,"args[2] = ValueOrVariable(modes[2], args[2]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6449,"args[1] = ValueOrVariable(modes[1] % 2, args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6450,"args[2] = ValueOrVariable(modes[2], args[2]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6482,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6483,"args[2] = ValueOrVariable(modes[2], args[2]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6529,"args[1] = ValueOrVariable(modes[1], args[1]); // not sure this is necessary but better safe",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6530,"args[2] = ValueOrVariable(modes[2], args[2]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6539,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6540,"args[2] = ValueOrVariable(modes[2], args[2]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6549,"args[1] = ValueOrVariable(modes[1], args[1]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6555,"args[0] = ValueOrVariable(modes[0], args[0]);",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6579,"args[1] = ValueOrVariable(modes[1], args[1]); // output var",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6580,"args[2] = ValueOrVariable(modes[2], args[2]); // beginning pos",consumer_call,Game_Interpreter::CommandManiacControlStrings,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6729,"int flag_value = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandEasyRpgSetInterpreterFlag,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6856,"int operation = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandEasyRpgProcessJson,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6876,"source_var_id = ValueOrVariable(com.parameters[2] - 1, com.parameters[3]);",consumer_call,Game_Interpreter::CommandEasyRpgProcessJson,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6885,"int target_var_type = ValueOrVariable(com.parameters[4], com.parameters[5]);",consumer_call,Game_Interpreter::CommandEasyRpgProcessJson,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,6886,"int target_var_id = ValueOrVariable(com.parameters[6], com.parameters[7]);",consumer_call,Game_Interpreter::CommandEasyRpgProcessJson,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7049,"int src_map = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7050,"int src_event = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7051,"int target_x = ValueOrVariable(com.parameters[4], com.parameters[5]);",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7052,"int target_y = ValueOrVariable(com.parameters[6], com.parameters[7]);",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7053,"int target_event = ValueOrVariable(com.parameters[8], com.parameters[9]);",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+CommandStringOrVariable,src/game_interpreter.cpp,7055,"std::string target_name = ToString(CommandStringOrVariable(com, 10, 11));",consumer_call,Game_Interpreter::CommandEasyRpgCloneMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter.cpp,7080,"int target_event = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter::CommandEasyRpgDestroyMapEvent,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_battle.cpp,724,"int common_event_identifier = ValueOrVariable(com.parameters[1], com.parameters[2]);",consumer_call,Game_Interpreter_Battle::CommandManiacControlBattle,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_battle.cpp,748,"int target_id = ValueOrVariable(target_reference_flags, target_reference_identifier);",consumer_call,Game_Interpreter_Battle::CommandManiacControlAtbGauge,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_battle.cpp,751,"int value = ValueOrVariable(value_reference_flags, value_reference_identifier);",consumer_call,Game_Interpreter_Battle::CommandManiacControlAtbGauge,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_battle.cpp,869,"int target_id = ValueOrVariable(target_reference_flags, target_reference_identifier);",consumer_call,Game_Interpreter_Battle::CommandManiacGetBattleInfo,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,315,"args.troop_id = ValueOrVariable(troop_mode, param(1));",consumer_call,Game_Interpreter_Map::CommandEnemyEncounter,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,687,"int h = ValueOrVariableBitfield(com, 1, 0, 2);",consumer_call,Game_Interpreter_Map::CommandPanScreen,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,688,"int v = ValueOrVariableBitfield(com, 1, 1, 3);",consumer_call,Game_Interpreter_Map::CommandPanScreen,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,690,"speed = ValueOrVariableBitfield(com, 1, 2, 5);",consumer_call,Game_Interpreter_Map::CommandPanScreen,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,737,"return ValueOrVariable(value_mode(slot), operand(index));",consumer_call,Game_Interpreter_Map::CommandShowBattleAnimation,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,801,"int event_id = ValueOrVariableBitfield(com, 7, 0, 0);",consumer_call,Game_Interpreter_Map::CommandFlashSprite,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,802,"int r = ValueOrVariableBitfield(com, 7, 1, 1);",consumer_call,Game_Interpreter_Map::CommandFlashSprite,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,803,"int g = ValueOrVariableBitfield(com, 7, 2, 2);",consumer_call,Game_Interpreter_Map::CommandFlashSprite,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,804,"int b = ValueOrVariableBitfield(com, 7, 3, 3);",consumer_call,Game_Interpreter_Map::CommandFlashSprite,待核对局部模式语义
+ValueOrVariableBitfield,src/game_interpreter_map.cpp,805,"int p = ValueOrVariableBitfield(com, 7, 4, 4);",consumer_call,Game_Interpreter_Map::CommandFlashSprite,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,838,"int pos_x = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter_Map::CommandPlayMovie,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,839,"int pos_y = ValueOrVariable(com.parameters[0], com.parameters[2]);",consumer_call,Game_Interpreter_Map::CommandPlayMovie,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,909,"const int actor_index = ValueOrVariable(com.parameters[1], com.parameters[2]);",consumer_call,Game_Interpreter_Map::CommandOpenSaveMenu,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,910,"const bool is_db_actor = ValueOrVariable(com.parameters[3], com.parameters[4]);",consumer_call,Game_Interpreter_Map::CommandOpenSaveMenu,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,973,"int x = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgTriggerEventAt,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,974,"int y = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgTriggerEventAt,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1015,"int event_id = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1016,"args.dest_x = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1017,"args.dest_y = ValueOrVariable(com.parameters[4], com.parameters[5]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1018,"args.search_max = ValueOrVariable(com.parameters[6], com.parameters[7]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1019,"args.steps_max = ValueOrVariable(com.parameters[8], com.parameters[9]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1037,"int var = ValueOrVariable(com.parameters[11], com.parameters[12]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1046,"args.frequency = ValueOrVariable(com.parameters[ni], com.parameters[ni + 1]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgPathfinder,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1079,"event_id = ValueOrVariable(com.parameters[0], com.parameters[1]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgWaitForSingleMovement,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1080,"failure_limit = ValueOrVariable(com.parameters[2], com.parameters[3]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgWaitForSingleMovement,待核对局部模式语义
+ValueOrVariable,src/game_interpreter_map.cpp,1081,"output_var = ValueOrVariable(com.parameters[4], com.parameters[5]);",consumer_call,Game_Interpreter_Map::CommandEasyRpgWaitForSingleMovement,待核对局部模式语义
+DecodeTargetEvaluationMode,src/game_interpreter_shared.cpp,44,"inline bool Game_Interpreter_Shared::DecodeTargetEvaluationMode(lcf::rpg::EventCommand const& com, int& id_0, int& id_1, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.cpp,112,"int Game_Interpreter_Shared::ValueOrVariable(int mode, int val, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,141,"int Game_Interpreter_Shared::ValueOrVariableBitfield(int mode, int shift, int val, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.cpp,142,"return ValueOrVariable<validate_patches, support_indirect_and_switch, support_scopes, support_named>((mode & (0xF << shift * 4)) >> shift * 4, val, interpreter);",shared_internal_call,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,146,"int Game_Interpreter_Shared::ValueOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,157,"return ValueOrVariableBitfield<validate_patches, support_indirect_and_switch, support_scopes, support_named>(mode, shift, com.parameters[val_idx], interpreter);",shared_internal_call,,非外部消费者
+CommandStringOrVariable,src/game_interpreter_shared.cpp,163,"std::string_view Game_Interpreter_Shared::CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+CommandStringOrVariableBitfield,src/game_interpreter_shared.cpp,179,"std::string_view Game_Interpreter_Shared::CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter) {",shared_definition,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.cpp,266,"template bool Game_Interpreter_Shared::DecodeTargetEvaluationMode<true, false, false, false, false>(lcf::rpg::EventCommand const&, int&, int&, Game_BaseInterpreterContext const&);",explicit_template_instantiation,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.cpp,267,"template bool Game_Interpreter_Shared::DecodeTargetEvaluationMode<true, true, true, false, false>(lcf::rpg::EventCommand const&, int&, int&, Game_BaseInterpreterContext const&);",explicit_template_instantiation,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.cpp,268,"template bool Game_Interpreter_Shared::DecodeTargetEvaluationMode<false, true, false, true, false>(lcf::rpg::EventCommand const&, int&, int&, Game_BaseInterpreterContext const&);",explicit_template_instantiation,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.cpp,271,"template bool Game_Interpreter_Shared::DecodeTargetEvaluationMode<false, true, true, true, true, true>(lcf::rpg::EventCommand const&, int&, int&, Game_BaseInterpreterContext const&);",explicit_template_instantiation,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.cpp,274,"template int Game_Interpreter_Shared::ValueOrVariable<true, true, false, false>(int, int, const Game_BaseInterpreterContext&);",explicit_template_instantiation,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,275,"template int Game_Interpreter_Shared::ValueOrVariableBitfield<true, true, false, false>(int, int, int, const Game_BaseInterpreterContext&);",explicit_template_instantiation,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,276,"template int Game_Interpreter_Shared::ValueOrVariableBitfield<true, true, false, false>(lcf::rpg::EventCommand const&, int, int, int, const Game_BaseInterpreterContext&);",explicit_template_instantiation,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.cpp,279,"template int Game_Interpreter_Shared::ValueOrVariableBitfield<false, true, true, true>(int, int, int, const Game_BaseInterpreterContext&);",explicit_template_instantiation,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.h,79,"bool DecodeTargetEvaluationMode(lcf::rpg::EventCommand const& com, int& id_0, int& id_1, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.h,93,"int ValueOrVariable(int mode, int val, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,95,"int ValueOrVariableBitfield(int mode, int shift, int val, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,96,"// Range checked, conditional version (slower) of ValueOrVariableBitfield",comment,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,98,"int ValueOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+CommandStringOrVariable,src/game_interpreter_shared.h,100,"std::string_view CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+CommandStringOrVariableBitfield,src/game_interpreter_shared.h,101,"std::string_view CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter);",declaration,,非外部消费者
+CommandStringOrVariable,src/game_interpreter_shared.h,182,"std::string_view CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx) const {",interpreter_wrapper,,非外部消费者
+CommandStringOrVariable,src/game_interpreter_shared.h,183,"return Game_Interpreter_Shared::CommandStringOrVariable(com, mode_idx, val_idx, *this);",interpreter_wrapper,,非外部消费者
+CommandStringOrVariableBitfield,src/game_interpreter_shared.h,185,"std::string_view CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx) const {",interpreter_wrapper,,非外部消费者
+CommandStringOrVariableBitfield,src/game_interpreter_shared.h,186,"return Game_Interpreter_Shared::CommandStringOrVariableBitfield(com, mode_idx, shift, val_idx, *this);",interpreter_wrapper,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.h,189,"inline bool DecodeTargetEvaluationMode(lcf::rpg::EventCommand const& com, int& id_0, int& id_1) const {",interpreter_wrapper,,非外部消费者
+DecodeTargetEvaluationMode,src/game_interpreter_shared.h,190,"return Game_Interpreter_Shared::DecodeTargetEvaluationMode<validate_patches, support_range_indirect, support_expressions, support_bitmask, support_scopes, support_named>(com, id_0, id_1, *this);",interpreter_wrapper,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.h,194,"inline int ValueOrVariable(int mode, int val) const {",interpreter_wrapper,,非外部消费者
+ValueOrVariable,src/game_interpreter_shared.h,195,"return Game_Interpreter_Shared::ValueOrVariable<validate_patches, support_indirect_and_switch, support_scopes, support_named>(mode, val, *this);",interpreter_wrapper,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,198,"inline int ValueOrVariableBitfield(int mode, int shift, int val) const {",interpreter_wrapper,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,199,"return Game_Interpreter_Shared::ValueOrVariableBitfield<validate_patches, support_indirect_and_switch, support_scopes, support_named>(mode, shift, val, *this);",interpreter_wrapper,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,203,"inline int ValueOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx) const {",interpreter_wrapper,,非外部消费者
+ValueOrVariableBitfield,src/game_interpreter_shared.h,204,"return Game_Interpreter_Shared::ValueOrVariableBitfield<validate_patches, support_indirect_and_switch, support_scopes, support_named>(com, mode_idx, shift, val_idx, *this);",interpreter_wrapper,,非外部消费者
+GetWithMode,src/game_strings.h,86,"std::string_view GetWithMode(std::string_view str_data, int mode, int arg, const Game_Variables& variables) const;",storage_helper_definition_or_declaration,,非外部消费者
+GetWithMode,src/game_strings.h,290,"inline std::string_view Game_Strings::GetWithMode(std::string_view str_data, int mode, int arg, const Game_Variables& variables) const {",storage_helper_definition_or_declaration,,非外部消费者
+GetWithMode,src/game_variables.h,51,"Var_t GetWithMode(int id, int mode) const;",storage_helper_definition_or_declaration,,非外部消费者

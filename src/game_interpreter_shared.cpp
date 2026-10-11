@@ -58,7 +58,7 @@ inline bool Game_Interpreter_Shared::DecodeTargetEvaluationMode(lcf::rpg::EventC
 			id_1 = com.parameters[2];
 			break;
 		case TargetEvalMode::eTargetEval_IndirectSingle:
-			id_0 = game_variables->Get(com.parameters[1]);
+			id_0 = interpreter.ResolveVariableIndirectAddress(com.parameters[1]);
 			id_1 = id_0;
 			break;
 		case TargetEvalMode::eTargetEval_IndirectRange:
@@ -70,8 +70,8 @@ inline bool Game_Interpreter_Shared::DecodeTargetEvaluationMode(lcf::rpg::EventC
 					return false;
 				}
 			}
-			id_0 = game_variables->Get(com.parameters[1]);
-			id_1 = game_variables->Get(com.parameters[2]);
+			id_0 = interpreter.ResolveVariableIndirectAddress(com.parameters[1]);
+			id_1 = interpreter.ResolveVariableIndirectAddress(com.parameters[2]);
 			break;
 		case TargetEvalMode::eTargetEval_Expression:
 			if constexpr (!support_expressions) {
@@ -90,6 +90,8 @@ inline bool Game_Interpreter_Shared::DecodeTargetEvaluationMode(lcf::rpg::EventC
 				return true;
 			}
 			break;
+		default:
+			return false;
 	}
 
 	if constexpr (validate_patches) {
@@ -107,11 +109,11 @@ inline bool Game_Interpreter_Shared::DecodeTargetEvaluationMode(lcf::rpg::EventC
 }
 
 template<bool validate_patches, bool support_indirect_and_switch, bool support_scopes, bool support_named>
-int Game_Interpreter_Shared::ValueOrVariable(int mode, int val, Game_BaseInterpreterContext const& /*interpreter*/) {
+int Game_Interpreter_Shared::ValueOrVariable(int mode, int val, Game_BaseInterpreterContext const& interpreter) {
 	if (mode == ValueEvalMode::eValueEval_Constant) {
 		return val;
 	} else if (mode == ValueEvalMode::eValueEval_Variable) {
-		return game_variables->Get(val);
+		return interpreter.ReadVariable(val);
 	} else {
 		if constexpr (support_indirect_and_switch) {
 			if constexpr (validate_patches) {
@@ -122,13 +124,13 @@ int Game_Interpreter_Shared::ValueOrVariable(int mode, int val, Game_BaseInterpr
 			// For simplicity it is enabled for all here
 			if (mode == ValueEvalMode::eValueEval_VariableIndirect) {
 				// Variable indirect
-				return game_variables->GetIndirect(val);
+				return interpreter.ReadVariableIndirect(val);
 			} else if (mode == ValueEvalMode::eValueEval_Switch) {
 				// Switch (F = 0, T = 1)
-				return game_switches->GetInt(val);
+				return interpreter.ReadSwitch(val);
 			} else if (mode == ValueEvalMode::eValueEval_SwitchIndirect) {
 				// Switch through Variable (F = 0, T = 1)
-				return game_switches->GetInt(game_variables->Get(val));
+				return interpreter.ReadSwitch(interpreter.ResolveVariableIndirectAddress(val));
 			}
 		}
 	}
@@ -158,7 +160,7 @@ int Game_Interpreter_Shared::ValueOrVariableBitfield(lcf::rpg::EventCommand cons
 	return com.parameters[val_idx];
 }
 
-std::string_view Game_Interpreter_Shared::CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx) {
+std::string_view Game_Interpreter_Shared::CommandStringOrVariable(lcf::rpg::EventCommand const& com, int mode_idx, int val_idx, Game_BaseInterpreterContext const& interpreter) {
 	if (!Player::IsPatchManiac()) {
 		return com.string;
 	}
@@ -166,13 +168,15 @@ std::string_view Game_Interpreter_Shared::CommandStringOrVariable(lcf::rpg::Even
 	assert(mode_idx != val_idx);
 
 	if (static_cast<int>(com.parameters.size()) > std::max(mode_idx, val_idx)) {
-		return game_strings->GetWithMode(com.string, com.parameters[mode_idx], com.parameters[val_idx], *game_variables);
+		auto mode = com.parameters[mode_idx];
+		auto arg = com.parameters[val_idx];
+		return mode == 1 ? interpreter.ReadString(arg) : mode == 2 ? interpreter.ReadString(interpreter.ResolveVariableIndirectAddress(arg)) : std::string_view(com.string);
 	}
 
 	return com.string;
 }
 
-std::string_view Game_Interpreter_Shared::CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx) {
+std::string_view Game_Interpreter_Shared::CommandStringOrVariableBitfield(lcf::rpg::EventCommand const& com, int mode_idx, int shift, int val_idx, Game_BaseInterpreterContext const& interpreter) {
 	if (!Player::IsPatchManiac()) {
 		return com.string;
 	}
@@ -181,7 +185,9 @@ std::string_view Game_Interpreter_Shared::CommandStringOrVariableBitfield(lcf::r
 
 	if (static_cast<int>(com.parameters.size()) >= std::max(mode_idx, val_idx) + 1) {
 		int mode = com.parameters[mode_idx];
-		return game_strings->GetWithMode(com.string, (mode & (0xF << shift * 4)) >> shift * 4, com.parameters[val_idx], *game_variables);
+		mode = (mode & (0xF << shift * 4)) >> shift * 4;
+		auto arg = com.parameters[val_idx];
+		return mode == 1 ? interpreter.ReadString(arg) : mode == 2 ? interpreter.ReadString(interpreter.ResolveVariableIndirectAddress(arg)) : std::string_view(com.string);
 	}
 
 	return com.string;

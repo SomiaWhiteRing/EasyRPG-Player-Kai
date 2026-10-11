@@ -113,7 +113,7 @@ namespace Game_Battle {
 	/**
 	 * Convenience function to call a maniacs battle hook, which processes sub-events at any time.
 	 */
-	bool ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0);
+	bool ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0, int* hook_result = nullptr);
 
 	/**
 	 * Convenience function to process all maniacs sub-events, and return whether they're currently running
@@ -140,6 +140,9 @@ namespace Game_Battle {
 	 * @return the battle game interpreter.
 	 */
 	Game_Interpreter_Battle& GetInterpreterBattle();
+	Game_Interpreter_Battle& GetPrimaryInterpreterBattle();
+	Game_Interpreter_Battle* SetManiacActiveInterpreter(Game_Interpreter_Battle* active);
+	bool IsManiacHookPumping();
 
 	void SetTerrainId(int id);
 	int GetTerrainId();

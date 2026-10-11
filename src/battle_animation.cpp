@@ -35,6 +35,7 @@
 #include "spriteset_map.h"
 #include "game_pictures.h"
 #include "game_variables.h"
+#include "game_maniac_self_variables.h"
 
 BattleAnimation::BattleAnimation(const lcf::rpg::Animation& anim, bool only_sound, int cutoff) :
 	animation(anim), only_sound(only_sound)
@@ -270,9 +271,15 @@ bool BattleAnimationMap::RefreshTarget() {
 			}
 		}
 	} else if (params.mode == 4) {
-		auto& variables = *Main_Data::game_variables;
-		screen_x = params.x_mode == 0 ? variables.Get(params.x) : variables.GetIndirect(params.x);
-		screen_y = params.y_mode == 0 ? variables.Get(params.y) : variables.GetIndirect(params.y);
+		const auto* self = Main_Data::game_maniac_self_variables.get();
+		const auto* bank = self
+			? self->Find(params.self_scope, params.self_map_id, params.self_event_id) : nullptr;
+		const auto read = [&](int address) {
+			return address >= 0 ? Main_Data::game_variables->Get(address)
+				: Game_ManiacSelfVariables::ReadNumber(bank, address);
+		};
+		screen_x = read(params.x);
+		screen_y = read(params.y);
 	}
 	return true;
 }
@@ -367,7 +374,9 @@ void BattleAnimationBattle::Draw(Bitmap& dst) {
 	if (IsOnlySound())
 		return;
 	if (animation.scope == lcf::rpg::Animation::Scope_screen) {
-		DrawAt(dst, Player::menu_offset_x + (Player::screen_width / 2), Player::menu_offset_y + (Player::screen_height / 3));
+		const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
+		DrawAt(dst, display_offset.x + (Player::IsPatchManiac() ? 160 : Player::screen_width / 2),
+			display_offset.y + (Player::IsPatchManiac() ? 80 : Player::screen_height / 3));
 		return;
 	}
 
@@ -381,7 +390,8 @@ void BattleAnimationBattle::Draw(Bitmap& dst) {
 				offset = CalculateOffset(animation.position, GetAnimationCellHeight() / 2);
 			}
 		}
-		DrawAt(dst, Player::menu_offset_x + battler->GetBattlePosition().x, Player::menu_offset_y + battler->GetBattlePosition().y + offset);
+		const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
+		DrawAt(dst, display_offset.x + battler->GetBattlePosition().x, display_offset.y + battler->GetBattlePosition().y + offset);
 	}
 }
 void BattleAnimationBattle::FlashTargets(int r, int g, int b, int p) {
@@ -406,13 +416,15 @@ void BattleAnimationBattler::Draw(Bitmap& dst) {
 	if (IsOnlySound())
 		return;
 	if (animation.scope == lcf::rpg::Animation::Scope_screen) {
-		DrawAt(dst, Player::menu_offset_x + Player::screen_width / 2, Player::menu_offset_y + Player::screen_height / 3);
+		const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
+		DrawAt(dst, display_offset.x + (Player::IsPatchManiac() ? 160 : Player::screen_width / 2),
+			display_offset.y + (Player::IsPatchManiac() ? 80 : Player::screen_height / 3));
 		return;
 	}
 
 	for (auto* battler: battlers) {
 		SetFlashEffect(battler->GetFlashColor());
-		// Game_Battler::GetDisplayX() and Game_Battler::GetDisplayX() already add MENU_OFFSET
+		// Display coordinates already include battle alignment, shake and flying offsets.
 		DrawAt(dst, battler->GetDisplayX(), battler->GetDisplayY());
 	}
 }

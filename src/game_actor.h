@@ -205,6 +205,9 @@ public:
 	 */
 	int GetNextExp() const;
 
+	/** Fixed Maniac property17 threshold, including levels beyond the actor cap. */
+	int GetManiacNextExp() const;
+
 	/**
 	 * Return how many Exp are needed for a level up.
 	 *
@@ -242,6 +245,7 @@ public:
 	 * @return name.
 	 */
 	std::string_view GetName() const override;
+	bool IsManiacNamePresent() const;
 
 	/**
 	 * Gets actor name from the database.
@@ -322,6 +326,7 @@ public:
 	 * @return title.
 	 */
 	std::string_view GetTitle() const;
+	bool IsManiacTitlePresent() const;
 
 	/**
 	 * Gets actor title from the database.
@@ -765,14 +770,14 @@ public:
 	 *
 	 * @param new_name new name.
 	 */
-	void SetName(const std::string &new_name);
+	void SetName(const std::string &new_name, bool present = true);
 
 	/**
 	 * Sets new actor title.
 	 *
 	 * @param new_title new title.
 	 */
-	void SetTitle(const std::string &new_title);
+	void SetTitle(const std::string &new_title, bool present = true);
 
 	/**
 	 * Sets actor sprite.
@@ -984,6 +989,9 @@ private:
 	void RemoveInvalidData();
 
 	lcf::rpg::SaveActor data;
+	// Runtime pointer presence; the ordinary actor LCF fields store only bytes.
+	bool maniac_name_present = false;
+	bool maniac_title_present = false;
 	const lcf::rpg::Actor* dbActor = nullptr;
 	std::vector<int> exp_list;
 };
@@ -992,8 +1000,9 @@ inline Game_Battler::BattlerType Game_Actor::GetType() const {
 	return Game_Battler::Type_Ally;
 }
 
-inline void Game_Actor::SetName(const std::string &new_name) {
-	data.name = (new_name != dbActor->name)
+inline void Game_Actor::SetName(const std::string &new_name, bool present) {
+	maniac_name_present = present;
+	data.name = (new_name != dbActor->name || (new_name.empty() && present))
 		? new_name
 		: lcf::rpg::SaveActor::kEmptyName;
 }
@@ -1004,12 +1013,18 @@ inline std::string_view Game_Actor::GetName() const {
 		: std::string_view(dbActor->name);
 }
 
+inline bool Game_Actor::IsManiacNamePresent() const {
+	return data.name == lcf::rpg::SaveActor::kEmptyName
+		? !dbActor->name.empty() : !data.name.empty() || maniac_name_present;
+}
+
 inline std::string_view Game_Actor::GetOriginalName() const {
 	return dbActor->name;
 }
 
-inline void Game_Actor::SetTitle(const std::string &new_title) {
-	data.title = (new_title != dbActor->title)
+inline void Game_Actor::SetTitle(const std::string &new_title, bool present) {
+	maniac_title_present = present;
+	data.title = (new_title != dbActor->title || (new_title.empty() && present))
 		? new_title
 		: lcf::rpg::SaveActor::kEmptyName;
 }
@@ -1018,6 +1033,11 @@ inline std::string_view Game_Actor::GetTitle() const {
 	return data.title != lcf::rpg::SaveActor::kEmptyName
 		? std::string_view(data.title)
 		: std::string_view(dbActor->title);
+}
+
+inline bool Game_Actor::IsManiacTitlePresent() const {
+	return data.title == lcf::rpg::SaveActor::kEmptyName
+		? !dbActor->title.empty() : !data.title.empty() || maniac_title_present;
 }
 
 inline std::string_view Game_Actor::GetOriginalTitle() const {

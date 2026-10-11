@@ -1,0 +1,17 @@
+{
+  "variant": "common1005-modes-auto",
+  "runtime": "original",
+  "initial_attempts": [
+    {
+      "timeout_seconds": 45,
+      "result": "RuntimeError: battle fixture did not create a stable save",
+      "save_observed_before_timeout": false
+    },
+    {
+      "timeout_seconds": 90,
+      "result": "RuntimeError: battle fixture did not create a stable save",
+      "save_observed_before_timeout": false
+    }
+  ],
+  "diagnostic": "A bounded manual Frida probe later observed seven 1005 entries and one 3002 save call, and a direct rerun of the normal trace probe succeeded. This indicates intermittent original startup or capture timing; it does not count either failed attempt as a passing trace. Subsequent capture records retain every retry outcome."
+}

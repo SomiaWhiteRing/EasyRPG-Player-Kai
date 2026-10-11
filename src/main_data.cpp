@@ -34,6 +34,8 @@
 #include "game_map.h"
 #include "game_variables.h"
 #include "game_strings.h"
+#include "game_maniac_self_variables.h"
+#include "game_maniac_js.h"
 #include "game_switches.h"
 #include "game_targets.h"
 #include "game_quit.h"
@@ -60,6 +62,21 @@ namespace Main_Data {
 	std::unique_ptr<Game_Switches> game_switches;
 	std::unique_ptr<Game_Variables> game_variables;
 	std::unique_ptr<Game_Strings> game_strings;
+	std::unique_ptr<Game_ManiacSelfVariables> game_maniac_self_variables;
+	uint32_t maniac_random_seed = maniac_initial_random_seed;
+
+	uint32_t NextManiacRandom() {
+		maniac_random_seed = maniac_random_seed * 0x08088405u + 1u;
+		return maniac_random_seed;
+	}
+
+	int32_t ManiacRandomInclusive(int32_t first, int32_t last) {
+		const int64_t lower = std::min(first, last);
+		const int64_t upper = std::max(first, last);
+		const uint64_t count = static_cast<uint64_t>(upper - lower + 1);
+		const uint64_t offset = (static_cast<uint64_t>(NextManiacRandom()) * count) >> 32;
+		return static_cast<int32_t>(lower + static_cast<int64_t>(offset));
+	}
 	std::unique_ptr<Game_Screen> game_screen;
 	std::unique_ptr<Game_Pictures> game_pictures;
 	std::unique_ptr<Game_Windows> game_windows;
@@ -75,6 +92,7 @@ namespace Main_Data {
 	bool global_save_opened = false;
 	std::unique_ptr<Game_Switches> game_switches_global;
 	std::unique_ptr<Game_Variables> game_variables_global;
+	std::unique_ptr<Game_Strings> game_strings_global;
 
 	std::unique_ptr<FileFinder_RTP> filefinder_rtp;
 }
@@ -113,9 +131,13 @@ void Main_Data::Init() {
 }
 
 void Main_Data::Cleanup() {
+	Game_ManiacJs::Reset();
+	Output::ManiacConsoleClose();
 	Game_Map::Quit();
 
 	game_switches.reset();
+	game_maniac_self_variables.reset();
+	maniac_random_seed = maniac_initial_random_seed;
 	game_screen.reset();
 	game_pictures.reset();
 	game_windows.reset();
@@ -132,6 +154,7 @@ void Main_Data::Cleanup() {
 	global_save_opened = false;
 	game_switches_global.reset();
 	game_variables_global.reset();
+	game_strings_global.reset();
 }
 
 const std::string& Main_Data::GetDefaultProjectPath() {

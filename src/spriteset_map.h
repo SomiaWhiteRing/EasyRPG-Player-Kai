@@ -75,6 +75,8 @@ public:
 	 * Replaces a single tile in lower layer at the given coordinates.
 	 */
 	void ReplaceDownAt(int x, int y, int tile_index, bool disable_autotile);
+	/** Replace a lower map cell using its raw chip ID. */
+	void ReplaceDownTileAt(int x, int y, int tile_id, bool disable_autotile);
 
 	/**
 	 * Replaces a single tile in upper layer at the given coordinates.

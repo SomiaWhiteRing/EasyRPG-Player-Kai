@@ -1,0 +1,285 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "fixture_manifest_sha256": "79e6d89dbaaf2578a001c74d8546fda62c11f5b097d7a036f8c7ed5f5398ecef",
+  "trace_sha256": "288417b166cc2703e8bb6b57dd05cb23072ebded755bd0e84544cc373fff2eb8",
+  "direct_binding_audit_sha256": "1725ce1788b508ef74938e57a5ae8df1c4e7d46ac6f22600178b10766d1d1aa0",
+  "parent_registration_calls": [
+    {
+      "call_site_rva": "0x18197d",
+      "target_rva": "0x1803e0"
+    },
+    {
+      "call_site_rva": "0x181982",
+      "target_rva": "0x17e030"
+    }
+  ],
+  "registration_helper_calls": [
+    {
+      "call_site_rva": "0x17e358",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x17e3a7",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x17e3f6",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x17e445",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x17e494",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x17e4e3",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1806e5",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": false
+    },
+    {
+      "call_site_rva": "0x18071c",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180771",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1807c7",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180816",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180865",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1808b4",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180903",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180952",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1809d6",
+      "target_rva": "0xfac60",
+      "helper": "create_native_function",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180a47",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": false
+    },
+    {
+      "call_site_rva": "0x180a7e",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180ade",
+      "target_rva": "0xfac60",
+      "helper": "create_native_function",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180b4b",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": false
+    },
+    {
+      "call_site_rva": "0x180b7e",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x180c0c",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": false
+    },
+    {
+      "call_site_rva": "0x180c3f",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x181763",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1817bd",
+      "target_rva": "0x139db0",
+      "helper": "define_named_property",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x1818b4",
+      "target_rva": "0xfac60",
+      "helper": "create_native_function",
+      "observed_in_fixed_startup": true
+    },
+    {
+      "call_site_rva": "0x181920",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": false
+    },
+    {
+      "call_site_rva": "0x181953",
+      "target_rva": "0x101790",
+      "helper": "define_property_by_atom",
+      "observed_in_fixed_startup": true
+    }
+  ],
+  "indirect_import_calls": [
+    {
+      "call_site_rva": "0x1816a2",
+      "iat_rva": "0x1ff238",
+      "import": "KERNEL32.dll.FreeConsole"
+    },
+    {
+      "call_site_rva": "0x181a2f",
+      "iat_rva": "0x1ff160",
+      "import": "KERNEL32.dll.GetConsoleWindow"
+    },
+    {
+      "call_site_rva": "0x181a43",
+      "iat_rva": "0x1ff240",
+      "import": "KERNEL32.dll.AllocConsole"
+    },
+    {
+      "call_site_rva": "0x181a5c",
+      "iat_rva": "0x1ff160",
+      "import": "KERNEL32.dll.GetConsoleWindow"
+    },
+    {
+      "call_site_rva": "0x181b41",
+      "iat_rva": "0x1ff248",
+      "import": "KERNEL32.dll.SetConsoleTitleW"
+    },
+    {
+      "call_site_rva": "0x181b5c",
+      "iat_rva": "0x1ff5d8",
+      "import": "USER32.dll.SystemParametersInfoW"
+    },
+    {
+      "call_site_rva": "0x181b74",
+      "iat_rva": "0x1ff690",
+      "import": "USER32.dll.GetWindowRect"
+    },
+    {
+      "call_site_rva": "0x181c28",
+      "iat_rva": "0x1ff698",
+      "import": "USER32.dll.SetWindowPos"
+    },
+    {
+      "call_site_rva": "0x181c3a",
+      "iat_rva": "0x1ff5e0",
+      "import": "USER32.dll.SetForegroundWindow"
+    }
+  ],
+  "static_helper_call_count": 28,
+  "observed_helper_call_count": 23,
+  "static_sites_not_observed_in_one_startup": [
+    "0x1806e5",
+    "0x180a47",
+    "0x180b4b",
+    "0x180c0c",
+    "0x181920"
+  ],
+  "alternate_property_paths": [
+    {
+      "property": "global.rm2k3",
+      "name_lea_rva": "0x18068a",
+      "type_6_test_rva": "0x1806bf",
+      "alternate_helper_call_rva": "0x1806e5",
+      "fresh_startup_helper_call_rva": "0x18071c",
+      "join_rva": "0x180743"
+    },
+    {
+      "property": "console.log",
+      "name_lea_rva": "0x1809ec",
+      "type_6_test_rva": "0x180a21",
+      "alternate_helper_call_rva": "0x180a47",
+      "fresh_startup_helper_call_rva": "0x180a7e",
+      "join_rva": "0x180aa5"
+    },
+    {
+      "property": "console.input",
+      "name_lea_rva": "0x180af4",
+      "type_6_test_rva": "0x180b29",
+      "alternate_helper_call_rva": "0x180b4b",
+      "fresh_startup_helper_call_rva": "0x180b7e",
+      "join_rva": "0x180ba5"
+    },
+    {
+      "property": "global.console",
+      "name_lea_rva": "0x180bb5",
+      "type_6_test_rva": "0x180bea",
+      "alternate_helper_call_rva": "0x180c0c",
+      "fresh_startup_helper_call_rva": "0x180c3f",
+      "join_rva": "0x180c66"
+    },
+    {
+      "property": "global.include",
+      "name_lea_rva": "0x1818c0",
+      "type_6_test_rva": "0x1818fc",
+      "alternate_helper_call_rva": "0x181920",
+      "fresh_startup_helper_call_rva": "0x181953",
+      "join_rva": "0x181979"
+    }
+  ],
+  "scope": "Fixed 250921 startup initializer and two host registration functions: all direct calls to three property/function registration helpers are enumerated; indirect calls in the initializer resolve to PE imports. The five helper sites not reached in one fresh startup are type-6 alternate assignments for five named properties, each rejoining its observed path. This attributes the sites, not the full provenance of standard-library descriptors or all registration calls, so M0-028 remains open."
+}

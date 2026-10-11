@@ -1,0 +1,105 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+  "cases": [
+    {
+      "runtime": "original",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "runtime": "player",
+      "rounds": [
+        {
+          "slot": 1,
+          "numbers": [
+            1,
+            1,
+            0
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    1,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        },
+        {
+          "slot": 2,
+          "numbers": [
+            2,
+            2,
+            0
+          ],
+          "map_self": [
+            {
+              "map_id": 1,
+              "events": [
+                {
+                  "event_id": 1,
+                  "numbers_positive_slots": [
+                    2,
+                    0
+                  ]
+                }
+              ],
+              "other_map_fields_hex": {}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "scope": "250921 Windows map parallel mode 0 single frame End Command at the LCF file terminator. Both original and Player produce two rounds with counters and same self bank advancing 1 to 2. Original native hook observes same frame twice; Player reaches the list boundary without an explicit opcode 0 object. Nested/mode1 and battle/mode2 remain separate."
+}

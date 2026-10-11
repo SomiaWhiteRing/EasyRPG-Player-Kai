@@ -20,12 +20,23 @@
 
 #include <mutex>
 #include <functional>
+#include <string>
+#include <string_view>
+#include <cstdint>
 #include <jni.h>
 
 namespace EpAndroid {
 	extern JNIEnv* env;
 	extern std::function<void()> android_fn;
 	extern std::mutex android_mutex;
+
+	bool ConsoleOpen(std::string_view title, bool update_window);
+	void ConsoleClose();
+	bool ConsoleWrite(std::string_view text);
+	bool ConsoleColor(uint32_t options, int foreground, int background);
+	bool ConsoleFocus(bool console);
+	uint32_t ConsoleGeneration();
+	bool ReadConsoleLine(std::u16string& line);
 
 	inline void invoke() {
 		if (!android_fn) {

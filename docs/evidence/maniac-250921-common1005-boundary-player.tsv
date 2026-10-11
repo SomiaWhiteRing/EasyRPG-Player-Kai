@@ -1,0 +1,9 @@
+case	depth_before	depth_after	common_id	kind	error
+missing	1	2	0	37	CallCommonEvent: Can't call invalid common event 0
+zero	1	2	0	37	CallCommonEvent: Can't call invalid common event 0
+negative	1	2	-1	37	CallCommonEvent: Can't call invalid common event -1
+out-of-range	1	2	2	37	CallCommonEvent: Can't call invalid common event 2
+int-max	1	2	2147483647	37	CallCommonEvent: Can't call invalid common event 2147483647
+depth-pass	8192	8193	1	37	-
+depth-error	8193	8193	1	37	Call Event limit (8192) has been exceeded
+empty	1	0	1	37	-

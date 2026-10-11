@@ -1,0 +1,26 @@
+{
+  "reference_sha256": "49ba424f3ff1fa7d4fc1334eea272fde4e437d07a6901dc6b87efb95383ec44d",
+  "manifest_sha256": "4d8026b24c3aabd670aa1135358a3d8be62f43c2a15c866399ef8c5f48ea4cd4",
+  "input_file_hashes": {
+    "RPG_RT.exe": "49ba424f3ff1fa7d4fc1334eea272fde4e437d07a6901dc6b87efb95383ec44d",
+    "RPG_RT.ldb": "805d24bb27059692f7250d65bd83ab54e6ac2c404ddb00e49d6dc5884f4a5f89",
+    "RPG_RT.lmt": "49520efc6a741a730185380c557bc1a5c7b3ab04834068550031f94e528d7f19",
+    "Map0001.lmu": "0f6e4cdeb9aa8941226fe1ab67d222d11479f3bfed599f4dac5fbd96cb4b8470",
+    "ChipSet/probe.png": "38cf4e0cef5d2c476c459eceb80390a6653a7ced0613b9080f15cd8162fc6679"
+  },
+  "shared_input_hashes": {
+    "RPG_RT.ldb": "805d24bb27059692f7250d65bd83ab54e6ac2c404ddb00e49d6dc5884f4a5f89",
+    "RPG_RT.lmt": "49520efc6a741a730185380c557bc1a5c7b3ab04834068550031f94e528d7f19",
+    "Map0001.lmu": "0f6e4cdeb9aa8941226fe1ab67d222d11479f3bfed599f4dac5fbd96cb4b8470",
+    "ChipSet/probe.png": "38cf4e0cef5d2c476c459eceb80390a6653a7ced0613b9080f15cd8162fc6679"
+  },
+  "trace_sha256": "256c579eec9c6b247c5c32987f03a16b169a50a379e0c099e1bfa7117b93a654",
+  "save_sha256": "4ecc116af52cd2c9db5a6018f5e483152b30243f11bb0b9196c87df42dc9a0f0",
+  "global_numeric_slots_1_to_3": [
+    0,
+    42,
+    99
+  ],
+  "global_string_slot_1": "undefined",
+  "scope": "241028 original 3030 throw Error('boom') result destinations, subsequent 3030 expression 40+2, following 10220 marker, and 3002 save reached; other exception classes, modes, stack context, and Player JavaScript implementation remain unverified"
+}

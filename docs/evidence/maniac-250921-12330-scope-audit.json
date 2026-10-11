@@ -1,0 +1,140 @@
+{
+  "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_source_sha256": {
+    "commands/12330.md": "1f97cd7756056a9964d865d460daf87c01f2f244317507183f2ae31e9f5345a3",
+    "evidence/CallEvent-250921.md": "224089f7614d65fc02e62fed0ec585cec00cb5f25e94ad24c20d8a7bc63826d5",
+    "evidence/runtime-250921/000252f0.c": "485047ec0c04f4f8780785efa6714e257da1a8737a97b78083cf433c2cbb0b9d",
+    "evidence/native-250921/000305f0.c": "0fe2c10b1d7218d29fbc2075408234fe934ec26df2d89769957336350882a7a7",
+    "evidence/runtime-250921/00030e70.c": "7c649676a9e047a493cfaf9dff38317faaeab5cf01a9f3c53d23df9b374801c6",
+    "evidence/NativeBatch01-250921.md": "8724a645a1cd46b056a276915617b9810f4746e49fc7ea346831bcc04b18be94",
+    "analysis-work/reports/12330-fd90febfb1340fc18a2e3f3696bfa8b61fc2efff62a9b11f61f40d848dd41818.json": "e99ce18b1b982ecf455d08fa2617f8a5d8a483fb886c8ba0aae10678508e5f62"
+  },
+  "reviewed_contract_sha256": "83f527ef0877a46718e640c8c44c193d0b56e159d2a411b6c3c814c41f5f7163",
+  "handler": {
+    "rva": "0x252f0",
+    "end_rva_exclusive": "0x2657c",
+    "sha256": "dd6d0462fa80e1c1af19bc4bc31f8e0524d575ea6e5efc9763862ed0278d457e"
+  },
+  "dispatch_and_helpers": [
+    {
+      "rva": "0x47a0a",
+      "size": 21,
+      "sha256": "394a308a6147d259e565ed47d1be7d26cda5e66c803123c3b21c44185ad68365",
+      "instructions": 6
+    },
+    {
+      "rva": "0x8c210",
+      "size": 75,
+      "sha256": "d7981c01de1fe01c5669542ded1a8059e4723e5feed3dd643e4611b1f2641c24",
+      "instructions": 24
+    },
+    {
+      "rva": "0x17d680",
+      "size": 180,
+      "sha256": "f99080f85f90a28cfd17ca383baf655f9e223f7a2ed76dc01f28add0a645c086",
+      "instructions": 50
+    },
+    {
+      "rva": "0x8c9e0",
+      "size": 220,
+      "sha256": "b1c187ba8758cf9000654e45865944eccd762874a7d064e937d7f70a08f66b2e",
+      "instructions": 63
+    },
+    {
+      "rva": "0x8cca0",
+      "size": 234,
+      "sha256": "1b959feb3aa7bcb302c0fdb600c56ceeb4abde83858671a0c9c0aa6a5b529c54",
+      "instructions": 71
+    },
+    {
+      "rva": "0x17d740",
+      "size": 119,
+      "sha256": "1112af3e72071a208c23e67336a643d3a870bebee50dc2735bb3f22f126a03bb",
+      "instructions": 37
+    },
+    {
+      "rva": "0x8cd90",
+      "size": 154,
+      "sha256": "d1a2f51d3ad62c4421adcffab3e4207fe2c707f95bd2e5017fff5065841d1b5c",
+      "instructions": 51
+    },
+    {
+      "rva": "0x8c100",
+      "size": 272,
+      "sha256": "25f55014dc428201e151553f8d40e59ae7a0e9054a1ac0ba61aecedd1f3932ae",
+      "instructions": 84
+    }
+  ],
+  "effective_branch_ids": [
+    "12330:common-selector-literal-variable-indirect-unknown",
+    "12330:map-selector-literal-current-variable-page",
+    "12330:map-clone-definition-and-page-error",
+    "12330:common-name-literal-cache-and-text-budget",
+    "12330:common-name-string-direct-indirect",
+    "12330:id-offset-literal-variable-indirect",
+    "12330:typed-number-string-switch-argument-sources",
+    "12330:typed-argument-sequential-alias-and-bank",
+    "12330:short-count-extra-unknown-record",
+    "12330:zeroed-frame-depth-and-error-order",
+    "12330:deferred-return-destination",
+    "12330:four-context-call-wait-save-continuation",
+    "12330:3019-produced-call-record"
+  ],
+  "branch_acceptance_ids": {
+    "12330:common-selector-literal-variable-indirect-unknown": "W02-004;W02-040;W02-042",
+    "12330:map-selector-literal-current-variable-page": "W02-037",
+    "12330:map-clone-definition-and-page-error": "W02-038",
+    "12330:common-name-literal-cache-and-text-budget": "W02-040",
+    "12330:common-name-string-direct-indirect": "W02-004;W02-040",
+    "12330:id-offset-literal-variable-indirect": "W02-004;W02-040",
+    "12330:typed-number-string-switch-argument-sources": "W02-001;W02-041",
+    "12330:typed-argument-sequential-alias-and-bank": "W02-001;W02-041",
+    "12330:short-count-extra-unknown-record": "W02-042",
+    "12330:zeroed-frame-depth-and-error-order": "W02-042",
+    "12330:deferred-return-destination": "W02-043",
+    "12330:four-context-call-wait-save-continuation": "W02-046;W02-047;W02-048;W02-049",
+    "12330:3019-produced-call-record": "W03-009"
+  },
+  "acceptance_ids": [
+    "W02-001",
+    "W02-004",
+    "W02-037",
+    "W02-038",
+    "W02-040",
+    "W02-041",
+    "W02-042",
+    "W02-043",
+    "W02-046",
+    "W02-047",
+    "W02-048",
+    "W02-049",
+    "W03-009"
+  ],
+  "preserved_partial_acceptance_ids": [
+    "W02-001",
+    "W02-004"
+  ],
+  "selector_rule": "A0 0/unknown literal common; 1 map literal with 10005 current-event fallback; 2 map numeric event/page; 3 common numeric; 4 double numeric; 5 literal name; 6 string-variable name; 7 numeric-selected string-variable name. A3 low nibble selects A4 literal/one-read/two-read offset, added as int32 only to selected ID.",
+  "name_text_rule": "Runtime Text cursor uses UTF16-unit scan with approximate one/two-byte budget, not editor ANSI slicing. Literal selector 5 caches pre-offset ID at command+8 but rescans name on cache hit; literal type-4 arguments continue at the same cursor. Name lookup is case-sensitive and first duplicate wins; string-variable names stop at NUL.",
+  "argument_rule": "A6 positive signed count loops even if argument pairs are missing; absent fields resolve zero. Types 0/1/unknown raw number, 2/3 variable number, 4 literal Text string, 5/6 string variable, 7 raw low switch byte, 8/9 stored switch. Number/string/switch slots each start at 1 in persistent callee bank; source read and destination write alternate, so recursive aliasing changes later reads.",
+  "frame_and_return_rule": "Old depth >8192 fails. A zeroed 0x40 frame is allocated before event selection, typed arguments assigned before append; common kind 0x25 and map kind 0x15. Map frame stores requested ID separately from resolved definition/self identity. Records with >=6 fields save A3 receiver nibble and raw A5 for later 12310; delivery is not performed by 12330 or ordinary frame end.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page",
+    "3019-produced record"
+  ],
+  "remaining_questions": [
+    "W02-037/038: map selectors, current event/page, clone requested-vs-definition identity, missing map event/page errors.",
+    "W02-040: name lookup/cache and shared Text cursor across literal argument strings, offsets and lookup errors.",
+    "W02-041/026: all typed argument sources, independent slots, recursion aliasing and persistent banks.",
+    "W02-042: short/extra/unknown records, depth, frame/error order, retained text and safe malformed-input policy.",
+    "W02-043/007: deferred receiver fields and 12310 return-time delivery/cleanup interaction.",
+    "W02-044 children W02-046..049 and W02-010: four-context wait, save/restart and caller continuation.",
+    "W03-009: 3019-generated 12330 owner/indent/cursor and same-frame redispatch; target payload remains under W02-037..044.",
+    "W11-016: original/Player raw switch-byte-3 LSD discrepancy is separate from W02-041 runtime argument parity.",
+    "241028 and Web/Android retain separate version/platform acceptance."
+  ],
+  "scope": "250921 Windows original consumer and helper scope only. W02-001/004 are limited prior differential samples; open features and full Player parity are not inferred from static evidence."
+}

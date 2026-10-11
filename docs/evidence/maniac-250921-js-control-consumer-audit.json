@@ -1,0 +1,288 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "evaluator_rva": "0x1820b0",
+  "flags_in_selection_order": [
+    {
+      "flag_rva": "0x278fb9",
+      "priority": 1,
+      "initial_check_rva": "0x18217b",
+      "post_release_check_rva": "0x1821c5",
+      "clear_rva": "0x18224d",
+      "throw_rva": "0x18226a",
+      "throw_payload": 0,
+      "throw_info_rva": "0x2543c8"
+    },
+    {
+      "flag_rva": "0x278fba",
+      "priority": 2,
+      "initial_check_rva": "0x182184",
+      "post_release_check_rva": "0x1821ce",
+      "clear_rva": "0x182270",
+      "throw_rva": "0x18228a",
+      "throw_payload": 1,
+      "throw_info_rva": "0x2543c8"
+    },
+    {
+      "flag_rva": "0x278fbb",
+      "priority": 3,
+      "initial_check_rva": "0x18218d",
+      "post_release_check_rva": "0x1821db",
+      "clear_rva": "0x18222d",
+      "throw_rva": "0x182247",
+      "throw_payload": 2,
+      "throw_info_rva": "0x2543c8"
+    }
+  ],
+  "result_release": {
+    "result_register": "xmm6",
+    "tag_register": "edi",
+    "condition": "unsigned tag >= 0xfffffff5; decrement referenced payload; call free helper if new count <= 0",
+    "decrement_rva": "0x1821ac",
+    "free_call_rva": "0x1821c0",
+    "free_target_rva": "0xfbd80",
+    "runtime_from_context_offset": "0x20",
+    "rechecks_flags_after_release": true,
+    "no_flag_path": "transfer result to caller without decrement",
+    "all_flags_clear_after_release": "return payload 0 / tag 6"
+  },
+  "throw": {
+    "helper_rva": "0x1cf9b8",
+    "throw_info_rva": "0x2543c8",
+    "catchable_type_array_rva": "0x254390",
+    "type_descriptor_rva": "0x25da50",
+    "type_name": ".?AUGameFlowInterceptor@@",
+    "object_size": 8,
+    "payload_writes": "fb9 writes int32 discriminator 0 and byte at offset 4 = 0; ba/bb write full 8-byte values 1/2; remaining fb9 padding is not treated as initialized",
+    "exception_code": "0xe06d7363",
+    "noncontinuable": true,
+    "raise_call_rva": "0x1cfa49",
+    "raise_import": "KERNEL32.dll.RaiseException"
+  },
+  "instructions": {
+    "0x18217b": {
+      "bytes": "803d376e0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6e37], 0"
+    },
+    "0x1821c5": {
+      "bytes": "803ded6d0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6ded], 0"
+    },
+    "0x182182": {
+      "bytes": "7517",
+      "instruction": "jne 0x14018219b"
+    },
+    "0x1821cc": {
+      "bytes": "757f",
+      "instruction": "jne 0x14018224d"
+    },
+    "0x18224d": {
+      "bytes": "c605656d0f0000",
+      "instruction": "mov byte ptr [rip + 0xf6d65], 0"
+    },
+    "0x18225f": {
+      "bytes": "488d1562210d00",
+      "instruction": "lea rdx, [rip + 0xd2162]"
+    },
+    "0x18226a": {
+      "bytes": "e849d70400",
+      "instruction": "call 0x1401cf9b8"
+    },
+    "0x18226f": {
+      "bytes": "cc",
+      "instruction": "int3 "
+    },
+    "0x182266": {
+      "bytes": "488d4de7",
+      "instruction": "lea rcx, [rbp - 0x19]"
+    },
+    "0x182184": {
+      "bytes": "803d2f6e0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6e2f], 0"
+    },
+    "0x1821ce": {
+      "bytes": "803de56d0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6de5], 0"
+    },
+    "0x18218b": {
+      "bytes": "750e",
+      "instruction": "jne 0x14018219b"
+    },
+    "0x1821d5": {
+      "bytes": "0f8595000000",
+      "instruction": "jne 0x140182270"
+    },
+    "0x182270": {
+      "bytes": "c605436d0f0000",
+      "instruction": "mov byte ptr [rip + 0xf6d43], 0"
+    },
+    "0x18227f": {
+      "bytes": "488d1542210d00",
+      "instruction": "lea rdx, [rip + 0xd2142]"
+    },
+    "0x18228a": {
+      "bytes": "e829d70400",
+      "instruction": "call 0x1401cf9b8"
+    },
+    "0x18228f": {
+      "bytes": "cc",
+      "instruction": "int3 "
+    },
+    "0x182286": {
+      "bytes": "488d4de7",
+      "instruction": "lea rcx, [rbp - 0x19]"
+    },
+    "0x18218d": {
+      "bytes": "803d276e0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6e27], 0"
+    },
+    "0x1821db": {
+      "bytes": "803dd96d0f0000",
+      "instruction": "cmp byte ptr [rip + 0xf6dd9], 0"
+    },
+    "0x182194": {
+      "bytes": "7505",
+      "instruction": "jne 0x14018219b"
+    },
+    "0x1821e2": {
+      "bytes": "7549",
+      "instruction": "jne 0x14018222d"
+    },
+    "0x18222d": {
+      "bytes": "c605876d0f0000",
+      "instruction": "mov byte ptr [rip + 0xf6d87], 0"
+    },
+    "0x18223c": {
+      "bytes": "488d1585210d00",
+      "instruction": "lea rdx, [rip + 0xd2185]"
+    },
+    "0x182247": {
+      "bytes": "e86cd70400",
+      "instruction": "call 0x1401cf9b8"
+    },
+    "0x18224c": {
+      "bytes": "cc",
+      "instruction": "int3 "
+    },
+    "0x182243": {
+      "bytes": "488d4de7",
+      "instruction": "lea rcx, [rbp - 0x19]"
+    },
+    "0x182254": {
+      "bytes": "c745e700000000",
+      "instruction": "mov dword ptr [rbp - 0x19], 0"
+    },
+    "0x18225b": {
+      "bytes": "c645eb00",
+      "instruction": "mov byte ptr [rbp - 0x15], 0"
+    },
+    "0x182277": {
+      "bytes": "48c745e701000000",
+      "instruction": "mov qword ptr [rbp - 0x19], 1"
+    },
+    "0x182234": {
+      "bytes": "48c745e702000000",
+      "instruction": "mov qword ptr [rbp - 0x19], 2"
+    },
+    "0x182158": {
+      "bytes": "0f1030",
+      "instruction": "movups xmm6, xmmword ptr [rax]"
+    },
+    "0x18215b": {
+      "bytes": "660f6fc6",
+      "instruction": "movdqa xmm0, xmm6"
+    },
+    "0x18215f": {
+      "bytes": "660f73d808",
+      "instruction": "psrldq xmm0, 8"
+    },
+    "0x182164": {
+      "bytes": "660f7ec7",
+      "instruction": "movd edi, xmm0"
+    },
+    "0x182196": {
+      "bytes": "0f1133",
+      "instruction": "movups xmmword ptr [rbx], xmm6"
+    },
+    "0x182199": {
+      "bytes": "eb60",
+      "instruction": "jmp 0x1401821fb"
+    },
+    "0x18219b": {
+      "bytes": "488b0df66d0f00",
+      "instruction": "mov rcx, qword ptr [rip + 0xf6df6]"
+    },
+    "0x1821a2": {
+      "bytes": "83fff5",
+      "instruction": "cmp edi, -0xb"
+    },
+    "0x1821a5": {
+      "bytes": "721e",
+      "instruction": "jb 0x1401821c5"
+    },
+    "0x1821a7": {
+      "bytes": "66480f7ef0",
+      "instruction": "movq rax, xmm6"
+    },
+    "0x1821ac": {
+      "bytes": "ff08",
+      "instruction": "dec dword ptr [rax]"
+    },
+    "0x1821ae": {
+      "bytes": "833800",
+      "instruction": "cmp dword ptr [rax], 0"
+    },
+    "0x1821b1": {
+      "bytes": "7f12",
+      "instruction": "jg 0x1401821c5"
+    },
+    "0x1821b3": {
+      "bytes": "660f7f75f7",
+      "instruction": "movdqa xmmword ptr [rbp - 9], xmm6"
+    },
+    "0x1821b8": {
+      "bytes": "488d55f7",
+      "instruction": "lea rdx, [rbp - 9]"
+    },
+    "0x1821bc": {
+      "bytes": "488b4920",
+      "instruction": "mov rcx, qword ptr [rcx + 0x20]"
+    },
+    "0x1821c0": {
+      "bytes": "e8bb9bf7ff",
+      "instruction": "call 0x1400fbd80"
+    },
+    "0x1821e4": {
+      "bytes": "48c745e700000000",
+      "instruction": "mov qword ptr [rbp - 0x19], 0"
+    },
+    "0x1821ec": {
+      "bytes": "48c745ef06000000",
+      "instruction": "mov qword ptr [rbp - 0x11], 6"
+    },
+    "0x1821f4": {
+      "bytes": "0f1045e7",
+      "instruction": "movups xmm0, xmmword ptr [rbp - 0x19]"
+    },
+    "0x1821f8": {
+      "bytes": "0f1103",
+      "instruction": "movups xmmword ptr [rbx], xmm0"
+    },
+    "0x1821ff": {
+      "bytes": "e87c5ce8ff",
+      "instruction": "call 0x140007e80"
+    },
+    "0x1cfa36": {
+      "bytes": "b963736de0",
+      "instruction": "mov ecx, 0xe06d7363"
+    },
+    "0x1cfa22": {
+      "bytes": "ba01000000",
+      "instruction": "mov edx, 1"
+    },
+    "0x1cfa49": {
+      "bytes": "ff15d1f80200",
+      "instruction": "call qword ptr [rip + 0x2f8d1]"
+    }
+  },
+  "scope": "Exact fixed-binary evaluator consumer proof for all three flags: common conditional JS result release, subsequent ordered flag recheck, selected-flag-only clear, payload initialization, shared typed C++ throw, and no normal result delivery from each throw block. This closes M0-033's consumer paths. It does not establish producer semantics, natural trigger reachability, game-loop catch behavior, or resumed gameplay; those remain M0-032/M0-034."
+}

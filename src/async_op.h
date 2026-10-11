@@ -73,10 +73,12 @@ class AsyncOp {
 		static AsyncOp MakeTerminateBattle(int result);
 
 		/** @return a Save async operation */
-		static AsyncOp MakeSave(int save_slot, int save_result_var);
+		static AsyncOp MakeSave(int save_slot, int save_result_var,
+			int self_scope = 0, int self_map_id = 0, int self_event_id = 0);
 
 		/** @return a Load async operation */
-		static AsyncOp MakeLoad(int save_slot);
+		static AsyncOp MakeLoad(int save_slot, int presentation = 0);
+		int GetLoadPresentation() const;
 
 		/** @return a Yield for one frame to e.g. fetch an important asset */
 		static AsyncOp MakeYield();
@@ -137,6 +139,9 @@ class AsyncOp {
 		 * @pre If GetType() is not eSave, the return value is undefined.
 		 **/
 		int GetSaveResultVar() const;
+		int GetSaveSelfScope() const;
+		int GetSaveSelfMapId() const;
+		int GetSaveSelfEventId() const;
 
 		/**
 		 * @return the event id of the event being cloned
@@ -229,6 +234,21 @@ inline int AsyncOp::GetSaveResultVar() const {
 	return _args[1];
 }
 
+inline int AsyncOp::GetSaveSelfScope() const {
+	assert(GetType() == eSave);
+	return _args[2];
+}
+
+inline int AsyncOp::GetSaveSelfMapId() const {
+	assert(GetType() == eSave);
+	return _args[3];
+}
+
+inline int AsyncOp::GetSaveSelfEventId() const {
+	assert(GetType() == eSave);
+	return _args[4];
+}
+
 inline int AsyncOp::GetSourceEventId() const {
 	assert(GetType() == eCloneMapEvent);
 	return _args[0];
@@ -297,12 +317,18 @@ inline AsyncOp AsyncOp::MakeTerminateBattle(int transition_type) {
 	return AsyncOp(eTerminateBattle, transition_type);
 }
 
-inline AsyncOp AsyncOp::MakeSave(int save_slot, int save_result_var) {
-	return AsyncOp(eSave, save_slot, save_result_var);
+inline AsyncOp AsyncOp::MakeSave(int save_slot, int save_result_var,
+	int self_scope, int self_map_id, int self_event_id) {
+	return AsyncOp(eSave, save_slot, save_result_var, self_scope, self_map_id, self_event_id);
 }
 
-inline AsyncOp AsyncOp::MakeLoad(int save_slot) {
-	return AsyncOp(eLoad, save_slot);
+inline int AsyncOp::GetLoadPresentation() const {
+	assert(GetType() == eLoad);
+	return _args[1];
+}
+
+inline AsyncOp AsyncOp::MakeLoad(int save_slot, int presentation) {
+	return AsyncOp(eLoad, save_slot, presentation);
 }
 
 inline AsyncOp AsyncOp::MakeYield() {

@@ -106,6 +106,8 @@ public:
 
 	/** @return If the action originally had a single target, return that target. Otherwise return nullptr */
 	Game_Battler* GetOriginalSingleTarget() const;
+	/** Rebind a selected single target before starting the action. */
+	void SetOriginalSingleTarget(Game_Battler* target);
 
 	/** @return the current repetition of the algorithm */
 	int GetCurrentRepeat() const;

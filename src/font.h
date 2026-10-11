@@ -136,10 +136,14 @@ class Font {
 	 * @param sys system graphic to use
 	 * @param color which color in the system graphic
 	 * @param glyph which utf32 glyph to render
+	 * @param color_cell optional absolute origin of a 16x16 system color cell
 	 *
 	 * @return Point containing how far to advance in x/y direction.
 	 */
-	Point Render(Bitmap& dest, int x, int y, const Bitmap& sys, int color, char32_t glyph) const;
+	Point Render(Bitmap& dest, int x, int y, const Bitmap& sys, int color, char32_t glyph, const Point* color_cell = nullptr) const;
+
+	/** Render a 12x12 ExFont source cell through the existing system-color mask. */
+	Point RenderExfontCell(Bitmap& dest, int x, int y, const Bitmap& sys, const Rect& source, const Point* color_cell) const;
 
 	/**
 	 * Renders the glyph onto bitmap at the given position with system graphic and color.
@@ -228,6 +232,8 @@ class Font {
 	 * @return font handle or nullptr on failure or if FreeType is unavailable
 	 */
 	static FontRef CreateFtFont(Filesystem_Stream::InputStream is, int size, bool bold, bool italic);
+	/** Resolve a Windows font family (including GDI substitution), or return nullptr. */
+	static FontRef CreateSystemFont(std::string_view name, int size, bool bold, bool italic);
 	static FontRef Default();
 	static FontRef Default(bool use_mincho);
 	static FontRef DefaultBitmapFont();
@@ -264,7 +270,7 @@ class Font {
 	FontRef fallback_font;
 
 private:
-	bool RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const GlyphRet& gret) const;
+	bool RenderImpl(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const GlyphRet& gret, const Point* color_cell) const;
 };
 
 #endif

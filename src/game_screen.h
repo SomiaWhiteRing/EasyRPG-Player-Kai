@@ -56,10 +56,13 @@ public:
 	void ShakeBegin(int power, int speed);
 	void ShakeEnd();
 	void SetWeatherEffect(int type, int strength);
+	int ZoomScreen(int x, int y, int scale, int frames, int layer);
+	void DrawZoom(Bitmap& dst);
 	bool PlayMovie(std::string filename,
 			int pos_x, int pos_y, int res_x, int res_y);
 	bool IsMoviePlaying() const;
 	bool ConsumeMovieFinished();
+	void DrawMovie(Bitmap& dst);
 	void Update();
 
 	/**
@@ -129,6 +132,9 @@ public:
 	/** Start or replace one Maniac buffer; other buffers remain active. */
 	int ShowManiacBattleAnimation(int buffer, const ManiacAnimationParams& params, int start_frame = 0);
 
+	/** Resize the Maniac buffer pool, releasing removed animations. */
+	void SetManiacAnimationBufferCount(int count);
+
 	/**
 	 * Update the currently running battle animation by 1 frame.
 	 */
@@ -193,6 +199,8 @@ private:
 	std::unique_ptr<MoviePlayer> movie_player;
 
 	lcf::rpg::SaveScreen data;
+	bool zoom_initialized = false;
+	BitmapRef zoom_buffer;
 	int flash_sat;		// RPGMaker bug: this isn't saved
 	int flash_period;	// RPGMaker bug: this isn't saved
 

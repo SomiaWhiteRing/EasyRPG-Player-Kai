@@ -40,6 +40,8 @@ public:
 
 	void Start() override;
 	void StartFromSave(int from_save_id);
+	void UpdateManiacLoadDelay();
+	void QueueManiacLoad(AsyncOp operation);
 	void Continue(SceneType prev_scene) override;
 	void vUpdate() override;
 	void TransitionIn(SceneType prev_scene) override;
@@ -50,6 +52,7 @@ public:
 	std::unique_ptr<Spriteset_Map> spriteset;
 
 private:
+	AsyncOp maniac_pending_load = {};
 	enum TeleportTransitionRule {
 		eTransitionNormal,
 		eTransitionFade,
@@ -94,6 +97,7 @@ private:
 
 	int from_save_id = 0;
 	bool screen_erased_by_event = false;
+	bool maniac_reset_presentation_wait = false;
 
 	AsyncContinuation map_async_continuation = {};
 	lcf::rpg::Music music_before_inn = {};

@@ -1,0 +1,75 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+  "cases": [
+    {
+      "variant": "end-nest-auto-common",
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "0071e2624803df33ab5ebc75c2867b0ca3c5ab16157e4a38f2df5ee038e8575f",
+      "trace_sha256": "8f80e8e2a4adb61dfaf7d9f73b185fb299d3e2e26accbefd5784da6beb693c42",
+      "save_sha256": "7da9fd121770f2a89c4dab1782df82876ca32c3fdd2530df242cc0e1fe34c717",
+      "numbers": [
+        99,
+        77,
+        33
+      ]
+    },
+    {
+      "variant": "end-nest-auto-common",
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "manifest_sha256": "0071e2624803df33ab5ebc75c2867b0ca3c5ab16157e4a38f2df5ee038e8575f",
+      "trace_sha256": "a021f3e0c23013502389ad0d7f2d629f9e5aaea8c314c8ea9637bce8b5b2c653",
+      "save_sha256": "a03584816af08e28c311ececc508d0293d15f6fcd48a2d55a23d990f32c169c6",
+      "numbers": [
+        99,
+        77,
+        33,
+        0
+      ]
+    },
+    {
+      "variant": "end-nest-battle",
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "63cfb552b477de8626065dad39b9fffd3b09c1455a71b8f9d22954fa3d5c4347",
+      "trace_sha256": "6e1e30c424fab8e50011bde8ebbf35f9f4624f5e7f9ffbb88986842e55f55cb6",
+      "save_sha256": "997309b328cc152a3f52ed73e8e43beb7ae8712fe51d2da03581ebb84f9933ae",
+      "numbers": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110
+      ]
+    },
+    {
+      "variant": "end-nest-battle",
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "manifest_sha256": "63cfb552b477de8626065dad39b9fffd3b09c1455a71b8f9d22954fa3d5c4347",
+      "trace_sha256": "c4f4f46cc4ac3ada34bfbe9f35730eb4affb7b9b012f069efa5d113b04e8bac1",
+      "save_sha256": "fcfd03992b74e2f9f1f6407b183273060e4f156c5e92a4ab07924d2275079902",
+      "numbers": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110,
+        0
+      ]
+    }
+  ],
+  "scope": "250921 Windows opcode 10 in map-autostart parent branch scans, a called common event, and a battle page. Original native hook records mode-1 and mode-2 dispatches before Save01; fixed encoded records retain Args/Text and parent records retain indent. Original and Player marker saves agree. Opcode-0 cleanup, other versions and platforms have separate leaves."
+}

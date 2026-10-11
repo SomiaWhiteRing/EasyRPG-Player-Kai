@@ -1,0 +1,196 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "508be648df38a9ca0d368194937ec515ec436bca58ab7201f8d7674df5c2477b",
+  "fixture_manifest_sha256": "ae8d396a3cf3af81f03df2c3a78b0023eea4b84e612bf256f16ad93d89b1d923",
+  "results": {
+    "original": {
+      "trace_sha256": "a602bf0b75bdec7fb09102fc1f2f195e46ee9819f662050878f7ed47ed30ba04",
+      "saves": {
+        "slot01": {
+          "sha256": "8ef5af7fd7df715dee055ef241fb34a66db7d82ca1490863988c96eda7f83efd",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            0,
+            1
+          ]
+        },
+        "slot02": {
+          "sha256": "3d5952eb42c3d56a806331a0052ccb74b20202eb5f64138a6878ca888bfb0a7b",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            0,
+            1
+          ]
+        },
+        "slot09": {
+          "sha256": "60f6a73937b335834c1a0490b310c8485e2ce1db96f147a5e741a4458529ab7f",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            99,
+            1
+          ]
+        }
+      }
+    },
+    "player": {
+      "trace_sha256": "86a4633a8e289bf26f9d0ea815f861d46f3f64972e066a8987d0ebacad0ce8a9",
+      "saves": {
+        "slot01": {
+          "sha256": "e43b47d83ceb526e2f80218783921622b3b3909606e8390728038fc47930f327",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            0,
+            1
+          ]
+        },
+        "slot02": {
+          "sha256": "14f742613978ad1d2cf2726114e9a0fdfe18c960962f0098f8a4bd6061129f78",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            0,
+            1
+          ]
+        },
+        "slot09": {
+          "sha256": "8af698b39082c4b5b18833253a38f2883d47b0313d03fd55b873501b5a69e07b",
+          "values": [
+            3,
+            1,
+            0,
+            0,
+            0,
+            88,
+            88,
+            1,
+            99,
+            1
+          ]
+        }
+      }
+    }
+  },
+  "original_parameters": [
+    [
+      0,
+      0,
+      1,
+      3
+    ],
+    [
+      0,
+      -1,
+      1,
+      -6
+    ],
+    [
+      0,
+      0,
+      0,
+      6
+    ],
+    [],
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      2,
+      2,
+      1,
+      8
+    ],
+    [
+      1,
+      -1,
+      1,
+      -7
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2,
+      1
+    ],
+    [
+      0,
+      9,
+      0,
+      0
+    ]
+  ],
+  "original_save_slots": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      9
+    ]
+  ],
+  "scope": "Fixed original 250921 and Player execute thirteen standalone 3002 records on a map autostart page. Original handler traces verify zero through four argument records, invalid slots, one-lookup A0=2 global and A0=1 negative self slot sources, disabled/enabled result writes and positive-result timing. Both engines' saved global and self markers match at slots 1, 2 and 9. This closes only W11-018/019; filename/counter boundaries, frequency guard and cross-runtime restoration remain separate."
+}

@@ -1,0 +1,25 @@
+{
+  "old_runtime_sha256": "49ba424f3ff1fa7d4fc1334eea272fde4e437d07a6901dc6b87efb95383ec44d",
+  "new_runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "native_diff_sha256": "fe1dc18c207ce0d35042c9947ebd6cb74c9187156da59bc839673c213157a273",
+  "inventory_sha256": "3027d992c8166222a98cbd0757d86be4c57678de99f6090e5f10f63a36d88b4e",
+  "submode_ledger_sha256": "661c4d5c13b5ebe4d14f4bcfef1df56e2ea3ae0718e6ee427c4734f41565d364",
+  "triage_sha256": "52713caebdf21c32d4af94d167b92734a6184d259ab80b6659d2465917046a9b",
+  "total_commands": 168,
+  "formatter_screen": {
+    "changed_local_syntax_review_required": 160,
+    "same_normalized_local_syntax": 3,
+    "new_declared_opcode": 5
+  },
+  "screen_priority": {
+    "P3_local_formatter_delta": 138,
+    "P1_observed_index_delta": 17,
+    "P2_dynamic_index_expression_delta": 5,
+    "P4_same_local_formatter_helpers_unchecked": 3,
+    "P0_old_dispatch_absent": 5
+  },
+  "constant_index_delta_count": 17,
+  "dynamic_index_expression_delta_count": 8,
+  "old_dispatch_absent_count": 5,
+  "semantic_status": "The 3004/3005/3006 rows link separate fixed-runtime consumer audits; all other rows remain formatter screens without old-runtime decisions."
+}

@@ -1,0 +1,640 @@
+{
+  "variants": {
+    "full": {
+      "variant": "full",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "f6440d47874672684ec1d2f973eefea496ee6f083277fe3fda342a15d54cc376",
+      "save_sha256": "f22e18289787b771a517ae967bd96feb0419f1b5cf1d2ded6d5320cdf1af0b35",
+      "save_length": 4761,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 350,
+        "length": 1,
+        "payload_offset": 353,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 4706,
+        "length": 53,
+        "payload_offset": 4708,
+        "sha256": "a5c1755cbbec45a427f82249ea400a0aca571ddd0958dcfa44d078a5b278193a"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 1,
+          "offset": 4708,
+          "length": 17,
+          "payload_offset": 4710,
+          "sha256": "94833532a26b54cd1b547fa4bd868cc6b9ff14faac6115c7c08b8d8fd0185c29"
+        },
+        {
+          "id": 2,
+          "offset": 4727,
+          "length": 31,
+          "payload_offset": 4729,
+          "sha256": "e39fee9bc361d42a5b21c874eb4c4a0eeda6d155e3b5a8c41ee2125ef5c3c3b5"
+        }
+      ],
+      "common_self_banks": [
+        {
+          "common_event_id": 1,
+          "switch_bytes": [
+            1
+          ],
+          "numbers_positive_slots": [
+            70
+          ]
+        },
+        {
+          "common_event_id": 2,
+          "switch_bytes": [
+            1
+          ]
+        }
+      ],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "switch_bytes": [
+                2,
+                2,
+                1
+              ],
+              "numbers_positive_slots": [
+                0,
+                0,
+                88,
+                5
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "minimal": {
+      "variant": "minimal",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "1e74ced2c4cbebe76403a9fa6542296d5eab7b239e39df77f7b454befe5f5849",
+      "save_sha256": "881f01e22b7fe91524c1a8c0046e5783feae00767ab3df29371052e7f60aeb6c",
+      "save_length": 3766,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": null,
+      "root_extension_116_children": [],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": []
+    },
+    "map-self": {
+      "variant": "map-self",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "7d4e8d5aefccd5193673b6f63ebd741e621058d8ed16ee33794a06bf3f710e70",
+      "save_sha256": "84f3e9373d80385207a2b70e02f0df2080217497ca5b5e04cef03b1f1b2f68e0",
+      "save_length": 3801,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3782,
+        "length": 17,
+        "payload_offset": 3784,
+        "sha256": "86e01f6e18d161dbb9973d948f80e4c186e7f9f11e0497006cc7fbb67733eb4c"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3784,
+          "length": 14,
+          "payload_offset": 3786,
+          "sha256": "c12d6ab7feb0a790ad77b9c79981c64e07bbf931d432ae0dfb3a3ae753bec249"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-event2": {
+      "variant": "map-self-event2",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "5810e3a9d0183d28ff31217b463f590a53d810b5f49b9c826ad79c7f7024b25c",
+      "save_sha256": "0eacc10ada44db3fc4bd20d230a6c4c3471bd1c56edaefb7af4f829e1b202a87",
+      "save_length": 3801,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3782,
+        "length": 17,
+        "payload_offset": 3784,
+        "sha256": "90a5460b8571dfb397057e6a40be15c3d9b6856f565d48a361c784cc86d99ae1"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3784,
+          "length": 14,
+          "payload_offset": 3786,
+          "sha256": "323e84f9f8ea4606da988a2dbe624c00976e426a0866e569be1d1f9cf69757ab"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 2,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-string": {
+      "variant": "map-self-string",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "42e11e47cdc9118fac905c5a77695ec77f7cca7fb4bde015c368def8cdc86078",
+      "save_sha256": "fc243f797d79adb28da391fbedb9893c98cc143f75e021c7acebb90971e3d78d",
+      "save_length": 3855,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3811,
+        "length": 42,
+        "payload_offset": 3813,
+        "sha256": "75e401f46082c669436fee457ec0d30394212ba537686f93e1998a3d464e8270"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3813,
+          "length": 39,
+          "payload_offset": 3815,
+          "sha256": "78a231f2239ae0f33046d5fa821d106e2672caaf39be652983350aafeaf0f680"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ],
+              "field_3_observed_utf16_slots": [
+                "Bank sample"
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-strings": {
+      "variant": "map-self-strings",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "b8e9768301b993ce91302a8594d5f4b257ff897d4388370db5a7c217737b078f",
+      "save_sha256": "81f21ab58bfadf5716eecff36f7cf2011ebdae81706e14a6b018fc00081658cc",
+      "save_length": 3882,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3830,
+        "length": 50,
+        "payload_offset": 3832,
+        "sha256": "d86dc85d0e2181c746faf26669fe386802fb5c6da98064c87c117af2ecbb405a"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3832,
+          "length": 47,
+          "payload_offset": 3834,
+          "sha256": "9c0c94e7b82c063f351cc2034511378cdc305c5e9d1375043ee4d18577a4d2ee"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ],
+              "field_3_observed_utf16_slots": [
+                "Bank sample",
+                null,
+                "Z"
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-resume": {
+      "variant": "map-self-resume",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "c2f9af1e451545f667ef4bdf1c18c85e3421e8c10d871873a81797a7592b358d",
+      "save_sha256": "8dd787419372ef858ec0da67cf6970bc9416439e76fb045db0ef474be2523a9b",
+      "save_length": 3821,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 181,
+        "length": 1,
+        "payload_offset": 184,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3802,
+        "length": 17,
+        "payload_offset": 3804,
+        "sha256": "86e01f6e18d161dbb9973d948f80e4c186e7f9f11e0497006cc7fbb67733eb4c"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3804,
+          "length": 14,
+          "payload_offset": 3806,
+          "sha256": "c12d6ab7feb0a790ad77b9c79981c64e07bbf931d432ae0dfb3a3ae753bec249"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-two-events": {
+      "variant": "map-self-two-events",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "e14c4d252602bf52afc76e6974e3088fdb79d326a81becd81a9432f31715c374",
+      "save_sha256": "ec9775a848cc446b90d1d9ea45a061e347ad50960b0e0f1177cf01dfc588ebf3",
+      "save_length": 3827,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3800,
+        "length": 25,
+        "payload_offset": 3802,
+        "sha256": "fc4a75abef07c129f5a3ebd5c4d9269374af915a59999b93f878015b5336ebf4"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3802,
+          "length": 22,
+          "payload_offset": 3804,
+          "sha256": "ebc6cfe04e9ab036a1d2a3cc91a2c360c9e6c4488754b1691ea3b585445ab973"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            },
+            {
+              "event_id": 2,
+              "numbers_positive_slots": [
+                43
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-self-two-maps": {
+      "variant": "map-self-two-maps",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "b35f5ab0071ca86f680a65345f6610c4e7a55089c1592289e3400172da1d7c31",
+      "save_sha256": "8fc1497998c1f440281be3a965a8edd2dd3dfbca86bcf71ead9629e21eae9e57",
+      "save_length": 3832,
+      "saved_party_map_id": 1,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3800,
+        "length": 30,
+        "payload_offset": 3802,
+        "sha256": "ca10c39bf4777cdb566ee5ad1b1009eff048b55da312f49011c83adbf413ba61"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3802,
+          "length": 27,
+          "payload_offset": 3804,
+          "sha256": "5cce3a8b7f2c949ee8fd2daf1b2c5c56b134e9936d60c61f54d19e0fd74cc052"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        },
+        {
+          "map_id": 2,
+          "events": [
+            {
+              "event_id": 2,
+              "numbers_positive_slots": [
+                43
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    },
+    "map-switch": {
+      "variant": "map-switch",
+      "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "073c25b4d1772cc4c9bd0b295242e4ee6be7205bd2d65c8142ce2c462046cc13",
+      "save_sha256": "b3f98e5a6b9def402698c1c7dfcf4f0dc25299394c8320a92157785c7a90a4a2",
+      "save_length": 3750,
+      "saved_party_map_id": 2,
+      "save_system_unknown_chunk_0x86": {
+        "id": 134,
+        "offset": 173,
+        "length": 1,
+        "payload_offset": 176,
+        "sha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+      },
+      "root_extension_116": {
+        "id": 116,
+        "offset": 3718,
+        "length": 30,
+        "payload_offset": 3720,
+        "sha256": "ca10c39bf4777cdb566ee5ad1b1009eff048b55da312f49011c83adbf413ba61"
+      },
+      "root_extension_116_children": [
+        {
+          "id": 2,
+          "offset": 3720,
+          "length": 27,
+          "payload_offset": 3722,
+          "sha256": "5cce3a8b7f2c949ee8fd2daf1b2c5c56b134e9936d60c61f54d19e0fd74cc052"
+        }
+      ],
+      "common_self_banks": [],
+      "map_self_numeric_vectors": [
+        {
+          "map_id": 1,
+          "events": [
+            {
+              "event_id": 1,
+              "numbers_positive_slots": [
+                42
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        },
+        {
+          "map_id": 2,
+          "events": [
+            {
+              "event_id": 2,
+              "numbers_positive_slots": [
+                43
+              ]
+            }
+          ],
+          "other_map_fields_hex": {}
+        }
+      ]
+    }
+  },
+  "negative_result": {
+    "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+    "manifest_sha256": "e2c171a9809b74ee5753d75be365e725cd7632c59688c7cb769b8fa52e2f305b",
+    "snapshots": [
+      {
+        "slot": 1,
+        "sha256": "8536ebdaf0aad431600244717f0e35d5b6962dce1dbb99af3b6394bd4b27c6d8",
+        "length": 4790,
+        "map_self_payload_length": 31,
+        "map_self_numeric_vectors": [
+          {
+            "map_id": 1,
+            "events": [
+              {
+                "event_id": 1,
+                "switch_bytes": [
+                  2,
+                  2,
+                  1
+                ],
+                "numbers_positive_slots": [
+                  0,
+                  0,
+                  88,
+                  5
+                ]
+              }
+            ],
+            "other_map_fields_hex": {}
+          }
+        ]
+      },
+      {
+        "slot": 2,
+        "sha256": "4ee8d09759fdc80cbf1aa8b93c9b360a3095d46b51919b3a20cfdd741296f612",
+        "length": 4806,
+        "map_self_payload_length": 39,
+        "map_self_numeric_vectors": [
+          {
+            "map_id": 1,
+            "events": [
+              {
+                "event_id": 1,
+                "switch_bytes": [
+                  2,
+                  2,
+                  1
+                ],
+                "numbers_positive_slots": [
+                  0,
+                  0,
+                  88,
+                  5,
+                  0,
+                  1
+                ]
+              }
+            ],
+            "other_map_fields_hex": {}
+          }
+        ]
+      }
+    ],
+    "deduction": "The first save snapshots before self result -6 is written. The second save, taken after reading that result into global ID37, has a longer map self payload. Original process ID37 is 1."
+  },
+  "resume_comparison": {
+    "variant": "map-self-resume",
+    "original_after_save_physical_slots": [
+      7,
+      7,
+      0,
+      42,
+      42
+    ],
+    "saved_bank_numbers_positive_slots": [
+      42
+    ],
+    "player_post_load_global_id_4": 42,
+    "scope": "One observed map event numeric self read after save, not full original save interoperability"
+  },
+  "two_event_map_bank": {
+    "variant": "map-self-two-events",
+    "map_id": 1,
+    "event_ids": [
+      1,
+      2
+    ],
+    "numbers_positive_slots": [
+      [
+        42
+      ],
+      [
+        43
+      ]
+    ]
+  },
+  "two_map_banks": {
+    "variant": "map-self-two-maps",
+    "map_event_numbers": [
+      [
+        1,
+        1,
+        42
+      ],
+      [
+        2,
+        2,
+        43
+      ]
+    ]
+  },
+  "map_switch_lifecycle": {
+    "variant": "map-switch",
+    "original_saved_bank_map_event_numbers": [
+      [
+        1,
+        1,
+        42
+      ],
+      [
+        2,
+        2,
+        43
+      ]
+    ],
+    "scope": "Teleport from map 1 to map 2 followed by the second map's autostart save"
+  },
+  "event_id_change": {
+    "root_0x74_child_2_payload_relative_byte": 5,
+    "from": 1,
+    "to": 2
+  },
+  "deduction": "In observed samples, root 0x74 child 1 is an indexed common-event bank list, and child 2 is an indexed map/event bank list. Each bank uses field 1 as a byte vector and field 2 as a little-endian int32 vector. Map event field 3 contains consecutive UTF-16LE string slots, each prefixed by a BER code-unit count; an unallocated middle slot has five-byte BER sentinel ff ff ff ff 7f. Changing the map event ID from 1 to 2 changes only byte 5 of child 2's payload. The map-switch run retains map 1's bank when map 2 saves. Other field formats, physical slot mapping, and lifecycle cases remain unconfirmed.",
+  "note": "Only observed bank fields are decoded. liblcf preserves raw original 0x74 bytes and Player imports these observed banks, but a parse/write round trip does not prove original interoperability."
+}

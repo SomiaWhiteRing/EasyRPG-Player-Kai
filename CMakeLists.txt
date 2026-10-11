@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.18...3.31 FATAL_ERROR)
 project(EasyRPG_Player VERSION 0.8.1.1
 	DESCRIPTION "Interpreter for RPG Maker 2000/2003 games"
 	HOMEPAGE_URL "https://easyrpg.org"
-	LANGUAGES CXX)
+	LANGUAGES CXX C)
 
 # Extra CMake Module files
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/builds/cmake/Modules")
@@ -45,7 +45,27 @@ option(BUILD_SHARED_LIBS "Build shared easyrpg_libretro core" ON)
 option(CMAKE_FIND_PACKAGE_PREFER_CONFIG "Prefer config files over bundled FindXXX files. Set this to OFF when configuration fails and report a bug." ON)
 
 # Source Files
+add_library(maniac_quickjs STATIC
+	lib/quickjs-ng/cutils.c
+	lib/quickjs-ng/libregexp.c
+	lib/quickjs-ng/libunicode.c
+	lib/quickjs-ng/quickjs.c
+	lib/quickjs-ng/xsum.c)
+set_target_properties(maniac_quickjs PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)
+target_include_directories(maniac_quickjs PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/lib/quickjs-ng")
+target_compile_definitions(maniac_quickjs PRIVATE _GNU_SOURCE)
+if(WIN32)
+	target_compile_definitions(maniac_quickjs PRIVATE WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0601)
+endif()
+if(MSVC)
+	target_compile_options(maniac_quickjs PRIVATE /experimental:c11atomics /wd4244 /wd4267)
+elseif(NOT WIN32)
+	target_link_libraries(maniac_quickjs PUBLIC m)
+endif()
+
 add_library(${PROJECT_NAME} OBJECT
+	src/game_maniac_js.cpp
+	src/game_maniac_js.h
 	src/lcf_data.cpp
 	src/lcf/data.h
 	src/async_handler.cpp
@@ -514,6 +534,12 @@ add_library(${PROJECT_NAME} OBJECT
 #	src/platform/psp/psp_input_buttons.cpp
 
 # Include directories
+target_link_libraries(${PROJECT_NAME} maniac_quickjs)
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+	target_link_options(${PROJECT_NAME} INTERFACE "-sSTACK_SIZE=2097152")
+elseif(MSVC)
+	target_link_options(${PROJECT_NAME} INTERFACE "/STACK:8388608")
+endif()
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(PLAYER_RECOMMENDED_SOUNDFONT_SOURCE)
@@ -895,6 +921,7 @@ endif()
 
 if(ANDROID)
 	target_link_libraries(${PROJECT_NAME} android log)
+	include(builds/cmake/Modules/PlayerAndroidMovie.cmake)
 endif()
 
 if(WIN32)
@@ -907,7 +934,7 @@ if(WIN32)
 		src/platform/windows/movie_player_dshow.h
 		src/platform/windows/midiout_device_win32.cpp
 		src/platform/windows/midiout_device_win32.h)
-	target_link_libraries(${PROJECT_NAME} ole32 strmiids)
+	target_link_libraries(${PROJECT_NAME} ole32 strmiids gdi32)
 endif()
 
 if(APPLE)
@@ -954,29 +981,22 @@ set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
 set(CMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.easyrpg.player")
 
 # liblcf
-option(PLAYER_BUILD_LIBLCF "Instead of detecting liblcf, clone liblcf into lib/liblcf and build it along with the Player. This is convenient for development." OFF)
-set(PLAYER_BUILD_LIBLCF_GIT "https://github.com/SomiaWhiteRing/liblcf.git" CACHE STRING "Git repository of liblcf to clone. Requires PLAYER_BUILD_LIBLCF=ON.")
-set(PLAYER_BUILD_LIBLCF_BRANCH "my-feature-stable" CACHE STRING "Branch of the liblcf repository to clone. Requires PLAYER_BUILD_LIBLCF=ON.")
+option(PLAYER_BUILD_LIBLCF "Build the pinned Maniac liblcf dependency, or an existing lib/liblcf checkout, along with Player." OFF)
 
 if(PLAYER_BUILD_LIBLCF)
 	# liblcf is built as part of this cmake file
-	set(LIBLCF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/liblcf")
-	if(NOT EXISTS ${LIBLCF_PATH})
-		find_package(Git REQUIRED)
-		execute_process(COMMAND ${GIT_EXECUTABLE} clone "--depth=1" "--branch"
-			"${PLAYER_BUILD_LIBLCF_BRANCH}"
-			"${PLAYER_BUILD_LIBLCF_GIT}"
-			"${LIBLCF_PATH}")
-	endif()
-	list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/liblcf/builds/cmake/Modules")
-
 	# Always build static liblcf and do not install it
 	function(add_liblcf)
 		set(BUILD_SHARED_LIBS OFF)
 		set(LIBLCF_ENABLE_INSTALL OFF)
-		add_subdirectory(${LIBLCF_PATH})
+		include(PlayerLiblcf)
+		if(NOT TARGET lcf)
+			add_subdirectory("${LIBLCF_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/lib/liblcf")
+		endif()
+		set(LIBLCF_PATH "${LIBLCF_PATH}" PARENT_SCOPE)
 	endfunction()
 	add_liblcf()
+	list(APPEND CMAKE_MODULE_PATH "${LIBLCF_PATH}/builds/cmake/Modules")
 	target_link_libraries(${PROJECT_NAME} lcf)
 else()
 	# Use system package
@@ -1271,6 +1291,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		set_property(TARGET ${EXE_NAME} PROPERTY LINK_FLAGS
 			"-sALLOW_MEMORY_GROWTH -sENVIRONMENT=worker -sMODULARIZE -sEXPORT_NAME=createEasyRpgEngine \
+			 -sASYNCIFY=1 -sSTACK_SIZE=524288 -sASYNCIFY_STACK_SIZE=524288 \
 			 --bind --pre-js ${PLAYER_JS_PREJS} --post-js ${PLAYER_JS_POSTJS} \
 			 -sEXPORTED_RUNTIME_METHODS=['FS','HEAPU8','HEAP16'] \
 			 -sEXPORTED_FUNCTIONS=_main,_malloc,_free")
@@ -1282,7 +1303,11 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " --preload-file ${PLAYER_RECOMMENDED_SOUNDFONT_FILE}@/builtin/recommended.sf2")
 
-		target_compile_options(${PROJECT_NAME} PUBLIC -fno-exceptions)
+		# Shared STL container instantiations must all preserve allocation errors.
+		# Mixing exception modes can select a weak resize implementation that aborts.
+		target_compile_options(${PROJECT_NAME} PUBLIC -fexceptions)
+		target_compile_options(lcf PRIVATE -fexceptions)
+		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
 
 		target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_WEB_MOVIE_PLAYER=1)
 		target_sources(${PROJECT_NAME} PRIVATE
@@ -1643,7 +1668,7 @@ endif()
 message(STATUS "")
 
 if(PLAYER_BUILD_LIBLCF)
-	message(STATUS "liblcf: Built from ${PLAYER_BUILD_LIBLCF_GIT}")
+	message(STATUS "liblcf: Built from ${LIBLCF_PATH}")
 	message(STATUS "")
 endif()
 

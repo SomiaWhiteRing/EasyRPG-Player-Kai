@@ -1,0 +1,100 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+  "cases": [
+    {
+      "variant": "opcode40-long-skip",
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "e410d588801f9c2bce7f03380d4f4542a9ba91980172d7cf83de189edd1e9c45",
+      "trace_sha256": "fc88305a6c772c3406d07a29a06dcabfbfd362ac6fc1bff86da36eec75b25cce",
+      "save_sha256": "abdb95db92f8422b6b71c8f09023b8cfb886d09bd4f6d451f0a97298642876b4",
+      "numbers": [
+        99,
+        99
+      ]
+    },
+    {
+      "variant": "opcode40-long-skip",
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "manifest_sha256": "e410d588801f9c2bce7f03380d4f4542a9ba91980172d7cf83de189edd1e9c45",
+      "trace_sha256": "e97f60b8941ac39d33050fbbabcd9c0710cd4f0f26ab9b2baa5459ee4fb4c8c3",
+      "save_sha256": "5e4b108f3aa976b3907c0cd1ac51aff54c7e3ee1d9a228ab3a54cc5472524c47",
+      "numbers": [
+        99,
+        99,
+        0
+      ]
+    },
+    {
+      "variant": "opcode40-auto-common",
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "0b84a0a42c4a4ae07fabd328c7ec9d75b23993cc6f5b4cd78c2cb93ce182b7b3",
+      "trace_sha256": "e63f7d818108dfc36c9cd400681afa1cb52c07b7b219d888fe8a1eee92a1e16d",
+      "save_sha256": "003e690f961ff522ed35bb50d82f038de4cf057a65c4c34ed442ac9b7dfcb0d9",
+      "numbers": [
+        99,
+        77,
+        33
+      ]
+    },
+    {
+      "variant": "opcode40-auto-common",
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "manifest_sha256": "0b84a0a42c4a4ae07fabd328c7ec9d75b23993cc6f5b4cd78c2cb93ce182b7b3",
+      "trace_sha256": "6194f843a2ec9dbc6ee070b795c3284831a91d8c4bcb73f8e4e534df85c30d74",
+      "save_sha256": "2dfc340a45424d8c5f3bfb5bc471da902d6a65ef32b2860020f69118b3b19aae",
+      "numbers": [
+        99,
+        77,
+        33,
+        0
+      ]
+    },
+    {
+      "variant": "opcode40-battle",
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "manifest_sha256": "e6ec1fd0b9e34e12fd3742a76832c4c60cf15681f467c7706fed0e0ada1f9773",
+      "trace_sha256": "0487d4958383f151e1a1c98297518c200a480923a7a4e28f642cb957230bbd03",
+      "save_sha256": "be2f5ce1715995063777f77ef8e9d8d6b3d4fe02c42e49e570168f807b3cdc20",
+      "numbers": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110
+      ]
+    },
+    {
+      "variant": "opcode40-battle",
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "manifest_sha256": "e6ec1fd0b9e34e12fd3742a76832c4c60cf15681f467c7706fed0e0ada1f9773",
+      "trace_sha256": "8662c32deb965c15ac52a0eea80a65c7c180c6760216e3b62daf50bab738e4d7",
+      "save_sha256": "43032cc2c3749dd92efebf5222e293891da15ffb1e3abef87306c0e48a22d644",
+      "numbers": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110,
+        0
+      ]
+    }
+  ],
+  "scope": "250921 Windows opcode 40 in map-parallel, map-autostart parent branch scans, a called common event and a battle page. Native hook reads the active record to count opcode 40 only, with mode 0/1/2 dispatches before Save01. Encoded records preserve Args/Text/indent. Original and Player same-update marker saves agree; other versions and platforms have separate scopes."
+}

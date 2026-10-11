@@ -24,6 +24,8 @@
 
 #include "rect.h"
 
+class Bitmap;
+
 class MoviePlayer {
 public:
 	virtual ~MoviePlayer() = default;
@@ -33,6 +35,7 @@ public:
 	virtual void Stop() = 0;
 	virtual bool IsPlaying() const = 0;
 	virtual bool HasError() const;
+	virtual void Draw(Bitmap&, const Rect&) {}
 	virtual int GetNativeWidth() const = 0;
 	virtual int GetNativeHeight() const = 0;
 

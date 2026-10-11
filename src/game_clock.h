@@ -46,10 +46,11 @@ public:
 	static void SleepFor(std::chrono::duration<R,P> dt);
 
 	/** Get the target frames per second for the game simulation */
-	static constexpr int GetTargetGameFps();
+	static int GetTargetGameFps();
+	static void SetTargetGameFps(int fps);
 
 	/** Get the amount of time each logical frame should take */
-	static constexpr duration GetTargetGameTimeStep();
+	static duration GetTargetGameTimeStep();
 
 	/** Get the timestep for a given frames per second value */
 	static constexpr duration TimeStepFromFps(int fps);
@@ -112,7 +113,8 @@ public:
 private:
 	struct Data {
 		time_point frame_time;
-		duration frame_accumulator;
+		std::chrono::duration<double> frame_accumulator;
+		int target_game_fps = DEFAULT_FPS;
 		duration max_frame_accumulator = std::chrono::duration_cast<duration>(std::chrono::milliseconds(200));
 		float speed = 1.0;
 		float fps = 0.0;
@@ -125,12 +127,16 @@ inline Game_Clock::time_point Game_Clock::now() {
 	return clock::now();
 }
 
-constexpr int Game_Clock::GetTargetGameFps() {
-	return DEFAULT_FPS;
+inline int Game_Clock::GetTargetGameFps() {
+	return data.target_game_fps;
 }
 
-constexpr Game_Clock::duration Game_Clock::GetTargetGameTimeStep() {
-	return TimeStepFromFps(GetTargetGameFps());
+inline void Game_Clock::SetTargetGameFps(int fps) {
+	if (fps > 0) data.target_game_fps = fps;
+}
+
+inline Game_Clock::duration Game_Clock::GetTargetGameTimeStep() {
+	return std::max(duration(1), TimeStepFromFps(GetTargetGameFps()));
 }
 
 constexpr Game_Clock::duration Game_Clock::TimeStepFromFps(int fps) {
@@ -160,7 +166,7 @@ inline float Game_Clock::GetFPS() {
 }
 
 inline bool Game_Clock::NextGameTimeStep() {
-	constexpr auto dt = GetTargetGameTimeStep();
+	const std::chrono::duration<double> dt(1.0 / GetTargetGameFps());
 	if (data.frame_accumulator < dt) {
 		return false;
 	}

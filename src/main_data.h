@@ -20,6 +20,7 @@
 
 // Headers
 #include <lcf/data.h>
+#include <cstdint>
 #include <string>
 #include <memory>
 
@@ -42,6 +43,7 @@ class Game_Quit;
 class Game_DynRpg;
 class Game_Ineluki;
 class Game_Destiny;
+class Game_ManiacSelfVariables;
 class FileFinder_RTP;
 
 namespace Main_Data {
@@ -50,6 +52,11 @@ namespace Main_Data {
 	extern std::unique_ptr<Game_Switches> game_switches;
 	extern std::unique_ptr<Game_Variables> game_variables;
 	extern std::unique_ptr<Game_Strings> game_strings;
+	extern std::unique_ptr<Game_ManiacSelfVariables> game_maniac_self_variables;
+	constexpr uint32_t maniac_initial_random_seed = 0x0012895d;
+	extern uint32_t maniac_random_seed;
+	uint32_t NextManiacRandom();
+	int32_t ManiacRandomInclusive(int32_t first, int32_t last);
 	extern std::unique_ptr<Game_Screen> game_screen;
 	extern std::unique_ptr<Game_Pictures> game_pictures;
 	extern std::unique_ptr<Game_Windows> game_windows;
@@ -65,6 +72,7 @@ namespace Main_Data {
 	extern bool global_save_opened;
 	extern std::unique_ptr<Game_Switches> game_switches_global; // Used by Global Save command
 	extern std::unique_ptr<Game_Variables> game_variables_global;
+	extern std::unique_ptr<Game_Strings> game_strings_global;
 
 
 	extern std::unique_ptr<FileFinder_RTP> filefinder_rtp;

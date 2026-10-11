@@ -152,7 +152,7 @@ Game_Variables::Var_t Game_Variables::SetOp(int variable_id, Var_t value, F&& op
 	if (variable_id <= 0) {
 		return 0;
 	}
-	if (EP_UNLIKELY(variable_id > static_cast<int>(_variables.size()))) {
+	if (EP_UNLIKELY(static_cast<size_t>(variable_id) > _variables.size())) {
 		_variables.resize(variable_id, 0);
 	}
 	auto& v = _variables[variable_id - 1];
@@ -168,7 +168,7 @@ void Game_Variables::PrepareRange(const int first_id, const int last_id, const c
 		--_warnings;
 	}
 	auto& vv = _variables;
-	if (EP_UNLIKELY(last_id > static_cast<int>(vv.size()))) {
+	if (EP_UNLIKELY(last_id > 0 && static_cast<size_t>(last_id) > vv.size())) {
 		vv.resize(last_id, 0);
 	}
 }
@@ -181,10 +181,10 @@ void Game_Variables::PrepareArray(const int first_id_a, const int last_id_a, con
 		--_warnings;
 	}
 	auto& vv = _variables;
-	if (EP_UNLIKELY(last_id_a > static_cast<int>(vv.size()))) {
+	if (EP_UNLIKELY(last_id_a > 0 && static_cast<size_t>(last_id_a) > vv.size())) {
 		vv.resize(last_id_a, 0);
 	}
-	if (EP_UNLIKELY(last_id_b > static_cast<int>(vv.size()))) {
+	if (EP_UNLIKELY(last_id_b > 0 && static_cast<size_t>(last_id_b) > vv.size())) {
 		vv.resize(last_id_b, 0);
 	}
 }
@@ -219,6 +219,13 @@ std::vector<Var_t> Game_Variables::GetRange(int variable_id, int length) {
 
 Game_Variables::Var_t Game_Variables::Set(int variable_id, Var_t value) {
 	return SetOp(variable_id, value, VarSet, "Invalid write var[{}] = {}!");
+}
+
+Game_Variables::Var_t* Game_Variables::GetManiacWritable(int variable_id) {
+	if (variable_id == 0) return &_maniac_zero_variable;
+	if (variable_id < 0) return nullptr;
+	if (static_cast<size_t>(variable_id) > _variables.size()) _variables.resize(variable_id, 0);
+	return &_variables[variable_id - 1];
 }
 
 Game_Variables::Var_t Game_Variables::Add(int variable_id, Var_t value) {

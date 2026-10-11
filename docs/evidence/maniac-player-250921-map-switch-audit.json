@@ -1,0 +1,21 @@
+{
+  "manifest_sha256": "073c25b4d1772cc4c9bd0b295242e4ee6be7205bd2d65c8142ce2c462046cc13",
+  "original_save_sha256": "b3f98e5a6b9def402698c1c7dfcf4f0dc25299394c8320a92157785c7a90a4a2",
+  "player_trace_sha256": "4d524a335c78cc8c0eef7927d4b9b4aad756c098949bdb02d561bb38435d76c6",
+  "player_save_sha256": "4bbdc2b4ab32b85ff01ce26ce56d557391c1bdb88551eaedaa60a537d080dba7",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "saved_party_map_id": 2,
+  "map_event_self_first_values": [
+    [
+      1,
+      1,
+      42
+    ],
+    [
+      2,
+      2,
+      43
+    ]
+  ],
+  "scope": "Fixed original and Player 250921 Windows map transfer from map 1 to map 2 retains map 1/event 1 self 42 and map 2/event 2 self 43. Trailing numeric allocation slots differ and are not counted as observed self values. Return-to-title/new-game behavior remains W01-017 work."
+}

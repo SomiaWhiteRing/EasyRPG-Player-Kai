@@ -1,0 +1,34 @@
+{
+  "runtime": "player",
+  "stage": 1,
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921"
+  ],
+  "fixture_manifest_sha256": "e3e5c03f845be24cea075ffd703ca38a653914a688e6e9d4b99d2a87e5906bec",
+  "input_save_sha256": null,
+  "saved_slots": {
+    "1": {
+      "sha256": "b95f5b7a035a32d6d89d1bfa7ca8bdb81e59bb8860c1d0569142031888046f09",
+      "length": 6920,
+      "source_mtime_ns": 1790431154378158200
+    },
+    "2": {
+      "sha256": "d3240885ff8f739e7319a612d61ab085b056d9c7f390fb1a891e723ac5246f7b",
+      "length": 7925,
+      "source_mtime_ns": 1790431159394226700
+    },
+    "4": {
+      "sha256": "3e5a3d4a6920ec7c84bb6c58e58a9957cdcac5a070a3dad30795ded4548bcbd5",
+      "length": 7925,
+      "source_mtime_ns": 1790431159410095900
+    }
+  },
+  "original_native_events": [],
+  "unexpected_post_restart_slots": [],
+  "observation": "Fresh hidden process, no input; frozen saves after target unchanged for one second; process terminated."
+}

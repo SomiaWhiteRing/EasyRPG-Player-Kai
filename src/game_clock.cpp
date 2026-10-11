@@ -28,11 +28,12 @@ Game_Clock::Data Game_Clock::data;
 static constexpr auto _fps_smooth = 2.0f / 121.0f;
 
 Game_Clock::duration Game_Clock::OnNextFrame(time_point now) {
-	const auto mfa = std::chrono::duration_cast<duration>(data.max_frame_accumulator * data.speed);
+	const auto mfa = std::max(std::chrono::duration<double>(data.max_frame_accumulator),
+		std::chrono::duration<double>(1.0 / GetTargetGameFps())) * data.speed;
 
 	const auto dt = now - data.frame_time;
 	data.frame_time = now;
-	data.frame_accumulator += std::chrono::duration_cast<duration>(dt * data.speed);
+	data.frame_accumulator += std::chrono::duration<double>(dt) * data.speed;
 	data.frame_accumulator = std::min(data.frame_accumulator, mfa);
 
 	const auto fps = (1.0f / std::chrono::duration<float>(dt).count());

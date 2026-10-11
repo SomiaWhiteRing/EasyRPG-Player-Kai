@@ -337,8 +337,10 @@ namespace Player {
 	/** Reset flag, if true will restart game on next Player::Update. */
 	extern bool reset_flag;
 
-	/** Debug flag, if true will run game in debug mode. */
-	extern bool debug_flag;
+	/** Debug flag byte; Maniac selectors preserve q-1 rather than normalizing to bool. */
+	extern uint8_t debug_flag;
+	extern uint8_t maniac_testplay_selector;
+	extern bool maniac_rshift_message;
 
 	/** Debug flag requested by the startup configuration. */
 	extern bool startup_debug_flag;

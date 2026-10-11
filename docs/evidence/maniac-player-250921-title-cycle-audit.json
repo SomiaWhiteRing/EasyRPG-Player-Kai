@@ -1,0 +1,82 @@
+{
+  "manifest_sha256": "e7e1d7045704e12ccbaacbd65a628333b7444c04881ea8efdbf0ea447f5d44d3",
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "runs": {
+    "original": {
+      "trace_sha256": "b55cdf0d4d4ed7360b16e20e34e0b378a33ccda193de5d4e9b1e60e183a04bd0",
+      "observations": [
+        {
+          "save_slot": 1,
+          "input_enter_count": 1,
+          "save_sha256": "36bead77bafbfa7f1e8404e1e32981a2e0b628bb2ca5a37cc75cd467126512ca",
+          "global_id_3": 0,
+          "global_id_4": 0,
+          "map_self_present": false
+        },
+        {
+          "save_slot": 2,
+          "input_enter_count": 2,
+          "save_sha256": "e927ee153e1f643e9fc0979f30967b5e6c6f226052cf4d49214350c13cba3787",
+          "global_id_3": 0,
+          "global_id_4": 42,
+          "map_self_present": true
+        },
+        {
+          "save_slot": 1,
+          "input_enter_count": 5,
+          "save_sha256": "346a49620aba0ae35864e5586899943a26ba25e00310438534314cf1c31d00d5",
+          "global_id_3": 0,
+          "global_id_4": 0,
+          "map_self_present": false
+        },
+        {
+          "save_slot": 2,
+          "input_enter_count": 6,
+          "save_sha256": "915ebf420345f4b45205de05e404ba2cd11dd6b3e6063a5d76be271633444d57",
+          "global_id_3": 0,
+          "global_id_4": 42,
+          "map_self_present": true
+        }
+      ]
+    },
+    "player": {
+      "trace_sha256": "36951b65f2a4815ee021844826c4e8f5ae2bdb7cc3ad39d839e2aca1373189c0",
+      "observations": [
+        {
+          "save_slot": 1,
+          "input_enter_count": 1,
+          "save_sha256": "35aeb5d81bc8acf5895b87fd41e7fc7f55c1d065ca86beeb3653244576ef4a58",
+          "global_id_3": 0,
+          "global_id_4": 0,
+          "map_self_present": false
+        },
+        {
+          "save_slot": 2,
+          "input_enter_count": 2,
+          "save_sha256": "64de23eb4f5d0a3fbbdfbd6f792944a6b8287d0f9af5c0481fb401cf32ee9310",
+          "global_id_3": 0,
+          "global_id_4": 42,
+          "map_self_present": true
+        },
+        {
+          "save_slot": 1,
+          "input_enter_count": 7,
+          "save_sha256": "69917e0831b6645f812b739a04d4c48998f5f37380b34601414b8fd60aacfd28",
+          "global_id_3": 0,
+          "global_id_4": 0,
+          "map_self_present": false
+        },
+        {
+          "save_slot": 2,
+          "input_enter_count": 8,
+          "save_sha256": "8f94e8514930724c146cc8f584721392da4a0186d7dc1fe4e0f5544e925b225b",
+          "global_id_3": 0,
+          "global_id_4": 42,
+          "map_self_present": true
+        }
+      ]
+    }
+  },
+  "scope": "Both fixed 250921 Windows original and Player complete two Save01/Save02 sequences across return-to-title and new game. Each pre-write save has global self read 0 and no map bank; each post-write save has read 42 and map 1/event 1 self 42. Other load/resume lifecycle paths remain separate requirements."
+}

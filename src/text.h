@@ -84,7 +84,7 @@ namespace Text {
 	 *
 	 * @return Where to draw the next glyph when continuing drawing. See Font::GlyphRet.advance
 	 */
-	Point Draw(Bitmap& dest, int x, int y, const Font& font, const Bitmap& system, int color, char32_t glyph, bool is_exfont);
+	Point Draw(Bitmap& dest, int x, int y, const Font& font, const Bitmap& system, int color, char32_t glyph, bool is_exfont, const Point* color_cell = nullptr);
 
 
 	/**

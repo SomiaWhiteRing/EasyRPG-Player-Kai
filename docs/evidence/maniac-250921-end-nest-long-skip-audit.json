@@ -1,0 +1,29 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+  "manifest_sha256": "750faeb6a94874ed6e168cb2c77167625c3aa3f1eaf8f5c7609c7be20a940177",
+  "cases": [
+    {
+      "runtime": "original",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+      "trace_sha256": "06a14055d5c36d326161edfc2c58a9d348ef237420b84b4dac962612751c8a61",
+      "save_sha256": "2be16f22cc8a2a03a9c7657040a819a56d73a0d462dd5404d12cc635321e1ed3",
+      "numbers": [
+        99,
+        99
+      ]
+    },
+    {
+      "runtime": "player",
+      "runtime_sha256": "1c1b51c82b4c699ac7f4b731452c76137145c08fa6ed5e35cb78a46bb9ced262",
+      "trace_sha256": "54e582b929cbcfbbabb4ed909cc1f5eb20cb5d4d9d7838cb6659f1a0e71db13a",
+      "save_sha256": "3c548cc976e40d0726c36d9b17973b89cfdd6f6d916558ca1ff5f1de8c95ff21",
+      "numbers": [
+        99,
+        99,
+        0
+      ]
+    }
+  ],
+  "scope": "250921 Windows map-parallel long-list opcode 10 refetch only. Original native hook counts 10050 opcode-10 dispatches in owner mode 0 before the first save and observes cursor 1 through 10050. Both runtimes place marker 99 before a second parallel event's same-update snapshot and save [99,99]. Encoded opcode-10 records carry three retained Args and nonempty Text; the handler ignores them. Common-event, battle, branch-scan and other version/platform parity remain W02-021."
+}

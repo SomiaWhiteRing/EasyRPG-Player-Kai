@@ -1,0 +1,21 @@
+{
+  "source_save_sha256": "8dd787419372ef858ec0da67cf6970bc9416439e76fb045db0ef474be2523a9b",
+  "exported_save_sha256": "3b6c950587a3a30e7d48e6bd77f4eafc29066e98c208ace1849082a295d7fab8",
+  "original_bank_sha256": "86e01f6e18d161dbb9973d948f80e4c186e7f9f11e0497006cc7fbb67733eb4c",
+  "exported_bank_sha256": "5f4f28853efb54acac3a2e1d90406fd2d9557ea8def7e9cdb294aca37fe32668",
+  "bank_changed_offset": 10,
+  "bank_changed_values": [
+    42,
+    43
+  ],
+  "fixture_manifest_sha256": "0c542596c727f4d09e9f547d4ce581271b99137af05899f6b0522d0ff4e9af25",
+  "original_trace_sha256": "93d6b83e13783fb42ee9b14eaddc44ed409dffd5ebe9d6648dda9036be563145",
+  "original_after_load_physical_numeric_slots": [
+    0,
+    7,
+    0,
+    42,
+    43
+  ],
+  "scope": "One Player-encoded observed 0x74 map event numeric bank loaded by the original 250921 runtime; regular Player saving is not yet wired to this exporter"
+}

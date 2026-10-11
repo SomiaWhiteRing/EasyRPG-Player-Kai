@@ -995,6 +995,9 @@ Scene_Battle_Rpg2k::BattleActionReturn Scene_Battle_Rpg2k::ProcessBattleAction(G
 		Output::Warning("Please report a bug!");
 		return BattleActionReturn::eFinished;
 	}
+	if (!action->GetSource()->IsInParty()) {
+		return BattleActionReturn::eFinished;
+	}
 
 #ifdef EP_DEBUG_BATTLE2K_STATE_MACHINE
 	static int last_state = -1;

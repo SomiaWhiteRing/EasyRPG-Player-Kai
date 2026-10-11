@@ -1,0 +1,117 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "508be648df38a9ca0d368194937ec515ec436bca58ab7201f8d7674df5c2477b",
+  "manifest_sha256": "e7f8bf75aa126a7b5c62af5db39272419632dc793d406ba88f00c14a06813e7f",
+  "results": {
+    "original": {
+      "trace_sha256": "7da81b5f14f1d91b76e198822a064f6649e2a830bccab56f4fba85477d6c01a8",
+      "save_sha256": "6af0e9c51f4109a26bb71a24dd1ec2a7c7602c584301ae50c9e54d56754bff81",
+      "global_numeric_ids_1_to_10": [
+        11,
+        22,
+        33,
+        44,
+        55,
+        66,
+        77,
+        88,
+        99,
+        110
+      ],
+      "numeric_vector_length": 10,
+      "original_dispatch_events": [
+        {
+          "opcode": 3024,
+          "cursor_before": 0,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 2,
+          "result_al": 1
+        },
+        {
+          "opcode": 3034,
+          "cursor_before": 2,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 3,
+          "result_al": 1
+        },
+        {
+          "opcode": 3035,
+          "cursor_before": 4,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 6,
+          "result_al": 1
+        },
+        {
+          "opcode": 3024,
+          "cursor_before": 6,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 8,
+          "result_al": 1
+        },
+        {
+          "opcode": 3034,
+          "cursor_before": 8,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 9,
+          "result_al": 1
+        },
+        {
+          "opcode": 3035,
+          "cursor_before": 10,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 12,
+          "result_al": 1
+        },
+        {
+          "opcode": 3024,
+          "cursor_before": 12,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 14,
+          "result_al": 1
+        },
+        {
+          "opcode": 3034,
+          "cursor_before": 14,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 15,
+          "result_al": 1
+        },
+        {
+          "opcode": 3035,
+          "cursor_before": 16,
+          "caller_rva": "0x8a13c",
+          "owner_mode": 2,
+          "cursor_after": 18,
+          "result_al": 1
+        }
+      ]
+    },
+    "player": {
+      "trace_sha256": "921f1e5a1185e08bb5a905cf65c26ae252e951cc3e69a28bdf6e7f622f78cb00",
+      "save_sha256": "5f7a35ff4bcc8f2ecce32252c37b038020de2423f022ed1cb76183548dda0217",
+      "global_numeric_ids_1_to_10": [
+        11,
+        22,
+        33,
+        44,
+        55,
+        66,
+        77,
+        88,
+        99,
+        110
+      ],
+      "numeric_vector_length": 11,
+      "original_dispatch_events": null
+    }
+  },
+  "scope": "Original 250921 and Player run one fixed troop page with standalone 3024, 3034 and 3035, each with zero, one and three parameters. Frida observes nine original battle dispatcher calls at RVA 0x8a13c, successful returns, and their cursor movement. Both saves contain the nine adjacent markers and the preceding map marker. Original and Player save vector lengths differ by one trailing Player zero slot. This verifies the command continuation and value order in battle; it does not establish general battle-save restoration or bitwise save interchange."
+}

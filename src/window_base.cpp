@@ -82,6 +82,19 @@ void Window_Base::UpdateMovement() {
 	}
 }
 
+Rect Window_Base::GetMessageFaceRect(const Bitmap& faceset) {
+	const auto& system = *Main_Data::game_system;
+	const int cell_width = system.GetMessageFaceWidth();
+	const int cell_height = system.GetMessageFaceHeight();
+	const int columns = faceset.GetWidth() / cell_width;
+	const int index = Main_Data::game_system->GetMessageFaceIndex();
+	// Do not reproduce the native zero-column division crash.
+	if (columns <= 0 || index < 0) return Rect();
+	const int64_t row_y = static_cast<int64_t>(index / columns) * cell_height;
+	if (row_y >= faceset.GetHeight()) return Rect();
+	return Rect((index % columns) * cell_width, static_cast<int>(row_y), cell_width, cell_height);
+}
+
 void Window_Base::OnFaceReady(FileRequestResult* result, int face_index, int cx, int cy, bool flip) {
 	BitmapRef faceset = Cache::Faceset(result->file);
 

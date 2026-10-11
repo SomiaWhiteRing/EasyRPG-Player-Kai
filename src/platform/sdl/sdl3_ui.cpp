@@ -447,6 +447,81 @@ void Sdl3Ui::ToggleFullscreen() {
 	EndDisplayModeChange();
 }
 
+bool Sdl3Ui::SetManiacWindowZoom(int zoom) {
+#if defined(SUPPORT_ZOOM) && defined(_WIN32)
+	SDL_Rect bounds;
+	if (!SDL_GetDisplayBounds(SDL_GetDisplayForWindow(sdl_window), &bounds)) return false;
+	const int effective_zoom = ManiacWindowZoomForBounds(zoom, bounds.w, bounds.h);
+	const bool same_zoom = current_display_mode.zoom == effective_zoom;
+	if (!IsFullscreen() && (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_MAXIMIZED))
+		SDL_RestoreWindow(sdl_window);
+	BeginDisplayModeChange();
+	current_display_mode.zoom = effective_zoom;
+	EndDisplayModeChange();
+	// An explicit option request also resizes a manually resized window.
+	if (same_zoom && !IsFullscreen())
+		SDL_SetWindowSize(sdl_window, main_surface->width() * effective_zoom, main_surface->height() * effective_zoom);
+	maniac_window_zoom = zoom;
+	vcfg.window_zoom.Set(current_display_mode.zoom);
+	return current_display_mode.zoom == effective_zoom;
+#elif defined(__ANDROID__)
+	// The Activity retains its physical size; zoom requests resize the game viewport.
+	maniac_window_zoom = zoom;
+	window.size_changed = true;
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool Sdl3Ui::SetManiacWindowFit(bool enabled) {
+	const bool previous = maniac_window_fit;
+	const int requested = maniac_window_zoom;
+	maniac_window_fit = enabled;
+	if (!SetManiacWindowZoom(std::clamp(requested, 1, 4))) {
+		maniac_window_fit = previous;
+		return false;
+	}
+	maniac_window_zoom = requested;
+	maniac_window_fit_requested = true;
+#if defined(SUPPORT_ZOOM) && defined(_WIN32)
+	if (!IsFullscreen()) {
+		SDL_Rect bounds;
+		int top = 0, left = 0, bottom = 0, right = 0, width, height;
+		SDL_GetDisplayBounds(SDL_GetDisplayForWindow(sdl_window), &bounds);
+		SDL_GetWindowBordersSize(sdl_window, &top, &left, &bottom, &right);
+		SDL_GetWindowSize(sdl_window, &width, &height);
+		SDL_SetWindowPosition(sdl_window, bounds.x + (bounds.w - width - left - right) / 2 + left,
+			bounds.y + (bounds.h - height - top - bottom) / 2 + top);
+	}
+#endif
+	return true;
+}
+
+bool Sdl3Ui::SetManiacScreenMode(bool fullscreen) {
+#ifdef __ANDROID__
+	// The Activity stays full screen; the requested mode selects its game viewport.
+	ApplyManiacScreenMode(fullscreen);
+	window.size_changed = true;
+	return true;
+#else
+	if (IsFullscreen() != fullscreen) ToggleFullscreen();
+	if (IsFullscreen() != fullscreen) return false;
+	ApplyManiacScreenMode(fullscreen);
+	window.size_changed = true;
+	if (!fullscreen) return SetManiacWindowFit(maniac_window_fit);
+	return true;
+#endif
+}
+
+bool Sdl3Ui::SetManiacWindowInterpolation(bool enabled) {
+	if (!SDL_SetTextureScaleMode(sdl_texture_game, enabled ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST))
+		return false;
+	maniac_window_interpolation = enabled;
+	maniac_window_interpolation_requested = true;
+	return true;
+}
+
 void Sdl3Ui::ToggleZoom() {
 #ifdef SUPPORT_ZOOM
 	BeginDisplayModeChange();
@@ -478,6 +553,40 @@ void Sdl3Ui::ToggleZoom() {
 #endif
 }
 
+bool Sdl3Ui::HasInputFocus() const {
+	return sdl_window && (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS);
+}
+
+bool Sdl3Ui::IsJoystickAvailable() const {
+#if defined(USE_JOYSTICK) && defined(SUPPORT_JOYSTICK)
+	int count = 0;
+	auto* ids = SDL_GetJoysticks(&count);
+	bool available = false;
+	for (int i = 0; i < count && !available; ++i) {
+		auto* joystick = SDL_OpenJoystick(ids[i]);
+		available = joystick && SDL_JoystickConnected(joystick);
+		if (joystick) SDL_CloseJoystick(joystick);
+	}
+	SDL_free(ids);
+	return available;
+#else
+	return false;
+#endif
+}
+
+bool Sdl3Ui::ConfirmManiacFileOutput() {
+	const SDL_MessageBoxButtonData buttons[] = {
+		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes"},
+		{SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No"}
+	};
+	const SDL_MessageBoxData box = {SDL_MESSAGEBOX_WARNING, sdl_window, "RPG Maker 2003",
+		"Outputting multiple files in a short time. Do you want to continue? (Select No to exit).",
+		2, buttons, nullptr};
+	int answer = 0;
+	if (!SDL_ShowMessageBox(&box, &answer)) Output::Error("File output confirmation failed: {}", SDL_GetError());
+	return answer == 1;
+}
+
 bool Sdl3Ui::ProcessEvents() {
 #if defined(__WIIU__)
 		if (!WiiU_ProcessProcUI()) {
@@ -499,6 +608,13 @@ bool Sdl3Ui::ProcessEvents() {
 
 		if (Player::exit_flag)
 			break;
+	}
+
+	// The command can disable inactive execution after the focus-lost event.
+	// Only wait here: audio suspension belongs to the original focus event.
+	if (Player::IsPatchManiac() && !Player::exit_flag && ShouldPauseWhenFocusLost()
+			&& !(SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS)) {
+		WaitForFocus();
 	}
 
 	return true;
@@ -527,6 +643,10 @@ void Sdl3Ui::ToggleVsync() {
 }
 
 void Sdl3Ui::UpdateDisplay() {
+	const bool window_interpolation = UseManiacWindowInterpolation();
+	if (maniac_window_interpolation_requested)
+		SDL_SetTextureScaleMode(sdl_texture_game,
+			window_interpolation && maniac_window_interpolation ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
 #ifdef __WIIU__
 	if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
 		// Workaround WiiU bug: Bilinear uses a render target and for these the format is not converted
@@ -562,6 +682,24 @@ void Sdl3Ui::UpdateDisplay() {
 			}
 		};
 
+		if (maniac_screen_mode_requested && maniac_screen_mode) {
+			const Rect rect = ManiacFullscreenRect(window.width, window.height);
+			viewport = {rect.x, rect.y, rect.width, rect.height};
+			window.scale = static_cast<float>(rect.width) / main_surface->width();
+			SDL_SetRenderViewport(sdl_renderer, &viewport);
+		} else
+#ifdef __ANDROID__
+		if (maniac_window_zoom > 0 || maniac_window_fit_requested || maniac_screen_mode_requested) {
+			window.scale = ManiacWindowZoomForBounds(std::clamp(maniac_window_zoom, 1, 4),
+				window.width, window.height);
+			viewport.w = static_cast<int>(ceilf(main_surface->width() * window.scale));
+			viewport.h = static_cast<int>(ceilf(main_surface->height() * window.scale));
+			viewport.x = (window.width - viewport.w) / 2;
+			viewport.y = (window.height - viewport.h) / 2;
+			if (ShouldTopAlignAndroidViewport(window.width, window.height)) viewport.y = 0;
+			SDL_SetRenderViewport(sdl_renderer, &viewport);
+		} else
+#endif
 		if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Integer) {
 			// Integer division on purpose
 			if (want_aspect > real_aspect) {
@@ -630,7 +768,7 @@ void Sdl3Ui::UpdateDisplay() {
 	}
 
 	SDL_RenderClear(sdl_renderer);
-	if (vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
+	if (!window_interpolation && vcfg.scaling_mode.Get() == ConfigEnum::ScalingMode::Bilinear && window.scale > 0.f) {
 		// Render game texture on the scaled texture
 		SDL_SetRenderTarget(sdl_renderer, sdl_texture_scaled);
 		SDL_RenderClear(sdl_renderer);
@@ -669,8 +807,8 @@ bool Sdl3Ui::HandleErrorOutput(const std::string &message) {
 		SDL_SetWindowSize(sdl_window, 0, 0);
 	}
 
-	if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(),
-		message.c_str(), sdl_window) != 0) {
+	if (!SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(),
+		message.c_str(), sdl_window)) {
 		return false;
 	}
 
@@ -756,38 +894,41 @@ void Sdl3Ui::ProcessEvent(SDL_Event &evnt) {
 	}
 }
 
+void Sdl3Ui::WaitForFocus() {
+	bool last = ShowCursor(true);
+
+	// Filter SDL events until focus is regained
+	SDL_Event wait_event;
+
+	while (SDL_WaitEvent(&wait_event)) {
+		if (wait_event.type >= SDL_EVENT_WINDOW_FIRST && wait_event.type <= SDL_EVENT_WINDOW_LAST && wait_event.type != SDL_EVENT_WINDOW_FOCUS_LOST) {
+			// Process size change etc. events
+			ProcessWindowEvent(wait_event);
+		}
+
+		if (FilterUntilFocus(&wait_event)) {
+			break;
+		}
+	}
+
+	ShowCursor(last);
+
+	Player::Resume();
+	ResetKeys();
+
+}
+
 void Sdl3Ui::ProcessWindowEvent(SDL_Event &evnt) {
 	int state = evnt.type;
 
 	if (state == SDL_EVENT_WINDOW_FOCUS_LOST) {
-		auto cfg = vcfg;
-		vGetConfig(cfg);
-		if (!cfg.pause_when_focus_lost.Get()) {
+		if (!ShouldPauseWhenFocusLost()) {
 			return;
 		}
 
 		Player::Pause();
 
-		bool last = ShowCursor(true);
-
-		// Filter SDL events until focus is regained
-		SDL_Event wait_event;
-
-		while (SDL_WaitEvent(&wait_event)) {
-			if (wait_event.type >= SDL_EVENT_WINDOW_FIRST && wait_event.type <= SDL_EVENT_WINDOW_LAST && wait_event.type != SDL_EVENT_WINDOW_FOCUS_LOST) {
-				// Process size change etc. events
-				ProcessWindowEvent(wait_event);
-			}
-
-			if (FilterUntilFocus(&wait_event)) {
-				break;
-			}
-		}
-
-		ShowCursor(last);
-
-		Player::Resume();
-		ResetKeys();
+		WaitForFocus();
 
 		return;
 	}

@@ -1,0 +1,37 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "manifest_sha256": "60d630f1de6bee4401c9508fd92bbdf0831f3fff828878499d68b9a94f864c89",
+  "map_sha256": "cb03f10183daf5dc1666abda7e483f2859c201538a8163dde37e70cda1f8eed7",
+  "reviewed_dispatch_report_sha256": "cc4505d828af1be09832d68aa3b0a53a85ee1d288b597460c41d74054f2a19fe",
+  "dispatcher_default_skip_instructions": {
+    "0x463e2": "mov eax, dword ptr [r13]",
+    "0x463e6": "sub eax, 1",
+    "0x463e9": "js 0x140047d15",
+    "0x463ef": "jmp 0x1400458e0"
+  },
+  "effective_branch_ids": [
+    "3035:standalone-default-skip-no-payload"
+  ],
+  "applicable_context_candidates": [
+    "map autostart",
+    "map parallel",
+    "common event",
+    "battle event"
+  ],
+  "results": {
+    "original": {
+      "trace_sha256": "eaf3e4a01c379d091be45d666d04b34d5e1404ad4fa021214f96d71b4e89e672",
+      "save_sha256": "a2471c5a475982d053281c9c68ebdf2c7a314d52abe2ed7971c9d50c0968f2b5",
+      "save_observed_after_enter": 1,
+      "global_numeric_id_1": 99
+    },
+    "player": {
+      "trace_sha256": "e9025accf2e31cf45f67ed1c79096980acc392b2c10c3c63bff5061d8bf5c9fd",
+      "save_sha256": "939ded144c6fc88cffb8d3823d4f34056694f4ed2ccbc73d35b764a6468fb3c6",
+      "save_observed_after_enter": 1,
+      "global_numeric_id_1": 99
+    }
+  },
+  "scope": "Fixed 250921 original 3035 follows the dispatcher default skip path, re-fetching the next command without reading this command's Args/Text or drawing a shape. The original and Player map-autostart fixtures with nonempty Args/Text reach variable 1 marker 99 and Save01. Other event-context scheduling and Player yield parity remain open under W02-017."
+}

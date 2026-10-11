@@ -39,6 +39,8 @@ public:
 
 	BitmapRef& GetBitmap();
 	BitmapRef const& GetBitmap() const;
+	/** Read the existing effect/frame cache without refreshing or drawing. rect is in backing coordinates. */
+	BitmapRef GetPreparedBitmap(Rect& rect) const;
 	void SetBitmap(BitmapRef const& bitmap);
 	Rect const& GetSrcRect() const;
 	void SetSrcRect(Rect const& src_rect);

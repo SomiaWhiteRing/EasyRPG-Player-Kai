@@ -150,7 +150,7 @@ protected:
 	void EndNotification();
 
 	bool IsEscapeAllowed() const = delete; // disable accidental calls to base class version
-	bool IsEscapeAllowedFromOptionWindow() const;
+	bool IsEscapeAllowedFromOptionWindow() const override;
 	bool IsEscapeAllowedFromActorCommand() const;
 
 	bool CheckAnimFlip(Game_Battler* battler);

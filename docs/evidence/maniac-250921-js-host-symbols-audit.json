@@ -1,0 +1,136 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "79e6d89dbaaf2578a001c74d8546fda62c11f5b097d7a036f8c7ed5f5398ecef",
+  "trace_sha256": "dc208cbeb66d183301d52b52b0cf235c41282625db6afd6944a3598f17ec2acd",
+  "save_sha256": "3c00de9599436f01b6d77aef871b9b00a84e2b47b4ed96a822d1a7d8f8f14dee",
+  "map_sha256": "22900da4bf88a1f3eb46ba64d2fad5227e45369ebb26cc231f9d5c9a88007d3c",
+  "host_object_own_keys": {
+    "global": [
+      "string:AggregateError",
+      "string:Array",
+      "string:ArrayBuffer",
+      "string:Atomics",
+      "string:BigInt",
+      "string:BigInt64Array",
+      "string:BigUint64Array",
+      "string:Boolean",
+      "string:DataView",
+      "string:Date",
+      "string:Error",
+      "string:EvalError",
+      "string:Float32Array",
+      "string:Float64Array",
+      "string:Function",
+      "string:Infinity",
+      "string:Int16Array",
+      "string:Int32Array",
+      "string:Int8Array",
+      "string:InternalError",
+      "string:JSON",
+      "string:Map",
+      "string:Math",
+      "string:NaN",
+      "string:Number",
+      "string:Object",
+      "string:Promise",
+      "string:Proxy",
+      "string:RangeError",
+      "string:ReferenceError",
+      "string:Reflect",
+      "string:RegExp",
+      "string:Set",
+      "string:SharedArrayBuffer",
+      "string:String",
+      "string:Symbol",
+      "string:SyntaxError",
+      "string:TypeError",
+      "string:URIError",
+      "string:Uint16Array",
+      "string:Uint32Array",
+      "string:Uint8Array",
+      "string:Uint8ClampedArray",
+      "string:WeakMap",
+      "string:WeakSet",
+      "string:__date_clock",
+      "string:console",
+      "string:decodeURI",
+      "string:decodeURIComponent",
+      "string:encodeURI",
+      "string:encodeURIComponent",
+      "string:escape",
+      "string:eval",
+      "string:gets",
+      "string:gett",
+      "string:getv",
+      "string:globalThis",
+      "string:include",
+      "string:isFinite",
+      "string:isNaN",
+      "string:parseFloat",
+      "string:parseInt",
+      "string:rm2k3",
+      "string:sets",
+      "string:sett",
+      "string:setv",
+      "string:undefined",
+      "string:unescape"
+    ],
+    "rm2k3": [
+      "string:getPicture"
+    ],
+    "console": [
+      "string:input",
+      "string:log"
+    ],
+    "picture": [],
+    "pictureProto": [
+      "string:erase",
+      "string:file",
+      "string:id",
+      "string:move",
+      "string:scale",
+      "string:show"
+    ],
+    "getPicture": [
+      "string:length",
+      "string:name"
+    ],
+    "consoleLog": [
+      "string:length",
+      "string:name"
+    ],
+    "consoleInput": [
+      "string:length",
+      "string:name"
+    ],
+    "include": [
+      "string:length",
+      "string:name"
+    ],
+    "getv": [
+      "string:length",
+      "string:name"
+    ],
+    "gets": [
+      "string:length",
+      "string:name"
+    ],
+    "gett": [
+      "string:length",
+      "string:name"
+    ],
+    "setv": [
+      "string:length",
+      "string:name"
+    ],
+    "sets": [
+      "string:length",
+      "string:name"
+    ],
+    "sett": [
+      "string:length",
+      "string:name"
+    ]
+  },
+  "scope": "250921 Windows original Reflect.ownKeys on the global object, rm2k3, console, one picture instance and its prototype, and all callable host names found in the direct registration inventory. No own Symbol keys are present in this bounded surface. Standard JS builtins, user-added properties and other runtime states are not enumerated; static registration reachability remains M0-028."
+}

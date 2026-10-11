@@ -1,0 +1,294 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "source_sha256": {
+    "commands/03004.md": "70e2819bc52e956a238ddb35dfb9a8a8a0ccc9671206ace88c60547e5b65f18b",
+    "evidence/DispatchCommands-250921.md": "439c352c26011574534d0bd9da074b08ff33d37848e7a52461640102d9af1f7c",
+    "analysis-work/reports/03004-f1b9bb43b38e9403a005a098174083bc62dd119f393f919d7c904fccda32f0b0.json": "770e85453a69ccd1365eeac570a5c06831f9fbe2f4d9efc90556deaec96d6fa3"
+  },
+  "opcode_mapping": {
+    "opcode": 3004,
+    "normalized_selector": 1278,
+    "selector_byte_rva": "0x47ea8",
+    "slot": 10,
+    "target_slot_rva": "0x47d7c",
+    "branch_rva": "0x46842"
+  },
+  "fixed_instructions": {
+    "0x4591d": {
+      "instruction": "mov edx, dword ptr [rbx]",
+      "bytes": "8b13"
+    },
+    "0x45921": {
+      "instruction": "and edx, 0x3ff",
+      "bytes": "81e2ff030000"
+    },
+    "0x45927": {
+      "instruction": "shr rax, 8",
+      "bytes": "48c1e808"
+    },
+    "0x4592e": {
+      "instruction": "shl ecx, 3",
+      "bytes": "c1e103"
+    },
+    "0x45931": {
+      "instruction": "sub edx, ecx",
+      "bytes": "2bd1"
+    },
+    "0x45933": {
+      "instruction": "add edx, 0x19a",
+      "bytes": "81c29a010000"
+    },
+    "0x459a7": {
+      "instruction": "movzx eax, byte ptr [r9 + rax + 0x47df8]",
+      "bytes": "410fb68401f87d0400"
+    },
+    "0x459b0": {
+      "instruction": "mov ecx, dword ptr [r9 + rax*4 + 0x47d54]",
+      "bytes": "418b8c81547d0400"
+    },
+    "0x459bb": {
+      "instruction": "jmp rcx",
+      "bytes": "ffe1"
+    },
+    "0x46842": {
+      "instruction": "mov byte ptr [rip + 0x232921], 1",
+      "bytes": "c6052129230001"
+    },
+    "0x46849": {
+      "instruction": "mov al, 1",
+      "bytes": "b001"
+    },
+    "0x4684b": {
+      "instruction": "jmp 0x140046ef3",
+      "bytes": "e9a3060000"
+    },
+    "0x46f0a": {
+      "instruction": "ret",
+      "bytes": "c3"
+    },
+    "0x2dd1c": {
+      "instruction": "cmp byte ptr [rip + 0x24b448], bl",
+      "bytes": "381d48b42400"
+    },
+    "0x2dd22": {
+      "instruction": "sete dil",
+      "bytes": "400f94c7"
+    },
+    "0x192ba9": {
+      "instruction": "cmp byte ptr [rip + 0xe65b8], 0",
+      "bytes": "803db8650e0000"
+    },
+    "0x192bb0": {
+      "instruction": "mov byte ptr [rip + 0xe65b2], 0",
+      "bytes": "c605b2650e0000"
+    },
+    "0x192bb7": {
+      "instruction": "jne 0x140192bf7",
+      "bytes": "753e"
+    },
+    "0x192bb9": {
+      "instruction": "cmp byte ptr [rip + 0xe65aa], 0",
+      "bytes": "803daa650e0000"
+    },
+    "0x192bc0": {
+      "instruction": "jne 0x140192bd5",
+      "bytes": "7513"
+    },
+    "0x192bc2": {
+      "instruction": "movzx eax, byte ptr [rip + 0xe65a2]",
+      "bytes": "0fb605a2650e00"
+    },
+    "0x192bc9": {
+      "instruction": "inc al",
+      "bytes": "fec0"
+    },
+    "0x192bcb": {
+      "instruction": "mov byte ptr [rip + 0xe659a], al",
+      "bytes": "88059a650e00"
+    },
+    "0x192bd1": {
+      "instruction": "cmp al, 1",
+      "bytes": "3c01"
+    },
+    "0x192bd3": {
+      "instruction": "jbe 0x140192bf7",
+      "bytes": "7622"
+    },
+    "0x192be4": {
+      "instruction": "mov byte ptr [rip + 0xe657f], 1",
+      "bytes": "c6057f650e0001"
+    },
+    "0x192beb": {
+      "instruction": "call 0x1401849d0",
+      "bytes": "e8e01dffff"
+    },
+    "0x192bf0": {
+      "instruction": "mov byte ptr [rip + 0xe6571], 1",
+      "bytes": "c60571650e0001"
+    },
+    "0x184a0a": {
+      "instruction": "mov eax, dword ptr [rdi + 0x20]",
+      "bytes": "8b4720"
+    },
+    "0x184a0d": {
+      "instruction": "cmp eax, 0x64",
+      "bytes": "83f864"
+    },
+    "0x599fb": {
+      "instruction": "mov dword ptr [rip + 0x21f763], 0",
+      "bytes": "c70563f7210000000000"
+    },
+    "0x5aa88": {
+      "instruction": "xor edi, edi",
+      "bytes": "33ff"
+    },
+    "0x5ab43": {
+      "instruction": "mov dword ptr [rip + 0x21e61f], edi",
+      "bytes": "893d1fe62100"
+    },
+    "0x19299e": {
+      "instruction": "mov dword ptr [rip + 0xe67c0], 0",
+      "bytes": "c705c0670e0000000000"
+    },
+    "0x192a51": {
+      "instruction": "mov dword ptr [rip + 0xe670d], 0",
+      "bytes": "c7050d670e0000000000"
+    }
+  },
+  "rip_references_to_279168_through_27916b": [
+    {
+      "rva": "0x2b5cf",
+      "target_rva": "0x279169",
+      "instruction": "mov byte ptr [rip + 0x24db93], 1"
+    },
+    {
+      "rva": "0x2dd1c",
+      "target_rva": "0x27916a",
+      "instruction": "cmp byte ptr [rip + 0x24b448], bl"
+    },
+    {
+      "rva": "0x46842",
+      "target_rva": "0x27916a",
+      "instruction": "mov byte ptr [rip + 0x232921], 1"
+    },
+    {
+      "rva": "0x472e4",
+      "target_rva": "0x279169",
+      "instruction": "mov byte ptr [rip + 0x231e7e], 1"
+    },
+    {
+      "rva": "0x599fb",
+      "target_rva": "0x279168",
+      "instruction": "mov dword ptr [rip + 0x21f763], 0"
+    },
+    {
+      "rva": "0x5ab43",
+      "target_rva": "0x279168",
+      "instruction": "mov dword ptr [rip + 0x21e61f], edi"
+    },
+    {
+      "rva": "0x18976f",
+      "target_rva": "0x279168",
+      "instruction": "mov byte ptr [rip + 0xef9f2], 1"
+    },
+    {
+      "rva": "0x19299e",
+      "target_rva": "0x279168",
+      "instruction": "mov dword ptr [rip + 0xe67c0], 0"
+    },
+    {
+      "rva": "0x192a51",
+      "target_rva": "0x279168",
+      "instruction": "mov dword ptr [rip + 0xe670d], 0"
+    },
+    {
+      "rva": "0x192ba9",
+      "target_rva": "0x279168",
+      "instruction": "cmp byte ptr [rip + 0xe65b8], 0"
+    },
+    {
+      "rva": "0x192bb0",
+      "target_rva": "0x279169",
+      "instruction": "mov byte ptr [rip + 0xe65b2], 0"
+    },
+    {
+      "rva": "0x192bb9",
+      "target_rva": "0x27916a",
+      "instruction": "cmp byte ptr [rip + 0xe65aa], 0"
+    },
+    {
+      "rva": "0x192bc2",
+      "target_rva": "0x27916b",
+      "instruction": "movzx eax, byte ptr [rip + 0xe65a2]"
+    },
+    {
+      "rva": "0x192bcb",
+      "target_rva": "0x27916b",
+      "instruction": "mov byte ptr [rip + 0xe659a], al"
+    },
+    {
+      "rva": "0x192be4",
+      "target_rva": "0x27916a",
+      "instruction": "mov byte ptr [rip + 0xe657f], 1"
+    },
+    {
+      "rva": "0x192bf0",
+      "target_rva": "0x279168",
+      "instruction": "mov byte ptr [rip + 0xe6571], 1"
+    },
+    {
+      "rva": "0x192ea7",
+      "target_rva": "0x279168",
+      "instruction": "mov byte ptr [rip + 0xe62ba], r15b"
+    },
+    {
+      "rva": "0x193ff4",
+      "target_rva": "0x279169",
+      "instruction": "cmp byte ptr [rip + 0xe516e], 0"
+    },
+    {
+      "rva": "0x194067",
+      "target_rva": "0x279169",
+      "instruction": "cmp byte ptr [rip + 0xe50fb], bpl"
+    },
+    {
+      "rva": "0x1940ac",
+      "target_rva": "0x279169",
+      "instruction": "mov byte ptr [rip + 0xe50b6], bpl"
+    },
+    {
+      "rva": "0x1941f3",
+      "target_rva": "0x279169",
+      "instruction": "cmp byte ptr [rip + 0xe4f6f], bpl"
+    },
+    {
+      "rva": "0x1a3dbc",
+      "target_rva": "0x279169",
+      "instruction": "mov byte ptr [rip + 0xd53a6], 1"
+    }
+  ],
+  "effective_branch_ids": [
+    "3004:set-end-load-flag-and-success"
+  ],
+  "acceptance_ids": [
+    "W11-027",
+    "W11-028"
+  ],
+  "command_rule": "Shared dispatcher selects RVA 0x46842. The full block writes byte 27916a=1, returns AL=1 through the common epilogue, and neither reads Args/Text nor waits. Zero, short, extended or malformed Args and arbitrary Text cannot alter this opcode-specific path; retain original record, indent and payload for serialization and parent scans.",
+  "conditional_consumer": "Conditional Branch type 12, operand 0 compares 27916a with zero at 0x2dd1c and sets its Boolean result at 0x2dd22. Thus before End Load Process or map first-update completion it can report right-after-load; after either flag setter it reports false, subject to the surrounding conditional command's own argument rules.",
+  "map_consumer": "At 0x192ba9, map update gates on byte 279168==0. It resets 279169, then 27916a!=0 bypasses the small 27916b delay. With flag zero it increments 27916b and skips the transition while the new count <=1. On transition it sets 27916a=1, calls brightness/presentation helper 0x1849d0 with 279150, and sets 279168=1. Later updates bypass this startup block until a reset clears 279168.",
+  "reset_boundary": "Four-byte zero stores at startup 0x599fb and map setup/teardown 0x19299e/0x192a51 clear 279168..27916b together; restart path 0x5ab43 writes zero-valued EDI to the same four-byte group. Their exact event/frame timing and all indirect aliases still require runtime confirmation under W11-028.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "context_evidence": "The opcode-specific block has no context guard. These are shared-dispatch candidate contexts; no original/Player execution comparison is claimed by this audit.",
+  "remaining_questions": [
+    "W11-027: original/Player conditional type-12 operand-0 values before/after 3004, repeated 3004, no-execution path, Args/Text preservation and frame continuation in applicable contexts.",
+    "W11-028: original/Player next-map-update delay/brightness/screen trajectory, reset timing, save/restart persistence and interaction with 3003 A3, including existing W11-015/016/025/026 integration boundaries.",
+    "241028 consumer behavior and Web/Android acceptance remain separate."
+  ],
+  "scope": "250921 Windows static branch/consumer scope only; Player functionality and dynamic parity remain open."
+}

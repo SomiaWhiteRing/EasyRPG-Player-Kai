@@ -1,0 +1,36 @@
+{
+  "reference_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "fixture_manifest_sha256": "e7e1d7045704e12ccbaacbd65a628333b7444c04881ea8efdbf0ea447f5d44d3",
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "runtime_arguments": [],
+  "events": [
+    {
+      "input_enter_count": 1,
+      "save_slot": 1,
+      "snapshot": "event01-slot1.lsd",
+      "sha256": "36bead77bafbfa7f1e8404e1e32981a2e0b628bb2ca5a37cc75cd467126512ca",
+      "length": 3767
+    },
+    {
+      "input_enter_count": 2,
+      "save_slot": 2,
+      "snapshot": "event02-slot2.lsd",
+      "sha256": "e927ee153e1f643e9fc0979f30967b5e6c6f226052cf4d49214350c13cba3787",
+      "length": 3814
+    },
+    {
+      "input_enter_count": 5,
+      "save_slot": 1,
+      "snapshot": "event03-slot1.lsd",
+      "sha256": "346a49620aba0ae35864e5586899943a26ba25e00310438534314cf1c31d00d5",
+      "length": 3767
+    },
+    {
+      "input_enter_count": 6,
+      "save_slot": 2,
+      "snapshot": "event04-slot2.lsd",
+      "sha256": "915ebf420345f4b45205de05e404ba2cd11dd6b3e6063a5d76be271633444d57",
+      "length": 3814
+    }
+  ]
+}

@@ -23,6 +23,9 @@
 #ifdef EMSCRIPTEN
 #include "platform/emscripten/movie_player_web.h"
 #endif
+#ifdef HAVE_ANDROID_MOVIE_PLAYER
+#include "platform/android/movie_player_android.h"
+#endif
 
 bool MoviePlayer::HasError() const {
 	return false;
@@ -33,6 +36,8 @@ std::unique_ptr<MoviePlayer> MoviePlayer::Create() {
 	return std::make_unique<DirectShowMoviePlayer>();
 #elif defined(HAVE_WEB_MOVIE_PLAYER)
 	return std::make_unique<WebMoviePlayer>();
+#elif defined(HAVE_ANDROID_MOVIE_PLAYER)
+	return std::make_unique<AndroidMoviePlayer>();
 #else
 	return {};
 #endif

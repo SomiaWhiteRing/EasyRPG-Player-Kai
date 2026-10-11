@@ -18,6 +18,7 @@
 // Headers
 #include <cassert>
 #include <algorithm>
+#include <limits>
 #include "game_interpreter.h"
 #include "game_enemyparty.h"
 #include "main_data.h"
@@ -25,13 +26,14 @@
 #include "utils.h"
 #include "output.h"
 #include "rand.h"
+#include "player.h"
 
 Game_EnemyParty::Game_EnemyParty() {
 }
 
 Game_Enemy* Game_EnemyParty::GetEnemy(int idx) {
 	if (idx >= 0 && idx < static_cast<int>(enemies.size())) {
-		return &enemies[idx];
+		return enemies[idx].get();
 	}
 	return nullptr;
 }
@@ -41,7 +43,7 @@ Game_Enemy& Game_EnemyParty::operator[] (const int index) {
 		assert(false && "Subscript out of range");
 	}
 
-	return enemies[index];
+	return *enemies[index];
 }
 
 int Game_EnemyParty::GetBattlerCount() const {
@@ -51,13 +53,14 @@ int Game_EnemyParty::GetBattlerCount() const {
 int Game_EnemyParty::GetVisibleBattlerCount() const {
 	int visible = 0;
 	for (const auto& enemy: enemies) {
-		visible += !enemy.IsHidden();
+		visible += !enemy->IsHidden();
 	}
 	return visible;
 }
 
 void Game_EnemyParty::ResetBattle(int battle_troop_id) {
 	enemies.clear();
+	retired_enemies.clear();
 	const auto* troop = lcf::ReaderUtil::GetElement(lcf::Data::troops, battle_troop_id);
 	if (!troop) {
 		// Valid case when battle quits
@@ -66,8 +69,8 @@ void Game_EnemyParty::ResetBattle(int battle_troop_id) {
 
 	int non_hidden = static_cast<int>(troop->members.size());
 	for (const auto& mem : troop->members) {
-		enemies.emplace_back(&mem);
-		non_hidden -= enemies.back().IsHidden();
+		enemies.push_back(std::make_unique<Game_Enemy>(&mem));
+		non_hidden -= enemies.back()->IsHidden();
 	}
 
 	if (troop->appear_randomly) {
@@ -76,12 +79,12 @@ void Game_EnemyParty::ResetBattle(int battle_troop_id) {
 				// At least one party member must be visible
 				break;
 			}
-			if (enemy.IsHidden()) {
+			if (enemy->IsHidden()) {
 				continue;
 			}
 
 			if (Rand::PercentChance(40)) {
-				enemy.SetHidden(true);
+				enemy->SetHidden(true);
 				--non_hidden;
 			}
 		}
@@ -92,7 +95,7 @@ std::vector<Game_Enemy*> Game_EnemyParty::GetEnemies() {
 	std::vector<Game_Enemy*> party;
 	party.reserve(enemies.size());
 	for (auto& e: enemies) {
-		party.push_back(&e);
+		party.push_back(e.get());
 	}
 	return party;
 }
@@ -100,9 +103,10 @@ std::vector<Game_Enemy*> Game_EnemyParty::GetEnemies() {
 
 int Game_EnemyParty::GetExp() const {
 	int sum = 0;
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 	for (auto& enemy: enemies) {
-		if (enemy.IsDead()) {
-			sum += enemy.GetExp();
+		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
+			sum += enemy->GetExp();
 		}
 	}
 	return sum;
@@ -110,21 +114,23 @@ int Game_EnemyParty::GetExp() const {
 
 int Game_EnemyParty::GetMoney() const {
 	int sum = 0;
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 	for (auto& enemy: enemies) {
-		if (enemy.IsDead()) {
-			sum += enemy.GetMoney();
+		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
+			sum += enemy->GetMoney();
 		}
 	}
 	return sum;
 }
 
 void Game_EnemyParty::GenerateDrops(std::vector<int>& out) const {
+	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
 	for (auto& enemy: enemies) {
-		if (enemy.IsDead()) {
+		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
 			// Only roll if the enemy has something to drop
-			if (enemy.GetDropId() != 0) {
-				if (Rand::ChanceOf(enemy.GetDropProbability(), 100)) {
-					out.push_back(enemy.GetDropId());
+			if (enemy->GetDropId() != 0) {
+				if (Rand::ChanceOf(enemy->GetDropProbability(), 100)) {
+					out.push_back(enemy->GetDropId());
 				}
 			}
 		}
@@ -132,8 +138,38 @@ void Game_EnemyParty::GenerateDrops(std::vector<int>& out) const {
 }
 
 int Game_EnemyParty::GetEnemyPositionInParty(const Game_Enemy* enemy) const {
-	if (enemy >= enemies.data() && enemy < enemies.data() + enemies.size()) {
-		return enemy - enemies.data();
+	for (int i = 0; i < GetBattlerCount(); ++i) {
+		if (enemies[i].get() == enemy) return i;
 	}
 	return -1;
+}
+
+int Game_EnemyParty::GetNextTroopMemberId() const {
+	int id = 0;
+	for (const auto& enemy : enemies) id = std::max(id, enemy->GetTroopMemberId());
+	return id < std::numeric_limits<int>::max() ? id + 1 : id;
+}
+
+void Game_EnemyParty::InsertEnemy(int index, std::unique_ptr<Game_Enemy> enemy) {
+	if (!enemy || index < 0) return;
+	index = std::min(index, GetBattlerCount());
+	enemies.insert(enemies.begin() + index, std::move(enemy));
+}
+
+void Game_EnemyParty::ReplaceEnemy(int index, std::unique_ptr<Game_Enemy> enemy) {
+	if (!enemy || !GetEnemy(index)) return;
+	enemies[index]->Retire();
+	retired_enemies.push_back(std::move(enemies[index]));
+	enemies[index] = std::move(enemy);
+}
+
+void Game_EnemyParty::RemoveEnemies(int index, int count) {
+	if (index < 0 || index >= GetBattlerCount()) return;
+	const int available = GetBattlerCount() - index;
+	count = count < 0 ? available : std::min(count, available);
+	for (int i = 0; i < count; ++i) {
+		enemies[index + i]->Retire();
+		retired_enemies.push_back(std::move(enemies[index + i]));
+	}
+	if (count > 0) enemies.erase(enemies.begin() + index, enemies.begin() + index + count);
 }

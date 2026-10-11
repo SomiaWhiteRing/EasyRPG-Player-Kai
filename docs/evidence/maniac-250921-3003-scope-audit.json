@@ -1,0 +1,50 @@
+{
+  "original_runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "reviewed_source_sha256": "f79ad5bea9a3770161d89919a9acb8219adbd6a6838de3cc0cc74f020562537f",
+  "dispatch_instructions": {
+    "0x46787": "mov eax, dword ptr [rbx + 0x20]",
+    "0x467a2": "je 0x47d01",
+    "0x467ac": "cmp dword ptr [rax], r15d",
+    "0x467b7": "call 0x17d7c0",
+    "0x467e6": "test edi, edi",
+    "0x467f1": "cmp edx, 2",
+    "0x4680b": "test r15d, r15d",
+    "0x46812": "test ecx, ecx",
+    "0x4682a": "call 0x82bc0",
+    "0x46835": "test al, al",
+    "0x47d01": "mov al, 1",
+    "0x47d28": "movzx ecx, sil",
+    "0x47d2c": "mov dword ptr [rip + 0x22188a], edi",
+    "0x47d32": "call 0x53c10"
+  },
+  "effective_branch_ids": [
+    "3003:literal-or-one-lookup-global-self-slot",
+    "3003:empty-short-nonpositive-no-load",
+    "3003:header-check-or-bypass",
+    "3003:restart-with-reset-presentation-flag",
+    "3003:contextual-frame-and-state-restoration"
+  ],
+  "parameter_rule": "A0=0 takes A1 literally; every nonzero A0 reads A1 as a numeric variable address once, including negative self. Empty record returns; other missing fields read zero. A2=0 requests the header/existence precheck, any nonzero A2 bypasses it. A3 controls reset presentation/timing and defaults zero when absent. Text and extra Args have no consumer in this branch.",
+  "lifecycle_rule": "A nonpositive resolved slot or failed precheck returns immediate success with no load. Otherwise the dispatcher stores the slot and invokes the engine control restart at RVA 0x53c10; it does not return through ordinary event-command success. The catch/restart path reinitializes game state and loads the target slot. This creates context-dependent continuation and save compatibility requirements.",
+  "remaining_questions": [
+    "Fixed original/Player literal and one-lookup global/self slot tests, short/invalid slots and Text preservation",
+    "Checked and bypassed A2 behavior for present, missing and malformed files without equating header existence with valid payload",
+    "A3=0/1 presentation timing, reset brightness and control-exception behavior",
+    "Map foreground, parallel, common, battle and 3019-generated candidate load contexts, plus restored frame and state fidelity",
+    "Cross-runtime load/save interchange, 241028 behavior, Web and Android limits separately scoped"
+  ],
+  "acceptance_ids": [
+    "W11-011",
+    "W11-012",
+    "W11-013",
+    "W11-014",
+    "W11-015",
+    "W11-016",
+    "W11-017",
+    "W11-023",
+    "W11-024",
+    "W11-025",
+    "W11-026"
+  ],
+  "scope": "250921 Windows Load branch and restart-path inventory only. Prior 3003 fixed self-bank continuations close narrow interchange leaves; they do not prove all slot modes, header bypass, A3 timing or event contexts."
+}

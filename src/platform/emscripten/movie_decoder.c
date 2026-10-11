@@ -1,9 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * Small, decode-only FFmpeg bridge. Runs in its own Worker, never the engine.
+ * Small, decode-only FFmpeg bridge. Web uses a Worker; Android supplies
+ * filesystem callbacks and bounded native audio/video consumers.
  */
 #include <errno.h>
 #include <math.h>
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#else
+#define EMSCRIPTEN_KEEPALIVE
+#define EM_JS(result, name, args, ...) result name args;
+#endif
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
@@ -24,6 +30,11 @@ static unsigned int pixel_capacity, sample_capacity;
 static int active = -1, draining;
 static double origin, next_time[2];
 static char error_message[256];
+#ifndef __EMSCRIPTEN__
+static AVIOContext *custom_io;
+extern int movie_read(void *opaque, uint8_t *data, int size);
+extern int64_t movie_seek(void *opaque, int64_t offset, int whence);
+#endif
 
 EM_JS(void, movie_video, (const uint8_t *data, int size, int width, int height, double time, double duration), {
   Module.onVideo(HEAPU8.slice(data, data + size), width, height, time, duration);
@@ -50,6 +61,10 @@ EMSCRIPTEN_KEEPALIVE void movie_close(void) {
     next_time[i] = 0;
   }
   avformat_close_input(&format);
+#ifndef __EMSCRIPTEN__
+  if (custom_io) av_freep(&custom_io->buffer);
+  avio_context_free(&custom_io);
+#endif
   sws_freeContext(scale);
   scale = NULL;
   swr_free(&resample);
@@ -70,7 +85,17 @@ EMSCRIPTEN_KEEPALIVE int movie_open(const char *path) {
   if (!format) return fail(AVERROR(ENOMEM), "Allocate movie");
   format->probesize = 1024 * 1024;
   format->max_analyze_duration = 3 * AV_TIME_BASE;
+#ifdef __EMSCRIPTEN__
   int result = avformat_open_input(&format, path, NULL, NULL);
+#else
+  uint8_t *io_buffer = av_malloc(32768);
+  if (!io_buffer) return fail(AVERROR(ENOMEM), "Allocate movie input");
+  custom_io = avio_alloc_context(io_buffer, 32768, 0, NULL, movie_read, NULL, movie_seek);
+  if (!custom_io) { av_free(io_buffer); return fail(AVERROR(ENOMEM), "Allocate movie input context"); }
+  format->pb = custom_io;
+  format->flags |= AVFMT_FLAG_CUSTOM_IO;
+  int result = avformat_open_input(&format, NULL, NULL, NULL);
+#endif
   if (result < 0) return fail(result, "Open movie");
   result = avformat_find_stream_info(format, NULL);
   if (result < 0) return fail(result, "Read movie streams");

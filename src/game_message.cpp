@@ -29,12 +29,427 @@
 #include "font.h"
 #include "player.h"
 #include "game_variables.h"
+#include "game_switches.h"
 #include <lcf/data.h>
 #include <lcf/reader_util.h>
 #include "output.h"
 #include "feature.h"
+#include "game_interpreter.h"
+#include "game_maniac_self_variables.h"
 
 #include <cctype>
+#include <cstring>
+#include <tuple>
+
+namespace {
+using HookCaller = Game_Message::ManiacHookCaller;
+
+Game_ManiacSelfVariables::Bank* HookBank(HookCaller caller, bool create) {
+	auto* state = Main_Data::game_maniac_self_variables.get();
+	if (!state) return nullptr;
+	return create ? state->Ensure(caller.scope, caller.map_id, caller.event_id)
+		: state->FindMutable(caller.scope, caller.map_id, caller.event_id);
+}
+
+int32_t HookReadNumber(HookCaller caller, int32_t id) {
+	return id < 0 ? Game_ManiacSelfVariables::ReadNumber(HookBank(caller, false), id)
+		: Main_Data::game_variables->Get(id);
+}
+
+std::pair<std::string, bool> HookReadString(HookCaller caller, int32_t id) {
+	if (id > 0) return {ToString(Main_Data::game_strings->Get(id)), Main_Data::game_strings->IsPresent(id)};
+	if (id == 0) return {};
+	const auto* bank = HookBank(caller, false);
+	const auto slot = static_cast<size_t>(-static_cast<int64_t>(id));
+	if (!bank || slot >= bank->strings.size()) return {};
+	return {ToString(bank->strings[slot]), Game_ManiacSelfVariables::IsStringPresent(bank, slot)};
+}
+
+int32_t HookOffset(int32_t base, uint32_t offset) {
+	const uint32_t bits = base < 0 ? static_cast<uint32_t>(base) - offset : static_cast<uint32_t>(base) + offset;
+	int32_t result;
+	std::memcpy(&result, &bits, sizeof(result));
+	return result;
+}
+
+void HookWriteNumber(HookCaller caller, int32_t id, int32_t value) {
+	if (id >= 0) {
+		if (id < INT32_MAX) Main_Data::game_variables->GetManiacWritable(id + 1);
+		if (auto* destination = Main_Data::game_variables->GetManiacWritable(id)) *destination = value;
+		return;
+	}
+	auto* bank = HookBank(caller, true);
+	if (!bank) return;
+	const auto slot = static_cast<size_t>(-static_cast<int64_t>(id));
+	bank->numbers.resize(std::max(bank->numbers.size(), slot + 2));
+	bank->numbers[slot] = value;
+}
+
+void HookWriteString(HookCaller caller, int32_t id, const std::string& value, bool present) {
+	if (id >= 0) {
+		Main_Data::game_strings->SetManiacRawSlot(id, value, present);
+		return;
+	}
+	auto* bank = HookBank(caller, true);
+	if (!bank) return;
+	const auto slot = static_cast<size_t>(-static_cast<int64_t>(id));
+	bank->strings.resize(std::max(bank->strings.size(), slot + 1));
+	bank->strings[slot] = lcf::DBString(std::string(value));
+	Game_ManiacSelfVariables::SetStringPresence(bank, slot, present);
+}
+
+class UserHookParser {
+public:
+	UserHookParser(const char* iter, const char* end, HookCaller caller, bool evaluate = true,
+		uint32_t grammar = static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax) | 4u)
+		: pos(iter), end(end), caller(caller), evaluate(evaluate), grammar(grammar) {}
+	const char* pos;
+	const char* end;
+	HookCaller caller;
+	bool evaluate;
+	uint32_t grammar;
+	bool self_reference = false;
+
+	bool IsSpace() const {
+		return pos != end && (*pos == ' ' || (end - pos >= 3 && std::memcmp(pos, "\xe3\x80\x80", 3) == 0));
+	}
+	void SkipSpaces() {
+		while (IsSpace()) pos += *pos == ' ' ? 1 : 3;
+	}
+	bool Prepare(bool& bracket) {
+		bracket = false;
+		if (grammar & 1) {
+			if (pos == end || *pos != '[') return false;
+			bracket = true; // The native strict path deliberately leaves '[' unconsumed.
+		} else {
+			if (pos == end || ((grammar & 4) && IsSpace())) return false;
+			if (!(grammar & 4)) SkipSpaces();
+			if (pos == end) return false;
+			if (*pos == '[' || *pos == ':') { bracket = *pos == '['; ++pos; }
+		}
+		SkipSpaces();
+		self_reference = self_reference && !bracket;
+		return pos != end;
+	}
+	static int32_t Decimal(std::string_view value, size_t* used = nullptr) {
+		size_t index = 0;
+		while (index < value.size() && (value[index] == ' ' || value[index] == '\t' || value[index] == '\r' || value[index] == '\n')) ++index;
+		bool negative = false;
+		if (index < value.size() && (value[index] == '+' || value[index] == '-')) negative = value[index++] == '-';
+		const size_t first_digit = index;
+		uint32_t bits = 0;
+		while (index < value.size() && value[index] >= '0' && value[index] <= '9') bits = bits * 10 + value[index++] - '0';
+		if (used) *used = index == first_digit ? 0 : index;
+		if (negative) bits = 0u - bits;
+		int32_t result;
+		std::memcpy(&result, &bits, sizeof(result));
+		return result;
+	}
+	std::string ActorName(int id) const {
+		if (id == 0) {
+			if (!Main_Data::game_party || Main_Data::game_party->GetBattlerCount() == 0) return {};
+			id = (*Main_Data::game_party)[0].GetId();
+		}
+		const auto* actor = Main_Data::game_actors->GetActor(id);
+		if (!actor) Output::Error("Maniac message hook: Invalid actor ID {}", id);
+		return ToString(actor->GetName());
+	}
+	char Prefix(bool& self) {
+		const char* begin = pos;
+		bool explicit_self = false;
+		self = self_reference;
+		if (pos == end) return 0;
+		const auto escape = Utils::UTF8Next(pos, end);
+		if (escape.ch == Player::escape_char || *pos == '\\') {
+			pos = escape.next;
+			self = self_reference = false;
+		} else if (grammar & 2) return 0;
+		if (pos == end) { pos = begin; return 0; }
+		if (end - pos >= 4 && std::toupper(static_cast<unsigned char>(pos[0])) == 'S'
+			&& std::toupper(static_cast<unsigned char>(pos[1])) == 'E'
+			&& std::toupper(static_cast<unsigned char>(pos[2])) == 'L'
+			&& std::toupper(static_cast<unsigned char>(pos[3])) == 'F') {
+			self = self_reference = true;
+			explicit_self = true;
+			pos += 4;
+		}
+		if (pos != end) {
+			const char type = std::toupper(static_cast<unsigned char>(*pos));
+			if (type == 'V' || type == 'T' || (!explicit_self && type == 'N')) {
+				if (type == 'N') self = false;
+				++pos;
+				return type;
+			}
+		}
+		pos = begin;
+		return 0;
+	}
+	int32_t Literal() {
+		size_t used = 0;
+		const auto value = Decimal(std::string_view(pos, end - pos), &used);
+		pos += used;
+		return value;
+	}
+	int32_t NumericToken() {
+		bool self;
+		const char type = Prefix(self);
+		if (!type) return Literal();
+		int32_t id = Number();
+		self_reference = false;
+		if (self) {
+			const uint32_t bits = 0u - static_cast<uint32_t>(id);
+			std::memcpy(&id, &bits, sizeof(id));
+		}
+		return !evaluate ? 0 : type == 'V' ? HookReadNumber(caller, id)
+			: Decimal(type == 'T' ? HookReadString(caller, id).first : ActorName(id));
+	}
+	bool MixedToken(int32_t& number, std::string& value, bool& present) {
+		if (pos != end && *pos == '"') {
+			++pos;
+			while (pos != end && *pos != '"') {
+				if (*pos == '\\' && end - pos >= 2 && pos[1] == '"') ++pos;
+				value += *pos++;
+			}
+			if (pos != end) ++pos;
+			present = !value.empty();
+			return true;
+		}
+		bool self;
+		const char type = Prefix(self);
+		if (!type) { number = Literal(); return false; }
+		int32_t id = Number();
+		self_reference = false;
+		if (self) {
+			const uint32_t bits = 0u - static_cast<uint32_t>(id);
+			std::memcpy(&id, &bits, sizeof(id));
+		}
+		if (evaluate) {
+			if (type == 'V') number = HookReadNumber(caller, id);
+			else if (type == 'T') std::tie(value, present) = HookReadString(caller, id);
+			else { value = ActorName(id); present = !value.empty(); }
+		}
+		return type != 'V';
+	}
+	int32_t Number() {
+		bool bracket;
+		if (!Prepare(bracket)) return 0;
+		bool self;
+		const char type = Prefix(self);
+		int32_t value;
+		if (type) {
+			int32_t id = Number();
+			self_reference = false;
+			if (self) {
+				const uint32_t bits = 0u - static_cast<uint32_t>(id);
+				std::memcpy(&id, &bits, sizeof(id));
+			}
+			value = !evaluate ? 0 : type == 'V' ? HookReadNumber(caller, id)
+				: Decimal(type == 'T' ? HookReadString(caller, id).first : ActorName(id));
+			if (bracket && pos != end && *pos == ']') ++pos;
+		} else {
+			const char* begin = pos;
+			size_t used = 0;
+			value = Decimal(std::string_view(begin, end - begin), &used);
+			if (bracket) {
+				while (pos != end && *pos != ']') ++pos;
+				if (pos != end) ++pos;
+			} else {
+				pos += used;
+				SkipSpaces();
+				if (pos != end && *pos == ';') ++pos;
+			}
+		}
+		return value;
+	}
+};
+
+const char* ParseColorNumbers(const char* iter, const char* end, HookCaller caller,
+	std::array<int32_t, 2>& colors, bool evaluate) {
+	colors = {-1, -1};
+	UserHookParser parser(iter, end, caller, evaluate, static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax));
+	bool bracket;
+	if (parser.Prepare(bracket)) {
+		uint32_t index = 0;
+		while (parser.pos != end && *parser.pos != ']') {
+			const auto value = parser.NumericToken();
+			if (index < colors.size()) colors[index] = value;
+			++index;
+			parser.SkipSpaces();
+			if (parser.pos == end || (*parser.pos != ',' && *parser.pos != ':')) break;
+			++parser.pos;
+			parser.SkipSpaces();
+		}
+		if (bracket) {
+			while (parser.pos != end && *parser.pos != ']') ++parser.pos;
+			if (parser.pos != end) ++parser.pos;
+		} else if (parser.pos != end && *parser.pos == ';') ++parser.pos;
+	}
+	return parser.pos;
+}
+
+std::optional<std::string> PreserveManiacColor(char ch, const char** iter, const char* end, uint32_t escape_char) {
+	if (!Player::IsPatchManiac() || (ch != 'C' && ch != 'c')) return std::nullopt;
+	const char* begin = *iter;
+	std::array<int32_t, 2> colors;
+	*iter = ParseColorNumbers(begin, end, {}, colors, false);
+	return Utils::EncodeUTF(std::u32string(1, escape_char)) + ch + std::string(begin, *iter);
+}
+
+// Preserve mixed-parameter spans before ordinary V/T/N message insertion.
+// This lexical pass shares the cursor rules but neither reads banks nor invokes a hook.
+std::optional<std::string> PreserveManiacMixedParameters(char ch, const char** iter, const char* end, uint32_t escape_char) {
+	if (!Player::IsPatchManiac() || (ch != 'E' && ch != 'e' && ch != 'F' && ch != 'f')) return std::nullopt;
+	const char* begin = *iter;
+	const auto grammar = static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax)
+		| ((ch == 'E' || ch == 'e') ? 4u : 0u);
+	UserHookParser parser(begin, end, {}, false, grammar);
+	bool bracket;
+	if (parser.Prepare(bracket)) {
+		while (parser.pos != end && *parser.pos != ']') {
+			if (*parser.pos == '"') {
+				++parser.pos;
+				while (parser.pos != end && *parser.pos != '"') {
+					if (*parser.pos == '\\' && end - parser.pos >= 2 && parser.pos[1] == '"') ++parser.pos;
+					++parser.pos;
+				}
+				if (parser.pos != end) ++parser.pos;
+			} else {
+				parser.NumericToken();
+			}
+			parser.SkipSpaces();
+			if (parser.pos == end || (*parser.pos != ',' && *parser.pos != ':')) break;
+			++parser.pos;
+			parser.SkipSpaces();
+		}
+		if (bracket) {
+			while (parser.pos != end && *parser.pos != ']') ++parser.pos;
+			if (parser.pos != end) ++parser.pos;
+		} else if (parser.pos != end && *parser.pos == ';') ++parser.pos;
+	}
+	*iter = parser.pos;
+	return Utils::EncodeUTF(std::u32string(1, escape_char)) + ch + std::string(begin, parser.pos);
+}
+} // namespace
+
+Game_Message::ParseParamResult Game_Message::ParseManiacNumber(const char* iter, const char* end,
+	ManiacHookCaller caller) {
+	UserHookParser parser(iter, end, caller, true, static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax));
+	const auto value = parser.Number();
+	return {parser.pos, value};
+}
+
+const char* Game_Message::ParseManiacNumbers(const char* iter, const char* end, ManiacHookCaller caller,
+	std::array<int32_t, 2>& numbers, bool evaluate) {
+	return ParseColorNumbers(iter, end, caller, numbers, evaluate);
+}
+
+const char* Game_Message::ManiacIconEnd(const char* iter, const char* end) {
+	if (iter == end || *iter != '$') return iter;
+	++iter;
+	if (iter != end && (*iter == '$' || (*iter >= 'A' && *iter <= 'Z') || (*iter >= 'a' && *iter <= 'z'))) {
+		return iter + 1;
+	}
+	std::array<int32_t, 2> numbers;
+	return ParseManiacNumbers(iter, end, {}, numbers, false);
+}
+
+const char* Game_Message::ParseManiacFace(const char* iter, const char* end, ManiacHookCaller caller,
+	std::array<int32_t, 2>& numbers, std::optional<std::string>& name) {
+	numbers = {0, 0};
+	name.reset();
+	UserHookParser parser(iter, end, caller, true, static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax));
+	bool bracket;
+	if (parser.Prepare(bracket)) {
+		uint32_t number_cursor = 0, string_cursor = 0;
+		while (parser.pos != end && *parser.pos != ']') {
+			std::string value;
+			int32_t number = 0;
+			bool present = false;
+			if (parser.MixedToken(number, value, present)) {
+				if (string_cursor++ == 0 && present) name = std::move(value);
+			} else {
+				if (number_cursor < numbers.size()) numbers[number_cursor] = number;
+				++number_cursor;
+			}
+			parser.SkipSpaces();
+			if (parser.pos == end || (*parser.pos != ',' && *parser.pos != ':')) break;
+			++parser.pos;
+			parser.SkipSpaces();
+		}
+		if (bracket) {
+			while (parser.pos != end && *parser.pos != ']') ++parser.pos;
+			if (parser.pos != end) ++parser.pos;
+		} else if (parser.pos != end && *parser.pos == ';') ++parser.pos;
+	}
+	return parser.pos;
+}
+
+bool Game_Message::RunManiacSystemHook(ManiacHookCaller caller, const int32_t* packet, size_t count,
+	const std::string* text, AsyncOp& operation) {
+	if (!Player::IsPatchManiac()) return false;
+	const auto& config = Main_Data::game_system->GetSaveData();
+	const auto& flags = config.maniac_message_hook_flags;
+	const bool enabled = packet[0] == 1 ? flags.user_event : packet[0] == 2 ? flags.create_window
+		: packet[0] == 4 ? flags.destroy_window : flags.text_rendering;
+	const int event_id = config.maniac_message_hook_common_event_id;
+	if (!enabled || event_id <= 0) return false;
+	if (!lcf::ReaderUtil::GetElement(lcf::Data::commonevents, event_id)) {
+		Output::Error("Maniac message hook: Invalid common event ID {}", event_id);
+	}
+	const int string_base = config.maniac_message_hook_callback_system_string_variable;
+	if (text && string_base != 0) HookWriteString(caller, string_base, *text, !text->empty());
+	const int number_base = config.maniac_message_hook_callback_system_variable;
+	if (number_base != 0) {
+		for (uint32_t index = 0; index < count; ++index) HookWriteNumber(caller, HookOffset(number_base, index), packet[index]);
+	}
+	operation = Game_Interpreter::RunManiacMessageHook(event_id);
+	return true;
+}
+
+int32_t Game_Message::ReadManiacHookResult(ManiacHookCaller caller, uint32_t offset, int32_t fallback) {
+	// A callback can reconfigure its banks. Read from the live base after restoring the caller.
+	const int base = Main_Data::game_system->GetSaveData().maniac_message_hook_callback_system_variable;
+	return base == 0 ? fallback : HookReadNumber(caller, HookOffset(base, offset));
+}
+
+const char* Game_Message::ProcessManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller,
+	std::array<int32_t, 8>& packet, AsyncOp& operation) {
+	const auto& config = Main_Data::game_system->GetSaveData();
+	const bool enabled = config.maniac_message_hook_flags.user_event && config.maniac_message_hook_common_event_id > 0;
+	UserHookParser parser(iter, end, caller);
+	bool bracket;
+	if (parser.Prepare(bracket)) {
+		uint32_t number_cursor = 0, string_cursor = 0;
+		while (parser.pos != end && *parser.pos != ']') {
+			bool present = false;
+			std::string value;
+			int32_t number = 0;
+			const bool string_token = parser.MixedToken(number, value, present);
+			// Assignment precedes the delimiter result, including the final token.
+			if (string_token) {
+				const int base = config.maniac_message_hook_callback_user_string_variable;
+				if (enabled && base != 0) HookWriteString(caller, HookOffset(base, string_cursor), value, present);
+				++string_cursor;
+			} else {
+				const int base = config.maniac_message_hook_callback_user_variable;
+				if (enabled && base != 0) HookWriteNumber(caller, HookOffset(base, number_cursor), number);
+				++number_cursor;
+			}
+			parser.SkipSpaces();
+			if (parser.pos == end || (*parser.pos != ',' && *parser.pos != ':')) break;
+			++parser.pos;
+			parser.SkipSpaces();
+		}
+		if (bracket) {
+			while (parser.pos != end && *parser.pos != ']') ++parser.pos;
+			if (parser.pos != end) ++parser.pos;
+		} else if (parser.pos != end && *parser.pos == ';') ++parser.pos;
+	}
+	if (RunManiacSystemHook(caller, packet.data(), packet.size(), nullptr, operation)) {
+		for (uint32_t index = 1; index <= 4; ++index) packet[index] = ReadManiacHookResult(caller, index, packet[index]);
+	}
+	return parser.pos;
+}
 
 static MessageHistory message_history;
 static Window_Message* window = nullptr;
@@ -135,14 +550,22 @@ AsyncOp Game_Message::Update() {
 	return {};
 }
 
-void Game_Message::SetPendingMessage(PendingMessage&& pm) {
+AsyncOp Game_Message::SetPendingMessage(PendingMessage&& pm, const Game_BaseInterpreterContext* caller) {
 	if (window) {
+		ManiacHookCaller binding;
+		if (caller && !caller->GetState().stack.empty()) {
+			const auto& frame = caller->GetFrame();
+			binding = {frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
+		}
+		window->SetManiacHookCaller(binding);
 		// This flag has no known use, but RPG_RT sets it whenever an event message command
 		// spawns a message. We replicate it for save game compatibility.
 		Main_Data::game_system->SetMessageEventMessageActive(pm.IsEventMessage());
 
 		window->StartMessageProcessing(std::move(pm));
+		return window->GetAsyncOp();
 	}
+	return {};
 }
 
 bool Game_Message::IsMessagePending() {
@@ -157,34 +580,78 @@ bool Game_Message::CanShowMessage(bool foreground) {
 	return window ? window->GetAllowNextMessage(foreground) : false;
 }
 
-static std::optional<std::string> CommandCodeInserterNoRecurse(char ch, const char** iter, const char* end, uint32_t escape_char) {
-	if ((ch == 'T' || ch == 't') && Player::IsPatchManiac()) {
-		auto parse_ret = Game_Message::ParseString(*iter, end, escape_char, true);
-		*iter = parse_ret.next;
-		int value = parse_ret.value;
-
-		std::string str = ToString(Main_Data::game_strings->Get(value));
-
-		// \t[] is evaluated but command codes inside it are not evaluated again
-		return PendingMessage::ApplyTextInsertingCommands(str, escape_char, PendingMessage::DefaultCommandInserter);
+static std::optional<std::string> ManiacCommandCodeInserter(char ch, const char** iter, const char* end,
+	uint32_t escape_char, HookCaller caller, bool expand_inserted) {
+	if (auto preserved = PreserveManiacMixedParameters(ch, iter, end, escape_char)) return preserved;
+	if (auto preserved = PreserveManiacColor(ch, iter, end, escape_char)) return preserved;
+	char type = std::toupper(static_cast<unsigned char>(ch));
+	bool self = false;
+	if (type == 'S' && end - *iter >= 4
+		&& std::toupper(static_cast<unsigned char>((*iter)[0])) == 'E'
+		&& std::toupper(static_cast<unsigned char>((*iter)[1])) == 'L'
+		&& std::toupper(static_cast<unsigned char>((*iter)[2])) == 'F') {
+		const char kind = std::toupper(static_cast<unsigned char>((*iter)[3]));
+		if (kind == 'V' || kind == 'T' || kind == 'S') {
+			type = kind;
+			self = true;
+			*iter += 4;
+		}
 	}
-
-	return PendingMessage::DefaultCommandInserter(ch, iter, end, escape_char);
+	if (!self && (type == 'S' || type == 'W')) {
+		const char* begin = *iter;
+		UserHookParser parser(begin, end, caller, false,
+			static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax));
+		parser.Number();
+		*iter = parser.pos;
+		return Utils::EncodeUTF(std::u32string(1, escape_char)) + ch + std::string(begin, parser.pos);
+	}
+	if (type != 'V' && type != 'T' && type != 'N' && !(self && type == 'S')) return std::nullopt;
+	UserHookParser parser(*iter, end, caller, true,
+		static_cast<uint8_t>(lcf::Data::system.maniac_text_syntax));
+	int32_t id = parser.Number();
+	*iter = parser.pos;
+	if (self) {
+		const uint32_t bits = 0u - static_cast<uint32_t>(id);
+		std::memcpy(&id, &bits, sizeof(id));
+	}
+	if (type == 'V') return std::to_string(HookReadNumber(caller, id));
+	if (type == 'S') {
+		const bool value = id < 0 ? Game_ManiacSelfVariables::ReadSwitch(HookBank(caller, false), id)
+			: Main_Data::game_switches->Get(id);
+		return value ? "ON" : "OFF";
+	}
+	std::string value;
+	if (type == 'T') value = HookReadString(caller, id).first;
+	else {
+		if (id == 0 && Main_Data::game_party && Main_Data::game_party->GetBattlerCount() != 0) {
+			id = (*Main_Data::game_party)[0].GetId();
+		}
+		if (const auto* actor = Main_Data::game_actors->GetActor(id)) value = ToString(actor->GetName());
+	}
+	// RPG_RT performs a second lexical pass on inserted text; a T/N inserted in
+	// that pass is appended raw, without a third pass over its command codes.
+	if (!expand_inserted) return value;
+	return PendingMessage::ApplyTextInsertingCommands(std::move(value), escape_char,
+		[caller](char code, const char** next, const char* limit, uint32_t escape) {
+			return ManiacCommandCodeInserter(code, next, limit, escape, caller, false);
+		});
 }
 
 std::optional<std::string> Game_Message::CommandCodeInserter(char ch, const char** iter, const char* end, uint32_t escape_char) {
-	if ((ch == 'T' || ch == 't') && Player::IsPatchManiac()) {
-		auto parse_ret = Game_Message::ParseString(*iter, end, escape_char, true);
-		*iter = parse_ret.next;
-		int value = parse_ret.value;
-
-		std::string str = ToString(Main_Data::game_strings->Get(value));
-
-		// Command codes in \t[] are evaluated once.
-		return PendingMessage::ApplyTextInsertingCommands(str, escape_char, CommandCodeInserterNoRecurse);
-	}
-
+	if (Player::IsPatchManiac()) return ManiacCommandCodeInserter(ch, iter, end, escape_char, {}, true);
 	return PendingMessage::DefaultCommandInserter(ch, iter, end, escape_char);
+}
+
+PendingMessage::CommandInserter Game_Message::MakeCommandCodeInserter(const Game_BaseInterpreterContext& context) {
+	if (!Player::IsPatchManiac()) return CommandCodeInserter;
+	ManiacHookCaller caller;
+	if (!context.GetState().stack.empty()) {
+		const auto& frame = context.GetFrame();
+		caller = {frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
+	}
+	return [caller](char ch, const char** iter, const char* end, uint32_t escape_char) {
+		return ManiacCommandCodeInserter(ch, iter, end, escape_char, caller, true);
+	};
 }
 
 Game_Message::ParseParamResult Game_Message::ParseParam(

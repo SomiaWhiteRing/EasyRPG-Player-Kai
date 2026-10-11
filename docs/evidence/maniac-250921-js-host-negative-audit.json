@@ -1,0 +1,107 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "ddeed97e712fb81748e368c54c11079c0b56d88e9cde3724e646eda320ad4e6e",
+  "trace_sha256": "32b697e416a31a72442324ff3caf45acb331297dad506d3469be3f021705e374",
+  "save_sha256": "3d52a37795ca0447aba17acde7167b66b74704aa24eacc68c3a0104adcf9fb82",
+  "global_numbers": [
+    -1,
+    99
+  ],
+  "json_results": [
+    [
+      0,
+      false,
+      ""
+    ],
+    [
+      -1,
+      42,
+      42,
+      true,
+      true,
+      "M",
+      "M",
+      44,
+      false,
+      "MI"
+    ],
+    [
+      0,
+      false,
+      ""
+    ],
+    [
+      -1,
+      33,
+      33,
+      true,
+      true,
+      "C",
+      "C",
+      35,
+      false,
+      "CI"
+    ]
+  ],
+  "common_self": [
+    {
+      "common_event_id": 3,
+      "numbers_positive_slots": [
+        35
+      ],
+      "field_3_observed_utf16_slots": [
+        "CI"
+      ]
+    }
+  ],
+  "map_self": [
+    {
+      "map_id": 1,
+      "events": [
+        {
+          "event_id": 1,
+          "numbers_positive_slots": [
+            44
+          ],
+          "field_3_observed_utf16_slots": [
+            "MI"
+          ]
+        }
+      ],
+      "other_map_fields_hex": {}
+    }
+  ],
+  "native_accessor_calls": [
+    {
+      "site_rva": "0x17f0c1",
+      "target_rva": "0x17d7c0",
+      "bytes": "e8fae6ffff"
+    },
+    {
+      "site_rva": "0x17f214",
+      "target_rva": "0x8cac0",
+      "bytes": "e8a7d8f0ff"
+    },
+    {
+      "site_rva": "0x17f3cd",
+      "target_rva": "0x8c070",
+      "bytes": "e89eccf0ff"
+    },
+    {
+      "site_rva": "0x17f867",
+      "target_rva": "0x8c9e0",
+      "bytes": "e874d1f0ff"
+    },
+    {
+      "site_rva": "0x17ff71",
+      "target_rva": "0x8c100",
+      "bytes": "e88ac1f0ff"
+    },
+    {
+      "site_rva": "0x17fc23",
+      "target_rva": "0x8cca0",
+      "bytes": "e878d0f0ff"
+    }
+  ],
+  "scope": "Fixed 250921 original numeric/switch/string getters and setters use direct negative ID -1 and an ID obtained via global getv(1)=-1 in map event 1 and common event 3. Both absent banks read zero/false/empty string; direct and resolved-ID writes read back and persist distinct map/common banks. The post-JS ControlVars marker 99 executes and saves. Indirection here means resolving the ID through a getter; array/proxy arguments, coercion, error order and Player JS remain separate."
+}

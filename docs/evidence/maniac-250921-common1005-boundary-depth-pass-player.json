@@ -1,0 +1,21 @@
+{
+  "case": "depth-pass",
+  "runtime": "player",
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921",
+    "--log-file",
+    "common1005-boundary.log"
+  ],
+  "manifest_sha256": "0bfac4e6343cb9da20587a936ae61ecf28ed2274313553d1e735c18e5c377e8f",
+  "native": null,
+  "save_exists": true,
+  "process_exit_code": null,
+  "error_lines": [],
+  "observation": "No input. Read-only original hooks or Player diagnostic observed; harness terminated the process after the outcome. Error UI dismissal/process shutdown is not claimed.",
+  "save_sha256": "b21756d5dcad6cfa4a8a573681698ee55ed888357641a782405f4525cd88fbe0"
+}

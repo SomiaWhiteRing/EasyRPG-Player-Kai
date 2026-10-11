@@ -20,6 +20,7 @@
 
 // Headers
 #include <string>
+#include <atomic>
 #include "audio_generic_midiout.h"
 #include "filesystem_stream.h"
 #include "audio_secache.h"
@@ -142,6 +143,9 @@ struct AudioInterface {
 
 	int SE_GetGlobalVolume() const;
 	void SE_SetGlobalVolume(int volume);
+	virtual bool SetManiacVolume(int volume);
+	virtual int GetManiacVolume() const;
+	float GetManiacOutputGain() const { return maniac_output_gain.load(); }
 
 	bool GetFluidsynthEnabled() const;
 	void SetFluidsynthEnabled(bool enable);
@@ -157,11 +161,14 @@ struct AudioInterface {
 
 protected:
 	Game_ConfigAudio cfg;
+	std::atomic<float> maniac_output_gain{1.0f};
 };
 
 struct EmptyAudio : public AudioInterface {
 public:
 	explicit EmptyAudio(const Game_ConfigAudio& cfg);
+	bool SetManiacVolume(int) override { return false; }
+	int GetManiacVolume() const override { return -1; }
 	void BGM_Play(Filesystem_Stream::InputStream, int, int, int) override;
 	void BGM_Pause() override {}
 	void BGM_Resume() override {}

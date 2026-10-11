@@ -56,6 +56,7 @@ public:
 	void SetCurrentEnemyTargetIndex(int idx);
 	void SetCurrentActionTargetsSingleEnemy(bool value);
 	void SetCurrentActingActorId(int id);
+	void SetCurrentManiacActionTarget(int type, int index);
 
 	bool IsForceFleeEnabled() const;
 
@@ -77,13 +78,15 @@ public:
 	/**
 	 * Calls a maniacs battle hook, which processes sub-events at any time.
 	 */
-	bool ManiacBattleHook(ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0);
+	bool ManiacBattleHook(ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0, int* hook_result = nullptr);
 	/**
 	 * Processes all maniacs sub-events, and returns whether it's currently running
 	 */
 	bool ProcessManiacSubEvents();
 
 private:
+	bool OnFinishStackFrame() override;
+
 	bool CommandCallCommonEvent(lcf::rpg::EventCommand const& com);
 	bool CommandForceFlee(lcf::rpg::EventCommand const& com);
 	bool CommandEnableCombo(lcf::rpg::EventCommand const& com);
@@ -108,6 +111,7 @@ private:
 	std::vector<bool> executed;
 	int target_enemy_index = -1;
 	int current_actor_id = 0;
+	int current_maniac_target_type = 0;
 	bool targets_single_enemy = false;
 	bool force_flee_enabled = false;
 	static std::map<ManiacBattleHookType, std::tuple<int, int>> maniac_hooks;
@@ -140,6 +144,11 @@ inline void Game_Interpreter_Battle::SetCurrentActionTargetsSingleEnemy(bool val
 
 inline void Game_Interpreter_Battle::SetCurrentActingActorId(int id) {
 	current_actor_id = id;
+}
+
+inline void Game_Interpreter_Battle::SetCurrentManiacActionTarget(int type, int index) {
+	current_maniac_target_type = type;
+	target_enemy_index = index;
 }
 
 inline bool Game_Interpreter_Battle::IsForceFleeEnabled() const {

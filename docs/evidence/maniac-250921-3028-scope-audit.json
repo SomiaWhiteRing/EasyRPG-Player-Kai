@@ -1,0 +1,147 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "source_sha256": {
+    "commands/03028.md": "ca8fe05917086d27677cb19ac98916bf066d2c2c29028d951122282794538329",
+    "evidence/runtime-250921/000f1f70.c": "66c8d63eb41008b0bef16a6ef32cd05f7bccb77efad9ccaf533794c5efd6f2f0",
+    "evidence/native-250921/00036170.c": "22f9b1d7b8b5ccd7443c3c256d1588fcb6df7918bbc4c1ec938934db7aeca1ce",
+    "../Maniacs-250921/evidence/250921/DrawTileControl.txt": "cac7cfd0aa880b0a33b0c3d605be2327ea4eaa581d2aac34eb543950427108d8",
+    "analysis-work/reports/03028-5bdd7d63fbbe5c99b399d23cf125689982ae43e2fa54a75c66fa2b2d26bf0c79.json": "7a63560f191f4a3b1ef8269a895da047fcfd44e8ac92e8c0879fa09d975c763b"
+  },
+  "reviewed_contract_sha256": "fde517473e883df2ac56aa7fdd3e18b11ffa3feeb47144c34a1c1de8e423bb1a",
+  "machine_windows": [
+    {
+      "begin_rva": "0xf1f70",
+      "end_rva_exclusive": "0xf2f22",
+      "sha256": "d0440652e531cd59332e377e9327ad360eb0e2992dfcddef6e15e7ad1cc15dab",
+      "interpretation": "bounded bytes; code/table boundaries from pinned report"
+    },
+    {
+      "begin_rva": "0xf1ca0",
+      "end_rva_exclusive": "0xf1f6a",
+      "sha256": "ac1b9035788007cca845181954562c082d960a0753fe84bd68a0baa6b84633ce",
+      "interpretation": "bounded bytes; code/table boundaries from pinned report"
+    },
+    {
+      "begin_rva": "0xf15b0",
+      "end_rva_exclusive": "0xf1c9c",
+      "sha256": "c0943aefb520a19107531ca0bf7934d88265874f78c16a9b1b7131b43c8429c7",
+      "interpretation": "bounded bytes; code/table boundaries from pinned report"
+    },
+    {
+      "begin_rva": "0x7d350",
+      "end_rva_exclusive": "0x7d7f6",
+      "sha256": "4f00966377faf85c95dd363081b250f79431a9adf6be1a5119d533ee68cacb16",
+      "interpretation": "bounded bytes; code/table boundaries from pinned report"
+    }
+  ],
+  "report_helper_instructions_verified": 1244,
+  "table_probes": [
+    {
+      "rva": "0x2327b0",
+      "size": 64,
+      "sha256": "57246afed9100829b9551b79b45af6a6aeae48faec25652517143ac4b2cefefd"
+    },
+    {
+      "rva": "0x232800",
+      "size": 16,
+      "sha256": "8e3d484735680db03372bc7eac4694522e50b86eefd67f65f65e22e6ed6c09ae"
+    },
+    {
+      "rva": "0x2325a0",
+      "size": 16,
+      "sha256": "22e0ceb935f07fec232b4b04d4143bdbdaa9e4998b3cbcc86216ad6d34237b53"
+    },
+    {
+      "rva": "0x214e20",
+      "size": 256,
+      "sha256": "ccf4ba4c1d1a743e19674cc3767284a1aa1ec261b092f99edb0586a70e49f836"
+    },
+    {
+      "rva": "0x2251b8",
+      "size": 50,
+      "sha256": "c0f1f9737a9978243c59fa0cc4809013d13f97e27a41635e70d4a7da6b81e0ab"
+    }
+  ],
+  "opcode_mapping": {
+    "opcode": 3028,
+    "normalized_selector": 1302,
+    "selector_byte_rva": "0x47ec0",
+    "slot": 32,
+    "target_slot_rva": "0x47dd4",
+    "branch_rva": "0x46910",
+    "consumer_rva": "0xf1f70"
+  },
+  "effective_branch_ids": [
+    "3028:operand-resolution-and-empty-dimensions",
+    "3028:invalid-picture-error",
+    "3028:single-lower-autotile",
+    "3028:single-lower-direct",
+    "3028:single-upper",
+    "3028:range-lower-autotile",
+    "3028:range-lower-direct",
+    "3028:range-upper",
+    "3028:range-base-literal",
+    "3028:range-base-variable",
+    "3028:range-base-indirect",
+    "3028:temporary-autotile-neighbors-and-water-corners",
+    "3028:tileset-current",
+    "3028:tileset-replacement-load-release",
+    "3028:pattern-global-clock",
+    "3028:pattern-explicit-and-negative",
+    "3028:image-backing-detach-and-missing-storage",
+    "3028:clear-before-frame-offset",
+    "3028:draw-sheet-cell-and-dirty-state",
+    "3028:short-record-text-and-direct-success"
+  ],
+  "branch_acceptance_ids": {
+    "3028:operand-resolution-and-empty-dimensions": "W06-014;W06-018",
+    "3028:invalid-picture-error": "W06-014;W06-018",
+    "3028:single-lower-autotile": "W06-015",
+    "3028:single-lower-direct": "W06-015",
+    "3028:single-upper": "W06-015",
+    "3028:range-lower-autotile": "W06-014;W06-015",
+    "3028:range-lower-direct": "W06-014;W06-015",
+    "3028:range-upper": "W06-014;W06-015",
+    "3028:range-base-literal": "W06-014",
+    "3028:range-base-variable": "W06-014",
+    "3028:range-base-indirect": "W06-014",
+    "3028:temporary-autotile-neighbors-and-water-corners": "W06-015",
+    "3028:tileset-current": "W06-016",
+    "3028:tileset-replacement-load-release": "W06-016;W06-018",
+    "3028:pattern-global-clock": "W06-016",
+    "3028:pattern-explicit-and-negative": "W06-016",
+    "3028:image-backing-detach-and-missing-storage": "W06-017;W06-018",
+    "3028:clear-before-frame-offset": "W06-017",
+    "3028:draw-sheet-cell-and-dirty-state": "W06-017;W06-018",
+    "3028:short-record-text-and-direct-success": "W06-014;W06-018"
+  },
+  "acceptance_ids": [
+    "W06-014",
+    "W06-015",
+    "W06-016",
+    "W06-017",
+    "W06-018"
+  ],
+  "operand_rule": "A0 eight nibbles resolve picture A1, pixel X/Y A2/A3, tile W/H A4/A5, source A6, tileset A10, time A11; modes0 literal,1 numeric,other indirect with negative/self propagation. Source value/base resolves after tileset/time and before nonpositive-size return; picture lookup follows size guard. A8/A9 whole nonzero select range/upper, unlike 3015 low bits.",
+  "source_rule": "Single repeats one mapped source. Range base mode0 raw,1 one address lookup,other ca4f0 two reads; 8c800 exposes/grows W*H global/self numeric slots only once valid image storage reaches range generation. Negative bases traverse increasing magnitude. Temporary int32 tile rectangle is zero-initialized; lower unsigned0..17 maps fixed table,18..161 adds4982,other5143; upper0..143 adds10000,other10000.",
+  "autotile_rule": "Only lower with A7 bit0 clear runs f1ca0 per row-major insertion, updating center mask255 then NW,N,NE,E,SE,S,SW,W masks4,140,8,25,1,35,2,70. f15b0 reads the temporary rectangle, not map neighbors. Classification, tileset neighbor mapping, old/new mask merge, shape lookup and water corners use the pinned reviewed contract and tables; future cells begin as zero.",
+  "tileset_pattern_rule": "Resolved tileset<=0 or equal to current uses current object; other positive creates/loads/releases a temporary one. Time=-1 uses global clock; other signed time uses original truncating animation phases for internal tile<4000. Tiles>=4000 do not consume animation time. Missing tileset data and negative internal tile return in draw helper.",
+  "image_rule": "Detach picture backing e2d70. Existing image storage triggers cached name release, state byte2 and dirty1. A7 bit1 clears [X,Y,X+16W,Y+16H] before sheet-frame offsets are added; drawing afterward uses frame offsets and 16-pixel steps. Missing image storage skips generation/drawing; invalid picture invokes Picture error. Dimension/product, allocation and sheet division unsafe boundaries remain explicit feature policy gaps.",
+  "record_rule": "Missing A0..A11 numeric words zero; writer emits12 untrimmed words with empty Text, new editor default is only seven words. Preserve original count, unused Text, unknown option bits and tail; no image filename input.",
+  "schedule_rule": "Direct success return after handler, no shared pf refetch or opcode-owned wait/explicit map refresh. Static contexts are map autostart/parallel, called common event and battle page; dynamic rendering, pending resources, save and continuation remain open.",
+  "applicable_contexts": [
+    "map autostart",
+    "map parallel",
+    "called common event",
+    "battle event page"
+  ],
+  "remaining_questions": [
+    "W06-014: all eight modes, signed/self range bases, resolution order, zero slots and short records.",
+    "W06-015: all six source/layer/autotile combinations, conversion boundaries and temporary neighbor/water shape results.",
+    "W06-016: current/replacement tilesets, graphic load/release and signed animation pattern phases.",
+    "W06-017: pixel mutation, backing detachment, resource names/dirty state, clear-before-frame and rendered output.",
+    "W06-018: missing/invalid resource boundaries, safe arithmetic, four contexts, direct success and saved continuation.",
+    "Player has no 3028 dispatch. C241028-03028, Web/Android and remaining W06-007 picture scope stay open."
+  ],
+  "scope": "250921 Windows static 3028 command scope only; Player functionality and platform parity not accepted."
+}

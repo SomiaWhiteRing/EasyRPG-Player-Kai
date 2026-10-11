@@ -1,0 +1,62 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "player_sha256": "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94",
+  "player_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921"
+  ],
+  "variants": {
+    "recursive-self-save": {
+      "manifest_sha256": "cd555e9d0367423b353f13d07f912a144c65484f0911ece426fd5156a4184c39",
+      "results": {
+        "original": {
+          "trace_sha256": "44457e6edd5639104fcbb6772f697f38f173fad4bbe1b7c7f95aa9c53e281e87",
+          "save_sha256": "a05be05559f1722413724afa675633d2fbaa208b04d780dea11c0cc6ee52c63e",
+          "variables": {
+            "3": 1,
+            "4": 42,
+            "5": 43
+          }
+        },
+        "player": {
+          "trace_sha256": "daf85d3318095664a536b920a7fafcf4e12257f693c1b8ae1dcff3758cc405d5",
+          "save_sha256": "cc233dd8fd9348540cb71768c7bbd85fde39ae3f85ca196622dbd80446f8365c",
+          "variables": {
+            "3": 1,
+            "4": 42,
+            "5": 43
+          }
+        }
+      }
+    },
+    "parallel-self-save": {
+      "manifest_sha256": "215b2836d18cc2a0606a6d27d16f39c40b85241c67bc0c1b6f989daf1b5f802d",
+      "results": {
+        "original": {
+          "trace_sha256": "29fdf0337e64b221f6ac8a98677fac40d1aaa1d822005683a179e20c91017108",
+          "save_sha256": "521193c6f2f72a3feb86e1173ca2a87c15a536c94625931bdc8c27d0b1088d2f",
+          "variables": {
+            "3": 42,
+            "4": 43,
+            "5": 42,
+            "6": 43
+          }
+        },
+        "player": {
+          "trace_sha256": "f4c9157294ae6d6fef74f329fdae863ed14677fa830da43bb53d1edafbef5daa",
+          "save_sha256": "1b8976b573331b2e9ffda43f6fab3dcb83c46e1f74880243964a846266a40c3c",
+          "variables": {
+            "3": 42,
+            "4": 43,
+            "5": 42,
+            "6": 43
+          }
+        }
+      }
+    }
+  },
+  "scope": "Fixed 250921 Windows original and Player projects: recursive common-event inner read 42 and outer read 43, and two parallel map events retain separate 42/43 self values on a later event pass. Save binary layouts differ; only the corresponding observable global variable IDs are compared. Other self-bank lifecycle paths remain separate acceptance items."
+}

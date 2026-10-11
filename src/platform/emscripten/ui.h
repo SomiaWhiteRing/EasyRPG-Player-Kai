@@ -9,10 +9,20 @@ class WebUi final : public BaseUi {
 public:
 	WebUi(int width, int height, const Game_Config& cfg);
 	bool ProcessEvents() override;
+	void RefreshFocusPolicy() override;
+	bool IsFocusPaused() const override;
+	void SetWindowFocus(bool value) { window_focused = value; }
+	bool HasInputFocus() const override { return window_focused; }
+	bool IsJoystickAvailable() const override;
+	bool ConfirmManiacFileOutput() override;
 	void UpdateDisplay() override;
 	bool vChangeDisplaySurfaceResolution(int width, int height) override;
 	void vGetConfig(Game_ConfigVideo& cfg) const override;
 	void ToggleFullscreen() override;
+	bool SetManiacWindowZoom(int zoom) override;
+	bool SetManiacWindowInterpolation(bool enabled) override;
+	bool SetManiacWindowFit(bool enabled) override;
+	bool SetManiacScreenMode(bool fullscreen) override;
 	bool ShowCursor(bool visible) override;
 	bool OpenURL(std::string_view url) override;
 	AudioInterface& GetAudio() override { return audio; }
@@ -24,5 +34,6 @@ public:
 	}
 private:
 	WebAudio audio;
+	bool window_focused = true;
 };
 #endif

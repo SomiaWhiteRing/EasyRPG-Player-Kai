@@ -1,0 +1,35 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "fixture_manifest_sha256": "4ed471d091676377f8b20b02339bb03834d7d53effd3d8ae76ed326863332e53",
+  "live_trace_sha256": "ed808793259ac99de4090532285f7786b76647fa09d1fd7becbacf86692e7afd",
+  "window_close_exit_code": 2836617296,
+  "shutdown_enter_count": 1,
+  "shutdown_leave_count": 1,
+  "live_pointer_state": [
+    {
+      "event": "attached",
+      "context_nonnull": true,
+      "runtime_nonnull": true
+    },
+    {
+      "event": "shutdown_enter",
+      "context_nonnull": true,
+      "runtime_nonnull": true
+    },
+    {
+      "event": "shutdown_leave",
+      "context_nonnull": false,
+      "runtime_nonnull": false
+    }
+  ],
+  "static_instruction_sites": {
+    "0x1837a2": "call 0x140059cf0",
+    "0x5a495": "mov rcx, qword ptr [rip + 0x21eafc]",
+    "0x5a4a1": "call 0x1400f6080",
+    "0x5a4a6": "mov qword ptr [rip + 0x21eaeb], rbp",
+    "0x5a4ad": "mov rcx, qword ptr [rip + 0x21eadc]",
+    "0x5a4b9": "call 0x1400f5830",
+    "0x5a4be": "mov qword ptr [rip + 0x21eacb], rbp"
+  },
+  "scope": "One 250921 Windows WM_CLOSE execution enters and returns from the shutdown routine once with live JS context/runtime pointers becoming null. Static call sites show context release then runtime release and pointer clears. The process exit code is recorded without treating it as success; abnormal-exit and forced-kill paths remain outside this result."
+}

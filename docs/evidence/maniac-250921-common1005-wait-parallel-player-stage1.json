@@ -1,0 +1,17 @@
+{
+  "runtime": "player",
+  "stage": 1,
+  "runtime_sha256": "6dff2314eb92269b91326c598118edc3870196c453421d28e9e4a3307f67d516",
+  "runtime_arguments": [
+    "--new-game",
+    "--patch-maniac",
+    "1",
+    "--maniac-version",
+    "250921"
+  ],
+  "fixture_manifest_sha256": "4b7ab14a0c78da97c92f45efbf69a589678a449fe32b90702daa1332f62d9da3",
+  "input_save_sha256": null,
+  "output_save_sha256": "28ed574aa9769074413ce3a2334ca2ce29feeb67ffa57b091cac928726d44c3e",
+  "output_save_length": 7228,
+  "observation": "Fresh process for each stage; Save01 remains in fixture for stage 2; captured after one unchanged second, then process terminated."
+}

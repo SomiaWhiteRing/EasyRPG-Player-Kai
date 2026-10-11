@@ -89,7 +89,8 @@ namespace Utils {
 	 * @param str string to convert.
 	 * @return the converted string.
 	 */
-	std::u16string DecodeUTF16(std::string_view str);
+	// preserve_surrogates accepts WTF-8 when Maniac retains isolated UTF-16 units.
+	std::u16string DecodeUTF16(std::string_view str, bool preserve_surrogates = false, bool* valid = nullptr);
 
 	/**
 	 * Converts UTF-8 to UTF-32.
@@ -105,7 +106,7 @@ namespace Utils {
 	 * @param str string to convert.
 	 * @return the converted string.
 	 */
-	std::string EncodeUTF(const std::u16string& str);
+	std::string EncodeUTF(const std::u16string& str, bool preserve_surrogates = false);
 
 	/**
 	 * Converts UTF-32 to UTF-8.

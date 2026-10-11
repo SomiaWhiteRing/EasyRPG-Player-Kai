@@ -199,9 +199,11 @@ public:
 	 * Writes PNG converted bitmap to output stream.
 	 *
 	 * @param os output stream that PNG will be output.
+	 * @param include_alpha write RGBA instead of RGB.
+	 * @param force_opaque replace alpha with 255 in RGBA output.
 	 * @return true if success, otherwise false.
 	 */
-	bool WritePNG(std::ostream& os) const;
+	bool WritePNG(std::ostream& os, bool include_alpha = false, bool force_opaque = false) const;
 
 	/**
 	 * Gets the background color
@@ -251,6 +253,8 @@ public:
 	 * @return color at the pixel location
 	 */
 	Color GetColorAt(int x, int y) const;
+	/** Writes one pixel without blending; out-of-bounds coordinates are ignored. */
+	void SetColorAt(int x, int y, const Color& color);
 
 	/**
 	 * Draws text to bitmap using the configured Font or the Font::Default() font.

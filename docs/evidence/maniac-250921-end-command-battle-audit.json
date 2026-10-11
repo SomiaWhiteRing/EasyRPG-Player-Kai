@@ -1,0 +1,75 @@
+{
+  "fixture_manifest_sha256": "e8ae4b2a1c653c6ced93a161f954b2710cf789cff52fa29d1d33dd42b1aa2445",
+  "original_hook": {
+    "events": [
+      {
+        "stage": "entry",
+        "frame_depth": 1,
+        "cursor": 4,
+        "opcode": 0
+      },
+      {
+        "stage": "before_cleanup",
+        "frame_depth": 1,
+        "cursor": 4,
+        "opcode": 0
+      },
+      {
+        "stage": "after_cleanup",
+        "frame_depth": 0,
+        "cursor": null,
+        "opcode": null
+      },
+      {
+        "stage": "first_update_call",
+        "frame_depth": 0,
+        "cursor": null,
+        "opcode": null
+      },
+      {
+        "stage": "second_update_call",
+        "frame_depth": 0,
+        "cursor": null,
+        "opcode": null
+      }
+    ],
+    "input_updates": 2,
+    "reported": true
+  },
+  "runtimes": {
+    "original": {
+      "variables": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110
+      ],
+      "save_sha256": "27c64997834e42f70e5ab5f0d65a1289bc7ae2c8d01a3fbcbc191b2ab3bdb548",
+      "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
+    },
+    "player": {
+      "variables": [
+        99,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        110,
+        0
+      ],
+      "save_sha256": "15ff3785265a7b24e3eae2d69e8444c2bb1ea475a571be27fe1b54c25678e1bf",
+      "runtime_sha256": "c7711bc23e724e9140639432f7e9e371e7b16e98c58b05e4733d46e1b2d0440d"
+    }
+  },
+  "result": "Mode-2 frame cleanup and two input updates observed in fixed original; Player battle-page variable slots agree. Player's extra trailing zero in the saved variable vector is tracked separately under save-format work."
+}

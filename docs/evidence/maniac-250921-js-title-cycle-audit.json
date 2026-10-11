@@ -1,0 +1,175 @@
+{
+  "runtime_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "manifest_sha256": "4ed471d091676377f8b20b02339bb03834d7d53effd3d8ae76ed326863332e53",
+  "trace_sha256": "958c42cb85563840d3a5e92250f1e884d954bdf7196093aedc8dacf8dc2f8f39",
+  "map_sha256": "8f19ed568c044aeeddfa52694510f4be3c58b1c7069eca1c701f9a2c5d991a9f",
+  "sample_count": 45,
+  "verified_complete_cycles": 3,
+  "transitions": [
+    {
+      "input_enter_count": 0,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 1,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 2,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 3,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 4,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 5,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 6,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 7,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 8,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 9,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 11,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 12,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 14,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 15,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 17,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 18,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 20,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 21,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 22,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 23,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 24,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 25,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 26,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 27,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 28,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 29,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 30,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 31,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 32,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 33,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 34,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 36,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 37,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 39,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 40,
+      "stage": "new_game_initial"
+    },
+    {
+      "input_enter_count": 42,
+      "stage": "first_script_reads_zero"
+    },
+    {
+      "input_enter_count": 43,
+      "stage": "later_script_reads_42"
+    },
+    {
+      "input_enter_count": 44,
+      "stage": "new_game_initial"
+    }
+  ],
+  "static_call_sites": {
+    "0x596e0": "call 0x140181650",
+    "0x47d38": "call 0x140027d00",
+    "0x27d10": "call 0x140053c10",
+    "0x1fcb35": "call 0x140181650",
+    "0x181675": "call 0x1400f6080",
+    "0x18167a": "mov qword ptr [rip + 0xf7917], rsi",
+    "0x18168d": "call 0x1400f5830",
+    "0x181692": "mov qword ptr [rip + 0xf78f7], rsi",
+    "0x1816db": "call 0x1400f5190",
+    "0x1816f3": "call 0x1400f5b00"
+  },
+  "scope": "250921 Windows original 3030 globalThis property persists between successive commands in one new game, and is absent at the first command after 12510 Return to Title/New Game. The 12510 handler reaches the title-control exception, whose catch calls the same initializer as startup; that initializer frees and clears prior context/runtime before replacing them. Save/load and shutdown boundaries remain separate."
+}

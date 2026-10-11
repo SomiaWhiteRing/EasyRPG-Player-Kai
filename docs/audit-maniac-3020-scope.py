@@ -1,0 +1,185 @@
+"""Pin the Windows 250921 RmStrvar branch scope without claiming Player parity."""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+from pathlib import Path
+import struct
+
+from capstone import Cs, CS_ARCH_X86, CS_MODE_64
+import pefile
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT.parent / "RPGRewriter-maniac/analysis/Maniacs-Complete"
+RUNTIME = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT.exe"
+OUTPUT = ROOT / "docs/evidence/maniac-250921-3020-scope-audit.json"
+RUNTIME_SHA = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
+SOURCES = {
+    "commands/03020.md": "00a834a0f017ea41f37d35027ca2c69ba1cacd5129a74d8d4069950b15a1fd92",
+    "evidence/StringOperations-250921.md": "68e52937d63a580de5015a908e5be9e704d37a8ef074d1016e600f6ba36ccbba",
+    "evidence/StringSources-Regex-250921.md": "2a3a20ae8053679268b79f20bd078a5d40e82578dae222bc323bc27d0c206daa",
+    "evidence/StringFiles-Formatter-250921.md": "53428c45f6a33fc499153e7e8a19dd877d7562876c9d2ed40e1b453193dfd238",
+    "evidence/runtime-250921/001ac7f0.c": "b4e7c684d81d17ae526dd6bc523cf7d846dbc3b778ed32d931b4c2a5394388fe",
+    "evidence/runtime-250921/001a8df0.c": "a3a446f7cc032b0b259001d84a19645c72bd8759689d1d2f9556c66161e833bf",
+    "evidence/runtime-250921/001a8800.c": "742e205d5b0fcdc96fcf6766964750fc9460d8415222c1d4bd639fcd2279c4e3",
+    "evidence/runtime-250921/001ac090.c": "d5224a20aff973f757e7c38093bcac7c8a0162d61a139a78cf011702590d146b",
+    "evidence/native-250921/000376b0.c": "1af03e65aeb48cb2f97b9263599416a3b88e4d37e13a84a88b5e3468a7bb04d2",
+    "analysis-work/reports/03020-ec83c9fae0774c36c42af1a66df2a618153e71ca4047f65a2a90144181aa030d.json": "03406b82bce9cff882db046d57669e3a6cd006648ca54ac9aa1b00f31151ef20",
+    "analysis-work/reports/03020-487ab056bd819bf49134a058e307451ee5551477828d1675bb3bb6e83bf81f91.json": "2f3f50e5bfc56f46dc3bd6a27e8e013eaf8f6a1fe9fdaa682ec99eb2ef389429",
+    "analysis-work/reports/03020-652b7c84a6047cafaa4d2022fcbc4f670cc2ef74e057ebd7c91a7d871914cfc8.json": "1765e43a0197dbb1dc5f89b5a0d971ea9c856afc77d6ebbcc0223ccec5b58260",
+}
+# The main handler window is the 4,420-byte report window, not the old
+# 576-byte automatic header. Helper windows and the command call are pinned.
+WINDOWS = (
+    (0x46205, 0x46218, "965025172cd7047151e43e87098755e7651fee2d3fee2681c2eb36b2d2ff6c01", True),
+    (0x1AC7F0, 0x1AD934, "a3767b57edf328159fbc6c218432a6424a9b0ed22c2d4814f582b3baa510e2d9", False),
+    (0x1A8DF0, 0x1A9900, "41c0513b373d8ceb430425cc7e2db3abd248df0c792fb3a012565e8fb67bddf5", False),
+    (0x1AC090, 0x1AC7E2, "27174d864114b4e2792a65823f6323e045e55b6c38af30fe07bfb38f8014fd2e", False),
+    (0x1A88D0, 0x1A8AF1, "c7f07505e8dac6ff84600cf5680561d37670c8772aa53decc20196378b84efda", False),
+    (0x1A8B00, 0x1A8DED, "a851c229e6033ea49ab8f0356f19270d7ceed2d82081410e40ec2292e080dd6c", False),
+)
+
+BRANCH_ACCEPTANCE = {
+    "3020:target-literal-single": "W04-011",
+    "3020:target-literal-range": "W04-011;W04-016",
+    "3020:target-indirect-single": "W04-011",
+    "3020:target-indirect-range": "W04-011;W04-016",
+    "3020:target-mixed-sign": "W04-011;W04-016",
+    "3020:target-preallocation-and-overflow": "W04-011;W04-016",
+    "3020:op-0-assign": "W04-008;W04-014;W04-016",
+    "3020:op-1-concat": "W04-008;W04-014;W04-016",
+    "3020:op-2-to-number": "W04-005;W04-012",
+    "3020:op-3-length": "W04-012;W04-014",
+    "3020:op-4-instr": "W04-012;W04-014",
+    "3020:op-5-split": "W04-009;W04-012;W04-016",
+    "3020:op-6-allocation-only": "W04-011",
+    "3020:op-7-to-file": "W04-013;W04-016",
+    "3020:op-8-pop-line": "W04-006;W04-007;W04-016",
+    "3020:op-9-instr-ex": "W04-009;W04-012;W04-015",
+    "3020:op-10-match-ex": "W04-009;W04-012;W04-015;W04-016",
+    "3020:op-unknown": "W04-011",
+    "3020:source-0-whole-string": "W04-004;W04-010;W04-014",
+    "3020:source-1-number": "W04-010;W04-012",
+    "3020:source-2-switch": "W04-010",
+    "3020:source-3-db-name": "W04-010",
+    "3020:source-4-db-description": "W04-010",
+    "3020:source-5-empty": "W04-010;W04-016",
+    "3020:source-6-concatenate": "W04-008;W04-014",
+    "3020:source-7-insert": "W04-008;W04-014",
+    "3020:source-8-replace": "W04-009;W04-014;W04-016",
+    "3020:source-9-substring": "W04-008;W04-014",
+    "3020:source-10-join": "W04-010;W04-011;W04-016",
+    "3020:source-11-empty": "W04-010;W04-016",
+    "3020:source-12-from-file": "W04-013",
+    "3020:source-13-remove": "W04-008;W04-014",
+    "3020:source-14-regex-replace": "W04-009;W04-014;W04-015",
+    "3020:source-unknown-empty": "W04-010;W04-016",
+    "3020:literal-cursor-and-expansion": "W04-014",
+    "3020:short-record-formatter-context": "W04-010;W04-011",
+}
+FEATURES = tuple(f"W04-{index:03d}" for index in range(4, 17))
+
+
+def sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def rows(path: Path, delimiter: str = ",") -> list[dict[str, str]]:
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        return list(csv.DictReader(stream, delimiter=delimiter))
+
+
+def main() -> None:
+    if sha(RUNTIME.read_bytes()) != RUNTIME_SHA:
+        raise ValueError("fixed 250921 runtime changed")
+    for name, expected in SOURCES.items():
+        if sha((SOURCE / name).read_bytes()) != expected:
+            raise ValueError(f"reviewed 3020 source changed: {name}")
+    image = pefile.PE(str(RUNTIME))
+    decoder = Cs(CS_ARCH_X86, CS_MODE_64)
+    windows = []
+    for lo, hi, expected, code in WINDOWS:
+        blob = image.get_data(lo, hi - lo)
+        if sha(blob) != expected:
+            raise ValueError(f"3020 machine window changed: {lo:#x}")
+        if code and sum(insn.size for insn in decoder.disasm(
+                blob, image.OPTIONAL_HEADER.ImageBase + lo)) != len(blob):
+            raise ValueError(f"3020 dispatch is not complete code: {lo:#x}")
+        windows.append({"begin_rva": f"0x{lo:x}", "end_rva_exclusive": f"0x{hi:x}",
+                        "sha256": expected, "decoded_as_code": code})
+    normalized = (3020 & 0x3FF) - (((3020 >> 8) & 0xFF) << 3) + 0x19A
+    selector_rva = 0x47DF8 + normalized - 0x44E
+    slot = image.get_data(selector_rva, 1)[0]
+    target_slot_rva = 0x47D54 + 4 * slot
+    target = struct.unpack("<I", image.get_data(target_slot_rva, 4))[0]
+    if (normalized, selector_rva, slot, target_slot_rva, target) != (
+            0x50E, 0x47EB8, 26, 0x47DBC, 0x46205):
+        raise ValueError("3020 opcode route changed")
+    for rva, expected in ((0x4620E, "call 0x1401ac7f0"),
+                          (0x1AC9E3, "call 0x14008ce30")):
+        instruction = next(decoder.disasm(image.get_data(rva, 15),
+                                          image.OPTIONAL_HEADER.ImageBase + rva))
+        actual = f"{instruction.mnemonic} {instruction.op_str}"
+        if actual != expected:
+            raise ValueError(f"3020 key instruction changed: {rva:#x}: {actual}")
+    items = {row["id"]: row for row in rows(ROOT / "docs/maniac-acceptance-items.tsv", "\t")}
+    inventory = next(row for row in rows(ROOT / "docs/maniac-250921-command-inventory.csv")
+                     if row["opcode"] == "3020")
+    candidates = [row for row in rows(ROOT / "docs/maniac-submode-ledger.csv")
+                  if row["opcode"] == "3020"]
+    closed_examples = {"W04-004", "W04-005", "W04-006", "W04-007"}
+    expected_ids = {"3020:command"} | set(BRANCH_ACCEPTANCE) | closed_examples
+    if (items["C250921-03020"]["status"] != "closed"
+            or items["W04-001"]["item_kind"] != "summary"
+            or any(items[key]["parent_id"] != "W04-001"
+                   or items[key]["result_type"] != ("integration_platform" if key == "W04-013" else "feature")
+                   or items[key]["status"] != ("closed" if key in closed_examples else "open")
+                   for key in FEATURES)
+            or inventory["effective_branch_ids"] != ";".join(BRANCH_ACCEPTANCE)
+            or inventory["acceptance_ids"] != ";".join(FEATURES)
+            or {row["ID"] for row in candidates} != expected_ids
+            or any(row["acceptance_ids"] != (";".join(FEATURES) if row["ID"] == "3020:command"
+                                                  else row["ID"] if row["ID"] in closed_examples
+                                                  else BRANCH_ACCEPTANCE[row["ID"]])
+                   for row in candidates)):
+        raise ValueError("3020 branch and acceptance mapping incomplete")
+    result = {
+        "runtime_sha256": RUNTIME_SHA,
+        "source_sha256": SOURCES,
+        "machine_windows": windows,
+        "opcode_mapping": {"opcode": 3020, "normalized_selector": normalized,
+                           "selector_byte_rva": f"0x{selector_rva:x}", "slot": slot,
+                           "target_slot_rva": f"0x{target_slot_rva:x}",
+                           "branch_rva": f"0x{target:x}", "consumer_rva": "0x1ac7f0"},
+        "effective_branch_ids": list(BRANCH_ACCEPTANCE),
+        "branch_acceptance_ids": BRANCH_ACCEPTANCE,
+        "acceptance_ids": list(FEATURES),
+        "target_rule": "A0 nibble0: 0 literal A1 single; 1 literal A1..A2; 2 one numeric lookup of A1; 3..15 one numeric lookup of each endpoint. Negative raw references force negative resolved IDs. Same-sign endpoints sort by magnitude within one bank; mixed signs select only start. Global string preallocation occurs before operation validation, including op6/unknown. int32 and INT_MIN behavior is retained as a proof gap.",
+        "operation_rule": "A3 low byte selects 0 Assign, 1 Concat, 2 To Number, 3 Get Length, 4 Instr, 5 Split, 6 preallocation-only, 7 To File, 8 Pop Line, 9 Instr(ex), 10 Match(ex); greater values return after preallocation. Operations 0/1 compute source once; per-target writes and other operation outputs follow the original sequential ordering.",
+        "source_rule": "For operations 0/1, A3 byte1 selects sources 0..14 or empty default; 5 and 11 are explicit empty cases. Source10 overloads A0 nibble2 as string/numeric/switch array type/address selector. Field-specific numeric/address/string resolution, signed propagation and expansion bits are not interchangeable. Source14 regex replacement obeys the binary dollar-format grammar.",
+        "record_rule": "Missing consumed A0..A7 words read zero with field-specific count guards; runtime reads low32 arg_count. Bundled editor has no 3020 writer/default Args. Preserve original count, extra Args, unknown bits, Text and indent. Literal slices use a UTF16-unit cursor with one/two byte budget approximation; native preview uses byte slices and Insert displays A6 before A4 although runtime reads A4 first.",
+        "storage_rule": "Global and current-self string banks plus numeric and switch outputs; null versus allocated empty string, sequential overlap, UTF16 lengths and signed indices remain feature gaps. Existing narrow W04-004..007 traces do not imply whole-command parity. Player's generic resolution, direct global accesses and missing self PopLine range remain open.",
+        "file_regex_rule": "Source12 reads packed or filesystem Text path with backend-dependent encodings and CR handling; operation7 writes aggregated body, with ACP size anomaly and no result variable. Regex search uses suffix anchors, first-match captures and regex_error-specific defaults; replacement accepts dollar substitutions. File path, locale and platform outcomes remain dynamic acceptance gaps.",
+        "schedule_rule": "Shared dispatcher call enters common pf gate; no opcode-owned wait. Static candidates are map autostart/parallel, called common event and battle page; actual original/Player context and saved continuation are feature acceptance.",
+        "applicable_contexts": ["map autostart", "map parallel", "called common event", "battle event page"],
+        "remaining_questions": [
+            "W04-008/009/010: all operations and sources beyond the four narrow closed fixtures need original/Player comparison.",
+            "W04-011: targets, field-specific modes, short/extra records, formatter mismatch, preallocation, contexts and continuation.",
+            "W04-012: numeric/length/search/split output IDs, signed banks, parsing and UTF16 positions.",
+            "W04-013: packed/filesystem read and write, path/encoding/newline/failure/locale behavior and platform adaptation.",
+            "W04-014: literal slice budgets, UTF16 indices, expansion, embedded NUL and surrogates.",
+            "W04-015: regex search/replacement, captures, suffix anchor, dollar format and regex_error.",
+            "W04-016: null/empty identity, sequential range overlap, Split/PopLine alias, no-op/default side effects.",
+            "W01-007 cross-consumer negative/indirect behavior and C241028-03020, Web/Android are separate open work.",
+        ],
+        "scope": "250921 Windows static 3020 command scope only; no full Player parity, 241028 parity or platform result accepted.",
+    }
+    OUTPUT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(f"{OUTPUT}: {len(BRANCH_ACCEPTANCE)} 3020 branches mapped to nine open and four narrow closed W04 leaves")
+
+
+if __name__ == "__main__":
+    main()

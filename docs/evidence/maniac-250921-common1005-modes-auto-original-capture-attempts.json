@@ -1,0 +1,24 @@
+{
+  "command": [
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\probe-maniac-battle-noop.py",
+    "--runtime",
+    "original",
+    "--save-variant",
+    "common1005-modes-auto",
+    "--fixture",
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\build\\maniac-common1005-modes-auto",
+    "--output",
+    "C:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\evidence\\maniac-250921-common1005-modes-auto-original-trace.json",
+    "--timeout",
+    "45",
+    "--trace-common1005-text"
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "exit_code": 0,
+      "stdout_tail": "Runtime PID 19704; fixture autostarts.\n{\"parameters\": [3], \"owner_mode\": 1, \"depth_before\": 1, \"text\": \"\", \"depth_after\": 2, \"common_event_id\": 3, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [1], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"RAW_TEXT\", \"depth_after\": 3, \"common_event_id\": 1, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [2], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"DYNAMIC_TEXT\", \"depth_after\": 3, \"common_event_id\": 2, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [1], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"DYNAMIC_TEXT\", \"depth_after\": 3, \"common_event_id\": 1, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [2], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"SELF_TEXT\", \"depth_after\": 3, \"common_event_id\": 2, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [1, 0, 0], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"DYNAMIC_TEXT\", \"depth_after\": 3, \"common_event_id\": 1, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [2, 0], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"EXPR_VAR_TEXT\", \"depth_after\": 3, \"common_event_id\": 2, \"frame_kind\": 37, \"cursor\": 0}\n{\"parameters\": [1, 0, 0], \"owner_mode\": 1, \"depth_before\": 2, \"text\": \"EXPR_ASSIGN_TEXT\", \"depth_after\": 3, \"common_event_id\": 1, \"frame_kind\": 37, \"cursor\": 0}\nC:\\Users\\\u65fb\\Documents\\GitHub\\Player\\docs\\evidence\\maniac-250921-common1005-modes-auto-original-trace.json: saved; 8 native events\n",
+      "stderr_tail": ""
+    }
+  ]
+}

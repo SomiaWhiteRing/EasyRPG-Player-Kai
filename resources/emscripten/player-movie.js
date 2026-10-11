@@ -1,7 +1,7 @@
 // Loaded only when a game plays a movie. The larger decoder loads only on fallback.
 export class MoviePlayback {
-  constructor({canvas, context, base, state}) {
-    Object.assign(this, {canvas, context, base, state});
+  constructor({canvas, context, output = context.destination, base, state}) {
+    Object.assign(this, {canvas, context, output, base, state});
     this.alive = true;
     this.sources = new Set();
     this.frames = [];
@@ -17,6 +17,8 @@ export class MoviePlayback {
     const video = document.createElement('video');
     this.element = video;
     video.playsInline = true;
+    this.nativeAudio = this.context.createMediaElementSource(video);
+    this.nativeAudio.connect(this.output);
     this.attach();
     this.url = URL.createObjectURL(blob);
     video.src = this.url;
@@ -65,6 +67,7 @@ export class MoviePlayback {
 
   removeNative() {
     clearTimeout(this.timer);
+    this.nativeAudio?.disconnect(); this.nativeAudio = undefined;
     if (this.element?.tagName === 'VIDEO') {
       this.element.onloadedmetadata = this.element.onended = this.element.onerror = null;
       this.element.pause();
@@ -122,7 +125,7 @@ export class MoviePlayback {
         }
         const source = this.context.createBufferSource();
         source.buffer = buffer;
-        source.connect(this.context.destination);
+        source.connect(this.output);
         source.onended = () => {
           this.sources.delete(source);
           source.disconnect();
