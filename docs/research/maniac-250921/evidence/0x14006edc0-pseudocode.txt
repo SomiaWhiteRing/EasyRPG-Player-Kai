@@ -1,0 +1,68 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+void FUN_14006edc0(undefined8 param_1,longlong *param_2,longlong *param_3)
+
+{
+  longlong lVar1;
+  undefined1 auVar2 [16];
+  char cVar3;
+  undefined1 uVar4;
+  uint uVar5;
+  PTP_WORK pwk;
+  ulonglong uVar6;
+  ulonglong uVar7;
+  undefined1 auStack_68 [32];
+  undefined8 local_48;
+  ulonglong local_40;
+  ulonglong local_38;
+  undefined8 local_30;
+  undefined8 local_28;
+  longlong *local_20;
+  ulonglong local_10;
+
+  local_10 = DAT_140257140 ^ (ulonglong)auStack_68;
+  uVar5 = FUN_1401c4fe0();
+  uVar7 = (ulonglong)uVar5;
+  if (1 < uVar7) {
+    local_38 = (longlong)param_3 - (longlong)param_2 >> 3;
+    if (1 < (longlong)local_38) {
+      local_40 = uVar7 << 5;
+      if (local_38 < uVar7 << 5) {
+        local_40 = local_38;
+      }
+      local_48 = 0;
+      auVar2._8_8_ = (longlong)param_3 - (longlong)param_2 >> 0x3f;
+      auVar2._0_8_ = local_38;
+      local_30 = SUB168(auVar2 / SEXT816((longlong)local_40),0);
+      local_28 = SUB168(auVar2 % SEXT816((longlong)local_40),0);
+      local_20 = param_2;
+      pwk = CreateThreadpoolWork
+                      ((PTP_WORK_CALLBACK)&LAB_14006f880,&local_48,(PTP_CALLBACK_ENVIRON)0x0);
+      if (pwk != (PTP_WORK)0x0) {
+        uVar6 = uVar7 * 4;
+        if (local_40 < uVar7 * 4) {
+          uVar6 = local_40;
+        }
+        __std_bulk_submit_threadpool_work(pwk,uVar6);
+        FUN_14006f810(&local_48);
+        WaitForThreadpoolWorkCallbacks(pwk,1);
+        CloseThreadpoolWork(pwk);
+        return;
+      }
+                    /* WARNING: Subroutine does not return */
+      FUN_14004da70();
+    }
+  }
+  for (; param_2 != param_3; param_2 = param_2 + 1) {
+    lVar1 = *param_2;
+    if ((*(int *)(*(longlong *)(lVar1 + 0x90) + 0x10) < 1) ||
+       (cVar3 = FUN_14006c230(lVar1), cVar3 == '\0')) {
+      uVar4 = 0;
+    }
+    else {
+      uVar4 = 1;
+    }
+    *(undefined1 *)(lVar1 + 0x117) = uVar4;
+  }
+  return;
+}

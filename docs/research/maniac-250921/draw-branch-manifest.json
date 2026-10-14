@@ -1,0 +1,70 @@
+[
+  {
+    "name": "rotation",
+    "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+    "decoder": "Capstone 5.0.7",
+    "range_start": "0x140019183",
+    "range_end_exclusive": "0x14001a738",
+    "bytes_sha256": "55fa6bba6ac7a2e270bc47f4df736fbef3b84cfb8c272bef2120bd1176c58475",
+    "assembly_file": "rotation-branch-assembly.txt",
+    "assembly_sha256": "e8cf02428c546afc29ef1763d06c6a9f8a67ea226900ca80898df8758ea10f45",
+    "table_address": "0x14001a738",
+    "branch_targets": [
+      "0x140019183",
+      "0x140019215",
+      "0x1400192b1",
+      "0x1400193c0",
+      "0x1400194da",
+      "0x1400195e1",
+      "0x1400196fa",
+      "0x140019863",
+      "0x1400199e0",
+      "0x140019ae5",
+      "0x140019bf2",
+      "0x140019d66",
+      "0x140019ee3",
+      "0x14001a0c4",
+      "0x14001a28a",
+      "0x14001a4c6"
+    ],
+    "authority": "shipped-artifact",
+    "confidence": "derived",
+    "limitations": [
+      "Linear disassembly of explicit code intervals. Jump table data excluded. Not a runtime observation."
+    ]
+  },
+  {
+    "name": "wave",
+    "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+    "decoder": "Capstone 5.0.7",
+    "range_start": "0x14001adbd",
+    "range_end_exclusive": "0x14001cf50",
+    "bytes_sha256": "295b0ec137c803d32236587c49387fab8c0eb417037ace16378e80711b225711",
+    "assembly_file": "wave-branch-assembly.txt",
+    "assembly_sha256": "5dd9b9f8018d8f612e267cd78531ae4ee3abfcfeabc22458276f477a7277f91a",
+    "table_address": "0x14001cf50",
+    "branch_targets": [
+      "0x14001adbd",
+      "0x14001af02",
+      "0x14001b049",
+      "0x14001b221",
+      "0x14001b3f9",
+      "0x14001b5bb",
+      "0x14001b783",
+      "0x14001b9c3",
+      "0x14001bbf5",
+      "0x14001bdb0",
+      "0x14001bf6c",
+      "0x14001c1a0",
+      "0x14001c3e5",
+      "0x14001c68e",
+      "0x14001c912",
+      "0x14001cc2d"
+    ],
+    "authority": "shipped-artifact",
+    "confidence": "derived",
+    "limitations": [
+      "Linear disassembly of explicit code intervals. Jump table data excluded. Not a runtime observation."
+    ]
+  }
+]

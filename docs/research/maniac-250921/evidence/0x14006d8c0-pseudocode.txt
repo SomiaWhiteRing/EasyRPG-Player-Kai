@@ -1,0 +1,92 @@
+void FUN_14006d8c0(longlong param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  int iVar3;
+  double dVar4;
+
+  if ((*(uint *)(param_1 + 0xf0) != 0) && (*(uint *)(param_1 + 0xf0) <= *(uint *)(param_1 + 0xf4)))
+  {
+    uVar1 = *(int *)(param_1 + 0xe8) + 1;
+    *(undefined4 *)(param_1 + 0xf4) = 0;
+    *(uint *)(param_1 + 0xe8) = uVar1;
+    if ((*(uint *)(param_1 + 0x100) < uVar1) &&
+       (*(undefined4 *)(param_1 + 0xe8) = *(undefined4 *)(param_1 + 0xfc),
+       *(int *)(param_1 + 0xf8) == 1)) {
+      FUN_14006c4f0();
+    }
+  }
+  iVar3 = *(int *)(param_1 + 0xd0);
+  dVar4 = 1.0;
+  if (-1 < iVar3) {
+    if (0 < iVar3) {
+      dVar4 = 1.0 / (double)iVar3;
+      *(double *)(param_1 + 0x10) =
+           (*(double *)(param_1 + 0x60) - *(double *)(param_1 + 0x10)) * dVar4 +
+           *(double *)(param_1 + 0x10);
+      *(double *)(param_1 + 0x18) =
+           (*(double *)(param_1 + 0x68) - *(double *)(param_1 + 0x18)) * dVar4 +
+           *(double *)(param_1 + 0x18);
+      *(double *)(param_1 + 0x30) =
+           ((double)*(int *)(param_1 + 0xb4) - *(double *)(param_1 + 0x30)) * dVar4 +
+           *(double *)(param_1 + 0x30);
+      *(double *)(param_1 + 0x20) =
+           ((double)*(int *)(param_1 + 0xac) - *(double *)(param_1 + 0x20)) * dVar4 +
+           *(double *)(param_1 + 0x20);
+      *(double *)(param_1 + 0x38) =
+           ((double)*(int *)(param_1 + 0xbc) - *(double *)(param_1 + 0x38)) * dVar4 +
+           *(double *)(param_1 + 0x38);
+      *(double *)(param_1 + 0x40) =
+           ((double)*(int *)(param_1 + 0xc0) - *(double *)(param_1 + 0x40)) * dVar4 +
+           *(double *)(param_1 + 0x40);
+      *(double *)(param_1 + 0x48) =
+           ((double)*(int *)(param_1 + 0xc4) - *(double *)(param_1 + 0x48)) * dVar4 +
+           *(double *)(param_1 + 0x48);
+      *(double *)(param_1 + 0x50) =
+           ((double)*(int *)(param_1 + 200) - *(double *)(param_1 + 0x50)) * dVar4 +
+           *(double *)(param_1 + 0x50);
+      *(double *)(param_1 + 0x28) =
+           ((double)*(int *)(param_1 + 0xb0) - *(double *)(param_1 + 0x28)) * dVar4 +
+           *(double *)(param_1 + 0x28);
+    }
+    *(int *)(param_1 + 0xd0) = iVar3 + -1;
+  }
+  iVar3 = *(int *)(param_1 + 0xa8);
+  if (iVar3 == 0) {
+    dVar4 = (double)trunc(*(undefined8 *)(param_1 + 0x58));
+    iVar3 = (int)dVar4;
+    if (0 < iVar3) {
+      iVar2 = (int)(0x100 / (longlong)iVar3);
+      if ((iVar2 < *(int *)(param_1 + 0xd0)) || (0.0 < *(double *)(param_1 + 0x70))) {
+        dVar4 = (double)trunc(*(double *)(param_1 + 0x70) * 0.00390625,
+                              0x100 % (longlong)iVar3 & 0xffffffff);
+        *(double *)(param_1 + 0x58) =
+             (*(double *)(param_1 + 0x70) - (double)((longlong)dVar4 << 8)) +
+             *(double *)(param_1 + 0x58);
+        if ((*(int *)(param_1 + 0xd0) <= iVar2) && (256.0 <= *(double *)(param_1 + 0x70))) {
+          *(undefined8 *)(param_1 + 0x70) = 0;
+        }
+      }
+    }
+  }
+  else if (iVar3 == 1) {
+    dVar4 = ((double)*(int *)(param_1 + 0xcc) - *(double *)(param_1 + 0x58)) * dVar4 +
+            *(double *)(param_1 + 0x58);
+    *(double *)(param_1 + 0x58) = dVar4;
+    *(double *)(param_1 + 0x70) = dVar4 + *(double *)(param_1 + 0x70);
+  }
+  else if (iVar3 == 2) {
+    *(int *)(param_1 + 0xd4) = *(int *)(param_1 + 0xd4) + 8;
+    *(double *)(param_1 + 0x58) =
+         ((double)*(int *)(param_1 + 0xcc) - *(double *)(param_1 + 0x58)) * dVar4 +
+         *(double *)(param_1 + 0x58);
+  }
+  else if (iVar3 == 3) {
+    *(double *)(param_1 + 0x70) =
+         (*(double *)(param_1 + 0x58) - *(double *)(param_1 + 0x70)) * dVar4 +
+         *(double *)(param_1 + 0x70);
+  }
+  *(int *)(param_1 + 0xf4) = *(int *)(param_1 + 0xf4) + 1;
+  return;
+}

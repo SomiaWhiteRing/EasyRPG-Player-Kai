@@ -1,0 +1,18 @@
+/* Library Function - Single Match
+    nearbyint
+
+   Library: Visual Studio 2019 Release */
+
+void nearbyint(undefined8 param_1)
+
+{
+  ushort uVar1;
+  undefined8 local_res8 [4];
+
+  local_res8[0] = param_1;
+  uVar1 = _dtest(local_res8);
+  if (2 < uVar1) {
+    _drint(local_res8[0]);
+  }
+  return;
+}

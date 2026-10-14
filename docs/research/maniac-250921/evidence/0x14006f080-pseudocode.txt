@@ -1,0 +1,20 @@
+void FUN_14006f080(longlong *param_1,longlong *param_2)
+
+{
+  longlong lVar1;
+  char cVar2;
+  undefined1 uVar3;
+
+  for (; param_1 != param_2; param_1 = param_1 + 1) {
+    lVar1 = *param_1;
+    if ((*(int *)(*(longlong *)(lVar1 + 0x90) + 0x10) < 1) ||
+       (cVar2 = FUN_14006c230(lVar1), cVar2 == '\0')) {
+      uVar3 = 0;
+    }
+    else {
+      uVar3 = 1;
+    }
+    *(undefined1 *)(lVar1 + 0x117) = uVar3;
+  }
+  return;
+}

@@ -1,0 +1,32 @@
+ulonglong FUN_14017d7c0(uint param_1)
+
+{
+  longlong *plVar1;
+  longlong lVar2;
+  uint uVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+
+  uVar5 = 0;
+  uVar4 = uVar5;
+  if (DAT_14026d2d8 != (int *)0x0) {
+    if (*DAT_14026d2d8 < 1) {
+      uVar4 = 0;
+    }
+    else {
+      uVar4 = *(ulonglong *)(*(longlong *)(DAT_14026d2d8 + 2) + -8 + (longlong)*DAT_14026d2d8 * 8);
+    }
+  }
+  lVar2 = FUN_14017d680(uVar4);
+  if ((lVar2 != 0) && (plVar1 = *(longlong **)(lVar2 + 8), plVar1 != (longlong *)0x0)) {
+    uVar3 = -param_1;
+    if ((int)-param_1 < 0) {
+      uVar3 = param_1;
+    }
+    if ((uVar3 != 0) && (uVar3 < (uint)(plVar1[1] - *plVar1 >> 2))) {
+      uVar5 = (ulonglong)*(uint *)(*plVar1 + (longlong)(int)uVar3 * 4);
+    }
+    return uVar5 & 0xffffffff;
+  }
+  return 0;
+}

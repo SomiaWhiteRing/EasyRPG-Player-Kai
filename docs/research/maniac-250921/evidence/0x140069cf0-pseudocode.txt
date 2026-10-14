@@ -1,0 +1,92 @@
+void FUN_140069cf0(undefined8 param_1)
+
+{
+  if (DAT_140269910 != 0x7fffffff) {
+    FUN_1400ca1d0(param_1,1);
+    FUN_1400ca070(param_1,DAT_140269910);
+  }
+  FUN_1400ca1d0(param_1,2);
+  FUN_1400ca1d0(param_1,DAT_140269910 * 2);
+  FUN_140048f90(param_1,DAT_140269918,(longlong)(DAT_140269910 * 2));
+  if (DAT_140269920 != 0x7fffffff) {
+    FUN_1400ca1d0(param_1,0xb);
+    FUN_1400ca070(param_1,DAT_140269920);
+  }
+  FUN_1400ca1d0(param_1,0xc);
+  FUN_1400ca1d0(param_1,DAT_140269920 * 2);
+  FUN_140048f90(param_1,DAT_140269928,(longlong)(DAT_140269920 * 2));
+  FUN_1400ca1d0(param_1,0xd);
+  FUN_1400ca1d0(param_1,DAT_140269920);
+  FUN_140048f90(param_1,DAT_140269930,(longlong)DAT_140269920);
+  FUN_1400ca1d0(param_1,0xe);
+  FUN_1400ca1d0(param_1,DAT_140269920);
+  FUN_140048f90(param_1,DAT_140269938,(longlong)DAT_140269920);
+  if (DAT_140269940 != 0) {
+    FUN_1400ca1d0(param_1,0x15);
+    FUN_1400ca070(param_1,DAT_140269940);
+  }
+  if (DAT_140269968 != 0) {
+    FUN_1400ca1d0(param_1,0x17);
+    FUN_1400ca070(param_1,DAT_140269968);
+  }
+  if (DAT_14026996c != '\0') {
+    FUN_1400ca1d0(param_1,0x18);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026996c,1);
+  }
+  if (DAT_14026996d != '\0') {
+    FUN_1400ca1d0(param_1,0x19);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026996d,1);
+  }
+  if (DAT_14026996e != '\0') {
+    FUN_1400ca1d0(param_1,0x1a);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026996e,1);
+  }
+  if (DAT_140269988 != 0) {
+    FUN_1400ca1d0(param_1,0x1b);
+    FUN_1400ca070(param_1,DAT_140269988);
+  }
+  if (DAT_14026998c != '\0') {
+    FUN_1400ca1d0(param_1,0x1c);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026998c,1);
+  }
+  if (DAT_14026998d != '\0') {
+    FUN_1400ca1d0(param_1,0x1d);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026998d,1);
+  }
+  if (DAT_14026998e != '\0') {
+    FUN_1400ca1d0(param_1,0x1e);
+    FUN_1400ca1d0(param_1,1);
+    FUN_140048f90(param_1,&DAT_14026998e,1);
+  }
+  if (DAT_140269970 != 0) {
+    FUN_1400ca1d0(param_1,0x20);
+    FUN_1400ca070(param_1,DAT_140269970);
+  }
+  if (DAT_140269978 != 0) {
+    FUN_1400ca1d0(param_1,0x21);
+    FUN_1400ca070(param_1,DAT_140269978);
+  }
+  if (DAT_14026997c != 0) {
+    FUN_1400ca1d0(param_1,0x22);
+    FUN_1400ca070(param_1,DAT_14026997c);
+  }
+  if (DAT_140269974 != 0) {
+    FUN_1400ca1d0(param_1,0x23);
+    FUN_1400ca070(param_1,DAT_140269974);
+  }
+  if (DAT_140269980 != 0) {
+    FUN_1400ca1d0(param_1,0x29);
+    FUN_1400ca070(param_1,DAT_140269980);
+  }
+  if (DAT_140269984 != 0) {
+    FUN_1400ca1d0(param_1,0x2a);
+    FUN_1400ca070(param_1,DAT_140269984);
+  }
+  FUN_1400ca1d0(param_1,0);
+  return;
+}

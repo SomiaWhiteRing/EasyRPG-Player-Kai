@@ -1,0 +1,135 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+void FUN_140082770(undefined8 param_1)
+
+{
+  code *pcVar1;
+  int iVar2;
+  uint uVar3;
+  longlong lVar4;
+  undefined8 uVar5;
+  undefined8 *****pppppuVar6;
+  char *pcVar7;
+  undefined1 auStack_2a8 [32];
+  undefined *local_288;
+  undefined4 local_278;
+  undefined4 uStack_274;
+  undefined4 uStack_270;
+  undefined4 uStack_26c;
+  undefined8 local_268;
+  int iStack_25c;
+  longlong local_258;
+  undefined1 local_250 [8];
+  uint auStack_248 [14];
+  longlong alStack_210 [12];
+  undefined **local_1b0 [13];
+  undefined8 ****local_148 [2];
+  undefined8 local_138;
+  ulonglong local_130;
+  undefined4 local_120;
+  undefined4 uStack_11c;
+  undefined4 uStack_118;
+  undefined4 uStack_114;
+  undefined8 local_110;
+  longlong local_108;
+  undefined1 local_100 [128];
+  undefined **local_80 [13];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStack_2a8;
+  local_288 = &DAT_1402582d0;
+  iVar2 = FUN_1401c51c4(&DAT_1402582d0);
+  if (iVar2 != 0) {
+    FUN_1401c5128(5);
+    pcVar1 = (code *)swi(3);
+    (*pcVar1)();
+    return;
+  }
+  if (DAT_14025831c == 0x7fffffff) {
+    DAT_14025831c = 0x7ffffffe;
+    FUN_1401c5128(6);
+  }
+  else {
+    FUN_1401fa300(&local_108,0,0xe8);
+    FUN_140048a60(&local_108);
+    FUN_140081c90(&local_108);
+    FUN_1400ca940(&local_108,&local_120);
+    FUN_1400caa70(&local_108);
+    FUN_1400ca940(&local_108,local_148);
+    FUN_1400caa70(&local_108);
+    FUN_1400ca940(&local_108,&local_278);
+    local_278 = local_120;
+    uStack_274 = uStack_11c;
+    uStack_270 = uStack_118;
+    uStack_26c = uStack_114;
+    local_268 = local_110;
+    FUN_1400cac20(&local_108,&local_278);
+    FUN_1401fa300(&local_258,0,0x108);
+    FUN_140048e90(&local_258);
+    FUN_140048b80(&local_258,param_1);
+    if ((*(byte *)((longlong)auStack_248 + (longlong)*(int *)(local_258 + 4)) & 6) == 0) {
+      FUN_140049550(local_100,local_148);
+      pppppuVar6 = local_148;
+      if (0xf < local_130) {
+        pppppuVar6 = (undefined8 *****)local_148[0];
+      }
+      FUN_140048f90(&local_258,pppppuVar6,local_138);
+      FUN_140007e80(local_148);
+      lVar4 = FUN_140011b50(local_250);
+      if (lVar4 == 0) {
+        lVar4 = (longlong)*(int *)(local_258 + 4);
+        uVar3 = 6;
+        if (*(longlong *)((longlong)alStack_210 + lVar4) != 0) {
+          uVar3 = 2;
+        }
+        uVar3 = uVar3 | *(uint *)((longlong)auStack_248 + lVar4) & 0x17;
+        *(uint *)((longlong)auStack_248 + lVar4) = uVar3;
+        uVar3 = *(uint *)((longlong)auStack_248 + lVar4 + 4) & uVar3;
+        if (uVar3 != 0) {
+          if ((uVar3 & 4) == 0) {
+            pcVar7 = "ios_base::failbit set";
+            if ((uVar3 & 2) == 0) {
+              pcVar7 = "ios_base::eofbit set";
+            }
+          }
+          else {
+            pcVar7 = "ios_base::badbit set";
+          }
+          uVar5 = FUN_140006280(&local_120,1);
+          FUN_140006a00(local_148,pcVar7,uVar5);
+                    /* WARNING: Subroutine does not return */
+          FUN_1401cf9b8(local_148,&DAT_140254208);
+        }
+      }
+      *(undefined ***)(local_250 + (longlong)*(int *)(local_258 + 4) + -8) =
+           std::basic_ofstream<char,std::char_traits<char>_>::vftable;
+      *(int *)((longlong)&iStack_25c + (longlong)*(int *)(local_258 + 4)) =
+           *(int *)(local_258 + 4) + -0xa8;
+      FUN_140011000(local_250);
+      *(undefined ***)(local_250 + (longlong)*(int *)(local_258 + 4) + -8) =
+           std::basic_ostream<char,std::char_traits<char>_>::vftable;
+      *(int *)((longlong)&iStack_25c + (longlong)*(int *)(local_258 + 4)) =
+           *(int *)(local_258 + 4) + -0x10;
+      local_1b0[0] = std::ios_base::vftable;
+      std::ios_base::_Ios_base_dtor((ios_base *)local_1b0);
+      *(undefined ***)(local_100 + (longlong)*(int *)(local_108 + 4) + -8) =
+           std::basic_ostringstream<char,std::char_traits<char>,std::allocator<char>_>::vftable;
+      *(int *)((longlong)&local_110 + (longlong)*(int *)(local_108 + 4) + 4) =
+           *(int *)(local_108 + 4) + -0x88;
+      FUN_1400489f0(local_100);
+      *(undefined ***)(local_100 + (longlong)*(int *)(local_108 + 4) + -8) =
+           std::basic_ostream<char,std::char_traits<char>_>::vftable;
+      *(int *)((longlong)&local_110 + (longlong)*(int *)(local_108 + 4) + 4) =
+           *(int *)(local_108 + 4) + -0x10;
+      local_80[0] = std::ios_base::vftable;
+      std::ios_base::_Ios_base_dtor((ios_base *)local_80);
+      FUN_1401c51cc(&DAT_1402582d0);
+      return;
+    }
+  }
+  FUN_14000fe50(local_148,L"Save error:\r\n");
+  FUN_140049330(local_148,param_1);
+  uVar5 = FUN_140049320(local_148);
+                    /* WARNING: Subroutine does not return */
+  FUN_1400223d0(uVar5);
+}

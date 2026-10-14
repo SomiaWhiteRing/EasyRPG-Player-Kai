@@ -1,0 +1,26 @@
+{
+  "original_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "original_unchanged": true,
+  "source_edits_authorized": false,
+  "new_project_tests_created": false,
+  "ui_or_browser_tests_performed": false,
+  "delegation_performed": false,
+  "workspaces": {
+    "kai": {
+      "root": "kai",
+      "tracked_file_hashes_checked": 1397,
+      "changed_since_start": [],
+      "git_status_before": "",
+      "git_status_after": "",
+      "git_status_unchanged": true
+    },
+    "player": {
+      "root": "player",
+      "tracked_file_hashes_checked": 1398,
+      "changed_since_start": [],
+      "git_status_before": "M builds/patches/liblcf-maniac-250921.patch\n M docs/maniac-progress.md\n M src/font.cpp\n M src/font.h\n M src/game_interpreter.cpp\n M src/game_pictures.cpp\n M src/game_pictures.h\n M src/game_windows.cpp\n M src/game_windows.h",
+      "git_status_after": "M builds/patches/liblcf-maniac-250921.patch\n M docs/maniac-progress.md\n M src/font.cpp\n M src/font.h\n M src/game_interpreter.cpp\n M src/game_pictures.cpp\n M src/game_pictures.h\n M src/game_windows.cpp\n M src/game_windows.h",
+      "git_status_unchanged": true
+    }
+  }
+}
