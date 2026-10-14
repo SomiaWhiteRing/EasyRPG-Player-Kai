@@ -58,6 +58,8 @@
 #include "game_screen.h"
 #include "game_interpreter_control_variables.h"
 #include "game_windows.h"
+#include "maniac_text_picture.h"
+#include "maniac_picture_renderer.h"
 #include "graphics.h"
 #include "json_helper.h"
 #include "maniac_patch.h"
@@ -107,10 +109,13 @@ Game_Interpreter::Game_Interpreter(bool _main_flag) {
 }
 
 Game_Interpreter::~Game_Interpreter() {
+	if (maniac_text_picture_pending) maniac_text_picture_pending->Cancel();
 }
 
 // Clear.
 void Game_Interpreter::Clear() {
+	if (maniac_text_picture_pending) maniac_text_picture_pending->Cancel();
+	maniac_text_picture_pending.reset();
 	_state = {};
 	_keyinput = {};
 	_async_op = {};
@@ -6335,262 +6340,7 @@ bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand cons
 	return true;
 }
 
-bool Game_Interpreter::CommandManiacShowStringPicture(lcf::rpg::EventCommand const& com) {
-	if (!Player::IsPatchManiac()) {
-		return true;
-	}
 
-	const auto parameter = [&](size_t index) -> int32_t {
-		return index < com.parameters.size() ? com.parameters[index] : 0;
-	};
-
-	int pic_id = ValueOrVariableBitfield(parameter(0), 0, parameter(1));
-
-	if (pic_id <= 0) {
-		Output::Error("ShowStringPic: Requested invalid picture id ({})", pic_id);
-		return true;
-	}
-
-	Game_Windows::WindowParams params = {};
-	Game_Windows::WindowText text;
-
-	params.position_x = ValueOrVariableBitfield(parameter(0), 1, parameter(2));
-	params.position_y = ValueOrVariableBitfield(parameter(0), 1, parameter(3));
-	params.magnify_width = ValueOrVariableBitfield(parameter(0), 2, parameter(4));
-	params.top_trans = ValueOrVariableBitfield(parameter(0), 3, parameter(5));
-	params.red = parameter(6);
-	params.green = parameter(7);
-	params.blue = parameter(8);
-	params.saturation = parameter(9);
-	params.effect_mode = parameter(10);
-	params.effect_power = parameter(11);
-
-	params.map_layer = parameter(15);
-	params.battle_layer = parameter(16);
-	params.flags = parameter(17);
-
-	params.magnify_width = ValueOrVariableBitfield(parameter(0), 2, parameter(4));
-	const uint32_t height_mode = static_cast<uint32_t>(parameter(0)) >> 28;
-	if (height_mode) {
-		const int height = parameter(23);
-		params.magnify_height = height_mode == 1 ? height : height_mode == 2 ? ReadVariable(height) : ReadVariableIndirect(height);
-	} else {
-		params.magnify_height = params.magnify_width;
-	}
-
-	int flags = parameter(12);
-	int blend_mode = flags & 0xF;
-	if (blend_mode == 1) {
-		params.blend_mode = (int)Bitmap::BlendMode::Multiply;
-	} else if (blend_mode == 2) {
-		params.blend_mode = (int)Bitmap::BlendMode::Additive;
-	} else if (blend_mode == 3) {
-		params.blend_mode = (int)Bitmap::BlendMode::Overlay;
-	}
-	params.flip_x = (flags & 16) == 16;
-	params.flip_y = (flags & 32) == 32;
-	params.origin = (parameter(0) & (0xF << 24)) >> 24;
-
-	flags = parameter(13);
-	if (params.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-		params.effect_power = ValueOrVariableBitfield(flags, 6, parameter(11));
-		int divisor = ValueOrVariableBitfield(flags, 7, parameter(21));
-		// Unlike 11110/11120, 3007 has no zero-denominator fallback and
-		// subtracts a negative quotient's remainder from 360 (RVA 37454).
-		const double angle = static_cast<double>(params.effect_power) / divisor;
-		const double remainder = std::fmod(angle, 360.0);
-		params.fixed_angle = angle < 0.0 ? 360.0 - remainder : remainder;
-	}
-
-	params.fixed_to_map = (flags & 0xFF) > 0;
-	params.message_stretch = (flags & 0xF00) >> 8;
-
-	// Shifting values around to match System::Stretch enum
-	if (params.message_stretch == 0) {
-		params.message_stretch = 2;
-	} else if (params.message_stretch <= 2) {
-		params.message_stretch -= 1;
-	} else {
-		params.message_stretch = lcf::rpg::System::Stretch_easyrpg_none;
-	}
-
-	params.draw_frame = (flags & (1 << 12)) == 0;
-	text.draw_gradient = (flags & (1 << 13)) == 0;
-	text.draw_shadow = (flags & (1 << 14)) == 0;
-	text.bold = (flags & (1 << 15)) > 0;
-	params.border_margin = (flags & (1 << 16)) == 0;
-
-	params.width = ValueOrVariableBitfield(parameter(0), 4, parameter(18));
-	params.height = ValueOrVariableBitfield(parameter(0), 4, parameter(19));
-
-	if (params.width < 0 || params.height < 0) {
-		Output::Warning("ShowStringPic: Invalid window dimension {}x{} (id={})", params.width, params.height, pic_id);
-		return true;
-	}
-
-	flags = parameter(14);
-	params.use_transparent_color = (flags & 0xFF) > 0;
-	text.letter_spacing = (flags & (0xFF << 8)) >> 8;
-	text.line_spacing = (flags & (0xFF << 16)) >> 16;
-	text.font_size = Utils::Clamp(ValueOrVariableBitfield(parameter(0), 5, parameter(20)), 1, 255);
-	params.maniac_text_flags = static_cast<uint32_t>(parameter(13));
-	params.maniac_text_style = (static_cast<uint32_t>(parameter(12)) << 8) | text.font_size;
-	params.maniac_transparency_flags = static_cast<uint32_t>(parameter(14));
-
-
-	// RPG_RT 0x35360 substitutes the entire body reference before parsing any
-	// fields. 0x34c60 then advances a UTF16 cursor, not a delimiter split:
-	// literal fields stop below 3; references consume high-group-first 5-bit IDs.
-	auto serialized = Utils::DecodeUTF16(com.string, true);
-	if (!serialized.empty() && (serialized.front() == 2 || serialized.front() == 3)) {
-		const int id = serialized.front() == 2 ? parameter(22)
-			: ResolveVariableIndirectAddress(parameter(22));
-		auto replacement = Utils::DecodeUTF16(ReadString(id), true);
-		replacement.insert(replacement.begin(), 1);
-		replacement.append(serialized.begin() + 1, serialized.end());
-		serialized = std::move(replacement);
-	}
-	// The substituted string is passed through lstrlenW before the body pass.
-	serialized.resize(std::find(serialized.begin(), serialized.end(), 0) - serialized.begin());
-	// ICU's Japanese codecs can recode ASCII wire bytes (5c/7e/7f) to
-	// Yen/overline/SUB. Recover only the packed digit alphabet, not body text.
-	const auto packed_digit_alphabet = Utils::DecodeUTF16(lcf::ReaderUtil::Recode("\\~\x7f", Player::encoding), true);
-	size_t cursor = serialized.empty() ? 0 : 1;
-	std::u16string body;
-	Game_Message::ManiacHookCaller caller;
-	if (const auto* frame = GetFramePtr()) params.maniac_caller = std::array<int, 3>{frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id};
-	if (const auto* frame = GetFramePtr()) {
-		caller = {frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id};
-	}
-	const auto read_number = [&]() {
-		const auto tail = Utils::EncodeUTF(serialized.substr(cursor), true);
-		const auto parsed = Game_Message::ParseManiacNumber(tail.data(), tail.data() + tail.size(), caller);
-		cursor += Utils::DecodeUTF16(std::string_view(tail.data(), parsed.next - tail.data()), true).size();
-		return parsed.value;
-	};
-	int digits = 0;
-	while (cursor < serialized.size() && serialized[cursor] > 2) {
-		const char16_t unit = serialized[cursor++];
-		if (unit == '$') {
-			if (cursor < serialized.size() && ((serialized[cursor] >= 'A' && serialized[cursor] <= 'Z')
-				|| (serialized[cursor] >= 'a' && serialized[cursor] <= 'z') || serialized[cursor] == '$')) {
-				body += unit; body += serialized[cursor++];
-			} else {
-				const auto tail = Utils::EncodeUTF(serialized.substr(cursor), true);
-				std::array<int32_t, 2> icon;
-				const auto* next = Game_Message::ParseManiacNumbers(tail.data(), tail.data() + tail.size(), caller, icon);
-				cursor += Utils::DecodeUTF16(std::string_view(tail.data(), next - tail.data()), true).size();
-				body += Utils::DecodeUTF16("$[" + std::to_string(icon[0]) + "," + std::to_string(icon[1]) + "]", true);
-			}
-			continue;
-		}
-		if (unit == '\\' || unit == Player::escape_char) {
-			if (cursor == serialized.size()) { body += u"\\\\"; break; }
-			auto code = serialized[cursor];
-			if (code >= 1 && code <= 3) break;
-			if (code >= 'a' && code <= 'z') code -= 'a' - 'A';
-			bool self = false;
-			if (code == 'S' && cursor + 4 < serialized.size()) {
-				auto prefix = serialized.substr(cursor, 5);
-				for (auto& ch : prefix) if (ch >= 'a' && ch <= 'z') ch -= 'a' - 'A';
-				if (prefix == u"SELFV" || prefix == u"SELFT") {
-					self = true;
-					code = prefix.back();
-					cursor += 4;
-				}
-			}
-			if (code == '\\' || code == Player::escape_char) { ++cursor; body += u"\\\\"; continue; }
-			if (code == 'D') {
-				++cursor;
-				digits = Utils::Clamp(read_number(), 1, 10);
-				continue;
-			}
-			if (code == 'C') {
-				++cursor;
-				const auto tail = Utils::EncodeUTF(serialized.substr(cursor), true);
-				std::array<int32_t, 2> colors;
-				const auto* next = Game_Message::ParseManiacNumbers(tail.data(), tail.data() + tail.size(), caller, colors);
-				cursor += Utils::DecodeUTF16(std::string_view(tail.data(), next - tail.data()), true).size();
-				body += Utils::DecodeUTF16("\\C[" + std::to_string(colors[0]) + "," + std::to_string(colors[1]) + "]", true);
-				continue;
-			}
-			if (code == 'V' || code == 'T' || code == 'N') {
-				++cursor;
-				int32_t id = read_number();
-				if (self) {
-					const uint32_t bits = 0u - static_cast<uint32_t>(id);
-					std::memcpy(&id, &bits, sizeof(id));
-				}
-				std::string value;
-				if (code == 'V') {
-					value = std::to_string(ReadVariable(id));
-					if (static_cast<int>(value.size()) < digits) {
-						value.insert(value.front() == '-' ? 1 : 0, digits - value.size(), '0');
-					}
-				} else if (code == 'T') {
-					value = ToString(ReadString(id));
-				} else {
-					if (id == 0 && Main_Data::game_party->GetBattlerCount() > 0) id = (*Main_Data::game_party)[0].GetId();
-					const auto* actor = Main_Data::game_actors->GetActor(id);
-					if (actor) value = ToString(actor->GetName());
-					else Output::Error("ShowStringPic: Invalid actor ID {}", id);
-				}
-				for (auto literal : Utils::DecodeUTF16(value, true)) {
-					// Inserted values are literal; prevent a subsequent render or
-					// canonical restore from dispatching their escapes/icons again.
-					if (literal == '\\' || literal == '$') body += literal;
-					body += literal;
-				}
-				continue;
-			}
-			// An unknown escape discards only the slash, then processes the next unit.
-			continue;
-		}
-		if (unit >= 32 || unit == '\n') body += unit;
-	}
-	text.text = Utils::EncodeUTF(body, true);
-	const auto read_configuration = [&]() -> std::optional<std::string> {
-		if (cursor == serialized.size()) return std::nullopt;
-		const auto mode = serialized[cursor++];
-		if (mode != 2 && mode != 3) {
-			const size_t first = cursor;
-			while (cursor < serialized.size() && serialized[cursor] >= 3) ++cursor;
-			if (cursor == first) return std::nullopt;
-			return Utils::EncodeUTF(serialized.substr(first, cursor - first), true);
-		}
-		uint32_t bits = 0;
-		while (cursor < serialized.size()) {
-			auto unit = serialized[cursor];
-			if (packed_digit_alphabet.size() == 3) {
-				if (unit == packed_digit_alphabet[0]) unit = 0x5c;
-				else if (unit == packed_digit_alphabet[1]) unit = 0x7e;
-				else if (unit == packed_digit_alphabet[2]) unit = 0x7f;
-			}
-			if (!(unit & 0x40)) break;
-			++cursor;
-			bits = (bits << 5) | (unit & 31);
-			if (!(unit & 0x20)) break;
-		}
-		int32_t id;
-		std::memcpy(&id, &bits, sizeof(id));
-		if (mode == 3) id = ResolveVariableIndirectAddress(id);
-		if (!IsManiacStringPresent(id)) return std::nullopt;
-		return ToString(ReadString(id));
-	};
-	params.system_name = read_configuration().value_or(ToString(Main_Data::game_system->GetSystemName()));
-	text.font_name = read_configuration().value_or(Main_Data::game_system->GetFontId() == 0 ? "RPG2000" : "RPG2000G");
-
-	params.texts = {text};
-
-	bool async_wait;
-	Main_Data::game_windows->Create(pic_id, params, async_wait);
-
-	if (async_wait) {
-		_async_op = AsyncOp::MakeYield();
-	}
-
-	return true;
-}
 
 bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const& com) {
 	if (!Player::IsPatchManiac()) {
@@ -6631,16 +6381,13 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		const int64_t bottom = std::min(static_cast<int64_t>(y) + height, static_cast<int64_t>(frame_height));
 		// A wholly clipped rectangle does not allocate or change the destination.
 		if (right <= left || bottom <= top) return true;
-		auto bitmap = sprite.GetBitmap();
-		const int columns = frame_width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
-		Rect source(frame_width * (data.spritesheet_frame % columns),
-			frame_height * (data.spritesheet_frame / columns), frame_width, frame_height);
-		if (parameter(2) & 1) bitmap = sprite.GetPreparedBitmap(source);
+		const bool processed = (parameter(2) & 1) != 0;
+		auto bitmap = pic.GetManiacReadBitmap(processed);
 		if (!bitmap) return true;
 		std::vector<int32_t> values(static_cast<size_t>(count), 0);
 		for (int64_t sy = top; sy < bottom; ++sy) {
 			for (int64_t sx = left; sx < right; ++sx) {
-				const auto color = bitmap->GetManiacColorAt(static_cast<int>(sx) + source.x, static_cast<int>(sy) + source.y);
+				const auto color = pic.ReadManiacPixel(*bitmap, processed, static_cast<int>(sx), static_cast<int>(sy));
 				uint32_t pixel = (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
 				if (!(parameter(2) & 2)) pixel |= uint32_t(color.alpha) << 24;
 				values[static_cast<size_t>((sy - y) * width + sx - x)] = static_cast<int32_t>(pixel);
@@ -6677,20 +6424,20 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 
 	if (active) switch (type) {
 		case 0:
-			x = Utils::RoundTo<int>(data.current_x);
-			y = Utils::RoundTo<int>(data.current_y);
+			x = ManiacPicture::Nearest(data.current_x);
+			y = ManiacPicture::Nearest(data.current_y);
 			break;
 		case 1:
-			x = Utils::RoundTo<int>(data.current_x);
-			y = Utils::RoundTo<int>(data.current_y);
-			width = Utils::RoundTo<int>(width * data.current_magnify / 100.0);
-			height = Utils::RoundTo<int>(height * data.maniac_current_magnify_height / 100.0);
+			x = ManiacPicture::Nearest(data.current_x);
+			y = ManiacPicture::Nearest(data.current_y);
+			width = ManiacPicture::Nearest(width * (data.current_magnify / 100.0));
+			height = ManiacPicture::Nearest(height * (data.maniac_current_magnify_height / 100.0));
 			break;
 		case 2:
-			x = Utils::RoundTo<int>(data.finish_x);
-			y = Utils::RoundTo<int>(data.finish_y);
-			width = Utils::RoundTo<int>(width * data.finish_magnify / 100.0);
-			height = Utils::RoundTo<int>(height * data.maniac_finish_magnify_height / 100.0);
+			x = ManiacPicture::Nearest(data.finish_x);
+			y = ManiacPicture::Nearest(data.finish_y);
+			width = ManiacPicture::Nearest(width * (data.finish_magnify / 100.0));
+			height = ManiacPicture::Nearest(height * (data.maniac_finish_magnify_height / 100.0));
 			break;
 	}
 
@@ -7137,20 +6884,14 @@ bool Game_Interpreter::CommandManiacWritePicture(lcf::rpg::EventCommand const& c
 			Output::Error("ManiacWritePicture: Invalid picture ID {}", pic_id);
 		auto* picture = Main_Data::game_pictures->GetPicturePtr(pic_id);
 		if (picture && picture->sprite) {
-			auto& sprite = *picture->sprite;
-			bitmap = sprite.GetBitmap();
-			if (bitmap) {
-				const auto& data = picture->data;
-				const int width = sprite.GetFrameWidth(), height = sprite.GetFrameHeight();
-				const int cols = width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
-				const int rows = height == bitmap->GetHeight() ? 1 : std::max(1, data.spritesheet_rows);
-				Rect rect(width * (data.spritesheet_frame % cols), height * (data.spritesheet_frame / cols % rows), width, height);
-				if (parameter(4) & 1) bitmap = sprite.GetPreparedBitmap(rect);
-				if (!bitmap) return true;
-				rect.Adjust(bitmap->GetRect());
-				if (!rect.IsEmpty()) bitmap = Bitmap::CreateReadOnlyView(bitmap, rect);
-				else bitmap.reset();
-			}
+			const bool processed = (parameter(4) & 1) != 0;
+			const auto source = picture->GetManiacReadBitmap(processed);
+			if (!source) return true;
+			const int width = picture->sprite->GetFrameWidth(), height = picture->sprite->GetFrameHeight();
+			if (width <= 0 || height <= 0) return true;
+			bitmap = Bitmap::Create(width, height, true);
+			for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x)
+				bitmap->SetManiacColorAt(x, y, picture->ReadManiacPixel(*source, processed, x, y));
 		}
 		force_opaque = (parameter(4) & 2) != 0;
 	}
@@ -7376,11 +7117,13 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 		Output::Warning("ManiacDrawTileOnPicture: Rectangle exceeds representable dimensions");
 		return true;
 	}
-	if (tileset_id <= 0 || tileset_id == Game_Map::GetChipset()) tileset_id = Game_Map::GetChipset();
+	const bool current_chipset = tileset_id <= 0 || tileset_id == Game_Map::GetChipset();
+	if (current_chipset) tileset_id = Game_Map::GetChipset();
 	const auto* tileset = lcf::ReaderUtil::GetElement(lcf::Data::chipsets, tileset_id);
 	BitmapRef chipset;
 	if (tileset) {
-		auto* request = AsyncHandler::RequestFile("ChipSet", tileset->chipset_name);
+		const auto name = current_chipset ? Game_Map::GetChipsetName() : std::string_view(tileset->chipset_name);
+		auto* request = AsyncHandler::RequestFile("ChipSet", name);
 		request->SetGraphicFile(true);
 		request->SetImportantFile(true);
 		request->Start();
@@ -7388,11 +7131,12 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 			_async_op = AsyncOp::MakeYieldRepeat();
 			return true;
 		}
-		chipset = request->IsSuccess() ? Cache::Chipset(tileset->chipset_name) : Bitmap::Create(480, 256);
+		chipset = request->IsSuccess() ? Cache::Chipset(name) : Bitmap::Create(480, 256, true);
 	}
 	auto bitmap = picture->GetMutableBitmap();
+	if (!bitmap) return true;
 	const int options = parameter(7);
-	if (options & 2) bitmap->ClearRect(Rect(x, y, static_cast<int>(pixel_width), static_cast<int>(pixel_height)));
+	if (options & 2) picture->ClearManiacTileRect(Rect(x, y, static_cast<int>(pixel_width), static_cast<int>(pixel_height)));
 	// Native 3028 clears the unoffset rectangle, then draws into the selected sheet frame.
 	int64_t draw_x = x, draw_y = y;
 	if (picture->NumSpriteSheetFrames() > 1) {
@@ -7428,9 +7172,9 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 	}
 	if (chipset && tileset) {
 		if (time == -1) time = Main_Data::game_system->GetFrameCounter();
-		TilemapLayer::DrawManiacTileRectangle(*bitmap, *chipset,
+		TilemapLayer::DrawManiacTileRectangle(*picture, *chipset,
 			Rect(static_cast<int>(draw_x), static_cast<int>(draw_y), width, height), std::move(values),
-			parameter(9) != 0, options, time, tileset->animation_type, tileset->animation_speed);
+			parameter(9) != 0, options, time, tileset->animation_type, tileset->animation_speed, current_chipset);
 	}
 	return true;
 }
@@ -7711,12 +7455,17 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 	return true;
 }
 
-bool Game_Interpreter::CommandManiacChangePictureId(lcf::rpg::EventCommand const&) {
-	if (!Player::IsPatchManiac()) {
-		return true;
-	}
-
-	Output::Warning("Maniac Patch: Command ChangePictureId not supported");
+bool Game_Interpreter::CommandManiacChangePictureId(const lcf::rpg::EventCommand& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t { return index < com.parameters.size() ? com.parameters[index] : 0; };
+	const uint32_t modes = parameter(1);
+	const auto numeric = [&](int32_t value, unsigned mode) {
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
+	const int32_t count = numeric(parameter(3), (modes >> 4) & 15);
+	const int32_t target = numeric(parameter(4), (modes >> 8) & 255);
+	const int32_t source = numeric(parameter(2), modes & 15);
+	Main_Data::game_pictures->ChangeManiacIds(parameter(0), source, count, target, (parameter(5) & 1) != 0);
 	return true;
 }
 

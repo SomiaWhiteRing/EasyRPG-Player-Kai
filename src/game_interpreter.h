@@ -37,6 +37,7 @@
 class Game_Event;
 class Game_CommonEvent;
 class PendingMessage;
+namespace ManiacTextPicture { struct Operation; }
 
 /**
  * Game_Interpreter class
@@ -373,6 +374,7 @@ protected:
 	lcf::rpg::SaveEventExecState _state;
 	KeyInputState _keyinput;
 	AsyncOp _async_op = {};
+	std::shared_ptr<ManiacTextPicture::Operation> maniac_text_picture_pending;
 
 	friend class Scene_Debug;
 };

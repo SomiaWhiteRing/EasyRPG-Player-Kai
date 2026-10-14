@@ -41,8 +41,23 @@ feature_priority_layers(Player::IsPatchManiac() || Player::IsMajorUpdatedVersion
 }
 
 void Sprite_Picture::OnPictureShow() {
+	if (Player::IsPatchManiac() && GetBitmap()) {
+		auto& picture = Main_Data::game_pictures->GetPicture(pic_id);
+		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
+	}
+	maniac_source.reset();
+	maniac_prepared.reset();
 	last_spritesheet_frame = -1;
+	UpdatePictureZ();
+}
 
+void Sprite_Picture::SetPictureId(int id) {
+	pic_id = id;
+	UpdatePictureZ();
+}
+
+void Sprite_Picture::UpdatePictureZ() {
+	SetZ(Priority_PictureOld + pic_id);
 	const bool is_battle = Game_Battle::IsBattleRunning();
 	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 
@@ -90,6 +105,7 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 		if ((is_battle ? GetPriorityForBattleLayer(data.battle_layer) : GetPriorityForMapLayer(data.map_layer)) == 0) return;
 		if (data.current_top_trans == 100.0 || static_cast<uint32_t>(data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())) return;
 		Rect frame = bitmap->GetRect();
+		UpdateManiacPixels();
 		auto prepared = GetPreparedBitmap(frame);
 		if (!prepared) return;
 		int x = ManiacPicture::Nearest(data.current_x), y = ManiacPicture::Nearest(data.current_y);
@@ -193,7 +209,26 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 	Sprite::Draw(dst);
 }
 
+void Sprite_Picture::UpdateManiacPixels() {
+	if (!Player::IsPatchManiac()) return;
+	auto& picture = Main_Data::game_pictures->GetPicture(pic_id);
+	const bool initialize = picture.maniac_image_width <= 0 && GetBitmap();
+	if (initialize)
+		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
+	if (picture.data.current_top_trans == 100.0) return;
+	Rect rect;
+	const auto previous = maniac_prepared;
+	if (auto prepared = PrepareManiacBitmap(rect); prepared && (initialize || prepared != previous))
+		picture.RecordManiacProcessedFrame(*prepared);
+}
+
 BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {
+	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
+	if (maniac_prepared) rect = maniac_prepared->GetRect();
+	return maniac_prepared;
+}
+
+BitmapRef Sprite_Picture::PrepareManiacBitmap(Rect& rect) const {
 	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
 	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 	const auto& bitmap = GetBitmap();
@@ -219,10 +254,7 @@ BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {
 		maniac_source = bitmap;
 		maniac_prepare_state = state;
 		maniac_source_revision = bitmap->GetManiacRevision();
-		const bool no_flip = state[12] == 0 || state[12] > 3;
-		if (no_flip && state[4] == 100 && state[5] == 100 && state[6] == 100 && state[7] == 100 && state[11] <= 0)
-			maniac_prepared = Bitmap::CreateReadOnlyView(bitmap, frame);
-		else maniac_prepared = ManiacPicture::Prepare(*bitmap, frame, data, screen, pic.GetManiacImageChromakey());
+		maniac_prepared = ManiacPicture::Prepare(*bitmap, frame, data, screen, pic.GetManiacImageChromakey());
 	}
 	if (maniac_prepared) rect = maniac_prepared->GetRect();
 	return maniac_prepared;

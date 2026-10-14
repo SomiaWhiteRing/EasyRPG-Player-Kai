@@ -21,12 +21,12 @@
 // Headers
 #include <string>
 #include <deque>
-#include <array>
-#include <optional>
 #include <lcf/rpg/saveeasyrpgwindow.h>
 #include <lcf/rpg/system.h>
 #include "game_pictures.h"
 #include "window_selectable.h"
+
+namespace ManiacTextPicture { struct Operation; }
 
 /*
 FIXME:
@@ -68,20 +68,20 @@ public:
 		std::vector<WindowText> texts;
 		bool draw_frame = true;
 		bool border_margin = true;
-		uint32_t maniac_text_flags = 0;
-		uint32_t maniac_text_style = 0;
-		std::optional<std::array<int, 3>> maniac_caller;
 	};
 
 	bool Create(int id, const WindowParams& params, bool& async_wait);
 	void Erase(int id);
+	void Exchange(int source, int target);
+	bool HasPendingRequest(int id) const;
+	void CreateManiacTextPicture(int id, const std::shared_ptr<ManiacTextPicture::Operation>& operation);
+	void RestoreManiacTextPicture(Game_Pictures::Picture& picture);
 
 	struct Window_User {
 		explicit Window_User(int id) { data.ID = id; }
 		explicit Window_User(lcf::rpg::SaveEasyRpgWindow data);
 
 		lcf::rpg::SaveEasyRpgWindow data;
-		std::optional<std::array<int, 3>> maniac_caller;
 
 		bool Create(const WindowParams& params);
 		void Erase();
@@ -96,15 +96,15 @@ public:
 		void OnRequestReady(FileRequestResult* result);
 
 		std::unique_ptr<Window_Selectable> window;
-		BitmapRef maniac_bitmap;
 		std::vector<FileRequestBinding> request_ids;
+		std::shared_ptr<ManiacTextPicture::Operation> maniac_text_picture;
 	};
 
 	Window_User& GetWindow(int id);
 	Window_User* GetWindowPtr(int id);
 
 private:
-	std::vector<Window_User> windows;
+	std::vector<std::shared_ptr<Window_User>> windows;
 };
 
 #endif

@@ -275,7 +275,7 @@ namespace {
 					auto flags = Bitmap::Flag_ReadOnly | (
 							T == Material::Chipset ? Bitmap::Flag_Chipset :
 							T == Material::System ? Bitmap::Flag_System : 0);
-					if (T == Material::Picture && Player::IsPatchManiac()) flags |= Bitmap::Flag_ManiacPicture;
+					if ((T == Material::Picture || T == Material::Chipset) && Player::IsPatchManiac()) flags |= Bitmap::Flag_ManiacPicture;
 					bmp = Bitmap::Create(std::move(is), transparent, flags);
 					if (!bmp) {
 						Output::Warning("Invalid image: {}/{}", s.directory, filename);

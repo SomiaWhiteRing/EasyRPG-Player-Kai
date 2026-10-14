@@ -99,6 +99,7 @@ public:
 
 	bool Show(int id, const ShowParams& params);
 	void ChangeFile(int id, std::string name);
+	void ChangeManiacIds(int32_t operation, int32_t source, int32_t count, int32_t target_or_offset, bool ignore_errors);
 	void Move(int id, const MoveParams& params);
 	void Erase(int id);
 	void EraseAll();
@@ -120,6 +121,14 @@ public:
 		bool bitmap_modified = false;
 		int origin = 0;
 		bool position_scaled = false;
+		// Resource sheets allocate processed pixels at frame size; mutable images
+		// retain their original allocation when detached or flattened.
+		int maniac_image_width = 0;
+		int maniac_image_height = 0;
+		int maniac_frame_width = 0;
+		int maniac_frame_height = 0;
+		bool maniac_resource_shared = false;
+		BitmapRef maniac_processed;
 
 		void Update(bool is_battle);
 		// Filename reuse retains the backing image's key even if the command
@@ -146,22 +155,33 @@ public:
 
 		void OnPictureSpriteReady(bool apply_origin = true);
 		BitmapRef GetMutableBitmap(bool flatten_spritesheet = false);
+		void InitManiacPixelLayout(bool resource_shared);
+		void ResetManiacPixelLayout();
+		void RecordManiacProcessedFrame(const Bitmap& frame);
+		BitmapRef GetManiacReadBitmap(bool processed) const;
+		Color ReadManiacPixel(const Bitmap& source, bool processed, int x, int y) const;
+		void ClearManiacTileRect(const Rect& rect);
+		void CopyManiacTilePart(int x, int y, const Bitmap& source, const Rect& source_rect, bool skip_alpha_zero);
 		void RestoreModifiedBitmap();
 		void ApplyOrigin(bool is_move);
 		void OnMapScrolled(int dx, int dy);
 
 		void AttachWindow(const Window_Base& window);
+		void AttachManiacTextBitmap(const BitmapRef& bitmap);
 		bool IsWindowAttached() const;
 	};
 
 	Picture& GetPicture(int id);
 	Picture* GetPicturePtr(int id);
+	std::shared_ptr<Picture> GetPictureRef(int id);
+	void ChangeFile(Picture& picture, std::string name);
 
 private:
 	void RequestPictureSprite(Picture& pic, bool apply_origin = true);
-	void OnPictureSpriteReady(FileRequestResult*, int id, bool apply_origin);
+	void OnPictureSpriteReady(FileRequestResult*, bool apply_origin);
 
-	std::vector<Picture> pictures;
+	// Slots exchange the same holders, including pending loads and JS references.
+	std::vector<std::shared_ptr<Picture>> pictures;
 	int frame_counter = 0;
 };
 

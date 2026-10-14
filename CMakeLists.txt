@@ -293,6 +293,10 @@ add_library(${PROJECT_NAME} OBJECT
 	src/maniac_patch.h
 	src/maniac_picture_renderer.cpp
 	src/maniac_picture_renderer.h
+	src/game_interpreter_maniac_text_picture.cpp
+	src/maniac_text_cursor.h
+	src/maniac_text_picture.cpp
+	src/maniac_text_picture.h
 	src/map_data.h
 	src/memory_management.h
 	src/message_overlay.cpp
@@ -539,9 +543,9 @@ add_library(${PROJECT_NAME} OBJECT
 target_link_libraries(${PROJECT_NAME} maniac_quickjs)
 # These contracts depend on the original double operation order, without FMA.
 if(MSVC)
-	set_source_files_properties(src/maniac_picture_renderer.cpp src/game_interpreter_control_variables.cpp src/game_pictures.cpp PROPERTIES COMPILE_OPTIONS "/fp:strict")
+	set_source_files_properties(src/maniac_picture_renderer.cpp src/game_interpreter_maniac_text_picture.cpp src/game_interpreter_control_variables.cpp src/game_pictures.cpp PROPERTIES COMPILE_OPTIONS "/fp:strict")
 else()
-	set_source_files_properties(src/maniac_picture_renderer.cpp src/game_interpreter_control_variables.cpp src/game_pictures.cpp PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
+	set_source_files_properties(src/maniac_picture_renderer.cpp src/game_interpreter_maniac_text_picture.cpp src/game_interpreter_control_variables.cpp src/game_pictures.cpp PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 	target_link_options(${PROJECT_NAME} INTERFACE "-sSTACK_SIZE=2097152")

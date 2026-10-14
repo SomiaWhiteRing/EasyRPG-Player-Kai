@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <memory>
+#include <new>
 
 namespace {
 int32_t Offset(int32_t id, uint32_t offset) {
@@ -27,10 +28,16 @@ int32_t Offset(int32_t id, uint32_t offset) {
 }
 
 class Runtime {
+	struct PictureHandle { std::weak_ptr<Game_Pictures::Picture> picture; };
+	static void FinalizePicture(JSRuntime* runtime, JSValue object) {
+		auto* self = static_cast<Runtime*>(JS_GetRuntimeOpaque(runtime));
+		if (self) delete static_cast<PictureHandle*>(JS_GetOpaque(object, self->picture_class));
+	}
 public:
 	Runtime() : runtime(JS_NewRuntime()), context(runtime ? JS_NewContext(runtime) : nullptr) {
 		if (!context) Output::Error("Maniac JavaScript: Could not create the runtime");
 		JS_SetContextOpaque(context, this);
+		JS_SetRuntimeOpaque(runtime, this);
 		JS_SetMaxStackSize(runtime, 256 * 1024);
 		JS_SetModuleLoaderFunc(runtime, nullptr, LoadModule, nullptr);
 		auto global = JS_GetGlobalObject(context);
@@ -45,6 +52,7 @@ public:
 		JS_SetPropertyStr(context, global, "include", JS_NewCFunction(context, Include, "include", 1));
 		JSClassDef picture_definition = {};
 		picture_definition.class_name = "Rm2k3_Picture";
+		picture_definition.finalizer = FinalizePicture;
 		JS_NewClassID(runtime, &picture_class);
 		if (JS_NewClass(runtime, picture_class, &picture_definition) < 0)
 			Output::Error("Maniac JavaScript: Could not create the picture class");
@@ -214,43 +222,45 @@ private:
 		if (argc > 0 && JS_ToInt32(context, &id, argv[0]) < 0) return JS_EXCEPTION;
 		if (!Main_Data::game_pictures || id <= 0 || id > Main_Data::game_pictures->GetMaxPictureId())
 			return JS_ThrowRangeError(context, "Invalid Picture Access [%d]", id);
-		Main_Data::game_pictures->GetPicture(id);
+		auto holder = Main_Data::game_pictures->GetPictureRef(id);
 		auto picture = JS_NewObjectClass(context, self.picture_class);
-		if (!JS_IsException(picture)) JS_SetOpaque(picture, reinterpret_cast<void*>(static_cast<intptr_t>(id)));
+		if (!JS_IsException(picture)) {
+			auto* handle = new (std::nothrow) PictureHandle{holder};
+			if (!handle) { JS_FreeValue(context, picture); return JS_ThrowOutOfMemory(context); }
+			JS_SetOpaque(picture, handle);
+		}
 		return picture;
 	}
-	static int PictureId(JSContext* context, JSValueConst object) {
+	static std::shared_ptr<Game_Pictures::Picture> Picture(JSContext* context, JSValueConst object) {
 		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
-		const auto id = static_cast<int>(reinterpret_cast<intptr_t>(JS_GetOpaque2(context, object, self.picture_class)));
-		if (!id) return 0;
-		if (!Main_Data::game_pictures || id > Main_Data::game_pictures->GetMaxPictureId()) {
-			JS_ThrowRangeError(context, "Invalid Picture Access [%d]", id);
-			return 0;
-		}
-		return id;
+		auto* handle = static_cast<PictureHandle*>(JS_GetOpaque2(context, object, self.picture_class));
+		if (!handle) return {};
+		auto picture = handle->picture.lock();
+		if (!picture) JS_ThrowReferenceError(context, "Picture object has been removed");
+		return picture;
 	}
 	static JSValue PictureProperty(JSContext* context, JSValueConst object, int argc, JSValueConst* argv, int property) {
-		const int id = PictureId(context, object);
-		if (!id) return JS_EXCEPTION;
-		if (property == 0) return JS_NewInt32(context, id);
+		auto picture = Picture(context, object);
+		if (!picture) return JS_EXCEPTION;
+		if (property == 0) return JS_NewInt32(context, picture->data.ID);
 		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
 		if (property == 1) {
-			const auto& name = Main_Data::game_pictures->GetPicture(id).data.name;
+			const auto& name = picture->data.name;
 			return JS_NewStringLen(context, name.data(), name.size());
 		}
 		std::string name;
 		if (!self.Text(argc > 0 ? argv[0] : JS_UNDEFINED, name)) return JS_EXCEPTION;
-		Main_Data::game_pictures->ChangeFile(id, std::move(name));
+		Main_Data::game_pictures->ChangeFile(*picture, std::move(name));
 		return JS_UNDEFINED;
 	}
 	static JSValue PictureMethod(JSContext* context, JSValueConst object, int argc, JSValueConst* argv, int operation) {
-		const int id = PictureId(context, object);
-		if (!id) return JS_EXCEPTION;
+		auto holder = Picture(context, object);
+		if (!holder) return JS_EXCEPTION;
 		if (operation == 3) {
-			Main_Data::game_pictures->Erase(id);
+			holder->Erase();
 			return JS_UNDEFINED;
 		}
-		auto& picture = Main_Data::game_pictures->GetPicture(id);
+		auto& picture = *holder;
 		auto& data = picture.data;
 		for (int axis = 0; axis < 2; ++axis) {
 			double value = 1.0;

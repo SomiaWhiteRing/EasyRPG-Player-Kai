@@ -773,13 +773,10 @@ void UpdateManiacAutotile(std::vector<T>& tiles, int width, int height, int x, i
 	tile = ManiacTileBase(type) + shapes[merged] + 50 * corners;
 }
 
-void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int tile, int time, int animation_type, int animation_speed) {
+void DrawManiacChipsetTile(Game_Pictures::Picture& picture, const Bitmap& chipset, int x, int y, int tile, int time, int animation_type, int animation_speed, bool skip_alpha_zero) {
 	if (tile < 0) return;
 	const auto blit = [&](int dx, int dy, Rect source) {
-		for (int iy = 0; iy < source.height; ++iy) for (int ix = 0; ix < source.width; ++ix) {
-			const auto pixel = chipset.GetManiacColorAt(source.x + ix, source.y + iy);
-			if (pixel.alpha) dst.SetManiacColorAt(dx + ix, dy + iy, pixel);
-		}
+		picture.CopyManiacTilePart(dx, dy, chipset, source, skip_alpha_zero);
 	};
 	if (tile < 3000) {
 		const int block = tile / 1000;
@@ -839,8 +836,8 @@ void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int
 }
 } // namespace
 
-void TilemapLayer::DrawManiacTileRectangle(Bitmap& dst, const Bitmap& chipset, Rect rectangle,
-	std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed) {
+void TilemapLayer::DrawManiacTileRectangle(Game_Pictures::Picture& picture, const Bitmap& chipset, Rect rectangle,
+	std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed, bool skip_alpha_zero) {
 	static constexpr int lower_tiles[18] = {
 		0, 1000, 2000, 3000, 3074, 3100, 4000, 4050, 4100,
 		4150, 4200, 4250, 4300, 4350, 4400, 4450, 4500, 4550
@@ -866,8 +863,8 @@ void TilemapLayer::DrawManiacTileRectangle(Bitmap& dst, const Bitmap& chipset, R
 	}
 	for (int y = 0; y < rectangle.height; ++y) {
 		for (int x = 0; x < rectangle.width; ++x) {
-			DrawManiacChipsetTile(dst, chipset, rectangle.x + x * 16, rectangle.y + y * 16,
-				tiles[static_cast<size_t>(y) * rectangle.width + x], time, animation_type, animation_speed);
+			DrawManiacChipsetTile(picture, chipset, rectangle.x + x * 16, rectangle.y + y * 16,
+				tiles[static_cast<size_t>(y) * rectangle.width + x], time, animation_type, animation_speed, skip_alpha_zero);
 		}
 	}
 }
