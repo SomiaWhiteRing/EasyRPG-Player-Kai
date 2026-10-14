@@ -28,6 +28,7 @@
 #include "game_actors.h"
 #include "game_map.h"
 #include "game_message.h"
+#include "game_interpreter.h"
 #include "game_party.h"
 #include "game_system.h"
 #include "game_variables.h"
@@ -196,6 +197,10 @@ Window_Message::~Window_Message() {
 }
 
 void Window_Message::StartMessageProcessing(PendingMessage pm) {
+	++maniac_message_generation;
+	maniac_hook_commit = {};
+	maniac_hook_invocation.reset();
+	maniac_hook_resume_text = false;
 	aop = {};
 	text.clear();
 	pending_message = std::move(pm);
@@ -314,7 +319,7 @@ void Window_Message::ShowGoldWindow() {
 	gold_window->Refresh();
 }
 
-void Window_Message::InsertNewPage() {
+void Window_Message::InsertNewPage(bool resume_text) {
 	DebugLog("{}: MSG NEW PAGE");
 	// Cancel pending face requests for async
 	// Otherwise they render on the wrong page
@@ -369,21 +374,29 @@ void Window_Message::InsertNewPage() {
 		std::array<int32_t, 9> packet = {2, x, y, width, height, maniac_face_x, maniac_face_y,
 			Main_Data::game_system->GetMessageFaceIndex(), IsOpening() ? 1 : 0};
 		const auto face_name = ToString(Main_Data::game_system->GetMessageFaceName());
-		if (Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), &face_name, aop)) {
-			SetX(Game_Message::ReadManiacHookResult(maniac_hook_caller, 1, x));
-			SetY(Game_Message::ReadManiacHookResult(maniac_hook_caller, 2, y));
-			SetWidth(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 3, width), 1, 2000));
-			SetHeight(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 4, height), 1, 2000));
-			// Native fallback uses the window coordinates after their readback, not the old face position.
-			maniac_face_x = Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, x);
-			maniac_face_y = Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, y);
-			const bool transition = Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, packet[8]) != 0;
-			if (contents->GetWidth() != std::max(0, width - 16) || contents->GetHeight() != std::max(0, height - 16)) {
-				SetContents(Bitmap::Create(std::max(0, width - 16), std::max(0, height - 16)));
+		RunManiacHook(packet.data(), packet.size(), &face_name, [this, transition = packet[8]](bool hooked) {
+			if (hooked) {
+				SetX(Game_Message::ReadManiacHookResult(maniac_hook_caller, 1, x));
+				SetY(Game_Message::ReadManiacHookResult(maniac_hook_caller, 2, y));
+				SetWidth(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 3, width), 1, 2000));
+				SetHeight(Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 4, height), 1, 2000));
+				// Native fallback uses the window coordinates after their readback.
+				maniac_face_x = Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, x);
+				maniac_face_y = Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, y);
+				const bool animate = Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, transition) != 0;
+				if (contents->GetWidth() != std::max(0, width - 16) || contents->GetHeight() != std::max(0, height - 16)) {
+					SetContents(Bitmap::Create(std::max(0, width - 16), std::max(0, height - 16)));
+				}
+				SetOpenAnimation(animate ? message_animation_frames : 0);
 			}
-			SetOpenAnimation(transition ? message_animation_frames : 0);
-		}
+			CompleteNewPage();
+		}, resume_text);
+		return;
 	}
+	CompleteNewPage();
+}
+
+void Window_Message::CompleteNewPage() {
 	maniac_glyphs = Player::IsPatchManiac() ? Bitmap::Create(width, height) : BitmapRef{};
 
 	if (Main_Data::game_system->IsMessageTransparent()) {
@@ -583,16 +596,25 @@ void Window_Message::CaptureMessageForHistory() {
 	Game_Message::GetMessageHistory().AddEntry(std::move(entry));
 }
 
-void Window_Message::FinishMessageProcessing() {
+void Window_Message::FinishMessageProcessing(bool run_hook) {
+	++maniac_message_generation;
+	maniac_hook_commit = {};
+	maniac_hook_invocation.reset();
+	maniac_hook_resume_text = false;
+	aop = {};
 	DebugLog("{}: FINISH MSG");
 	auto close_frames = Game_Battle::IsBattleRunning() ? 0 : message_animation_frames;
-	if (IsVisible() && !IsClosing() && Player::IsPatchManiac()) {
+	if (run_hook && IsVisible() && !IsClosing() && Player::IsPatchManiac()) {
 		std::array<int32_t, 8> packet = {4, x, y, width, height, maniac_face_x, maniac_face_y, 1};
-		if (Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), nullptr, aop)
-			&& Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, 1) == 0) {
-			close_frames = 0;
-		}
+		RunManiacHook(packet.data(), packet.size(), nullptr, [this, close_frames](bool hooked) {
+			CompleteMessageClose(hooked && Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, 1) == 0 ? 0 : close_frames);
+		}, false);
+		return;
 	}
+	CompleteMessageClose(run_hook ? close_frames : 0);
+}
+
+void Window_Message::CompleteMessageClose(int close_frames) {
 	face_request_ids.clear();
 	maniac_face.reset();
 	maniac_glyphs.reset();
@@ -633,6 +655,10 @@ void Window_Message::ResetWindow() {
 
 void Window_Message::Update() {
 	aop = {};
+	if (maniac_hook_invocation) {
+		ResumeManiacMessageHook();
+		return;
+	}
 	if (Player::IsPatchManiac()) {
 		Main_Data::game_system->UpdateManiacFaceAnimation();
 		UpdateManiacFaceBitmap();
@@ -674,6 +700,7 @@ void Window_Message::Update() {
 	if (GetPause()) {
 		DebugLog("{}: MSG PAUSE");
 		WaitForInput();
+		if (aop.IsActive()) return;
 
 		if (GetPause()) {
 			return;
@@ -683,6 +710,7 @@ void Window_Message::Update() {
 	if (GetIndex() >= 0) {
 		DebugLog("{}: MSG CHOICE");
 		InputChoice();
+		if (aop.IsActive()) return;
 		if (GetIndex() >= 0) {
 			return;
 		}
@@ -691,6 +719,7 @@ void Window_Message::Update() {
 	if (number_input_window->GetActive()) {
 		DebugLog("{}: MSG NUMBER");
 		InputNumber();
+		if (aop.IsActive()) return;
 		if (number_input_window->GetActive()) {
 			return;
 		}
@@ -781,8 +810,9 @@ void Window_Message::UpdateMessage() {
 
 		if (ch == '\f') {
 			if (text_index != end) {
-				InsertNewPage();
+				InsertNewPage(true);
 				SetWait(1);
+				if (aop.IsActive()) return;
 			}
 			continue;
 		}
@@ -828,12 +858,14 @@ void Window_Message::UpdateMessage() {
 				if (Player::IsPatchManiac()) {
 					std::array<int32_t, 8> packet = {1, x, y, maniac_face_x, maniac_face_y,
 						line_count, contents_x, contents_y};
-					text_index = Game_Message::ProcessManiacUserHook(text_index, end, maniac_hook_caller, packet, aop);
-					SetX(packet[1]);
-					SetY(packet[2]);
-					maniac_face_x = packet[3];
-					maniac_face_y = packet[4];
-					SetWaitForNonPrintable(0);
+					text_index = Game_Message::ParseManiacUserHook(text_index, end, maniac_hook_caller);
+					RunManiacHook(packet.data(), packet.size(), nullptr, [this, packet](bool hooked) {
+						SetX(hooked ? Game_Message::ReadManiacHookResult(maniac_hook_caller, 1, packet[1]) : packet[1]);
+						SetY(hooked ? Game_Message::ReadManiacHookResult(maniac_hook_caller, 2, packet[2]) : packet[2]);
+						maniac_face_x = hooked ? Game_Message::ReadManiacHookResult(maniac_hook_caller, 3, packet[3]) : packet[3];
+						maniac_face_y = hooked ? Game_Message::ReadManiacHookResult(maniac_hook_caller, 4, packet[4]) : packet[4];
+						SetWaitForNonPrintable(0);
+					}, true);
 					if (aop.GetType() != AsyncOp::eNone) return;
 				} else {
 					SetWaitForNonPrintable(speed);
@@ -997,18 +1029,51 @@ void Window_Message::UpdateMessage() {
 	}
 }
 
-Point Window_Message::ProcessManiacGlyphHook(std::string_view token, std::array<int32_t, 2>& colors) {
-	std::array<int32_t, 9> packet = {8, x, y, maniac_face_x, maniac_face_y,
-		contents_x + border_x, contents_y + border_y, colors[0], colors[1]};
-	const std::string source(token);
-	if (!Game_Message::RunManiacSystemHook(maniac_hook_caller, packet.data(), packet.size(), &source, aop)) {
-		return {packet[5], packet[6]};
+void Window_Message::RunManiacHook(const int32_t* packet, size_t count, const std::string* source,
+	std::function<void(bool)> commit, bool resume_text) {
+	const auto generation = maniac_message_generation;
+	std::unique_ptr<Game_Interpreter> invocation;
+	AsyncOp operation;
+	const bool hooked = Game_Message::RunManiacSystemHook(maniac_hook_caller, packet, count, source, invocation, operation);
+	// A replacement message owns its own consumer. Do not overwrite it with
+	// a callback belonging to the message which invoked this hook.
+	if (generation != maniac_message_generation) return;
+	aop = operation;
+	if (invocation) {
+		maniac_hook_invocation = std::move(invocation);
+		maniac_hook_commit = std::move(commit);
+		maniac_hook_resume_text = resume_text;
+		// The enclosing ShowMessage is consumed, unlike the hook's yielding
+		// command. Its caller must not rewind and create the message again.
+		aop = AsyncOp::MakeYield();
+	} else if (aop.GetType() != AsyncOp::eLoad && aop.GetType() != AsyncOp::eToTitle
+		&& aop.GetType() != AsyncOp::eExitGame) {
+		commit(hooked);
 	}
-	const auto glyph_x = Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, packet[5]), 0, width);
-	const auto glyph_y = Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, packet[6]), 0, height);
-	colors[0] = Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, colors[0]);
-	colors[1] = Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, colors[1]);
-	return {glyph_x, glyph_y};
+}
+
+AsyncOp Window_Message::ResumeManiacMessageHook() {
+	if (!maniac_hook_invocation) return {};
+	const auto generation = maniac_message_generation;
+	// Own the executing slice locally; message replacement can cancel the
+	// member without destroying an interpreter while Update is on its stack.
+	auto invocation = std::move(maniac_hook_invocation);
+	const auto operation = Game_Interpreter::ResumeManiacMessageHook(invocation);
+	if (generation != maniac_message_generation) return aop;
+	aop = operation;
+	if (invocation) {
+		maniac_hook_invocation = std::move(invocation);
+		aop = AsyncOp::MakeYield();
+		return aop;
+	}
+	auto commit = std::move(maniac_hook_commit);
+	maniac_hook_commit = {};
+	const bool resume_text = maniac_hook_resume_text;
+	maniac_hook_resume_text = false;
+	if (aop.GetType() == AsyncOp::eLoad || aop.GetType() == AsyncOp::eToTitle || aop.GetType() == AsyncOp::eExitGame) return aop;
+	if (commit) commit(true);
+	if (!aop.IsActive() && resume_text) UpdateMessage();
+	return aop;
 }
 
 bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont, std::string_view token, bool maniac_icon) {
@@ -1042,13 +1107,35 @@ bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph,
 		}
 	}
 
-	std::array<int32_t, 2> colors = {text_color, maniac_text_color_row};
-	const auto position = Player::IsPatchManiac() ? ProcessManiacGlyphHook(token, colors) : Point{contents_x, contents_y};
+	if (!Player::IsPatchManiac()) {
+		const auto rect = Text::Draw(*contents, contents_x, contents_y, font, system, text_color, glyph, is_exfont);
+		contents_x += rect.x;
+		SetWaitForCharacter(get_width(rect.x));
+		return true;
+	}
+	std::array<int32_t, 9> packet = {8, x, y, maniac_face_x, maniac_face_y,
+		contents_x + border_x, contents_y + border_y, text_color, maniac_text_color_row};
+	const std::string source(token);
+	RunManiacHook(packet.data(), packet.size(), &source,
+		[this, packet, font = page_font, system = Cache::SystemOrBlack(), glyph, is_exfont, source, maniac_icon](bool hooked) {
+			const Point position = hooked ? Point{
+				Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 5, packet[5]), 0, width),
+				Utils::Clamp(Game_Message::ReadManiacHookResult(maniac_hook_caller, 6, packet[6]), 0, height)} : Point{packet[5], packet[6]};
+			const std::array<int32_t, 2> colors = hooked ? std::array<int32_t, 2>{
+				Game_Message::ReadManiacHookResult(maniac_hook_caller, 7, packet[7]),
+				Game_Message::ReadManiacHookResult(maniac_hook_caller, 8, packet[8])} : std::array<int32_t, 2>{packet[7], packet[8]};
+			RenderManiacGlyph(*font, *system, glyph, is_exfont, source, maniac_icon, position, colors);
+		}, true);
+	return true;
+}
+
+void Window_Message::RenderManiacGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont,
+	std::string_view token, bool maniac_icon, Point position, const std::array<int32_t, 2>& colors) {
 	const auto cell = ManiacColorCell(system, colors);
 	Point rect;
 	const auto size = font.GetCurrentStyle().size;
-	if (Player::IsPatchManiac() && (static_cast<int64_t>(position.x) + size + 1 >= width
-		|| static_cast<int64_t>(position.y) + size + 1 >= height)) {
+	if (static_cast<int64_t>(position.x) + size + 1 >= width
+		|| static_cast<int64_t>(position.y) + size + 1 >= height) {
 		rect.x = font.GetCurrentStyle().letter_spacing;
 	} else if (maniac_icon) {
 		std::array<int32_t, 2> numbers;
@@ -1079,16 +1166,13 @@ bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph,
 			rect = Font::exfont->RenderExfontCell(*maniac_glyphs, position.x, position.y, system, source, &cell);
 		}
 	} else {
-		rect = Text::Draw(Player::IsPatchManiac() ? *maniac_glyphs : *contents, position.x, position.y, font, system,
-			Player::IsPatchManiac() ? 0 : text_color, glyph, is_exfont, Player::IsPatchManiac() ? &cell : nullptr);
+		rect = Text::Draw(*maniac_glyphs, position.x, position.y, font, system, 0, glyph, is_exfont, &cell);
 	}
 
 	int glyph_width = rect.x;
 	contents_x += glyph_width;
-	int width = get_width(glyph_width);
+	int width = glyph_width > 0 ? (glyph_width - 1) / 6 + 1 : 0;
 	SetWaitForCharacter(width);
-
-	return true;
 }
 
 bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, const Font::ShapeRet& shape) {

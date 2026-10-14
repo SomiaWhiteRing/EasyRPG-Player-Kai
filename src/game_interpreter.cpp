@@ -116,6 +116,7 @@ Game_Interpreter::~Game_Interpreter() {
 void Game_Interpreter::Clear() {
 	if (maniac_text_picture_pending) maniac_text_picture_pending->Cancel();
 	maniac_text_picture_pending.reset();
+	maniac_generated_command_pending.reset();
 	_state = {};
 	_keyinput = {};
 	_async_op = {};
@@ -6159,40 +6160,33 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 
 	// 250921 treats every nonzero A0 as the same indirect numeric lookup.
 	const int slot = com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]);
-	const int out_var = com.parameters[2] != 0 ? com.parameters[3] : 0;
+	const bool result_enabled = com.parameters[2] != 0;
+	const int out_var = result_enabled ? com.parameters[3] : 0;
 	const auto* frame = GetFramePtr();
+	const auto operation = AsyncOp::MakeSave(slot, out_var,
+		frame ? frame->easyrpg_self_scope : 0,
+		frame ? frame->easyrpg_self_map_id : 0,
+		frame ? frame->easyrpg_self_event_id : 0, result_enabled);
 	if (slot <= 0) {
 		Output::Debug("ManiacSave: Invalid save slot {}", slot);
 		// The original still writes result 0 after skipping the save.
-		if (out_var > 0) {
-			Main_Data::game_variables->Set(out_var, 0);
-			Game_Map::RefreshAfterManiacChange();
-		} else if (out_var < 0 && ApplyManiacSaveResult(
-			AsyncOp::MakeSave(slot, out_var,
-				frame ? frame->easyrpg_self_scope : 0,
-				frame ? frame->easyrpg_self_map_id : 0,
-				frame ? frame->easyrpg_self_event_id : 0),
-			false, Main_Data::game_maniac_self_variables.get())) {
+		if (result_enabled) {
+			if (out_var > 0) Main_Data::game_variables->Set(out_var, 0);
+			else ApplyManiacSaveResult(operation, false, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
 	}
 
-	const auto operation = AsyncOp::MakeSave(slot, out_var,
-		frame ? frame->easyrpg_self_scope : 0,
-		frame ? frame->easyrpg_self_map_id : 0,
-		frame ? frame->easyrpg_self_event_id : 0);
 	Output::BeginManiacFileOutput();
 	if ((maniac_message_hook || Game_Battle::IsManiacHookPumping())) {
 		// Hook dispatch has no ordinary scene update between this command and
 		// its suffix. A subsequent Update would clear an unhandled async save.
 		// RPG_RT saves here, writes the result, then dispatches the next command.
-		const bool success = Scene_Save::Save(FileFinder::Save(), slot);
-		if (out_var > 0) {
-			Main_Data::game_variables->Set(out_var, success ? 1 : 0);
-			Game_Map::RefreshAfterManiacChange();
-		} else if (ApplyManiacSaveResult(operation, success,
-			Main_Data::game_maniac_self_variables.get())) {
+		const bool success = Scene_Save::Save(FileFinder::Save(), slot, true, slot <= 15);
+		if (result_enabled) {
+			if (out_var > 0) Main_Data::game_variables->Set(out_var, success ? 1 : 0);
+			else ApplyManiacSaveResult(operation, success, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
@@ -6774,13 +6768,14 @@ bool Game_Interpreter::CommandManiacEditPicture(lcf::rpg::EventCommand const& co
 	return true;
 }
 
-AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id) {
+AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id, std::unique_ptr<Game_Interpreter>& invocation) {
 	const auto* event = lcf::ReaderUtil::GetElement(lcf::Data::commonevents, common_event_id);
 	if (!event) Output::Error("Maniac message hook: Invalid common event ID {}", common_event_id);
-	Game_Interpreter hook(false);
+	invocation = std::make_unique<Game_Interpreter>(false);
+	auto& hook = *invocation;
 	hook.maniac_message_hook = true;
 	hook.Push(event->event_commands, 0);
-	if (!hook.IsRunning()) return {};
+	if (!hook.IsRunning()) { invocation.reset(); return {}; }
 	auto& frame = hook._state.stack.back();
 	frame.easyrpg_self_scope = 1;
 	frame.easyrpg_self_map_id = 0;
@@ -6789,7 +6784,19 @@ AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id) {
 	// Each invocation has its own budget. A wait/failed dispatch stops this
 	// invocation; do not spin until completion or consume the caller's budget.
 	hook.Update();
-	return hook.GetAsyncOp();
+	const auto operation = hook.GetAsyncOp();
+	if (operation.GetType() != AsyncOp::eYieldRepeat && operation.GetType() != AsyncOp::eYield) invocation.reset();
+	return operation;
+}
+
+AsyncOp Game_Interpreter::ResumeManiacMessageHook(std::unique_ptr<Game_Interpreter>& invocation) {
+	if (!invocation) return {};
+	// Only host acquisition retains an invocation. Script wait/busy/budget
+	// already ended the local slice and never reach this continuation.
+	invocation->Update(false);
+	const auto operation = invocation->GetAsyncOp();
+	if (operation.GetType() != AsyncOp::eYieldRepeat && operation.GetType() != AsyncOp::eYield) invocation.reset();
+	return operation;
 }
 
 bool Game_Interpreter::CommandManiacControlTextProcessing(lcf::rpg::EventCommand const& com) {
@@ -8301,6 +8308,14 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	if (maniac_generated_command_pending) {
+		// YieldRepeat is still the same native dispatch. Busy/false retries
+		// instead regenerate below, including their expression side effects.
+		const bool result = DispatchCommand(*maniac_generated_command_pending);
+		ManiacPatch::SetGeneratedCommonNameCache(maniac_generated_command_pending->easyrpg_maniac_common_name_cache);
+		if (!result || _async_op.GetType() != AsyncOp::eYieldRepeat) maniac_generated_command_pending.reset();
+		return result;
+	}
 
 	enum class ProcessingMode {
 		Constant = 0, // 0 and 1: Parameters read from variables
@@ -8405,6 +8420,7 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	// A busy command returns false against the original 3019 cursor and is regenerated on retry.
 	const bool result = DispatchCommand(cmd);
 	ManiacPatch::SetGeneratedCommonNameCache(cmd.easyrpg_maniac_common_name_cache);
+	if (result && _async_op.GetType() == AsyncOp::eYieldRepeat) maniac_generated_command_pending = std::move(cmd);
 	return result;
 }
 

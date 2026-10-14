@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <chrono>
 #include "main_data.h"
+#include "window_message.h"
 #include "filefinder.h"
 #include "filefinder_rtp.h"
 #include "filesystem.h"
@@ -134,6 +135,9 @@ void Main_Data::Init() {
 }
 
 void Main_Data::Cleanup() {
+	if (Player::IsPatchManiac()) {
+		if (auto* message = Game_Message::GetWindow()) message->FinishMessageProcessing(false);
+	}
 	Game_ManiacJs::Reset();
 	Output::ManiacConsoleClose();
 	Game_Map::Quit();

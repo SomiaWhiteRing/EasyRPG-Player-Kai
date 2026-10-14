@@ -33,6 +33,7 @@
 #include <lcf/rpg/saveeventexecstate.h>
 #include <lcf/flag_set.h>
 #include "async_op.h"
+#include <optional>
 
 class Game_Event;
 class Game_CommonEvent;
@@ -48,7 +49,8 @@ public:
 	using Cmd = lcf::rpg::EventCommand::Code;
 
 	static Game_Interpreter& GetForegroundInterpreter();
-	static AsyncOp RunManiacMessageHook(int common_event_id);
+	static AsyncOp RunManiacMessageHook(int common_event_id, std::unique_ptr<Game_Interpreter>& invocation);
+	static AsyncOp ResumeManiacMessageHook(std::unique_ptr<Game_Interpreter>& invocation);
 
 	Game_Interpreter(bool _main_flag = false);
 #ifndef EMSCRIPTEN
@@ -375,6 +377,7 @@ protected:
 	KeyInputState _keyinput;
 	AsyncOp _async_op = {};
 	std::shared_ptr<ManiacTextPicture::Operation> maniac_text_picture_pending;
+	std::optional<lcf::rpg::EventCommand> maniac_generated_command_pending;
 
 	friend class Scene_Debug;
 };

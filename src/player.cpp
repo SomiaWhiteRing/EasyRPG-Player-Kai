@@ -1289,6 +1289,12 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 	if (!load_on_map) {
 		Scene::PopUntil(Scene::Title);
 	}
+	if (Player::IsPatchManiac()) {
+		// Retire the old message consumer before replacing its banks and
+		// pictures. In particular, a suspended hook must not read new state.
+		if (auto* message = Game_Message::GetWindow()) message->FinishMessageProcessing(false);
+		Game_Map::GetInterpreter().Clear();
+	}
 
 	// Direct startup loads can skip Scene_Title::Start, which applies the INI size.
 	if (Player::IsPatchManiac()

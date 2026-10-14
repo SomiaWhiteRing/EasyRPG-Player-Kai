@@ -80,7 +80,7 @@ std::string Scene_Save::GetSaveFilename(const FilesystemView& fs, int slot_id) {
 	return filename;
 }
 
-bool Scene_Save::Save(const FilesystemView& fs, int slot_id, bool prepare_save) {
+bool Scene_Save::Save(const FilesystemView& fs, int slot_id, bool prepare_save, bool update_save_slot) {
 	const auto filename = GetSaveFilename(fs, slot_id);
 	Output::Debug("Saving to {}", filename);
 
@@ -94,10 +94,10 @@ bool Scene_Save::Save(const FilesystemView& fs, int slot_id, bool prepare_save) 
 		return false;
 	}
 
-	return Save(save_stream, slot_id, prepare_save);
+	return Save(save_stream, slot_id, prepare_save, update_save_slot);
 }
 
-bool Scene_Save::Save(std::ostream& os, int slot_id, bool prepare_save) {
+bool Scene_Save::Save(std::ostream& os, int slot_id, bool prepare_save, bool update_save_slot) {
 	lcf::rpg::Save save;
 	auto& title = save.title;
 	// TODO: Maybe find a better place to setup the save file?
@@ -129,7 +129,7 @@ bool Scene_Save::Save(std::ostream& os, int slot_id, bool prepare_save) {
 		title.hero_name = ToString(actor->GetName());
 	}
 
-	Main_Data::game_system->SetSaveSlot(slot_id);
+	if (update_save_slot) Main_Data::game_system->SetSaveSlot(slot_id);
 	save.party_location = Main_Data::game_player->GetSaveData();
 	Game_Map::PrepareSave(save);
 

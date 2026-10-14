@@ -456,12 +456,10 @@ void Scene_Map::OnAsyncSuspend(F&& f, AsyncOp aop, bool is_preupdate) {
 
 	if (aop.GetType() == AsyncOp::eSave) {
 		auto savefs = FileFinder::Save();
-		bool success = Scene_Save::Save(savefs, aop.GetSaveSlot());
-		if (aop.GetSaveResultVar() > 0) {
-			Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
-			Game_Map::RefreshAfterManiacChange();
-		} else if (ApplyManiacSaveResult(aop, success,
-			Main_Data::game_maniac_self_variables.get())) {
+		bool success = Scene_Save::Save(savefs, aop.GetSaveSlot(), true, aop.GetSaveSlot() <= 15);
+		if (aop.IsSaveResultEnabled()) {
+			if (aop.GetSaveResultVar() > 0) Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
+			else ApplyManiacSaveResult(aop, success, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
 	}

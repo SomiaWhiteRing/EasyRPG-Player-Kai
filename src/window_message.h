@@ -54,7 +54,8 @@ public:
 	/**
 	 * Ends the message processing.
 	 */
-	void FinishMessageProcessing();
+	void FinishMessageProcessing(bool run_hook = true);
+	AsyncOp ResumeManiacMessageHook();
 
 	/**
 	 * Does the initial steps to start a choice selection.
@@ -75,7 +76,7 @@ public:
 	 * Clears the Messagebox and places the write pointer
 	 * in the top left corner.
 	 */
-	void InsertNewPage();
+	void InsertNewPage(bool resume_text = false);
 
 	/**
 	 * Inserts a line break.
@@ -151,6 +152,16 @@ protected:
 	BitmapRef maniac_glyphs;
 	/** Async operation */
 	AsyncOp aop;
+	std::unique_ptr<Game_Interpreter> maniac_hook_invocation;
+	std::function<void(bool)> maniac_hook_commit;
+	bool maniac_hook_resume_text = false;
+	uint64_t maniac_message_generation = 0;
+	void RunManiacHook(const int32_t* packet, size_t count, const std::string* source,
+		std::function<void(bool)> commit, bool resume_text);
+	void CompleteNewPage();
+	void CompleteMessageClose(int close_frames);
+	void RenderManiacGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont,
+		std::string_view token, bool maniac_icon, Point position, const std::array<int32_t, 2>& colors);
 	/** X-position of next char. */
 	int contents_x = 0;
 	/** Y-position of next char. */
@@ -205,7 +216,6 @@ protected:
 
 	std::vector<Font::ShapeRet> shape_ret;
 
-	Point ProcessManiacGlyphHook(std::string_view token, std::array<int32_t, 2>& colors);
 	bool DrawGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont, std::string_view token, bool maniac_icon = false);
 	bool DrawGlyph(Font& font, const Bitmap& system, const Font::ShapeRet& shape);
 	void IncrementLineCharCounter(int width);

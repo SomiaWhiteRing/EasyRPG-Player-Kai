@@ -1252,6 +1252,16 @@ int Game_Map::CheckEvent(int x, int y) {
 }
 
 void Game_Map::Update(MapUpdateAsyncContext& actx, bool is_preupdate) {
+	if (actx.IsActive()) {
+		// A ShowMessage create hook can suspend a foreground or parallel
+		// command as well as the message stage. Finish its window consumer
+		// before resuming the original stage, without repeating world updates.
+		const auto operation = Game_Message::ResumeManiacMessageHook();
+		if (operation.IsActive()) {
+			actx.SetAsyncOp(operation);
+			return;
+		}
+	}
 	if (!Player::IsPatchManiac() && GetNeedRefresh()) {
 		Refresh();
 	}
@@ -1392,9 +1402,9 @@ bool Game_Map::UpdateMapEvents(MapUpdateAsyncContext& actx) {
 }
 
 bool Game_Map::UpdateMessage(MapUpdateAsyncContext& actx) {
-	// Message system does not support suspend and resume internally. So if the last frame the message
-	// produced an async event, the message loop finished completely. Therefore this frame we should
-	// resume *after* the message and not run it again.
+	// A suspended Maniac window consumer already resumes at the start of
+	// Update. Continue after the message stage without repeating its window
+	// update or the earlier movement and animation work.
 	if (!actx.IsActive()) {
 		auto aop = Game_Message::Update();
 		if (aop.IsActive()) {

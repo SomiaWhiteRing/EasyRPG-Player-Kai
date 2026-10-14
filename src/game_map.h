@@ -57,6 +57,7 @@ public:
 	static MapUpdateAsyncContext FromMessage(AsyncOp aop);
 
 	AsyncOp GetAsyncOp() const;
+	void SetAsyncOp(AsyncOp operation) { async_op = operation; }
 
 	int GetParallelCommonEvent() const;
 	int GetParallelMapEvent() const;

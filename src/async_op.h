@@ -74,7 +74,8 @@ class AsyncOp {
 
 		/** @return a Save async operation */
 		static AsyncOp MakeSave(int save_slot, int save_result_var,
-			int self_scope = 0, int self_map_id = 0, int self_event_id = 0);
+			int self_scope = 0, int self_map_id = 0, int self_event_id = 0,
+			bool result_enabled = true);
 
 		/** @return a Load async operation */
 		static AsyncOp MakeLoad(int save_slot, int presentation = 0);
@@ -139,6 +140,7 @@ class AsyncOp {
 		 * @pre If GetType() is not eSave, the return value is undefined.
 		 **/
 		int GetSaveResultVar() const;
+		bool IsSaveResultEnabled() const;
 		int GetSaveSelfScope() const;
 		int GetSaveSelfMapId() const;
 		int GetSaveSelfEventId() const;
@@ -183,6 +185,7 @@ class AsyncOp {
 		Type _type = eNone;
 		int _args[5] = {};
 		std::string _str_arg;
+		bool _save_result_enabled = false;
 
 		template <typename... Args>
 		explicit AsyncOp(Type type, Args&&... args);
@@ -232,6 +235,11 @@ inline int AsyncOp::GetSaveSlot() const {
 inline int AsyncOp::GetSaveResultVar() const {
 	assert(GetType() == eSave);
 	return _args[1];
+}
+
+inline bool AsyncOp::IsSaveResultEnabled() const {
+	assert(GetType() == eSave);
+	return _save_result_enabled;
 }
 
 inline int AsyncOp::GetSaveSelfScope() const {
@@ -318,8 +326,10 @@ inline AsyncOp AsyncOp::MakeTerminateBattle(int transition_type) {
 }
 
 inline AsyncOp AsyncOp::MakeSave(int save_slot, int save_result_var,
-	int self_scope, int self_map_id, int self_event_id) {
-	return AsyncOp(eSave, save_slot, save_result_var, self_scope, self_map_id, self_event_id);
+	int self_scope, int self_map_id, int self_event_id, bool result_enabled) {
+	auto operation = AsyncOp(eSave, save_slot, save_result_var, self_scope, self_map_id, self_event_id);
+	operation._save_result_enabled = result_enabled;
+	return operation;
 }
 
 inline int AsyncOp::GetLoadPresentation() const {
