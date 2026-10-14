@@ -170,6 +170,12 @@ Parsed Parse(const Game_Interpreter& context, std::u16string text,
             continue;
         }
         ++cursor.position;
+        if (resolved_tokens && code == u'G') {
+            // Player's private snapshot escapes literal control units so they
+            // cannot become a body/config delimiter or a row separator.
+            glyph(static_cast<char16_t>(cursor.ReadNumber()));
+            continue;
+        }
         if (code == u'C') {
             Token token;
             token.kind = Token::ColorChange;
@@ -231,8 +237,13 @@ std::string SaveSnapshot(const Parsed& parsed) {
     for (const auto& row : parsed.rows) {
         if (newline) body += char16_t(10);
         newline = true;
+        if (row.empty()) body += u"\\G[0]"; // Flush preserves one empty row.
         for (const auto& token : row) {
             if (token.kind == Token::Glyph) {
+                if (token.unit < 32) {
+                    body += u"\\G[" + Decimal(token.unit) + u"]";
+                    continue;
+                }
                 if (token.unit == u'\\' || token.unit == u'$') body += token.unit;
                 body += token.unit;
             } else {
