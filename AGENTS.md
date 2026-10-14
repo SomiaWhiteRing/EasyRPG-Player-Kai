@@ -1,3 +1,9 @@
+# Maniac compatibility work
+
+Follow [the fixed Maniac action guidelines](docs/research/maniac-250921/ACTION-GUIDELINES.md)
+when screening, migrating, repairing or estimating Maniac support. They replace
+the old full-port completion gates; preserve EasyRPG fonts, input and host APIs.
+
 # Windows local builds
 
 Use `builds/cmake/build-windows.ps1` for local Windows builds of Player's CMake targets.
