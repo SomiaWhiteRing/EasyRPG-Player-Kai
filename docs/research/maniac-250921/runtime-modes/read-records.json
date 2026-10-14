@@ -1,0 +1,898 @@
+{
+  "scope": "Runtime-mode branches, budget loops, configuration and refresh neighbours. Stored full facet text does not imply complete function semantic review.",
+  "selection_note": "requested_selections records requested reads/scans, including scan-only matches and potentially truncated requests. Conclusions rely on the mode/budget branches and adjacent control flow described in REPORT.md; this is not a per-command acceptance ledger.",
+  "runtime_acceptance": "not-performed",
+  "records": [
+    {
+      "address": "0x14000acc0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_170ec7b2364c166ef048268557cb8373e00312b2d0000b5f0d380526c8a9eb78",
+      "text": "evidence/0x14000acc0-pseudocode.txt",
+      "total_lines": 81,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 150,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140024760",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_11a06318168416fe5a5ea895e1c17e77b993a10d509e52fd3a33cb15598a585c",
+      "text": "evidence/0x140024760-pseudocode.txt",
+      "total_lines": 216,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140024bf0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_9a0b6558fd92cc67665c9fd86c21d151a5a7cdddb2330eecf48addb5a15174ea",
+      "text": "evidence/0x140024bf0-pseudocode.txt",
+      "total_lines": 55,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140024f10",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_8f59a7d4993720ba6c9c4a0d061c838bdd578600cbbef476b386d7010f216627",
+      "text": "../evidence/0x140024f10-pseudocode.txt",
+      "total_lines": 64,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140026a90",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_e86fa2598fd36005aed21f1b487e21aa39b70123bb1b930298268a8cbaf1a575",
+      "text": "evidence/0x140026a90-pseudocode.txt",
+      "total_lines": 79,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140026d70",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_0137bcd789fced44ffff51fa5fc8b0a28f7124ef1cc28ed387a1de7d694574ee",
+      "text": "evidence/0x140026d70-pseudocode.txt",
+      "total_lines": 173,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 180,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1400282b0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_80f1db22bdcaa4620217a96444b94c5c8b032d0e40e202f4efaf9e98a49ecbd4",
+      "text": "evidence/0x1400282b0-pseudocode.txt",
+      "total_lines": 291,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140028c00",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_020676babb18e8c43be4b06120935cf7422d9830838fadb7c91ac766e5eb689a",
+      "text": "evidence/0x140028c00-pseudocode.txt",
+      "total_lines": 410,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": "26944a",
+          "start": 1,
+          "count": 200,
+          "context": 17
+        }
+      ]
+    },
+    {
+      "address": "0x1400293d0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_69e3985cdce91e40b8cc32943d58ad29968132842c7537f729aea3915214cd4e",
+      "text": "evidence/0x1400293d0-pseudocode.txt",
+      "total_lines": 342,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": "26944a",
+          "start": 1,
+          "count": 200,
+          "context": 17
+        }
+      ]
+    },
+    {
+      "address": "0x14002d1f0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_c4e16372ca8b89ae2bdb631333320c271438b6202b93386bb164f21c5fc6e014",
+      "text": "evidence/0x14002d1f0-pseudocode.txt",
+      "total_lines": 128,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140030e70",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_9985c9f7c5fea0802a6704eb5b1ced63e825c48d72a8cbff291e94f82e7434c8",
+      "text": "evidence/0x140030e70-pseudocode.txt",
+      "total_lines": 448,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x1400378d0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_31364e06c09d2e0ca7c00c4ea96432efa989d43b88df70380ecfa190ad42a3a0",
+      "text": "evidence/0x1400378d0-pseudocode.txt",
+      "total_lines": 115,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140037de0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_f3591bbe74c82a120a8e3e929c438690d20b75405c617b40903e6654cf9f52de",
+      "text": "evidence/0x140037de0-pseudocode.txt",
+      "total_lines": 2683,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x14003de00",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_647c5bf99810844161497db925fc97b0592efce93f421ad9f3998ecf3868186d",
+      "text": "evidence/0x14003de00-pseudocode.txt",
+      "total_lines": 424,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x14003f620",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_468f8996a5d67f41dd844c499c5da9acc688475b54d3f16065e5919321f8cae9",
+      "text": "evidence/0x14003f620-pseudocode.txt",
+      "total_lines": 825,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": "26944a",
+          "start": 1,
+          "count": 200,
+          "context": 10
+        }
+      ]
+    },
+    {
+      "address": "0x140040860",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_13d42becfa8b2f27db8788501bfd44b73fc929504a6a8dcdd80b8a2f08902349",
+      "text": "evidence/0x140040860-pseudocode.txt",
+      "total_lines": 406,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140045660",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_8449e5f0ea9414f1d58cd1a22a079988f29b112968e6950f697497052f8301d8",
+      "text": "../evidence/0x140045660-pseudocode.txt",
+      "total_lines": 2015,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": "26944a",
+          "start": 1,
+          "count": 200,
+          "context": 18
+        },
+        {
+          "pattern": "case 0x510|case 0x50d|case 0x50[0-9a-f]|joined_r0x000140046232|uVar22 =|uVar22 -|uVar20 -",
+          "start": 1,
+          "count": 200,
+          "context": 9
+        }
+      ]
+    },
+    {
+      "address": "0x140045660",
+      "facet": "procedure_assembly",
+      "evidence_id": "ev_065b113ae282e0151ebdafb4210490720c2285f9829f0f4e0822f7c044746fdf",
+      "text": "evidence/0x140045660-assembly.txt",
+      "total_lines": 2585,
+      "requested_selections": [
+        {
+          "pattern": "26944a|0x140046232|0x14004622b",
+          "start": 1,
+          "count": 200,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14004e4c0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_dbc5c44341fc93bf61ce249ad2c093880da845be686923227d34ec14973ddf7d",
+      "text": "evidence/0x14004e4c0-pseudocode.txt",
+      "total_lines": 53,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 160,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14004e5e0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_63f8514bcf250bae5704a6b0e8fce5511cbf8260693ddef1f87ce4ba5eea4250",
+      "text": "evidence/0x14004e5e0-pseudocode.txt",
+      "total_lines": 28,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 160,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140057500",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_4a84cae0f12c489000e1c822777db65cc59786a2ef5b930081964df05e1036b7",
+      "text": "../evidence/0x140057500-pseudocode.txt",
+      "total_lines": 1971,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x14005c4a0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_0f2d614883968ba568c19a5d932ad1aa0efadcc11c5b108289cf9bc217ccc637",
+      "text": "evidence/0x14005c4a0-pseudocode.txt",
+      "total_lines": 804,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        },
+        {
+          "pattern": null,
+          "start": 567,
+          "count": 132,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14005db00",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_5fc8ffd56e09481016dfca6320f87f9b52d2025cd549a906043cb535509c9cef",
+      "text": "evidence/0x14005db00-pseudocode.txt",
+      "total_lines": 31,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 90,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140061b20",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_35729b69d4f0266a6b9c645da140d9fee9a17bc04c663ceb270cd970645740bf",
+      "text": "evidence/0x140061b20-pseudocode.txt",
+      "total_lines": 281,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 360,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140062220",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_abedecc5be3a6a8fad271c9b4c6fdff4158917b12170ed1cb7ada0748cf76e24",
+      "text": "evidence/0x140062220-pseudocode.txt",
+      "total_lines": 31,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x1400622f0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_062d5850bf22c439386e595e40ec8b9f192619241331403b2336f3aa9d0e939c",
+      "text": "evidence/0x1400622f0-pseudocode.txt",
+      "total_lines": 271,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x140063cb0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_67b2cb61e4fcaeb42adf96063d33cf600a38d302a3ba3607748c47d1e36a77be",
+      "text": "evidence/0x140063cb0-pseudocode.txt",
+      "total_lines": 18,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x14006ae10",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_970bf9d1ac6a2631c3f35984776c715b42bcc83dcfb7e1ade3d9f760cd7e5355",
+      "text": "evidence/0x14006ae10-pseudocode.txt",
+      "total_lines": 48,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 60,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140088940",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_46b6dba399aef5439e61cb006a27f60e99ca924b54164a31e21e6743d661f654",
+      "text": "evidence/0x140088940-pseudocode.txt",
+      "total_lines": 94,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 115,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140088ab0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_14524a5e966fb8b3c7664c606ac833cc2ab47a6b1ecb9d95d085aa24a9e47aaf",
+      "text": "evidence/0x140088ab0-pseudocode.txt",
+      "total_lines": 271,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 285,
+          "context": 4
+        },
+        {
+          "pattern": null,
+          "start": 55,
+          "count": 216,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14008a040",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_16d4a9541858daf2f1f4c9c8ad1ca07fe2a829bd5f91b67d41f1e13aedc797a1",
+      "text": "evidence/0x14008a040-pseudocode.txt",
+      "total_lines": 128,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 150,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14008c9e0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_58933dd5cfd40c065a467b5ba4eb7375d199d45ec337a409068ae9213b3da6f8",
+      "text": "evidence/0x14008c9e0-pseudocode.txt",
+      "total_lines": 33,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 130,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1400903d0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_aba4908e04b242101fc107cc72627e13bf7251ec6f0c2f77c80726796223bb61",
+      "text": "evidence/0x1400903d0-pseudocode.txt",
+      "total_lines": 54,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 65,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1400d3cd0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_e7e45c263893696bc2286644f34faee6ad47287c5b1c58a3cbb663dfbcdfb079",
+      "text": "evidence/0x1400d3cd0-pseudocode.txt",
+      "total_lines": 546,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": "26944a",
+          "start": 1,
+          "count": 200,
+          "context": 20
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 85,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14017bbf0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_9e93b192bbbdffd90a0d7a40613475d39d19f4b6d535de610df29679504ed648",
+      "text": "evidence/0x14017bbf0-pseudocode.txt",
+      "total_lines": 188,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 205,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14017bfe0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_564bb324633bd60b10865004f75cf9bd933698000a7ab27ec2e21750ab01d485",
+      "text": "evidence/0x14017bfe0-pseudocode.txt",
+      "total_lines": 35,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 160,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14017c0b0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_baceb036a46a763fe550740e0376557cfca838e3a36766bdb893d5b022bb2ae6",
+      "text": "evidence/0x14017c0b0-pseudocode.txt",
+      "total_lines": 60,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        }
+      ]
+    },
+    {
+      "address": "0x140182c20",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_a739349720750cdb688500097d8a0e52fe3cc8e371a7c92e3aea9933ea0fa2c5",
+      "text": "evidence/0x140182c20-pseudocode.txt",
+      "total_lines": 192,
+      "requested_selections": [
+        {
+          "pattern": "17bfe0",
+          "start": 1,
+          "count": 200,
+          "context": 8
+        }
+      ]
+    },
+    {
+      "address": "0x140183420",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_49f6a4690dc5445ad9a869aefb4ce02fa72d2bb35cb4449e29d3d818ee28a3ef",
+      "text": "../evidence/0x140183420-pseudocode.txt",
+      "total_lines": 101,
+      "requested_selections": [
+        {
+          "pattern": "17bfe0",
+          "start": 1,
+          "count": 200,
+          "context": 8
+        }
+      ]
+    },
+    {
+      "address": "0x140188000",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_b45ee5d19cf74158fbf00c63a1700a654e5f439d0aa90067e9e0c2cd13303e75",
+      "text": "evidence/0x140188000-pseudocode.txt",
+      "total_lines": 55,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 150,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1401880c0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_b6777577549ba99d776d3cc5934530326e01a5d9e0bfe31fefc36200f26b9504",
+      "text": "evidence/0x1401880c0-pseudocode.txt",
+      "total_lines": 97,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 150,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140188680",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_a661939574d3eac2ce65f2a8706f57b24736e9039d3b95e3fbcac61097c12c1b",
+      "text": "evidence/0x140188680-pseudocode.txt",
+      "total_lines": 202,
+      "requested_selections": [
+        {
+          "pattern": "188000|08a040|1880c0|Battle|Enemy|2790",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x1401894c0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_55133e1bd2ec408cfcbabf7b292c2beedd7b708421c49c30d62f30fa1ab47587",
+      "text": "evidence/0x1401894c0-pseudocode.txt",
+      "total_lines": 106,
+      "requested_selections": [
+        {
+          "pattern": "063cb0",
+          "start": 1,
+          "count": 200,
+          "context": 14
+        }
+      ]
+    },
+    {
+      "address": "0x140192ba0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_4e3d0f1186db7335677bbd6c5ec447669da78737f7dc6389714c29f18df6eb74",
+      "text": "evidence/0x140192ba0-pseudocode.txt",
+      "total_lines": 140,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 160,
+          "context": 4
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 150,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140193e60",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_e415bdfd858650063097bae0e887c84328d4a332cef8656cd78c9ae8e7189a18",
+      "text": "evidence/0x140193e60-pseudocode.txt",
+      "total_lines": 59,
+      "requested_selections": [
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 200,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140198770",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_0815b3cfe05cc497956a1ebea041e6ac8220399e8cec370fb09611e8f2d0b1ca",
+      "text": "evidence/0x140198770-pseudocode.txt",
+      "total_lines": 116,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        },
+        {
+          "pattern": null,
+          "start": 38,
+          "count": 55,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x140198a30",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_cbed8ddcd1ea96b67eb2e24006e63221779203260375a3d4338ce65c352074b3",
+      "text": "evidence/0x140198a30-pseudocode.txt",
+      "total_lines": 156,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x14019a8c0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_52f151d86851e849fe6d271cebbcb705ddb52e059df1705bf6422889e04faa14",
+      "text": "evidence/0x14019a8c0-pseudocode.txt",
+      "total_lines": 89,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 110,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x14019cdb0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_6f6ac00c5995f5730c5969ebee00c391a858d98f6b592e32a290d0baaacf7fe0",
+      "text": "evidence/0x14019cdb0-pseudocode.txt",
+      "total_lines": 137,
+      "requested_selections": [
+        {
+          "pattern": "061b20",
+          "start": 1,
+          "count": 200,
+          "context": 6
+        }
+      ]
+    },
+    {
+      "address": "0x14019d6b0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_565f72352beb0b813480cb4493ae003d78734730395115011ffe5fc703c0ea79",
+      "text": "evidence/0x14019d6b0-pseudocode.txt",
+      "total_lines": 89,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 110,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1401a1fc0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_5ddfab324aedd371d3ea31ebe71a3d4168b5da2eaacadc84f4ca61d5b6188ce9",
+      "text": "evidence/0x1401a1fc0-pseudocode.txt",
+      "total_lines": 95,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 110,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1401a2200",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_1af809e0103d89c0da026cad428cd197e96290075c2614809e42d950333c7f18",
+      "text": "evidence/0x1401a2200-pseudocode.txt",
+      "total_lines": 89,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 110,
+          "context": 4
+        }
+      ]
+    },
+    {
+      "address": "0x1401bbfb0",
+      "facet": "procedure_pseudo_code",
+      "evidence_id": "ev_9087f39f69726d8e9e62482548d84ab98445df669d75311c7dd46521e0e28f5b",
+      "text": "evidence/0x1401bbfb0-pseudocode.txt",
+      "total_lines": 94,
+      "requested_selections": [
+        {
+          "pattern": "26944a|26cd44|StepsPerFrame",
+          "context": 0
+        },
+        {
+          "pattern": null,
+          "start": 1,
+          "count": 110,
+          "context": 4
+        }
+      ]
+    }
+  ]
+}

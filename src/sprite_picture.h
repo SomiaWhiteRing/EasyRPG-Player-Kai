@@ -19,6 +19,7 @@
 #define EP_PICTURE_SPRITE_H
 
 #include "sprite.h"
+#include <array>
 
 class Bitmap;
 
@@ -36,7 +37,10 @@ public:
 
 	void Draw(Bitmap& dst) override;
 
-	void OnPictureShow();
+	void OnPictureShow(bool reuse_pixels = false);
+	void SetPictureId(int id);
+	void UpdateManiacPixels();
+	BitmapRef GetPreparedBitmap(Rect& rect) const;
 
 	/** @return Width of a single spritesheet frame or the entire width if the picture has no spritesheet */
 	int GetFrameWidth() const;
@@ -45,8 +49,14 @@ public:
 	int GetFrameHeight() const;
 
 private:
+	void UpdatePictureZ();
+	BitmapRef PrepareManiacBitmap(Rect& rect) const;
+	mutable BitmapRef maniac_source;
+	mutable BitmapRef maniac_prepared;
+	mutable std::array<int, 14> maniac_prepare_state{};
+	mutable uint64_t maniac_source_revision = 0;
 	int last_spritesheet_frame = -1;
-	const int pic_id = 0;
+	int pic_id = 0;
 	const bool feature_spritesheet = false;
 	const bool feature_priority_layers = false;
 	const bool feature_bottom_trans = false;

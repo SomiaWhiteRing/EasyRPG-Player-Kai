@@ -17,7 +17,9 @@
 
 // Headers
 #include <cstdlib>
+#include <chrono>
 #include "main_data.h"
+#include "window_message.h"
 #include "filefinder.h"
 #include "filefinder_rtp.h"
 #include "filesystem.h"
@@ -63,7 +65,9 @@ namespace Main_Data {
 	std::unique_ptr<Game_Variables> game_variables;
 	std::unique_ptr<Game_Strings> game_strings;
 	std::unique_ptr<Game_ManiacSelfVariables> game_maniac_self_variables;
-	uint32_t maniac_random_seed = maniac_initial_random_seed;
+	// Native 059680 seeds the process-wide LCG from UTC milliseconds of day.
+	uint32_t maniac_random_seed = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+		std::chrono::system_clock::now().time_since_epoch()).count() % 86400000);
 
 	uint32_t NextManiacRandom() {
 		maniac_random_seed = maniac_random_seed * 0x08088405u + 1u;
@@ -131,13 +135,15 @@ void Main_Data::Init() {
 }
 
 void Main_Data::Cleanup() {
+	if (Player::IsPatchManiac()) {
+		if (auto* message = Game_Message::GetWindow()) message->FinishMessageProcessing(false);
+	}
 	Game_ManiacJs::Reset();
 	Output::ManiacConsoleClose();
 	Game_Map::Quit();
 
 	game_switches.reset();
 	game_maniac_self_variables.reset();
-	maniac_random_seed = maniac_initial_random_seed;
 	game_screen.reset();
 	game_pictures.reset();
 	game_windows.reset();

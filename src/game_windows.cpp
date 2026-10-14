@@ -16,6 +16,7 @@
  */
 
 #include "game_windows.h"
+#include "maniac_text_picture.h"
 #include "game_message.h"
 #include "game_strings.h"
 #include "main_data.h"
@@ -26,6 +27,7 @@
 #include "filefinder.h"
 #include "output.h"
 #include "player.h"
+#include "game_interpreter.h"
 
 static std::optional<std::string> CommandCodeInserter(char ch, const char **iter, const char *end, uint32_t escape_char) {
 	if ((ch == 'T' || ch == 't') && Player::IsPatchManiac()) {
@@ -39,7 +41,6 @@ static std::optional<std::string> CommandCodeInserter(char ch, const char **iter
 
 	return PendingMessage::DefaultCommandInserter(ch, iter, end, escape_char);
 }
-
 Game_Windows::Window_User::Window_User(lcf::rpg::SaveEasyRpgWindow save)
 	: data(std::move(save))
 {
@@ -47,22 +48,27 @@ Game_Windows::Window_User::Window_User(lcf::rpg::SaveEasyRpgWindow save)
 }
 
 void Game_Windows::SetSaveData(std::vector<lcf::rpg::SaveEasyRpgWindow> save) {
+	for (auto& window : windows) window->Erase();
 	windows.clear();
 
 	int num_windows = static_cast<int>(save.size());
 	windows.reserve(num_windows);
 	for (int i = 0; i < num_windows; ++i) {
-		windows.emplace_back(std::move(save[i]));
+		windows.push_back(std::make_shared<Window_User>(std::move(save[i])));
 		auto& win = windows.back();
-		int id = win.data.ID;
+		int id = win->data.ID;
 		if (id > 0) {
 			auto pic = Main_Data::game_pictures->GetPicturePtr(id);
-			if (pic && pic->IsWindowAttached()) {
+			if (pic && pic->IsWindowAttached() && (pic->data.maniac_image_flags >> 24) != 1) {
 				// no special async handling needed, loading will already yield
 				bool async_wait;
-				win.Refresh(async_wait);
+				win->Refresh(async_wait);
 			}
 		}
+	}
+	if (Player::IsPatchManiac()) {
+		for (int id = 1; id <= Main_Data::game_pictures->GetMaxPictureId(); ++id)
+			if (auto* picture = Main_Data::game_pictures->GetPicturePtr(id)) RestoreManiacTextPicture(*picture);
 	}
 }
 
@@ -73,7 +79,16 @@ std::vector<lcf::rpg::SaveEasyRpgWindow> Game_Windows::GetSaveData() const {
 	save.reserve(data_size);
 
 	for (auto& win: windows) {
-		save.push_back(win.data);
+		if (win->maniac_text_picture) {
+			lcf::rpg::SaveEasyRpgWindow empty;
+			empty.ID = win->data.ID;
+			// Native canonical text cannot distinguish literal inserted escapes
+			// from display tokens. Retain resolved tokens in Player's private save.
+			lcf::rpg::SaveEasyRpgText text;
+			text.text = lcf::DBString(ManiacTextPicture::SaveSnapshot(win->maniac_text_picture->parsed));
+			empty.texts.push_back(std::move(text));
+			save.push_back(std::move(empty));
+		} else save.push_back(win->data);
 	}
 
 	// RPG_RT Save game data always has a constant number of pictures
@@ -89,18 +104,19 @@ std::vector<lcf::rpg::SaveEasyRpgWindow> Game_Windows::GetSaveData() const {
 }
 
 Game_Windows::Window_User& Game_Windows::GetWindow(int id) {
+	if (id <= 0) Output::Error("Invalid Window Access [{}]", id);
 	if (EP_UNLIKELY(id > static_cast<int>(windows.size()))) {
 		windows.reserve(id);
 		while (static_cast<int>(windows.size()) < id) {
-			windows.emplace_back(static_cast<int>(windows.size()) + 1);
+			windows.push_back(std::make_shared<Window_User>(static_cast<int>(windows.size()) + 1));
 		}
 	}
-	return windows[id - 1];
+	return *windows[id - 1];
 }
 
 Game_Windows::Window_User* Game_Windows::GetWindowPtr(int id) {
-	return id <= static_cast<int>(windows.size())
-		? &windows[id - 1] : nullptr;
+	return id > 0 && id <= static_cast<int>(windows.size())
+		? windows[id - 1].get() : nullptr;
 }
 
 bool Game_Windows::Window_User::Create(const WindowParams& params) {
@@ -154,6 +170,9 @@ void Game_Windows::Window_User::Erase() {
 	int id = data.ID;
 	data = {};
 	data.ID = id;
+	if (maniac_text_picture) maniac_text_picture->Cancel();
+	maniac_text_picture.reset();
+	window.reset();
 
 	request_ids.clear();
 }
@@ -171,6 +190,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 	std::vector<FontRef> fonts;
 	std::vector<PendingMessage> messages;
+	const char32_t escape = Player::IsPatchManiac() ? U'\\' : Player::escape_char;
 
 	// Preprocessing
 	for (const auto& text: data.texts) {
@@ -255,13 +275,14 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 			int x = text.position_x;
 			int y = text.position_y;
+
 			for (const auto& line: pm.GetLines()) {
 				std::u32string line32;
 				auto* text_index = line.data();
 				const auto* end = line.data() + line.size();
 
 				while (text_index != end) {
-					auto tret = Utils::TextNext(text_index, end, Player::escape_char);
+					auto tret = Utils::TextNext(text_index, end, escape);
 					text_index = tret.next;
 
 					if (EP_UNLIKELY(!tret)) {
@@ -293,7 +314,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 						line32 += '$';
 					}
 
-					if (tret.is_escape && ch != Player::escape_char) {
+					if (tret.is_escape && ch != escape) {
 						if (!line32.empty()) {
 							x += Text::GetSize(*font, Utils::EncodeUTF(line32)).width;
 							line32.clear();
@@ -305,7 +326,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 							case 'C':
 							{
 								// Color
-								text_index = Game_Message::ParseColor(text_index, end, Player::escape_char, true).next;
+								text_index = Game_Message::ParseColor(text_index, end, escape, true).next;
 							}
 							break;
 						}
@@ -393,7 +414,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 			const auto* end = line.data() + line.size();
 
 			while (text_index != end) {
-				auto tret = Utils::TextNext(text_index, end, Player::escape_char);
+				auto tret = Utils::TextNext(text_index, end, escape);
 				text_index = tret.next;
 
 				if (EP_UNLIKELY(!tret)) {
@@ -423,7 +444,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 					line32 += '$';
 				}
 
-				if (tret.is_escape && ch != Player::escape_char) {
+				if (tret.is_escape && ch != escape) {
 					if (!line32.empty()) {
 						x += Text::Draw(*window->GetContents(), x, y, *font, *system, text_color, Utils::EncodeUTF(line32)).x;
 						line32.clear();
@@ -435,7 +456,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 						case 'C':
 						{
 							// Color
-							auto pres = Game_Message::ParseColor(text_index, end, Player::escape_char, true);
+							auto pres = Game_Message::ParseColor(text_index, end, escape, true);
 							auto value = pres.value;
 							text_index = pres.next;
 							text_color = value > 19 ? 0 : value;
@@ -545,4 +566,67 @@ void Game_Windows::Erase(int id) {
 	if (EP_LIKELY(window)) {
 		window->Erase();
 	}
+}
+
+void Game_Windows::Exchange(int source, int target) {
+	GetWindow(std::max(source, target));
+	std::swap(windows[source - 1], windows[target - 1]);
+	windows[source - 1]->data.ID = source;
+	windows[target - 1]->data.ID = target;
+}
+
+bool Game_Windows::HasPendingRequest(int id) const {
+	return id > 0 && id <= static_cast<int>(windows.size()) &&
+		(!windows[id - 1]->request_ids.empty() || (windows[id - 1]->maniac_text_picture &&
+		!windows[id - 1]->maniac_text_picture->requests.empty()));
+}
+
+void Game_Windows::CreateManiacTextPicture(int id,
+    const std::shared_ptr<ManiacTextPicture::Operation>& operation) {
+    auto& window = GetWindow(id);
+    window.Erase();
+    window.maniac_text_picture = operation;
+    operation->Start();
+}
+
+void Game_Windows::RestoreManiacTextPicture(Game_Pictures::Picture& picture) {
+    if ((picture.data.maniac_image_flags >> 24) != 1) return;
+    auto& window = GetWindow(picture.data.ID);
+    if (window.maniac_text_picture && window.maniac_text_picture->picture.lock().get() == &picture) return;
+    const bool snapshot = window.data.texts.size() == 1 && !window.data.texts[0].text.empty()
+        && std::string_view(window.data.texts[0].text).front() == '\1';
+    const std::string text(snapshot ? std::string_view(window.data.texts[0].text) : std::string_view(picture.data.name));
+    window.Erase();
+    auto operation = std::make_shared<ManiacTextPicture::Operation>();
+    operation->restoring = true;
+    operation->picture = Main_Data::game_pictures->GetPictureRef(picture.data.ID);
+    operation->format.flags = picture.data.maniac_image_flags;
+    operation->format.font = uint32_t(picture.data.finish_bot_trans);
+    operation->format.spacing = picture.data.maniac_transparency_flags;
+    // Native kind1 files carry blend/whole-flip in b9, without EasyRPG
+    // extension chunks. Restore those consumers before preparing the bitmap.
+    const uint32_t packed = operation->format.font >> 8;
+    picture.data.easyrpg_blend_mode = int(Bitmap::BlendMode::Normal);
+    switch (packed & 15) {
+    case 1: picture.data.easyrpg_blend_mode = int(Bitmap::BlendMode::Multiply); break;
+    case 2: picture.data.easyrpg_blend_mode = int(Bitmap::BlendMode::Additive); break;
+    case 3: picture.data.easyrpg_blend_mode = int(Bitmap::BlendMode::Overlay); break;
+    default: break;
+    }
+    const auto flip = (packed >> 4) & 15;
+    picture.data.easyrpg_flip = 0;
+    if (flip == 1 || flip == 3) picture.data.easyrpg_flip |= lcf::rpg::SavePicture::EasyRpgFlip_x;
+    if (flip == 2 || flip == 3) picture.data.easyrpg_flip |= lcf::rpg::SavePicture::EasyRpgFlip_y;
+    const auto& dimensions = picture.data.maniac_image_dimensions;
+    if (dimensions.size() == 2) {
+        operation->format.width = dimensions[0];
+        operation->format.height = dimensions[1];
+    }
+    // Cached kind1 text does not expand V/T/N/SELF a second time.
+    operation->parsed = ManiacTextPicture::Parse(Game_Interpreter::GetForegroundInterpreter(),
+        Utils::DecodeUTF16(text, true), 0, true, snapshot);
+    window.maniac_text_picture = operation;
+    picture.data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_window;
+    picture.data.current_bot_trans = 0.0;
+    operation->Start();
 }

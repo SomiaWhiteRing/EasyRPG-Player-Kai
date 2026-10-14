@@ -1,0 +1,68 @@
+ulonglong FUN_140037bd0(undefined4 param_1,uint param_2,uint param_3)
+
+{
+  longlong lVar1;
+  uint uVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  bool bVar5;
+  bool bVar6;
+
+  switch(param_1) {
+  case 1:
+    uVar3 = (longlong)(int)param_2 + (longlong)(int)param_3;
+    break;
+  case 2:
+    uVar3 = (longlong)(int)param_2 - (longlong)(int)param_3;
+    break;
+  case 3:
+    uVar3 = (longlong)(int)param_2 * (longlong)(int)param_3;
+    break;
+  case 4:
+    uVar2 = 1;
+    if (param_3 != 0) {
+      uVar2 = param_3;
+    }
+    uVar3 = (longlong)(int)param_2 / (longlong)(int)uVar2;
+    if ((longlong)uVar3 <= (longlong)DAT_140257f34) {
+      return (longlong)DAT_140257f34;
+    }
+    if ((longlong)(int)DAT_140257f30 <= (longlong)uVar3) {
+      uVar3 = (longlong)(int)DAT_140257f30;
+    }
+    return uVar3 & 0xffffffff;
+  case 5:
+    uVar2 = 1;
+    if (param_3 != 0) {
+      uVar2 = param_3;
+    }
+    uVar3 = (longlong)(int)param_2 % (longlong)(int)uVar2;
+    bVar6 = SBORROW8(uVar3,(longlong)DAT_140257f34);
+    lVar1 = uVar3 - (longlong)DAT_140257f34;
+    bVar5 = lVar1 == 0;
+    goto LAB_140037c05;
+  case 6:
+    return (ulonglong)(param_2 | param_3);
+  case 7:
+    return (ulonglong)(param_2 & param_3);
+  case 8:
+    return (ulonglong)(param_2 ^ param_3);
+  case 9:
+    return (ulonglong)(param_2 << ((byte)param_3 & 0x1f));
+  case 10:
+    return (ulonglong)(param_2 >> ((byte)param_3 & 0x1f));
+  default:
+    return 0;
+  }
+  uVar4 = (ulonglong)DAT_140257f34;
+  bVar6 = SBORROW8(uVar3,uVar4);
+  lVar1 = uVar3 - uVar4;
+  bVar5 = uVar3 == uVar4;
+LAB_140037c05:
+  uVar4 = (ulonglong)DAT_140257f34;
+  if ((!bVar5 && bVar6 == lVar1 < 0) &&
+     (uVar4 = uVar3 & 0xffffffff, (longlong)(int)DAT_140257f30 <= (longlong)uVar3)) {
+    uVar4 = (ulonglong)DAT_140257f30;
+  }
+  return uVar4 & 0xffffffff;
+}

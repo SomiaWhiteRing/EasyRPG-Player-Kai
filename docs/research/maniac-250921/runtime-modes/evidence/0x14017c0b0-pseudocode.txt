@@ -1,0 +1,60 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8 FUN_14017c0b0(void)
+
+{
+  UINT UVar1;
+  int iVar2;
+  undefined8 uVar3;
+  undefined1 auStackY_468 [32];
+  wchar_t local_438 [264];
+  WCHAR local_228 [9];
+  WCHAR local_216 [255];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStackY_468;
+  FUN_1401fa300(local_438,0,0x210);
+  FUN_1401fa300(local_228,0,0x210);
+  wcscat_s(local_438,0x108,DAT_14026d2c8);
+  wcscat_s(local_438,0x108,L"/rpg_rt.ini");
+  GetPrivateProfileStringW(L"RPG_RT",L"GameTitle",L"Untitled",local_228,0x108,local_438);
+  UVar1 = GetPrivateProfileIntW(L"RPG_RT",L"Winw",0x140,local_438);
+  if ((int)UVar1 < 0x40) {
+    DAT_140257dfc = 0x40;
+  }
+  else {
+    DAT_140257dfc = 0x780;
+    if ((int)UVar1 < 0x781) {
+      DAT_140257dfc = UVar1;
+    }
+  }
+  UVar1 = GetPrivateProfileIntW(L"RPG_RT",L"Winh",0xf0,local_438);
+  if ((int)UVar1 < 0x20) {
+    DAT_140257df8 = 0x20;
+  }
+  else {
+    DAT_140257df8 = 0x5a0;
+    if ((int)UVar1 < 0x5a1) {
+      DAT_140257df8 = UVar1;
+    }
+  }
+  UVar1 = GetPrivateProfileIntW(L"RPG_RT",L"pf",0,local_438);
+  DAT_14026944a = UVar1 != 0;
+  DAT_14026cd44 = GetPrivateProfileIntW(L"RPG_RT",L"StepsPerFrame",0,local_438);
+  if (((int)DAT_14026cd44 < 1) && (DAT_14026cd44 = 10000, DAT_14026944a != '\0')) {
+    DAT_14026cd44 = 200000;
+  }
+  iVar2 = lstrlenW(local_228);
+  uVar3 = FUN_1400b9b30(iVar2);
+  FUN_1401f9ae0(uVar3,local_228,(longlong)iVar2 * 2);
+  DAT_14026d2d0 = uVar3;
+  DAT_14026cd4c = GetPrivateProfileIntW(L"RPG_RT",L"Encoding",0,local_438);
+  FUN_1401fa300(local_228,0,0x108);
+  wcscat_s(local_228,0x108,L"Software\\");
+  GetPrivateProfileStringW
+            (L"RPG_RT",L"RuntimePackageKey",L"KADOKAWA\\rpg2003",local_216,0x103,local_438);
+  iVar2 = lstrlenW(local_228);
+  uVar3 = FUN_1400b9b30(iVar2);
+  FUN_1401f9ae0(uVar3,local_228,(longlong)iVar2 * 2);
+  return uVar3;
+}

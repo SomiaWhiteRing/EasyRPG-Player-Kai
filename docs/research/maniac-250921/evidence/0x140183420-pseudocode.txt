@@ -1,0 +1,101 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8 FUN_140183420(void)
+
+{
+  undefined8 uVar1;
+  int iVar2;
+  longlong lVar3;
+  undefined4 uVar4;
+  undefined1 auStack_c8 [32];
+  LOGFONTW local_a8;
+  ulonglong local_48;
+
+  local_48 = DAT_140257140 ^ (ulonglong)auStack_c8;
+  FUN_14004f7f0();
+  if ((DAT_1402603ae == '\0') &&
+     ((FUN_14017bfe0(), DAT_140257dfc != *(int *)(DAT_1402694a0 + 0x28) ||
+      (DAT_140257dfc != *(int *)(DAT_1402694a0 + 0x2c))))) {
+    FUN_140053b90();
+  }
+  FUN_140059680();
+  FUN_14005a980(1);
+  if (((DAT_1402603ae == '\0') && (DAT_1402603ad == '\0')) &&
+     ((DAT_140257dfc < 0x140 || (DAT_140257df8 < 0xf0)))) {
+    DAT_14027938c = DAT_140257dfc;
+    DAT_140279390 = DAT_140257df8;
+    DAT_140257dfc = 0x140;
+    DAT_140257df8 = 0xf0;
+    FUN_140053c40(DAT_140269498);
+    if ((DAT_140257dfc != 0x140) || (DAT_140257df8 != 0xf0)) {
+      FUN_140053b90();
+      FUN_140192fb0();
+    }
+    FUN_140053b90();
+  }
+  local_a8.lfOutPrecision = '\0';
+  local_a8.lfClipPrecision = '\0';
+  local_a8.lfQuality = '\0';
+  local_a8.lfPitchAndFamily = '\0';
+  local_a8.lfFaceName[0] = L'\0';
+  local_a8.lfFaceName[1] = L'\0';
+  local_a8.lfEscapement = 0;
+  local_a8.lfOrientation = 0;
+  local_a8.lfHeight = -0xc;
+  local_a8.lfWidth = 0;
+  local_a8.lfWeight = 400;
+  local_a8.lfItalic = '\0';
+  local_a8.lfUnderline = '\0';
+  local_a8.lfStrikeOut = '\0';
+  local_a8.lfCharSet = '\x01';
+  local_a8.lfFaceName[2] = L'\0';
+  local_a8.lfFaceName[3] = L'\0';
+  local_a8.lfFaceName[4] = L'\0';
+  local_a8.lfFaceName[5] = L'\0';
+  local_a8.lfFaceName[6] = L'\0';
+  local_a8.lfFaceName[7] = L'\0';
+  local_a8.lfFaceName[8] = L'\0';
+  local_a8.lfFaceName[9] = L'\0';
+  local_a8.lfFaceName[0x1a] = L'\0';
+  local_a8.lfFaceName[0x1b] = L'\0';
+  local_a8.lfFaceName[0x1c] = L'\0';
+  local_a8.lfFaceName[0x1d] = L'\0';
+  local_a8.lfFaceName[10] = L'\0';
+  local_a8.lfFaceName[0xb] = L'\0';
+  local_a8.lfFaceName[0xc] = L'\0';
+  local_a8.lfFaceName[0xd] = L'\0';
+  local_a8.lfFaceName[0xe] = L'\0';
+  local_a8.lfFaceName[0xf] = L'\0';
+  local_a8.lfFaceName[0x10] = L'\0';
+  local_a8.lfFaceName[0x11] = L'\0';
+  local_a8.lfFaceName[0x1e] = L'\0';
+  local_a8.lfFaceName[0x1f] = L'\0';
+  local_a8.lfFaceName[0x12] = L'\0';
+  local_a8.lfFaceName[0x13] = L'\0';
+  local_a8.lfFaceName[0x14] = L'\0';
+  local_a8.lfFaceName[0x15] = L'\0';
+  local_a8.lfFaceName[0x16] = L'\0';
+  local_a8.lfFaceName[0x17] = L'\0';
+  local_a8.lfFaceName[0x18] = L'\0';
+  local_a8.lfFaceName[0x19] = L'\0';
+  lstrcpyW(local_a8.lfFaceName,L"Microsoft Sans Serif");
+  DAT_14026ffd8 = CreateFontIndirectW(&local_a8);
+  iVar2 = 0;
+  lVar3 = 0;
+  DAT_140270070._4_4_ = DAT_14027006c;
+  if (DAT_14027006c < 10) {
+    DAT_140270070._4_4_ = 0;
+  }
+  do {
+    uVar4 = SUB84((double)iVar2 * 3.14159265358979 * 0.0078125,0);
+    uVar1 = FUN_1401daf40(uVar4);
+    *(undefined8 *)((longlong)&DAT_140260bb0 + lVar3) = uVar1;
+    uVar1 = FUN_1401dbb20(uVar4);
+    iVar2 = iVar2 + 1;
+    *(undefined8 *)((longlong)&DAT_1402603b0 + lVar3) = uVar1;
+    lVar3 = lVar3 + 8;
+  } while (iVar2 < 0x100);
+  FUN_140053f00();
+  FUN_1401e34b8(0);
+  return 0;
+}

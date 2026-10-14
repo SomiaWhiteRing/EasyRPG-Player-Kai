@@ -1,0 +1,35 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+void FUN_14017bfe0(void)
+
+{
+  int iVar1;
+  longlong *plVar2;
+  longlong lVar3;
+  undefined1 auStack_138 [32];
+  undefined1 local_118 [16];
+  undefined1 local_108 [240];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStack_138;
+  plVar2 = (longlong *)FUN_14004e5e0(L"rpg_rt.ini");
+  if (plVar2 == (longlong *)0x0) {
+    lVar3 = FUN_14017c0b0();
+    FUN_1400c90f0(lVar3);
+    if (lVar3 != 0) {
+      iVar1 = *(int *)(lVar3 + -8);
+      if ((iVar1 != -1) && (iVar1 = iVar1 + -1, *(int *)(lVar3 + -8) = iVar1, iVar1 < 1)) {
+        thunk_FUN_1401d3308();
+      }
+    }
+  }
+  else {
+    FUN_1401fa300(local_118,0,0xf8);
+    FUN_140053440(local_118);
+    FUN_140048f90(local_108,*plVar2 + 4,(longlong)((int)plVar2[2] + -4));
+    FUN_14017bbf0(local_118);
+    FUN_140053350(local_118);
+  }
+  FUN_14004e960();
+  return;
+}

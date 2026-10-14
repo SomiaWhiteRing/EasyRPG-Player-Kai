@@ -99,6 +99,7 @@ void SetupCommon();
 
 void Game_Map::OnContinueFromBattle() {
 	Main_Data::game_system->BgmPlay(Main_Data::game_system->GetBeforeBattleMusic());
+	if (Player::IsPatchManiac()) Refresh();
 }
 
 static Game_Map::Parallax::Params GetParallaxParams();
@@ -1251,7 +1252,17 @@ int Game_Map::CheckEvent(int x, int y) {
 }
 
 void Game_Map::Update(MapUpdateAsyncContext& actx, bool is_preupdate) {
-	if (GetNeedRefresh()) {
+	if (actx.IsActive()) {
+		// A ShowMessage create hook can suspend a foreground or parallel
+		// command as well as the message stage. Finish its window consumer
+		// before resuming the original stage, without repeating world updates.
+		const auto operation = Game_Message::ResumeManiacMessageHook();
+		if (operation.IsActive()) {
+			actx.SetAsyncOp(operation);
+			return;
+		}
+	}
+	if (!Player::IsPatchManiac() && GetNeedRefresh()) {
 		Refresh();
 	}
 
@@ -1300,6 +1311,13 @@ void Game_Map::Update(MapUpdateAsyncContext& actx, bool is_preupdate) {
 		Main_Data::game_party->UpdateTimers();
 		Main_Data::game_screen->Update();
 		Main_Data::game_pictures->Update(false);
+		if (Player::IsManiacPf()) {
+			// The pf page pass follows parallel events, movement and timers,
+			// and precedes the main interpreter. Foreground async resumes
+			// skip this block through the existing update context.
+			SetNeedRefresh(true);
+			if (GetNeedRefresh()) Refresh();
+		}
 	}
 
 	if (!actx.IsActive() || actx.IsForegroundEvent()) {
@@ -1384,9 +1402,9 @@ bool Game_Map::UpdateMapEvents(MapUpdateAsyncContext& actx) {
 }
 
 bool Game_Map::UpdateMessage(MapUpdateAsyncContext& actx) {
-	// Message system does not support suspend and resume internally. So if the last frame the message
-	// produced an async event, the message loop finished completely. Therefore this frame we should
-	// resume *after* the message and not run it again.
+	// A suspended Maniac window consumer already resumes at the start of
+	// Update. Continue after the message stage without repeating its window
+	// update or the earlier movement and animation work.
 	if (!actx.IsActive()) {
 		auto aop = Game_Message::Update();
 		if (aop.IsActive()) {
@@ -1743,6 +1761,10 @@ bool Game_Map::GetNeedRefresh() {
 
 void Game_Map::SetNeedRefresh(bool refresh) {
 	need_refresh = refresh;
+}
+
+void Game_Map::RefreshAfterManiacChange() {
+	if (!Player::IsManiacPf()) Refresh();
 }
 
 void Game_Map::SetNeedRefreshForSwitchChange(int switch_id) {

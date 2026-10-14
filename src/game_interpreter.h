@@ -33,10 +33,12 @@
 #include <lcf/rpg/saveeventexecstate.h>
 #include <lcf/flag_set.h>
 #include "async_op.h"
+#include <optional>
 
 class Game_Event;
 class Game_CommonEvent;
 class PendingMessage;
+namespace ManiacTextPicture { struct Operation; }
 
 /**
  * Game_Interpreter class
@@ -47,7 +49,8 @@ public:
 	using Cmd = lcf::rpg::EventCommand::Code;
 
 	static Game_Interpreter& GetForegroundInterpreter();
-	static AsyncOp RunManiacMessageHook(int common_event_id);
+	static AsyncOp RunManiacMessageHook(int common_event_id, std::unique_ptr<Game_Interpreter>& invocation);
+	static AsyncOp ResumeManiacMessageHook(std::unique_ptr<Game_Interpreter>& invocation);
 
 	Game_Interpreter(bool _main_flag = false);
 #ifndef EMSCRIPTEN
@@ -127,7 +130,6 @@ public:
 	bool IsWaitingForWaitCommand() const;
 
 protected:
-	static constexpr int loop_limit = 10000;
 	static constexpr int call_stack_limit = 1000;
 	static constexpr int subcommand_sentinel = 255;
 	static void NormalizeSerializedManiacText(std::vector<lcf::rpg::EventCommand>& commands);
@@ -140,7 +142,12 @@ protected:
 	bool main_flag;
 	bool maniac_message_hook = false;
 
+	enum class ManiacDispatch { Return, Continue, Finish };
+	ManiacDispatch maniac_dispatch = ManiacDispatch::Return;
+	bool DispatchCommand(lcf::rpg::EventCommand const& com);
+
 	int loop_count = 0;
+	int loop_limit = 10000;
 
 	/**
 	 * Gets strings for choice selection.
@@ -369,6 +376,8 @@ protected:
 	lcf::rpg::SaveEventExecState _state;
 	KeyInputState _keyinput;
 	AsyncOp _async_op = {};
+	std::shared_ptr<ManiacTextPicture::Operation> maniac_text_picture_pending;
+	std::optional<lcf::rpg::EventCommand> maniac_generated_command_pending;
 
 	friend class Scene_Debug;
 };

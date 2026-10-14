@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-15",
+  "guidelines_commit": "2ef5e4f5c",
+  "source_commit": "c82ae475ac7acf1627de1b7c7a6913af034a3bdd",
+  "source_followup_commit": "0a9886d6565711ac1193394cb27cb5518e8eb187",
+  "old_commit": "8b0d608a775596ba450ba3f78bd62821ff15bd0c",
+  "current_start": "97e8b0b0d25194e1f69e08a598abdd22d2d01866",
+  "common_base": "8e215b5740bb0a528de12de03b389303013d76ce",
+  "screening": {
+    "level": "file disposition and named behavior extraction, not every-opcode acceptance",
+    "source_files": 202,
+    "old_added": 27616,
+    "old_deleted": 1037,
+    "M": { "files": 14, "old_added": 4113 },
+    "K": { "files": 31, "old_added": 3010 },
+    "X": { "files": 32, "old_added": 6090 },
+    "N": { "files": 125, "old_added": 14403 }
+  },
+  "product_change": { "files": 18, "added": 1378, "deleted": 599 },
+  "windows_build": {
+    "entry": "builds/cmake/build-windows.ps1",
+    "targets": ["EasyRPG_Player_exe", "test_runner_player"],
+    "configuration": "Release x64",
+    "exit_code": 0,
+    "rebuilt_after_temporary_checks_removed": true
+  },
+  "existing_checks": {
+    "exit_code": 0,
+    "complete_xml_summary": true,
+    "test_cases_passed": 504,
+    "test_cases_failed": 0,
+    "assertions_passed": 3677971,
+    "assertions_failed": 0,
+    "task_only_host": "existing headless file-output confirmation adapter, no platform UI",
+    "permanent_tests_and_expectations_changed": false
+  },
+  "temporary_consumers": {
+    "exit_code": 0,
+    "complete_xml_summary": true,
+    "test_cases_passed": 12,
+    "test_cases_failed": 0,
+    "assertions_passed": 165,
+    "assertions_failed": 0,
+    "removed": true,
+    "coverage": [
+      "overlap object exchange and JS references",
+      "expired JS references after pool shrink",
+      "raw/processed snapshot timing and alpha-zero RGB",
+      "resource-sheet and mutable full-image addressing",
+      "tile clear and alternate transparent copying",
+      "typed text insertion and metrics consumer",
+      "async request reentrancy, exchange and late XY",
+      "erase/detach cancellation and same-file snapshot",
+      "canonical restore and mutable alpha-zero pixels",
+      "existing relative-target and duration fix",
+      "private escaped token snapshot and literal control units through LSD reader/writer, empty rows",
+      "fixed-angle operand flags and resource-kind restore"
+    ]
+  },
+  "withdrawn_results": [
+    "Early exit0 with incomplete XML, caused by existing file-output confirmation guard",
+    "Independent per-case map-route failures without the normal suite initialization, not product diagnosis"
+  ],
+  "final_runner_inventory": 504,
+  "old_worktree_modified": false,
+  "not_performed": [
+    "native original comparison",
+    "actual game visual acceptance",
+    "manual UI or browser interaction",
+    "per-opcode verification",
+    "Web/Android acceptance",
+    "cold dependency replay or remote CI"
+  ],
+  "completion": "Selected P1/P2/P3 migrations complete; not whole-Maniac or all-consumer acceptance",
+  "next_bounded_work_estimate": { "person_days_min": 5, "person_days_max": 12, "confidence": "low", "scope": ["R1", "R2", "R3"], "excludes": ["additional independent features", "unclassified battle-chain repair"] }
+}

@@ -134,7 +134,8 @@ private:
 
 inline bool ApplyManiacSaveResult(AsyncOp const& operation, bool success,
 	Game_ManiacSelfVariables* state) {
-	if (operation.GetType() != AsyncOp::eSave || operation.GetSaveResultVar() >= 0 || !state) {
+	if (operation.GetType() != AsyncOp::eSave || !operation.IsSaveResultEnabled()
+		|| operation.GetSaveResultVar() >= 0 || !state) {
 		return false;
 	}
 	const auto slot = -static_cast<int64_t>(operation.GetSaveResultVar());

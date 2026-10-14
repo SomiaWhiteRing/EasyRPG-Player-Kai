@@ -144,6 +144,9 @@ class Font {
 
 	/** Render a 12x12 ExFont source cell through the existing system-color mask. */
 	Point RenderExfontCell(Bitmap& dest, int x, int y, const Bitmap& sys, const Rect& source, const Point* color_cell) const;
+	/** Existing EasyRPG glyph mask with Maniac color, shadow and whole-rectangle clipping. */
+	void RenderManiacTextGlyph(Bitmap& dest, int x, int y, const Bitmap& sys, Point cell,
+		char32_t glyph, const Rect* icon = nullptr) const;
 
 	/**
 	 * Renders the glyph onto bitmap at the given position with system graphic and color.

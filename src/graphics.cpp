@@ -107,6 +107,7 @@ void Graphics::UpdateTitle() {
 }
 
 void Graphics::Draw(Bitmap& dst) {
+	dst.ResetManiacPresentation();
 	auto& transition = Transition::instance();
 
 	auto min_z = std::numeric_limits<Drawable::Z_t>::min();

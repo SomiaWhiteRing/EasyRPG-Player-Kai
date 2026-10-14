@@ -1,0 +1,300 @@
+{
+  "date": "2026-10-15",
+  "source_commit": "1831230078581afe564ef805feca6f1559713908",
+  "scope_commit": "8d49eb6bb7c38703b70c8560696db792e4599689",
+  "scope": {
+    "chains": [
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6"
+    ],
+    "obligations": [
+      "C1-01",
+      "C1-02",
+      "C1-03",
+      "C1-04",
+      "C1-05",
+      "C2-01",
+      "C2-02",
+      "C2-03",
+      "C2-04",
+      "C3-01",
+      "C3-02",
+      "C3-03",
+      "C3-04",
+      "C3-05",
+      "C4-01",
+      "C4-02",
+      "C4-03",
+      "C4-04",
+      "C5-01",
+      "C5-02",
+      "C5-03",
+      "C6-01",
+      "C6-02",
+      "C6-03"
+    ],
+    "closed_level": "named scoped obligations; evidence tiers are distinguished in the report",
+    "five_static_differences": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5"
+    ],
+    "work_order": [
+      "W1",
+      "W2",
+      "W3",
+      "W4",
+      "W5"
+    ]
+  },
+  "product_change": {
+    "files": 16,
+    "added": 261,
+    "deleted": 114,
+    "new_schema": false,
+    "new_version_identity": false,
+    "fonts_and_input_retained": true,
+    "battle_change": "shared save request consumer only; no battle pump or action-effect development"
+  },
+  "existing_checks": {
+    "exit_code": 0,
+    "complete_xml_summary": true,
+    "passed": 504,
+    "failed": 0,
+    "assertions": 3677971,
+    "xml_sha256": "f84309993995a4308771d1808dfebc7d3b9badeb8e163b421878c126689ae30b",
+    "task_only_headless_entry_used": true,
+    "permanent_tests_or_expectations_modified": false
+  },
+  "temporary_consumers": {
+    "exit_code": 0,
+    "complete_xml_summary": true,
+    "passed": 20,
+    "failed": 0,
+    "assertions": 268,
+    "xml_sha256": "c9699c5043d67ed501269e8dec6c190741d0d3b8ae5a9346a542fe448eb80d38",
+    "source_sha256": "7827113b566d07552dc491fa892df85d825877fd2fde9ca0334e002c1facb04e",
+    "source_removed": true,
+    "cases": [
+      {
+        "name": "bounded E disabled roots and enabled nested IDs use separate output banks",
+        "line": 178,
+        "assertions_passed": 8,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded E caller SELF outputs keep independent numeric and string cursors",
+        "line": 200,
+        "assertions_passed": 6,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded save enabled zero address refreshes while disabled result does not",
+        "line": 213,
+        "assertions_passed": 13,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded dynamic resource resume keeps generated opcode text and expression once",
+        "line": 231,
+        "assertions_passed": 32,
+        "assertions_failed": 0,
+        "subcases": [
+          "im",
+          "pf"
+        ]
+      },
+      {
+        "name": "bounded dynamic clear retires captured command and late resource attach",
+        "line": 260,
+        "assertions_passed": 6,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded create hook resumes one slice and commits live window dimensions",
+        "line": 276,
+        "assertions_passed": 20,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded user hook resumes after E without duplicate parse and reads changed live base",
+        "line": 294,
+        "assertions_passed": 14,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded blit hook defers glyph drawing and text advance until resource completion",
+        "line": 310,
+        "assertions_passed": 9,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded destroy hook closes once after resource completion",
+        "line": 324,
+        "assertions_passed": 9,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded message overwrite and forced close cancel late hook callback",
+        "line": 335,
+        "assertions_passed": 18,
+        "assertions_failed": 0,
+        "subcases": [
+          "replacement",
+          "forced close"
+        ]
+      },
+      {
+        "name": "bounded script wait and budget terminate each hook instead of resuming its suffix",
+        "line": 352,
+        "assertions_passed": 14,
+        "assertions_failed": 0,
+        "subcases": [
+          "script wait",
+          "local budget"
+        ]
+      },
+      {
+        "name": "bounded create hook from foreground preserves ShowMessage cursor and world update stage",
+        "line": 362,
+        "assertions_passed": 12,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded scene save slot16 preserves last-slot and snapshot result before suffix",
+        "line": 380,
+        "assertions_passed": 17,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded ordinary UI save can still update a slot beyond15",
+        "line": 401,
+        "assertions_passed": 4,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded hook save keeps foreground stack and immediate result suffix",
+        "line": 409,
+        "assertions_passed": 10,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded actual load retires old hook and restores nested return with picture kinds",
+        "line": 424,
+        "assertions_passed": 22,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded map boundary keeps foreground SELF and cancels erased text picture",
+        "line": 484,
+        "assertions_passed": 9,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded new-game cleanup cancels hook before resetting banks and images",
+        "line": 498,
+        "assertions_passed": 8,
+        "assertions_failed": 0,
+        "subcases": []
+      },
+      {
+        "name": "bounded both load presentations retire old suffix and restore saved wait",
+        "line": 508,
+        "assertions_passed": 15,
+        "assertions_failed": 0,
+        "subcases": [
+          "reset presentation",
+          "skip reset presentation"
+        ]
+      },
+      {
+        "name": "bounded valid save zero result refreshes both ordinary and hook consumers",
+        "line": 530,
+        "assertions_passed": 22,
+        "assertions_failed": 0,
+        "subcases": [
+          "ordinary enabled zero",
+          "ordinary disabled",
+          "hook enabled zero"
+        ]
+      }
+    ]
+  },
+  "load_evidence": {
+    "actual_scene_save": true,
+    "actual_player_load": true,
+    "map_request_held_then_completed": true,
+    "setup_from_save_and_start_from_save": true,
+    "old_self_bank_replaced": true,
+    "nested_wait_return": true,
+    "both_A3_presentations": true,
+    "kind1_resolved_snapshot_and_full_200x30_bitmap": true,
+    "kind2_alpha_zero_rgb_preserved": true,
+    "new_game_cleanup": true,
+    "fresh_process": false,
+    "actual_user_game": false
+  },
+  "windows_build": {
+    "entry": "builds/cmake/build-windows.ps1",
+    "ascii_source_and_build_alias": true,
+    "configuration": "Release x64",
+    "targets": [
+      "EasyRPG_Player_exe",
+      "test_runner_player"
+    ],
+    "exit_code": 0,
+    "rebuilt_after_temporary_source_removed": true,
+    "restored_entry_recompiled_after_timestamp_update": true,
+    "global_environment_modified": false
+  },
+  "final_runner": {
+    "inventory": 504,
+    "temporary_suite_inventory": 0,
+    "temporary_suite_marker_present": false,
+    "temporary_host_marker_present": false,
+    "original_entry_sha256": "50c25bbb910e6f8ad88265fb157ba706c0dc6a003a4d1f4d5687e6f6e7168c82",
+    "sha256": "c5c7e60db74b6cbfaf6b0c996f078da1f0bddbaa77ec040d5e3f42932e5e93e3"
+  },
+  "player_artifact": {
+    "filename": "Player-183123007-x64.exe",
+    "sha256": "2df8a3f3a2c93771b350ca897954b1ff396e2062058f48ec98e736f94eef5b77",
+    "bytes": 23686656,
+    "build_source_commit": "1831230078581afe564ef805feca6f1559713908",
+    "local_ignored_artifact": true
+  },
+  "not_performed": [
+    "original executable comparison",
+    "new native audit or per-opcode enumeration",
+    "actual pinball game acceptance",
+    "manual UI or browser interaction",
+    "fresh-process save reload",
+    "Web or Android build and persistence acceptance",
+    "full message shared-stack reentry",
+    "battle 3009/3010/3037 and G1-G4 closeout"
+  ],
+  "setup_repairs": {
+    "details": "See report section 3; fixture initialization and representation criteria were corrected before complete passing summaries",
+    "temporary_product_trace_removed": true,
+    "restored_source_and_binary_checked_separately": true
+  }
+}

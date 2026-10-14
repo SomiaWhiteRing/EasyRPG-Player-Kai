@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-15",
+  "source_commit": "dcdc3c3ca93cb6c04c0ccb04de135f5e727a929d",
+  "workflow_commit": "ca12e4531698e77a0c3495155193bc6288e14277",
+  "source_files": {
+    "src/game_pictures.cpp": "69c615cac8a1a228f983b6f24ad4d5c0b8ab383bb7be0d0de68fe839969cb4fb",
+    "src/game_interpreter.cpp": "a1ab91e550fad15452eb5f508d58cd768420cc2056ba26dd952a3c9ed5fa512e"
+  },
+  "windows_build": {
+    "configuration": "Release",
+    "architecture": "x64",
+    "entry": "builds/cmake/build-windows.ps1",
+    "caller_directory": "C:\\Users\\旻\\Documents\\GitHub\\EasyRPG-Player-Kai",
+    "native_working_directory": "C:\\buildscripts\\mr14\\player-build",
+    "exit_code": 0,
+    "log": "C:\\Users\\旻\\Documents\\GitHub\\EasyRPG-Player-Kai\\build\\maniac-consumer-scale-20261014\\windows-build.log"
+  },
+  "existing_tests": {
+    "cases": 504,
+    "total_assertions": 3677971,
+    "ranges": [
+      {
+        "first": 1,
+        "last": 288,
+        "assertions": 3029813,
+        "failures": 0,
+        "log": "C:\\buildscripts\\mr14\\player-build\\picture-existing-1-288.log",
+        "log_sha256": "ded5e00a2cf4ddae5d508e623115206a4862cf9f545086651d5bc1272ad07fdd"
+      },
+      {
+        "first": 289,
+        "last": 331,
+        "assertions": 1335,
+        "failures": 0,
+        "log": "C:\\buildscripts\\mr14\\player-build\\picture-existing-289-331.log",
+        "log_sha256": "f84753d685a02cc0cd4a7f4b120a6af4c329f9bccbff074953c97e1814e8eb0c"
+      },
+      {
+        "first": 332,
+        "last": 504,
+        "assertions": 646823,
+        "failures": 0,
+        "log": "C:\\buildscripts\\mr14\\player-build\\picture-existing-332-504.log",
+        "log_sha256": "20e7ea651232dadc9ff3227551358268a8d779c683cdf6d85daa9d292cbda181"
+      }
+    ]
+  },
+  "temporary_consumer_checks": {
+    "assertions": 133,
+    "failures": 0,
+    "log": "C:\\Users\\旻\\Documents\\GitHub\\EasyRPG-Player-Kai\\build\\maniac-consumer-scale-20261014\\temporary-checks.log",
+    "log_sha256": "d6bfdbc03973f870b0982372e537e648b0b3f14b5e6cfd4b32b367f691800aad",
+    "source_retained": false,
+    "project_retained": false,
+    "executable_retained": false
+  },
+  "observed_player_exe": {
+    "path": "C:\\buildscripts\\mr14\\player-build\\Release\\Player.exe",
+    "sha256": "6b7955d26ecc4dcfaeaea0b70abc2adafae276e4a3ce0912e992797cb771855e",
+    "note": "Built from the repaired source before the source and workflow commits; version metadata reflects that pre-commit working tree."
+  },
+  "game_ui_acceptance": "not performed",
+  "original_runtime_comparison": "not performed",
+  "cold_dependency_setup": "not performed",
+  "remote_ci": "not rerun"
+}

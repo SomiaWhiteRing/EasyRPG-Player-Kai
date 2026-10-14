@@ -1,0 +1,127 @@
+void FUN_140070380(longlong param_1,undefined8 param_2)
+
+{
+  if (*(longlong *)(param_1 + 0xf0) != 0) {
+    FUN_1400ca1d0(param_2,1);
+    FUN_1400ca290(param_2,*(undefined8 *)(param_1 + 0xf0));
+  }
+  if (*(longlong *)(param_1 + 0xf8) != 0) {
+    FUN_1400ca1d0(param_2,2);
+    FUN_1400ca290(param_2,*(undefined8 *)(param_1 + 0xf8));
+  }
+  FUN_1400ca1d0(param_2,0xb);
+  FUN_1400ca290(param_2,*(undefined8 *)(param_1 + 0x100));
+  if (*(int *)(param_1 + 0x108) != 0) {
+    FUN_1400ca1d0(param_2,0xc);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x108));
+  }
+  if (*(int *)(param_1 + 0x10c) != 0) {
+    FUN_1400ca1d0(param_2,0xd);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x10c));
+  }
+  FUN_1400ca1d0(param_2,0x15);
+  FUN_1400ca290(param_2,*(undefined8 *)(param_1 + 0x110));
+  if (*(int *)(param_1 + 0x118) != 0) {
+    FUN_1400ca1d0(param_2,0x16);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x118));
+  }
+  if (*(int *)(param_1 + 0x11c) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x1f);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x11c));
+  }
+  if (*(int *)(param_1 + 0x120) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x20);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x120));
+  }
+  if (*(int *)(param_1 + 0x124) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x21);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x124));
+  }
+  if (*(int *)(param_1 + 0x128) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x22);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x128));
+  }
+  if (*(int *)(param_1 + 300) != 0) {
+    FUN_1400ca1d0(param_2,0x29);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 300));
+  }
+  if (*(int *)(param_1 + 0x130) != 0) {
+    FUN_1400ca1d0(param_2,0x2a);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x130));
+  }
+  if (*(int *)(param_1 + 0x134) != 0) {
+    FUN_1400ca1d0(param_2,0x2b);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x134));
+  }
+  if (*(int *)(param_1 + 0x138) != 0) {
+    FUN_1400ca1d0(param_2,0x2c);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x138));
+  }
+  if (*(int *)(param_1 + 0x13c) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x33);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x13c));
+  }
+  FUN_1400ca1d0(param_2,0x34);
+  FUN_1400ca1d0(param_2,*(int *)(param_1 + 0x13c) * 2);
+  FUN_140048f90(param_2,*(undefined8 *)(param_1 + 0x460),(longlong)(*(int *)(param_1 + 0x13c) * 2));
+  FUN_1400ca1d0(param_2,0x3d);
+  FUN_1400ca1d0(param_2,10);
+  FUN_140048f90(param_2,param_1 + 0x468,10);
+  if (*(int *)(param_1 + 0x20) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x47);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x20));
+  }
+  if (*(int *)(param_1 + 0x24) != 0x7fffffff) {
+    FUN_1400ca1d0(param_2,0x48);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x24));
+  }
+  FUN_1400ca1d0(param_2,0x50);
+  FUN_1400ca1d0(param_2,0x1c);
+  FUN_140048f90(param_2,param_1 + 0x144,0x1c);
+  if (*(int *)(param_1 + 0x48) != 0) {
+    FUN_1400ca1d0(param_2,0x51);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x48));
+  }
+  FUN_1400ca1d0(param_2,0x52);
+  FUN_1400ca1d0(param_2,*(int *)(param_1 + 0x48) * 2);
+  FUN_140048f90(param_2,*(undefined8 *)(param_1 + 0x50),(longlong)(*(int *)(param_1 + 0x48) * 2));
+  if (*(char *)(param_1 + 0x494) != '\0') {
+    FUN_1400ca1d0(param_2,0x53);
+    FUN_1400ca1d0(param_2,1);
+    FUN_140048f90(param_2,param_1 + 0x494,1);
+  }
+  if (*(int *)(param_1 + 0xd0) != -1) {
+    FUN_1400ca1d0(param_2,0x5a);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0xd0));
+  }
+  if (*(int *)(param_1 + 0x84) != 0) {
+    FUN_1400ca1d0(param_2,0x5b);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x84));
+  }
+  if (*(char *)(param_1 + 0x490) != '\0') {
+    FUN_1400ca1d0(param_2,0x5c);
+    FUN_1400ca1d0(param_2,1);
+    FUN_140048f90(param_2,param_1 + 0x490,1);
+  }
+  if (*(char *)(param_1 + 0x491) != '\0') {
+    FUN_1400ca1d0(param_2,0x5d);
+    FUN_1400ca1d0(param_2,1);
+    FUN_140048f90(param_2,param_1 + 0x491,1);
+  }
+  if (*(char *)(param_1 + 0x492) != '\0') {
+    FUN_1400ca1d0(param_2,0x5e);
+    FUN_1400ca1d0(param_2,1);
+    FUN_140048f90(param_2,param_1 + 0x492,1);
+  }
+  if (*(char *)(param_1 + 0x493) != '\0') {
+    FUN_1400ca1d0(param_2,0x5f);
+    FUN_1400ca1d0(param_2,1);
+    FUN_140048f90(param_2,param_1 + 0x493,1);
+  }
+  if (*(int *)(param_1 + 0x140) != 0) {
+    FUN_1400ca1d0(param_2,0x60);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x140));
+  }
+  FUN_1400ca1d0(param_2,0);
+  return;
+}

@@ -1,0 +1,176 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140059680(void)
+
+{
+  int iVar1;
+  undefined8 *puVar2;
+  undefined8 uVar3;
+  longlong *plVar4;
+  longlong lVar5;
+  undefined1 auStack_158 [32];
+  undefined4 local_138 [2];
+  _SYSTEMTIME local_130;
+  longlong local_118 [2];
+  byte abStack_108 [240];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStack_158;
+  FUN_140094e80();
+  GetSystemTime(&local_130);
+  DAT_140269828 =
+       (((uint)local_130.wHour * 0x3c + (uint)local_130.wMinute) * 0x3c + (uint)local_130.wSecond) *
+       1000 + (uint)local_130.wMilliseconds;
+  FUN_140181650();
+  _DAT_14026d250 = 0;
+  _DAT_14026d258 = 0;
+  _DAT_14026d260 = 0;
+  _DAT_14026d268 = 0;
+  _DAT_14026d270 = 0;
+  _DAT_14026d278 = 0;
+  FUN_1401fa300(&DAT_14026d140,0,0x110);
+  DAT_14026d180 = FUN_1400ca620(0x28);
+  DAT_14026d188 = FUN_1400ca620(0x28);
+  *(undefined2 *)(DAT_14026d180 + 0x18) = 0;
+  *(undefined2 *)(DAT_14026d188 + 0x18) = 10000;
+  DAT_14026d198 = FUN_14007c140();
+  puVar2 = (undefined8 *)FUN_1401c6048(0x28);
+  *puVar2 = 0;
+  puVar2[1] = 0;
+  puVar2[2] = 0;
+  puVar2[3] = 0;
+  puVar2[4] = 0;
+  uVar3 = FUN_1400b8d30();
+  *puVar2 = uVar3;
+  uVar3 = FUN_1400b8bb0();
+  puVar2[1] = uVar3;
+  uVar3 = FUN_1400b8bb0();
+  puVar2[2] = uVar3;
+  DAT_14026d1a0 = puVar2;
+  plVar4 = (longlong *)FUN_1400ca620(8);
+  lVar5 = FUN_1400ca620(0x18);
+  *(undefined4 *)(lVar5 + 0x10) = 100;
+  uVar3 = FUN_1400ca620(800);
+  *(undefined8 *)(lVar5 + 8) = uVar3;
+  *plVar4 = lVar5;
+  DAT_14026d140 = 0;
+  DAT_14026d190 = plVar4;
+  FUN_1400c5a50();
+  FUN_140052090();
+  FUN_1401fa300(local_118,0,0xf8);
+  FUN_140053440(local_118);
+  local_138[0] = 0;
+  FUN_1400dcb80(local_118,0,L"/RPG_RT.ldb",local_138);
+  _DAT_14027a9d0 = local_138[0];
+  if ((abStack_108[*(int *)(local_118[0] + 4)] & 6) == 0) {
+    iVar1 = FUN_1400c9d30(local_118);
+    if (iVar1 != 0) {
+      FUN_140052b50(local_118);
+      FUN_140053350(local_118);
+      FUN_14004eba0();
+      puVar2 = (undefined8 *)FUN_1400ca620(0x20);
+      *puVar2 = 0;
+      *(undefined4 *)(puVar2 + 3) = 100;
+      *(undefined4 *)(puVar2 + 1) = 0;
+      FUN_1400c9990(puVar2 + 2,800);
+      DAT_14026d138 = puVar2;
+      DAT_14025d760 = FUN_1401a4bf0();
+      DAT_14025d768 = FUN_1401a4bf0();
+      DAT_14025d770 = FUN_1401a4bf0();
+      _DAT_14025d778 = FUN_1401a4bf0();
+      DAT_14025d780 = 1;
+      DAT_14025d7dc = 0;
+      DAT_14025d750 = &PTR_LAB_140259090;
+      puVar2 = (undefined8 *)FUN_1400ca620(0x98);
+      uVar3 = FUN_1401a4bf0();
+      puVar2[2] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[3] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[4] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[5] = uVar3;
+      *(undefined4 *)(puVar2 + 6) = 1;
+      *(undefined4 *)((longlong)puVar2 + 0x8c) = 0;
+      *puVar2 = &PTR_LAB_140258f10;
+      DAT_14025d7e8 = puVar2;
+      puVar2 = (undefined8 *)FUN_1400ca620(0x20);
+      *puVar2 = 0;
+      *(undefined4 *)(puVar2 + 3) = 100;
+      *(undefined4 *)(puVar2 + 1) = 0;
+      FUN_1400c9990(puVar2 + 2,800);
+      DAT_14025d824 = DAT_14027a4ec;
+      DAT_14025d7f0 = puVar2;
+      DAT_140279158 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_140279160 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_140279150 = &PTR_FUN_140258a70;
+      if (*(longlong *)(DAT_140279158 + 0x10) != 0) {
+        FUN_1401fa300(*(longlong *)(DAT_140279158 + 0x10),0,
+                      (longlong)
+                      (*(int *)(DAT_140279158 + 0x2c) * *(int *)(DAT_140279158 + 0x28) * 4));
+      }
+      if (*(longlong *)(DAT_140279160 + 0x10) != 0) {
+        FUN_1401fa300(*(longlong *)(DAT_140279160 + 0x10),0,
+                      (longlong)
+                      (*(int *)(DAT_140279160 + 0x2c) * *(int *)(DAT_140279160 + 0x28) * 4));
+      }
+      _DAT_140279168 = 0;
+      _DAT_14027916c = 0;
+      DAT_140279174 = 0;
+      DAT_14027917c = 0;
+      FUN_140192fb0();
+      FUN_140195190();
+      _DAT_140279090 = 0xffffffffffffffff;
+      _DAT_140279098 = 0xffffffffffffffff;
+      DAT_14027a8d8 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_14027a8e0 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      puVar2 = (undefined8 *)FUN_1400ca620(0xa0);
+      uVar3 = FUN_1401a4bf0();
+      puVar2[2] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[3] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[4] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[5] = uVar3;
+      *(undefined4 *)(puVar2 + 6) = 1;
+      *(undefined4 *)((longlong)puVar2 + 0x8c) = 0;
+      *puVar2 = &PTR_LAB_140258f70;
+      DAT_14027a8d0 = &PTR_FUN_140258ba8;
+      DAT_14027a8e8 = puVar2;
+      DAT_140279328 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_140279330 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_140279320 = &PTR_FUN_140258d08;
+      DAT_140279398 = FUN_1401a4bf0();
+      *(undefined1 *)(DAT_140279398 + 0x5e) = 1;
+      puVar2 = (undefined8 *)FUN_1400ca620(0x98);
+      uVar3 = FUN_1401a4bf0();
+      puVar2[2] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[3] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[4] = uVar3;
+      uVar3 = FUN_1401a4bf0();
+      puVar2[5] = uVar3;
+      *(undefined4 *)(puVar2 + 6) = 1;
+      *(undefined4 *)((longlong)puVar2 + 0x8c) = 0;
+      *puVar2 = &PTR_LAB_140258d30;
+      DAT_1402793a0 = puVar2;
+      FUN_1401a26b0(0);
+      DAT_1402791a0 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_1402791a8 = FUN_140013010(DAT_140257dfc,DAT_140257df8);
+      DAT_1402791b8 = FUN_1401a4bf0();
+      _DAT_140279198 = &PTR_FUN_140258a90;
+      FUN_140194d90(0);
+      if ((DAT_140257dfc != 0x140) || (DAT_140257df8 != 0xf0)) {
+        FUN_140192fb0();
+      }
+      FUN_140080b20();
+      FUN_1400814f0();
+      return;
+    }
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_1400223d0(L"Could not read Database");
+}

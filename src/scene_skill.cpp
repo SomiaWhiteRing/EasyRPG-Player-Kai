@@ -78,7 +78,8 @@ void Scene_Skill::vUpdate() {
 				Main_Data::game_system->SePlay(skill->sound_effect);
 				Main_Data::game_party->UseSkill(skill_id, &actor, &actor);
 				Scene::PopUntil(Scene::Map);
-				Game_Map::SetNeedRefresh(true);
+				if (Player::IsPatchManiac()) Game_Map::Refresh();
+				else Game_Map::SetNeedRefresh(true);
 			} else if (Algo::IsNormalOrSubskill(*skill)) {
 				Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 				Scene::Push(std::make_shared<Scene_ActorTarget>(skill_id, actor_index));
@@ -91,6 +92,7 @@ void Scene_Skill::vUpdate() {
 				Main_Data::game_party->UseSkill(skill_id, &actor, &actor);
 				Main_Data::game_player->ForceGetOffVehicle();
 				Main_Data::game_player->ReserveTeleport(Main_Data::game_targets->GetEscapeTarget());
+				if (Player::IsPatchManiac()) Game_Map::Refresh();
 
 				Scene::PopUntil(Scene::Map);
 			}

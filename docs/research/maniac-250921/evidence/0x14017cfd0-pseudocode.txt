@@ -1,0 +1,142 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+char FUN_14017cfd0(undefined8 param_1)
+
+{
+  char cVar1;
+  longlong *plVar2;
+  undefined8 ****ppppuVar3;
+  ulonglong uVar4;
+  ulonglong uVar5;
+  int iVar6;
+  uint uVar7;
+  int iVar9;
+  undefined1 auStack_178 [40];
+  undefined8 ***local_150 [2];
+  undefined4 local_140;
+  undefined4 uStack_13c;
+  ulonglong local_138;
+  int iStack_12c;
+  longlong local_128;
+  undefined1 local_120 [128];
+  undefined **local_a0 [13];
+  ulonglong local_38;
+  ulonglong uVar8;
+
+  local_38 = DAT_140257140 ^ (ulonglong)auStack_178;
+  uVar4 = 0;
+  cVar1 = '\0';
+  FUN_1401fa300(&local_128,0,0xe8);
+  FUN_140048a60(&local_128);
+  iVar6 = 1;
+  plVar2 = DAT_14027a810;
+  uVar5 = uVar4;
+  if (DAT_14027a810 != DAT_14027a818) {
+    do {
+      uVar7 = (uint)uVar5 + 1;
+      if (*plVar2 == 0) {
+        uVar7 = (uint)uVar5;
+      }
+      plVar2 = plVar2 + 1;
+      uVar5 = (ulonglong)uVar7;
+    } while (plVar2 != DAT_14027a818);
+    if (uVar7 != 0) {
+      FUN_1400ca1d0(&local_128);
+      if ((longlong)DAT_14027a818 - (longlong)DAT_14027a810 >> 3 != 0) {
+        iVar9 = 1;
+        plVar2 = DAT_14027a810;
+        uVar5 = uVar4;
+        uVar8 = uVar4;
+        do {
+          if (*(longlong *)(uVar5 + (longlong)plVar2) != 0) {
+            FUN_1400ca1d0(&local_128,iVar9);
+            cVar1 = FUN_14017c430(*(longlong *)(uVar5 + (longlong)plVar2),&local_128);
+            plVar2 = DAT_14027a810;
+            if (cVar1 == '\0') {
+              FUN_1400ca1d0(&local_128,0);
+              plVar2 = DAT_14027a810;
+            }
+          }
+          uVar7 = (int)uVar8 + 1;
+          uVar8 = (ulonglong)uVar7;
+          uVar5 = uVar5 + 8;
+          iVar9 = iVar9 + 1;
+        } while ((ulonglong)(longlong)(int)uVar7 <
+                 (ulonglong)((longlong)DAT_14027a818 - (longlong)plVar2 >> 3));
+      }
+      FUN_1400ca1d0(param_1,1);
+      FUN_140049550(local_120,local_150);
+      FUN_1400ca1d0(param_1,local_140);
+      ppppuVar3 = local_150;
+      if (0xf < local_138) {
+        ppppuVar3 = (undefined8 ****)local_150[0];
+      }
+      FUN_140048f90(param_1,ppppuVar3,CONCAT44(uStack_13c,local_140));
+      FUN_140007e80(local_150);
+      FUN_1400c98b0(&local_128);
+      cVar1 = '\x01';
+    }
+  }
+  plVar2 = DAT_14027a828;
+  uVar5 = uVar4;
+  if (DAT_14027a828 == DAT_14027a830) {
+LAB_14017d275:
+    if (cVar1 == '\0') goto LAB_14017d285;
+  }
+  else {
+    do {
+      uVar7 = (uint)uVar5 + 1;
+      if (*plVar2 == 0) {
+        uVar7 = (uint)uVar5;
+      }
+      plVar2 = plVar2 + 1;
+      uVar5 = (ulonglong)uVar7;
+    } while (plVar2 != DAT_14027a830);
+    if (uVar7 == 0) goto LAB_14017d275;
+    FUN_1400ca1d0(&local_128);
+    plVar2 = DAT_14027a828;
+    uVar5 = uVar4;
+    if ((longlong)DAT_14027a830 - (longlong)DAT_14027a828 >> 3 != 0) {
+      do {
+        if (*(longlong *)(uVar5 + (longlong)plVar2) != 0) {
+          FUN_1400ca1d0(&local_128,iVar6);
+          cVar1 = FUN_14017cc00(*(longlong *)(uVar5 + (longlong)plVar2),&local_128);
+          plVar2 = DAT_14027a828;
+          if (cVar1 == '\0') {
+            FUN_1400ca1d0(&local_128,0);
+            plVar2 = DAT_14027a828;
+          }
+        }
+        uVar7 = (int)uVar4 + 1;
+        uVar4 = (ulonglong)uVar7;
+        iVar6 = iVar6 + 1;
+        uVar5 = uVar5 + 8;
+      } while ((ulonglong)(longlong)(int)uVar7 <
+               (ulonglong)((longlong)DAT_14027a830 - (longlong)plVar2 >> 3));
+    }
+    FUN_1400ca1d0(param_1,2);
+    FUN_140049550(local_120,local_150);
+    FUN_1400ca1d0(param_1,local_140);
+    ppppuVar3 = local_150;
+    if (0xf < local_138) {
+      ppppuVar3 = (undefined8 ****)local_150[0];
+    }
+    FUN_140048f90(param_1,ppppuVar3,CONCAT44(uStack_13c,local_140));
+    FUN_140007e80(local_150);
+    cVar1 = '\x01';
+  }
+  FUN_1400ca1d0(param_1,0);
+LAB_14017d285:
+  *(undefined ***)(local_120 + (longlong)*(int *)(local_128 + 4) + -8) =
+       std::basic_ostringstream<char,std::char_traits<char>,std::allocator<char>_>::vftable;
+  *(int *)((longlong)&iStack_12c + (longlong)*(int *)(local_128 + 4)) =
+       *(int *)(local_128 + 4) + -0x88;
+  FUN_1400489f0(local_120);
+  *(undefined ***)(local_120 + (longlong)*(int *)(local_128 + 4) + -8) =
+       std::basic_ostream<char,std::char_traits<char>_>::vftable;
+  *(int *)((longlong)&iStack_12c + (longlong)*(int *)(local_128 + 4)) =
+       *(int *)(local_128 + 4) + -0x10;
+  local_a0[0] = std::ios_base::vftable;
+  std::ios_base::_Ios_base_dtor((ios_base *)local_a0);
+  return cVar1;
+}

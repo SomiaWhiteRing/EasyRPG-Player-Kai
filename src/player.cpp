@@ -778,6 +778,8 @@ void Player::CreateGameObjects() {
 
 	bool no_rtp_warning_flag = false;
 	Player::has_custom_resolution = false;
+	game_config.maniac_pf = false;
+	game_config.maniac_steps_per_frame = 0;
 	{ // Scope lifetime of variables for ini parsing
 		std::string ini_file = FileFinder::Game().FindFile(INI_NAME);
 
@@ -788,6 +790,19 @@ void Player::CreateGameObjects() {
 				auto title = ini.Get("RPG_RT", "GameTitle", GAME_TITLE);
 				game_title = lcf::ReaderUtil::Recode(title, encoding);
 				no_rtp_warning_flag = ini.Get("RPG_RT", "FullPackageFlag", "0") == "1" ? true : no_rtp_flag;
+				// Windows long is signed 32-bit. Read the full profile UINT
+				// range before interpreting StepsPerFrame as a signed int32.
+				const auto runtime_integer = [&](const char* key) {
+					const std::string value(ini.Get("RPG_RT", key, "0"));
+					std::string_view digits(value);
+					if (!digits.empty() && (digits.front() == '+' || digits.front() == '-')) digits.remove_prefix(1);
+					const int base = digits.size() >= 2 && digits[0] == '0' && (digits[1] == 'x' || digits[1] == 'X') ? 16 : 10;
+					return static_cast<uint32_t>(std::strtoull(value.c_str(), nullptr, base));
+				};
+				game_config.maniac_pf = runtime_integer("pf") != 0;
+				const uint32_t steps = runtime_integer("StepsPerFrame");
+				static_assert(sizeof(steps) == sizeof(game_config.maniac_steps_per_frame));
+				std::memcpy(&game_config.maniac_steps_per_frame, &steps, sizeof(steps));
 				if (ini.HasValue("RPG_RT", "WinW") || ini.HasValue("RPG_RT", "WinH")) {
 					Player::screen_width = ini.GetInteger("RPG_RT", "WinW", SCREEN_TARGET_WIDTH);
 					Player::screen_height = ini.GetInteger("RPG_RT", "WinH", SCREEN_TARGET_HEIGHT);
@@ -1273,6 +1288,12 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 
 	if (!load_on_map) {
 		Scene::PopUntil(Scene::Title);
+	}
+	if (Player::IsPatchManiac()) {
+		// Retire the old message consumer before replacing its banks and
+		// pictures. In particular, a suspended hook must not read new state.
+		if (auto* message = Game_Message::GetWindow()) message->FinishMessageProcessing(false);
+		Game_Map::GetInterpreter().Clear();
 	}
 
 	// Direct startup loads can skip Scene_Title::Start, which applies the INI size.

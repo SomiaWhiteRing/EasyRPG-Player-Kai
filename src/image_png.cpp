@@ -26,6 +26,7 @@
 
 #include "output.h"
 #include "image_png.h"
+#include "player.h"
 
 static void read_data(png_structp png_ptr, png_bytep data, png_size_t length) {
 	png_bytep* bufp = (png_bytep*) png_get_io_ptr(png_ptr);
@@ -54,6 +55,7 @@ struct ImagePNG::PictureLoader::Data {
 	png_infop info = nullptr;
 	BitmapRef bitmap;
 	std::array<uint32_t, 256> palette{};
+	std::array<Color, 256> straight_palette{};
 	std::vector<uint8_t> row;
 	int next_row = 0;
 	int palette_size = 0;
@@ -136,10 +138,12 @@ bool ImagePNG::PictureLoader::Init(Filesystem_Stream::InputStream stream, bool t
 		[](pixman_image_t*, void* buffer) { std::free(buffer); }, storage.get());
 	storage.release();
 	data->bitmap->original_bpp = 8;
+	if (Player::IsPatchManiac()) data->bitmap->maniac_pixels.resize(pixels);
 	data->bitmap->SetId(ToString(data->stream.GetName()));
 	data->row.resize(width);
 	for (int i = 0; i < data->palette_size; ++i) {
 		const auto& color = palette[i];
+		data->straight_palette[i] = Color(color.red, color.green, color.blue, (transparent && i == 0) ? 0 : 255);
 		// RPG pictures use palette index zero as the color key, ignoring PNG tRNS.
 		data->palette[i] = (transparent && i == 0) ? 0
 			: data->bitmap->format.rgba_to_uint32_t(color.red, color.green, color.blue, 255);
@@ -167,6 +171,7 @@ bool ImagePNG::PictureLoader::ReadRows(int count) {
 				png_error(data->png, "Invalid picture palette index");
 			}
 			dst[x] = data->palette[index];
+			if (!data->bitmap->maniac_pixels.empty()) data->bitmap->maniac_pixels[static_cast<size_t>(data->next_row) * data->row.size() + x] = data->straight_palette[index];
 			bool transparent = data->transparent && index == 0;
 			data->has_transparent |= transparent;
 			data->has_opaque |= !transparent;

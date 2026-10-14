@@ -58,6 +58,8 @@
 #include "game_screen.h"
 #include "game_interpreter_control_variables.h"
 #include "game_windows.h"
+#include "maniac_text_picture.h"
+#include "maniac_picture_renderer.h"
 #include "graphics.h"
 #include "json_helper.h"
 #include "maniac_patch.h"
@@ -90,6 +92,10 @@
 using namespace Game_Interpreter_Shared;
 
 namespace {
+	double ManiacFixedPictureAngle(int numerator, int denominator) {
+		const double angle = static_cast<double>(numerator) / (denominator ? denominator : 1);
+		return std::fmod(angle, 360.0) + (angle < 0.0 ? 360.0 : 0.0);
+	}
 }
 
 enum BranchSubcommand {
@@ -103,13 +109,18 @@ Game_Interpreter::Game_Interpreter(bool _main_flag) {
 }
 
 Game_Interpreter::~Game_Interpreter() {
+	if (maniac_text_picture_pending) maniac_text_picture_pending->Cancel();
 }
 
 // Clear.
 void Game_Interpreter::Clear() {
+	if (maniac_text_picture_pending) maniac_text_picture_pending->Cancel();
+	maniac_text_picture_pending.reset();
+	maniac_generated_command_pending.reset();
 	_state = {};
 	_keyinput = {};
 	_async_op = {};
+	maniac_dispatch = ManiacDispatch::Return;
 }
 
 // Is interpreter running.
@@ -395,8 +406,18 @@ int Game_Interpreter::GetSubcommandIndex(int indent) const {
 
 // Update
 void Game_Interpreter::Update(bool reset_loop_count) {
+#ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
+	auto* previous_flags = Player::active_interpreter_flags;
+	Player::active_interpreter_flags = &_state.easyrpg_runtime_flags;
+	auto flags_guard = lcf::makeScopeGuard([previous_flags]() {
+		Player::active_interpreter_flags = previous_flags;
+	});
+#endif
+
 	if (reset_loop_count) {
 		loop_count = 0;
+		loop_limit = Player::IsPatchManiac() ? Player::game_config.GetManiacExecutionLimit() : 10000;
+		maniac_dispatch = ManiacDispatch::Return;
 	}
 
 	// Always reset async status when we enter interpreter loop.
@@ -416,93 +437,83 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		return;
 	}
 
-#ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
-	auto* previous_flags = Player::active_interpreter_flags;
-	Player::active_interpreter_flags = &_state.easyrpg_runtime_flags;
-	auto flags_guard = lcf::makeScopeGuard([previous_flags]() {
-		Player::active_interpreter_flags = previous_flags;
-	});
-#endif
-
-	for (; loop_count < loop_limit; ++loop_count) {
+	while (loop_count < loop_limit) {
 		// If something is calling a menu, we're allowed to execute only 1 command per interpreter. So we pass through if loop_count == 0, and stop at 1 or greater.
 		// RPG_RT compatible behavior.
-		if (loop_count > 0 && Scene::instance->HasRequestedScene()) {
+		if (maniac_dispatch != ManiacDispatch::Continue && loop_count > 0 && Scene::instance->HasRequestedScene()) {
 			break;
 		}
 
 		// Previous command triggered an async operation.
 		if (IsAsyncPending()) {
-			if (_async_op.GetType() == AsyncOp::Type::eYieldRepeat) {
-				// This will cause an incorrect execution when the yielding
-				// command changed the index.
-				// Only use YieldRepeat for commands that do not do this!
-				auto& frame = GetFrame();
-				--frame.current_command;
-			}
 			break;
 		}
 
-		if (main_flag) {
-			if (Main_Data::game_player->IsBoardingOrUnboarding())
-				break;
+		// A pf mode tail re-enters the native dispatcher after its wait
+		// prelude. Async yields retain this position until Update(false).
+		if (maniac_dispatch != ManiacDispatch::Continue) {
+			if (main_flag) {
+				if (Main_Data::game_player->IsBoardingOrUnboarding())
+					break;
 
-			if (Main_Data::game_player->InVehicle() && Main_Data::game_player->GetVehicle()->IsAscendingOrDescending())
-				break;
+				if (Main_Data::game_player->InVehicle() && Main_Data::game_player->GetVehicle()->IsAscendingOrDescending())
+					break;
 
-			if (Game_Message::IsMessagePending())
-				break;
-		} else {
-			if (Game_Message::IsMessageActive() && _state.show_message) {
-				break;
+				if (Game_Message::IsMessagePending())
+					break;
+			} else {
+				if (Game_Message::IsMessageActive() && _state.show_message) {
+					break;
+				}
 			}
-		}
 
-		_state.show_message = false;
-		_state.abort_on_escape = false;
+			_state.show_message = false;
+			_state.abort_on_escape = false;
 
-		if (_state.wait_time > 0) {
-			_state.wait_time--;
-			break;
-		}
-
-		if (_state.wait_key_enter) {
-			if (Game_Message::IsMessageActive()) {
+			if (_state.wait_time > 0) {
+				_state.wait_time--;
 				break;
 			}
 
-			if (!Input::IsTriggered(Input::DECISION)) {
-				break;
-			}
-			_state.wait_key_enter = false;
-		}
+			if (_state.wait_key_enter) {
+				if (Game_Message::IsMessageActive()) {
+					break;
+				}
 
-		if (_state.wait_movement) {
-			if (Game_Map::IsAnyMovePending()) {
-				break;
-			}
-			_state.wait_movement = false;
-		}
-
-		if (_keyinput.wait) {
-			if (Game_Message::IsMessageActive()) {
-				break;
+				if (!Input::IsTriggered(Input::DECISION)) {
+					break;
+				}
+				_state.wait_key_enter = false;
 			}
 
-			const int key = _keyinput.CheckInput();
-			Main_Data::game_variables->Set(_keyinput.variable, key);
-			Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
-			if (key == 0) {
-				++_keyinput.wait_frames;
-				break;
+			if (_state.wait_movement) {
+				if (Game_Map::IsAnyMovePending()) {
+					break;
+				}
+				_state.wait_movement = false;
 			}
-			if (_keyinput.timed) {
-				// 10 per second
-				Main_Data::game_variables->Set(_keyinput.time_variable,
-						(_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps());
-				Game_Map::SetNeedRefreshForVarChange(_keyinput.time_variable);
+
+			if (_keyinput.wait) {
+				if (Game_Message::IsMessageActive()) {
+					break;
+				}
+
+				const int key = _keyinput.CheckInput();
+				Main_Data::game_variables->Set(_keyinput.variable, key);
+				Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
+				if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+				if (key == 0) {
+					++_keyinput.wait_frames;
+					break;
+				}
+				if (_keyinput.timed) {
+					// 10 per second
+					Main_Data::game_variables->Set(_keyinput.time_variable,
+							(_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps());
+					Game_Map::SetNeedRefreshForVarChange(_keyinput.time_variable);
+				}
+				_keyinput.wait = false;
 			}
-			_keyinput.wait = false;
 		}
 
 		auto* frame = GetFramePtr();
@@ -510,7 +521,7 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 			break;
 		}
 
-		if (Game_Map::GetNeedRefresh()) {
+		if (!Player::IsPatchManiac() && Game_Map::GetNeedRefresh()) {
 			Game_Map::Refresh();
 		}
 
@@ -523,21 +534,12 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 
 		// Pop any completed stack frames
 		if (frame->current_command >= (int)frame->commands.size()) {
-			if (!OnFinishStackFrame()) {
+			const bool more = OnFinishStackFrame();
+			maniac_dispatch = ManiacDispatch::Return;
+			if (more || Player::IsPatchManiac()) ++loop_count;
+			if (!more) {
 				break;
 			}
-			continue;
-		}
-
-		// The 250921 dispatcher handles these standalone records by fetching
-		// the next command inside the same dispatch call. They have no payload
-		// effect and must not consume an outer interpreter command slot.
-		const auto opcode = frame->commands[frame->current_command].code;
-		if (Player::IsPatchManiac()
-			&& (opcode == static_cast<int32_t>(lcf::rpg::EventCommand::Code::END)
-				|| opcode == 40 || opcode == 12110 || opcode == 3024 || opcode == 3035)) {
-			++frame->current_command;
-			--loop_count;
 			continue;
 		}
 
@@ -546,11 +548,25 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 
 		const int index_before_exec = frame->current_command;
 		if (!ExecuteCommand()) {
+			maniac_dispatch = ManiacDispatch::Return;
+			break;
+		}
+		if (Player::IsPatchManiac() && _async_op.GetType() == AsyncOp::eYieldRepeat) {
+			// Resource acquisition suspends the current native dispatch;
+			// it has not returned and consumed its budget yet.
+			maniac_dispatch = ManiacDispatch::Continue;
+		}
+
+		if (maniac_dispatch != ManiacDispatch::Continue
+			&& Game_Battle::IsBattleRunning() && Player::IsRPG2k3() && Game_Battle::CheckWin()) {
+			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
+			if (Player::IsPatchManiac() && maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
 			break;
 		}
 
-		if (Game_Battle::IsBattleRunning() && Player::IsRPG2k3() && Game_Battle::CheckWin()) {
-			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
+		if (maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
+		if (maniac_dispatch == ManiacDispatch::Finish) {
+			maniac_dispatch = ManiacDispatch::Return;
 			break;
 		}
 
@@ -568,16 +584,21 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		if (index_before_exec == frame->current_command) {
 			frame->current_command++;
 		}
-	} // for
+	}
+
+	if (_async_op.GetType() == AsyncOp::eYieldRepeat) {
+		// Also rewind when a yielding command reaches the configured limit.
+		// YieldRepeat commands must not change the command cursor themselves.
+		if (auto* frame = GetFramePtr()) --frame->current_command;
+	}
 
 	if (loop_count > loop_limit - 1) {
 		auto* frame = GetFramePtr();
 		int event_id = frame ? frame->event_id : 0;
-		// Executed Events Count exceeded (10000)
 		Output::Debug("Event {} exceeded execution limit", event_id);
 	}
 
-	if (Game_Map::GetNeedRefresh()) {
+	if (!Player::IsPatchManiac() && Game_Map::GetNeedRefresh()) {
 		Game_Map::Refresh();
 	}
 }
@@ -699,6 +720,49 @@ void Game_Interpreter::SkipToNextConditional(std::initializer_list<Cmd> codes, i
 bool Game_Interpreter::ExecuteCommand() {
 	auto& frame = GetFrame();
 	const auto& com = frame.commands[frame.current_command];
+	return DispatchCommand(com);
+}
+
+bool Game_Interpreter::DispatchCommand(lcf::rpg::EventCommand const& com) {
+	maniac_dispatch = ManiacDispatch::Return;
+	if (Player::IsPatchManiac()) {
+		if (com.code == 0) {
+			// Native END returns once after popping a called frame or
+			// resetting/finishing the base frame (045660:1804-1819).
+			maniac_dispatch = OnFinishStackFrame() ? ManiacDispatch::Return : ManiacDispatch::Finish;
+			return true;
+		}
+		switch (com.code) {
+			case 10: case 40: case 3024: case 3035: case 12110:
+			case 20110: case 20141: case 20713: case 20722: case 20732:
+			case 22011: case 22410: case 23311:
+				maniac_dispatch = ManiacDispatch::Continue;
+				return true;
+		}
+		if (Player::IsManiacPf()) {
+			// The shared native mode tails fetch the next command before
+			// returning to the budget loop. 3019 redispatches through here
+			// so the generated command supplies its own return behaviour.
+			switch (com.code) {
+				case 3001: case 3005: case 3006: case 3007: case 3008:
+				case 3013: case 3016: case 3017: case 3018:
+				case 3020: case 3021: case 3022:
+				case 10120: case 10130: case 10210: case 10220:
+				case 10670: case 10680:
+				case 10820: case 10860: case 10870: case 10910: case 10920:
+				case 11110: case 11130:
+				case 11510: case 11520: case 11530: case 11540: case 11550:
+				case 11710: case 12010: case 12120: case 12220:
+				case 12410: case 22010:
+					maniac_dispatch = ManiacDispatch::Continue;
+					break;
+			}
+		}
+		// These native reserved/marker routes have no payload, but return.
+		if (com.code == 3022 || com.code == 3023 || com.code == 3027 || com.code == 3034) {
+			return true;
+		}
+	}
 	return ExecuteCommand(com);
 }
 
@@ -812,9 +876,9 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::WeatherEffects:
 			return CmdSetup<&Game_Interpreter::CommandWeatherEffects, 2>(com);
 		case Cmd::ShowPicture:
-			return CmdSetup<&Game_Interpreter::CommandShowPicture, 14>(com);
+			return CommandShowPicture(com);
 		case Cmd::MovePicture:
-			return CmdSetup<&Game_Interpreter::CommandMovePicture, 16>(com);
+			return CommandMovePicture(com);
 		case Cmd::ErasePicture:
 			return CmdSetup<&Game_Interpreter::CommandErasePicture, 1>(com);
 		case Cmd::PlayerVisibility:
@@ -899,7 +963,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::Maniac_SetMousePosition:
 			return CmdSetup<&Game_Interpreter::CommandManiacSetMousePosition, 0>(com);
 		case Cmd::Maniac_ShowStringPicture:
-			return CmdSetup<&Game_Interpreter::CommandManiacShowStringPicture, 23>(com);
+			return CommandManiacShowStringPicture(com);
 		case Cmd::Maniac_GetPictureInfo:
 			return CmdSetup<&Game_Interpreter::CommandManiacGetPictureInfo, 8>(com);
 		case Cmd::Maniac_ControlVarArray:
@@ -951,6 +1015,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::EasyRpg_DestroyMapEvent:
 			return CmdSetup<&Game_Interpreter::CommandEasyRpgDestroyMapEvent, 2>(com);
 		default:
+			if (Player::IsPatchManiac()) maniac_dispatch = ManiacDispatch::Continue;
 			return true;
 	}
 }
@@ -1253,7 +1318,7 @@ bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com)
 			else if (operation == 1) Main_Data::game_switches->SetRange(static_cast<int>(low), static_cast<int>(high), false);
 			else Main_Data::game_switches->FlipRange(static_cast<int>(low), static_cast<int>(high));
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 		return true;
 	}
 	{
@@ -1634,7 +1699,7 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			}
 			destination = static_cast<int32_t>(std::clamp(result, min_value, max_value));
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 		return true;
 	}
 
@@ -1936,6 +2001,7 @@ bool Game_Interpreter::CommandTimerOperation(lcf::rpg::EventCommand const& com) 
 	default:
 		return false;
 	}
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
 	return true;
 }
 
@@ -1985,7 +2051,8 @@ bool Game_Interpreter::CommandChangeItems(lcf::rpg::EventCommand const& com) { /
 			value
 		);
 	}
-	Game_Map::SetNeedRefresh(true);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+	else Game_Map::SetNeedRefresh(true);
 	// Continue
 	return true;
 }
@@ -2017,7 +2084,8 @@ bool Game_Interpreter::CommandChangePartyMember(lcf::rpg::EventCommand const& co
 	}
 
 	CheckGameOver();
-	Game_Map::SetNeedRefresh(true);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+	else Game_Map::SetNeedRefresh(true);
 
 	// Continue
 	return true;
@@ -2571,9 +2639,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 			// Native return delivery refreshes map pages before callee cleanup.
 			// Unknown receiver kinds still take this branch.
 			if (frame->easyrpg_maniac_return_address > 0 || _state.stack.size() >= 2) {
-				// The native refresh guard is not the battle-interpreter mode: fixed
-				// mode-2 captures still refresh before cleanup and both input polls.
-				Game_Map::Refresh();
+				Game_Map::RefreshAfterManiacChange();
 			}
 		}
 	}
@@ -2874,14 +2940,20 @@ bool Game_Interpreter::CommandSetVehicleLocation(lcf::rpg::EventCommand const& c
 }
 
 bool Game_Interpreter::CommandChangeEventLocation(lcf::rpg::EventCommand const& com) { // Code 10860
-	int event_id = com.parameters[0];
+	const int raw_mode = com.parameters[1];
+	// Maniac packs the coordinate evaluation mode in the low byte and the
+	// event-id evaluation mode in the low nibble of the high byte. The
+	// receiver must be resolved before looking it up as a map event.
+	const int event_mode = Player::IsPatchManiac()
+		? (static_cast<uint32_t>(raw_mode) >> 8) & 0xF : 0;
+	const int coordinate_mode = Player::IsPatchManiac()
+		? static_cast<uint32_t>(raw_mode) & 0xFF : (raw_mode == 0x1000 ? 0 : raw_mode);
+	const int event_id = Player::IsPatchManiac()
+		? ValueOrVariable(event_mode, com.parameters[0]) : com.parameters[0];
 	Game_Character *event = GetCharacter(event_id, "ChangeEventLocation");
 	if (event != nullptr) {
-		// Some maps use 0x1000 for constant coordinates. Accept this exact
-		// mode here without changing how other commands evaluate values.
-		const auto mode = com.parameters[1] == 0x1000 ? 0 : com.parameters[1];
-		const auto x = ValueOrVariable(mode, com.parameters[2]);
-		const auto y = ValueOrVariable(mode, com.parameters[3]);
+		const auto x = ValueOrVariable(coordinate_mode, com.parameters[2]);
+		const auto y = ValueOrVariable(coordinate_mode, com.parameters[3]);
 		event->MoveTo(event->GetMapId(), x, y);
 
 		// RPG2k3 feature
@@ -2891,7 +2963,7 @@ bool Game_Interpreter::CommandChangeEventLocation(lcf::rpg::EventCommand const& 
 		}
 
 		// Only for the constant case, not for variables
-		if (mode == 0 && direction != -1) {
+		if (coordinate_mode == 0 && direction != -1) {
 			event->SetDirection(direction);
 			event->UpdateFacing();
 		}
@@ -3315,30 +3387,37 @@ namespace PicPointerPatch {
 }
 
 bool Game_Interpreter::CommandShowPicture(lcf::rpg::EventCommand const& com) { // code 11110
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
 	// Older versions of RPG_RT block pictures when message active.
-	if (!Player::IsEnglish() && !Player::IsPatchUnlockPics() && Game_Message::IsMessageActive()) {
+	if (!Player::IsPatchManiac() && !Player::IsEnglish() && !Player::IsPatchUnlockPics() && Game_Message::IsMessageActive()) {
 		return false;
 	}
 
-	int pic_id = com.parameters[0];
+	int pic_id = parameter(0);
 
 	Game_Pictures::ShowParams params = {};
+	bool maniac_name_present = true;
 	params.name = ToString(com.string);
 	// Maniac Patch uses the upper bits for X/Y origin, mask it away
-	int pos_mode = ManiacBitmask(com.parameters[1], 0xFF);
-	params.position_x = ValueOrVariable(pos_mode, com.parameters[2]);
-	params.position_y = ValueOrVariable(pos_mode, com.parameters[3]);
-	params.fixed_to_map = com.parameters[4] > 0;
-	params.magnify_width = com.parameters[5];
+	int pos_mode = ManiacBitmask(parameter(1), 0xFF);
+	params.position_x = ValueOrVariable(pos_mode, parameter(2));
+	params.position_y = ValueOrVariable(pos_mode, parameter(3));
+	params.fixed_to_map = Player::IsPatchManiac() ? (parameter(4) & 255) != 0 : parameter(4) > 0;
+	params.position_scaled = Player::IsPatchManiac() && (parameter(4) & 256);
+	params.maniac_image_flags = static_cast<uint32_t>(parameter(4)) & 255;
+	params.magnify_width = parameter(5);
 	params.magnify_height = params.magnify_width;
-	params.use_transparent_color = com.parameters[7] > 0;
-	params.top_trans = com.parameters[6];
-	params.red = com.parameters[8];
-	params.green = com.parameters[9];
-	params.blue = com.parameters[10];
-	params.saturation = com.parameters[11];
-	params.effect_mode = com.parameters[12];
-	params.effect_power = com.parameters[13];
+	params.use_transparent_color = Player::IsPatchManiac() ? (parameter(7) & 255) != 0 : parameter(7) > 0;
+	params.maniac_transparency_flags = static_cast<uint32_t>(parameter(7)) & 255;
+	params.top_trans = parameter(6);
+	params.red = parameter(8);
+	params.green = parameter(9);
+	params.blue = parameter(10);
+	params.saturation = parameter(11);
+	params.effect_mode = parameter(12);
+	params.effect_power = parameter(13);
 
 	size_t param_size = com.parameters.size();
 
@@ -3347,72 +3426,114 @@ bool Game_Interpreter::CommandShowPicture(lcf::rpg::EventCommand const& com) { /
 		// transparency. >= 1.12 Editor only let you set one transparency field but it affects
 		// both chunks here.
 		// Maniac Patch uses the upper bits for flags, mask it away
-		params.bottom_trans = ManiacBitmask(com.parameters[14], 0xFF);
+		params.bottom_trans = ManiacBitmask(parameter(14), 0xFF);
 	} else if (Player::IsRPG2k3() && !Player::IsRPG2k3E()) {
 		// Corner case when 2k maps are used in 2k3 (pre-1.10) and don't contain this chunk
 		params.bottom_trans = params.top_trans;
 	}
 
-	if (param_size > 16 && (Player::IsRPG2k3ECommands() || Player::IsPatchManiac())) {
-		if (param_size < 30) {
+	if (Player::IsPatchManiac() || (param_size > 16 && Player::IsRPG2k3ECommands())) {
+		if (!Player::IsPatchManiac() && param_size < 30) {
 			// Ensure correct size
 			return CmdSetup<&Game_Interpreter::CommandShowPicture, 30>(com);
 		}
 
 		// Handling of RPG2k3 1.12 chunks
 		if (Player::IsPatchManiac()) {
-			pic_id = ValueOrVariableBitfield(com.parameters[17], 0, pic_id);
-			params.name = ToString(CommandStringOrVariableBitfield(com, 17, 2, 30));
+			pic_id = ValueOrVariable(parameter(17) & 255, pic_id);
+			const int name_mode = (static_cast<uint32_t>(parameter(17)) >> 8) & 15;
+			params.name = name_mode == 0 ? ToString(com.string)
+				: ToString(ReadString(name_mode == 1 ? parameter(30) : ResolveVariableIndirectAddress(parameter(30))));
+			maniac_name_present = name_mode == 0 ? !com.string.empty()
+				: IsManiacStringPresent(name_mode == 1 ? parameter(30) : ResolveVariableIndirectAddress(parameter(30)));
 		} else {
-			pic_id = ValueOrVariable(com.parameters[17], pic_id);
+			pic_id = ValueOrVariable(parameter(17), pic_id);
 		}
-		if (com.parameters[19] != 0) {
-			int var = 0;
-			if (Main_Data::game_variables->IsValid(com.parameters[19])) {
-				var = Main_Data::game_variables->Get(com.parameters[19]);
+		if (Player::IsPatchManiac() && parameter(19) > 0) {
+			// 06e050 is a GLOBAL-only filename helper, measured in UTF16 units.
+			const int value = Main_Data::game_variables->Get(parameter(19));
+			auto name = Utils::DecodeUTF16(params.name, true);
+			const int digits = parameter(18);
+			if (digits > 0 || !maniac_name_present) {
+				if (digits > 0 && static_cast<size_t>(digits) < name.size()) name.resize(name.size() - digits);
+				else name.clear();
+				auto number = std::to_string(value);
+				const int width = Utils::Clamp(static_cast<int64_t>(digits) - (value < 0), int64_t{1}, int64_t{9});
+				if (number.size() < static_cast<size_t>(width)) number.insert(value < 0 ? 1 : 0, width - number.size(), '0');
+				name += Utils::DecodeUTF16(number, true);
+			} else if (name.size() < 16) {
+				// The native <=0 branch copies the filename again. Its >=16-unit
+				// unterminated memory scan has no deterministic compatibility value.
+				name += name;
 			}
-			params.name = PicPointerPatch::ReplaceName(params.name, var, com.parameters[18]);
+			params.name = Utils::EncodeUTF(name, true);
+			maniac_name_present = true;
+		} else if (!Player::IsPatchManiac() && parameter(19) != 0) {
+			int var = 0;
+			if (Main_Data::game_variables->IsValid(parameter(19))) {
+				var = Main_Data::game_variables->Get(parameter(19));
+			}
+			params.name = PicPointerPatch::ReplaceName(params.name, var, parameter(18));
 		}
 
 		if (Player::IsPatchManiac()) {
 			// Color tint using variables
-			params.red = ValueOrVariableBitfield(com.parameters[17], 3, params.red);
-			params.green = ValueOrVariableBitfield(com.parameters[17], 3,  params.green);
-			params.blue = ValueOrVariableBitfield(com.parameters[17], 3, params.blue);
-			params.saturation = ValueOrVariableBitfield(com.parameters[17], 3,  params.saturation);
+			params.red = ValueOrVariableBitfield(parameter(17), 3, params.red);
+			params.green = ValueOrVariableBitfield(parameter(17), 3,  params.green);
+			params.blue = ValueOrVariableBitfield(parameter(17), 3, params.blue);
+			params.saturation = ValueOrVariableBitfield(parameter(17), 3,  params.saturation);
 		}
 
-		params.magnify_width = ValueOrVariableBitfield(com.parameters[20], 0, params.magnify_width);
-		if (Player::IsPatchManiac() && com.parameters.size() > 31 && com.parameters[20] >= 16) {
-			// The >= 16 check is needed because this bit is set when independent width/height scaling is used
-			// Since version 240423, Maniacs supports width/height scaling for special effects pictures.
-			params.magnify_height = ValueOrVariableBitfield((com.parameters[20] >> 1), 1, com.parameters[31]);
+		params.magnify_width = ValueOrVariableBitfield(parameter(20), 0, params.magnify_width);
+		if (Player::IsPatchManiac() && ((static_cast<uint32_t>(parameter(20)) >> 4) & 15)) {
+			const int mode = (static_cast<uint32_t>(parameter(20)) >> 4) & 15;
+			params.magnify_height = mode == 1 ? parameter(31) : mode == 2 ? ReadVariable(parameter(31)) : ReadVariableIndirect(parameter(31));
 		} else {
 			params.magnify_height = params.magnify_width;
 		}
 
-		params.top_trans = ValueOrVariable(com.parameters[21], params.top_trans);
-		if (com.parameters[22] > 0) {
+		params.top_trans = ValueOrVariable(parameter(21), params.top_trans);
+		if (Player::IsPatchManiac() && parameter(22) != 0) {
+			params.spritesheet_cols = ValueOrVariableBitfield(parameter(17), 4, parameter(22));
+			params.spritesheet_rows = ValueOrVariableBitfield(parameter(17), 5, parameter(23));
+			const int32_t last = static_cast<int32_t>(static_cast<uint32_t>(params.spritesheet_cols) * static_cast<uint32_t>(params.spritesheet_rows) - 1u);
+			if (parameter(24) == 2 || parameter(24) == 3) {
+				params.spritesheet_speed = parameter(25);
+				params.maniac_spritesheet_finish = parameter(26);
+				params.spritesheet_play_once = parameter(26) == 1;
+				const auto endpoint = [last](int32_t value) {
+					const int32_t frame = static_cast<int32_t>(static_cast<uint32_t>(value) - 1u);
+					return frame < 0 ? 0 : std::min(frame, last);
+				};
+				params.maniac_spritesheet_start = parameter(24) == 3 ? endpoint(ValueOrVariableBitfield(parameter(17), 6, parameter(32))) : 0;
+				params.maniac_spritesheet_end = parameter(24) == 3 ? endpoint(ValueOrVariableBitfield(parameter(17), 7, parameter(33))) : last;
+				params.spritesheet_frame = params.maniac_spritesheet_start;
+			} else {
+				const int32_t frame = parameter(24) == 1 ? ReadVariable(parameter(25)) : parameter(25);
+				params.spritesheet_frame = static_cast<int32_t>(static_cast<uint32_t>(frame) - 1u);
+			}
+		} else if (!Player::IsPatchManiac() && parameter(22) > 0) {
 			// If spritesheet is enabled
-			params.spritesheet_cols = com.parameters[22];
-			params.spritesheet_rows = com.parameters[23];
+			params.spritesheet_cols = parameter(22);
+			params.spritesheet_rows = parameter(23);
 
 			// Animate and index selection are exclusive
-			if (com.parameters[24] == 2) {
-				params.spritesheet_speed = com.parameters[25];
-				params.spritesheet_play_once = com.parameters[26];
+			if (parameter(24) == 2) {
+				params.spritesheet_speed = parameter(25);
+				params.spritesheet_play_once = parameter(26);
 			} else {
 				// Picture data / LSD data frame number is 0 based, while event parameter counts from 1.
-				params.spritesheet_frame = ValueOrVariable(com.parameters[24], com.parameters[25]) - 1;
+				params.spritesheet_frame = ValueOrVariable(parameter(24), parameter(25)) - 1;
 			}
 		}
 
-		params.map_layer = com.parameters[27];
-		params.battle_layer = com.parameters[28];
-		params.flags = com.parameters[29];
+		params.map_layer = parameter(27);
+		params.battle_layer = parameter(28);
+		params.flags = Player::IsPatchManiac() && param_size < 30 ? 0x61 : parameter(29);
 
 		if (Player::IsPatchManiac()) {
-			int flags = com.parameters[14] >> 8;
+			params.maniac_style = static_cast<uint32_t>(parameter(14));
+			int flags = parameter(14) >> 8;
 			int blend_mode = flags & 3;
 			if (blend_mode == 1) {
 				params.blend_mode = (int)Bitmap::BlendMode::Multiply;
@@ -3423,26 +3544,32 @@ bool Game_Interpreter::CommandShowPicture(lcf::rpg::EventCommand const& com) { /
 			}
 			params.flip_x = (flags & 16) == 16;
 			params.flip_y = (flags & 32) == 32;
-			params.origin = com.parameters[1] >> 8;
+			params.origin = parameter(1) >> 8;
 
 			if (params.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-				params.effect_power = ValueOrVariableBitfield(com.parameters[16], 0, params.effect_power);
-				int divisor = ValueOrVariableBitfield(com.parameters[16], 1, com.parameters[15]);
+				params.effect_power = ValueOrVariableBitfield(parameter(16), 0, params.effect_power);
+				int divisor = ValueOrVariableBitfield(parameter(16), 1, parameter(15));
 				if (divisor == 0) {
 					divisor = 1;
 				}
-				params.effect_power /= divisor;
+				params.fixed_angle = ManiacFixedPictureAngle(params.effect_power, divisor);
 			}
 		}
 	}
 
-	PicPointerPatch::AdjustShowParams(pic_id, params);
+	if (Player::IsPatchManiac() && !maniac_name_present) {
+		Main_Data::game_pictures->Erase(pic_id);
+		return true;
+	}
+	if (!Player::IsPatchManiac()) PicPointerPatch::AdjustShowParams(pic_id, params);
 
-	// Sanitize input
-	params.magnify_width = std::max(0, std::min(params.magnify_width, 2000));
-	params.magnify_height = std::max(0, std::min(params.magnify_height, 2000));
-	params.top_trans = std::max(0, std::min(params.top_trans, 100));
-	params.bottom_trans = std::max(0, std::min(params.bottom_trans, 100));
+	if (!Player::IsPatchManiac()) {
+		// Sanitize input
+		params.magnify_width = std::max(0, std::min(params.magnify_width, 2000));
+		params.magnify_height = std::max(0, std::min(params.magnify_height, 2000));
+		params.top_trans = std::max(0, std::min(params.top_trans, 100));
+		params.bottom_trans = std::max(0, std::min(params.bottom_trans, 100));
+	}
 
 	if (pic_id <= 0) {
 		Output::Error("ShowPicture: Requested invalid picture id ({})", pic_id);
@@ -3464,101 +3591,86 @@ bool Game_Interpreter::CommandShowPicture(lcf::rpg::EventCommand const& com) { /
 }
 
 bool Game_Interpreter::CommandMovePicture(lcf::rpg::EventCommand const& com) { // code 11120
+	const auto parameter = [&](size_t index) -> int32_t {
+		return index < com.parameters.size() ? com.parameters[index] : 0;
+	};
 	// Older versions of RPG_RT block pictures when message active.
-	if (!Player::IsEnglish() && !Player::IsPatchUnlockPics() && Game_Message::IsMessageActive()) {
+	if (!Player::IsPatchManiac() && !Player::IsEnglish() && !Player::IsPatchUnlockPics() && Game_Message::IsMessageActive()) {
 		return false;
 	}
 
-	int pic_id = com.parameters[0];
+	int pic_id = parameter(0);
 
 	Game_Pictures::MoveParams params;
 	// Maniac Patch uses the upper bits for X/Y origin, mask it away
-	int pos_mode = ManiacBitmask(com.parameters[1], 0xFF);
-	params.position_x = ValueOrVariable(pos_mode, com.parameters[2]);
-	params.position_y = ValueOrVariable(pos_mode, com.parameters[3]);
-	params.magnify_width = com.parameters[5];
+	int pos_mode = ManiacBitmask(parameter(1), 0xFF);
+	params.position_x = ValueOrVariable(pos_mode, parameter(2));
+	params.position_y = ValueOrVariable(pos_mode, parameter(3));
+	params.magnify_width = parameter(5);
 	params.magnify_height = params.magnify_width;
-	params.top_trans = com.parameters[6];
-	params.red = com.parameters[8];
-	params.green = com.parameters[9];
-	params.blue = com.parameters[10];
-	params.saturation = com.parameters[11];
-	params.effect_mode = com.parameters[12];
-	params.effect_power = com.parameters[13];
-	params.duration = com.parameters[14];
+	params.top_trans = parameter(6);
+	params.red = parameter(8);
+	params.green = parameter(9);
+	params.blue = parameter(10);
+	params.saturation = parameter(11);
+	params.effect_mode = parameter(12);
+	params.effect_power = parameter(13);
+	params.duration = parameter(14);
 
-	struct {
-		bool wait = false;
-		// Starting from here are Maniac Extensions
-		// TODO: The extensions are not implemented
-		bool relative = false; // new position is relative to current
-		// when true these values preserve the values from a previous Show/MovePicture call
-		bool preserve_tone = false;
-		bool preserve_effect_mode = false;
-		bool preserve_blend_mode = false;
-		bool preserve_flip = false;
-		bool preserve_duration = false;
-		// Coordinates consider the scaled picture (when the origin is not centered)
-		bool position_scaled = false;
-	} options;
+	bool wait = false;
 
 	if (Player::IsPatchManiac()) {
-		int opts = com.parameters[15];
-		options.wait = (opts & (1 << 0)) > 0;
-		options.relative = (opts & (1 << 1)) > 0;
-		options.preserve_tone = (opts & (1 << 2)) > 0;
-		options.preserve_effect_mode = (opts & (1 << 3)) > 0;
-		options.preserve_blend_mode = (opts & (1 << 4)) > 0;
-		options.preserve_flip = (opts & (1 << 5)) > 0;
-		options.preserve_duration = (opts & (1 << 6)) > 0;
-		// Bit 7 is unused
-		options.position_scaled = (opts & (1 << 8)) > 0;
+		int opts = parameter(15);
+		params.maniac_options = opts;
+		const uint32_t keep = 0xffu | ((opts & 16) ? 0xf00u : 0) | ((opts & 32) ? 0xf000u : 0);
+		params.maniac_style_mask = ~keep;
+		params.maniac_style = parameter(16);
+		wait = (opts & 1) != 0;
 	} else {
-		options.wait = com.parameters[15] != 0;
+		wait = parameter(15) != 0;
 	}
 
 	size_t param_size = com.parameters.size();
 
 	if (Player::IsRPG2k() || Player::IsRPG2k3E() || Player::IsPatchManiac()) {
-		if (param_size > 17 && (Player::IsRPG2k3ECommands() || Player::IsPatchManiac())) {
-			if (param_size < 22) {
+		if (Player::IsPatchManiac() || (param_size > 17 && Player::IsRPG2k3ECommands())) {
+			if (!Player::IsPatchManiac() && param_size < 22) {
 				// Ensure correct size
 				return CmdSetup<&Game_Interpreter::CommandMovePicture, 22>(com);
 			}
 
 			// Handling of RPG2k3 1.12 chunks
 			// Maniac Patch uses the upper bits for "wait is variable", mask it away
-			pic_id = ValueOrVariable(ManiacBitmask(com.parameters[17], 0xFF), pic_id);
+			pic_id = ValueOrVariable(ManiacBitmask(parameter(17), 0xFF), pic_id);
 			// Currently unused by RPG Maker
-			//int chars_to_replace = com.parameters[18];
-			//int replace_with = com.parameters[19];
+			//int chars_to_replace = parameter(18);
+			//int replace_with = parameter(19);
 
-			if (com.parameters[17] >= 4096 && Player::IsPatchManiac()) {
+			if (Player::IsPatchManiac()) {
 				// Color tint using variables
-				params.red = ValueOrVariableBitfield(com.parameters[17], 3, params.red);
-				params.green = ValueOrVariableBitfield(com.parameters[17], 3,  params.green);
-				params.blue = ValueOrVariableBitfield(com.parameters[17], 3, params.blue);
-				params.saturation = ValueOrVariableBitfield(com.parameters[17], 3,  params.saturation);
+				params.red = ValueOrVariableBitfield(parameter(17), 3, params.red);
+				params.green = ValueOrVariableBitfield(parameter(17), 3,  params.green);
+				params.blue = ValueOrVariableBitfield(parameter(17), 3, params.blue);
+				params.saturation = ValueOrVariableBitfield(parameter(17), 3,  params.saturation);
 			}
 
-			params.magnify_width = ValueOrVariableBitfield(com.parameters[20], 0, params.magnify_width);
+			params.magnify_width = ValueOrVariableBitfield(parameter(20), 0, params.magnify_width);
 
-			if (Player::IsPatchManiac() && com.parameters.size() > 20 && com.parameters[20] >= 16) {
-				// The >= 16 check is needed because this bit is set when independent width/height scaling is used
-				// Since version 240423, Maniacs supports width/height scaling for special effects pictures.
-				params.magnify_height = ValueOrVariableBitfield((com.parameters[20] >> 1), 1, com.parameters[18]);
+			if (Player::IsPatchManiac() && ((static_cast<uint32_t>(parameter(20)) >> 4) & 15)) {
+				const int mode = (static_cast<uint32_t>(parameter(20)) >> 4) & 15;
+				params.magnify_height = mode == 1 ? parameter(18) : mode == 2 ? ReadVariable(parameter(18)) : ReadVariableIndirect(parameter(18));
 			} else {
 				params.magnify_height = params.magnify_width;
 			}
 
-			params.top_trans = ValueOrVariable(com.parameters[21], params.top_trans);
+			params.top_trans = ValueOrVariable(parameter(21), params.top_trans);
 		}
 
 		// RPG2k and RPG2k3 1.10 do not support this option
 		params.bottom_trans = params.top_trans;
 
-		if (Player::IsPatchManiac() && param_size > 16) {
-			int flags = com.parameters[16] >> 8;
+		if (Player::IsPatchManiac()) {
+			int flags = parameter(16) >> 8;
 			int blend_mode = flags & 3;
 			if (blend_mode == 1) {
 				params.blend_mode = (int)Bitmap::BlendMode::Multiply;
@@ -3569,34 +3681,36 @@ bool Game_Interpreter::CommandMovePicture(lcf::rpg::EventCommand const& com) { /
 			}
 
 			if (param_size > 17) {
-				params.duration = ValueOrVariableBitfield(com.parameters[17], 2, params.duration);
+				params.duration = ValueOrVariableBitfield(parameter(17), 2, params.duration);
 			}
 			params.flip_x = (flags & 16) == 16;
 			params.flip_y = (flags & 32) == 32;
-			params.origin = com.parameters[1] >> 8;
+			params.origin = parameter(1) >> 8;
 
 			if (params.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-				params.effect_power = ValueOrVariableBitfield(com.parameters[4], 0, params.effect_power);
-				int divisor = ValueOrVariableBitfield(com.parameters[4], 1, com.parameters[7]);
+				params.effect_power = ValueOrVariableBitfield(parameter(4), 0, params.effect_power);
+				int divisor = ValueOrVariableBitfield(parameter(4), 1, parameter(7));
 				if (divisor == 0) {
 					divisor = 1;
 				}
-				params.effect_power /= divisor;
+				params.fixed_angle = ManiacFixedPictureAngle(params.effect_power, divisor);
 			}
 		}
 	} else {
 		// Corner case when 2k maps are used in 2k3 (pre-1.10) and don't contain this chunk
-		params.bottom_trans = param_size > 16 ? com.parameters[16] : params.top_trans;
+		params.bottom_trans = param_size > 16 ? parameter(16) : params.top_trans;
 	}
 
-	PicPointerPatch::AdjustMoveParams(pic_id, params);
+	if (!Player::IsPatchManiac()) PicPointerPatch::AdjustMoveParams(pic_id, params);
 
-	// Sanitize input
-	params.magnify_width = std::max(0, std::min(params.magnify_width, 2000));
-	params.magnify_height = std::max(0, std::min(params.magnify_height, 2000));
-	params.top_trans = std::max(0, std::min(params.top_trans, 100));
-	params.bottom_trans = std::max(0, std::min(params.bottom_trans, 100));
-	params.duration = std::max(Player::IsPatchManiac() ? -10000 : 0, std::min(params.duration, 10000));
+	if (!Player::IsPatchManiac()) {
+		// Sanitize input
+		params.magnify_width = std::max(0, std::min(params.magnify_width, 2000));
+		params.magnify_height = std::max(0, std::min(params.magnify_height, 2000));
+		params.top_trans = std::max(0, std::min(params.top_trans, 100));
+		params.bottom_trans = std::max(0, std::min(params.bottom_trans, 100));
+		params.duration = std::max(Player::IsPatchManiac() ? -10000 : 0, std::min(params.duration, 10000));
+	}
 
 	if (pic_id <= 0) {
 		Output::Error("MovePicture: Requested invalid picture id ({})", pic_id);
@@ -3612,8 +3726,15 @@ bool Game_Interpreter::CommandMovePicture(lcf::rpg::EventCommand const& com) { /
 		}
 	}
 
-	if (options.wait)
-		SetupWait(params.duration);
+	if (wait) {
+		if (Player::IsPatchManiac()) {
+			// The native command waits for the same normalized/retained frame
+			// count used by the picture, including negative-duration frame units.
+			SetupWaitFrames(Main_Data::game_pictures->GetPicture(pic_id).data.time_left);
+		} else {
+			SetupWait(params.duration);
+		}
+	}
 
 	return true;
 }
@@ -3937,6 +4058,7 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 	int key = _keyinput.CheckInput();
 	Main_Data::game_variables->Set(_keyinput.variable, key);
 	Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -4466,7 +4588,7 @@ bool Game_Interpreter::CommandManiacLoop(lcf::rpg::EventCommand const& com, bool
 			*Main_Data::game_variables->GetManiacWritable(destination) = value;
 			if (pair) *Main_Data::game_variables->GetManiacWritable(destination + 1) = current;
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 	};
 	const auto advance = [&](int change) {
 		current = static_cast<int32_t>(static_cast<uint32_t>(current) + static_cast<uint32_t>(change));
@@ -4793,7 +4915,7 @@ bool Game_Interpreter::CommandManiacSelfvar(lcf::rpg::EventCommand const& com) t
 	// The native dispatcher refreshes map pages after every 3036 helper path,
 	// including unknown operations and branches that did not write a value.
 	auto refresh_guard = lcf::makeScopeGuard([]() {
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 	});
 	const auto param = [&](size_t index) -> int32_t {
 		return index < com.parameters.size() ? com.parameters[index] : 0;
@@ -5743,7 +5865,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			const int64_t bottom = std::min(static_cast<int64_t>(y) + height, static_cast<int64_t>(bitmap->GetHeight()));
 			for (int64_t sy = top; sy < bottom; ++sy) {
 				for (int64_t sx = left; sx < right; ++sx) {
-					const auto color = bitmap->GetColorAt(static_cast<int>(sx), static_cast<int>(sy));
+					const auto color = bitmap->GetManiacColorAt(static_cast<int>(sx), static_cast<int>(sy));
 					uint32_t pixel = (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
 					if (com.parameters[2] == 0) pixel |= 0xff000000;
 					values[static_cast<size_t>((sy - y) * width + sx - x)] = static_cast<int32_t>(pixel);
@@ -5917,6 +6039,9 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	auto refresh_guard = lcf::makeScopeGuard([]() {
+		Game_Map::RefreshAfterManiacChange();
+	});
 
 	const int mode = static_cast<uint32_t>(com.parameters[0]) & 15;
 	const int save_number = mode == 0 ? com.parameters[1] : mode == 1
@@ -6035,41 +6160,34 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 
 	// 250921 treats every nonzero A0 as the same indirect numeric lookup.
 	const int slot = com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]);
-	const int out_var = com.parameters[2] != 0 ? com.parameters[3] : 0;
+	const bool result_enabled = com.parameters[2] != 0;
+	const int out_var = result_enabled ? com.parameters[3] : 0;
 	const auto* frame = GetFramePtr();
+	const auto operation = AsyncOp::MakeSave(slot, out_var,
+		frame ? frame->easyrpg_self_scope : 0,
+		frame ? frame->easyrpg_self_map_id : 0,
+		frame ? frame->easyrpg_self_event_id : 0, result_enabled);
 	if (slot <= 0) {
 		Output::Debug("ManiacSave: Invalid save slot {}", slot);
 		// The original still writes result 0 after skipping the save.
-		if (out_var > 0) {
-			Main_Data::game_variables->Set(out_var, 0);
-			Game_Map::SetNeedRefresh(true);
-		} else if (out_var < 0 && ApplyManiacSaveResult(
-			AsyncOp::MakeSave(slot, out_var,
-				frame ? frame->easyrpg_self_scope : 0,
-				frame ? frame->easyrpg_self_map_id : 0,
-				frame ? frame->easyrpg_self_event_id : 0),
-			false, Main_Data::game_maniac_self_variables.get())) {
-			Game_Map::SetNeedRefresh(true);
+		if (result_enabled) {
+			if (out_var > 0) Main_Data::game_variables->Set(out_var, 0);
+			else ApplyManiacSaveResult(operation, false, Main_Data::game_maniac_self_variables.get());
+			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
 	}
 
-	const auto operation = AsyncOp::MakeSave(slot, out_var,
-		frame ? frame->easyrpg_self_scope : 0,
-		frame ? frame->easyrpg_self_map_id : 0,
-		frame ? frame->easyrpg_self_event_id : 0);
 	Output::BeginManiacFileOutput();
 	if ((maniac_message_hook || Game_Battle::IsManiacHookPumping())) {
 		// Hook dispatch has no ordinary scene update between this command and
 		// its suffix. A subsequent Update would clear an unhandled async save.
 		// RPG_RT saves here, writes the result, then dispatches the next command.
-		const bool success = Scene_Save::Save(FileFinder::Save(), slot);
-		if (out_var > 0) {
-			Main_Data::game_variables->Set(out_var, success ? 1 : 0);
-			Game_Map::SetNeedRefresh(true);
-		} else if (ApplyManiacSaveResult(operation, success,
-			Main_Data::game_maniac_self_variables.get())) {
-			Game_Map::SetNeedRefresh(true);
+		const bool success = Scene_Save::Save(FileFinder::Save(), slot, true, slot <= 15);
+		if (result_enabled) {
+			if (out_var > 0) Main_Data::game_variables->Set(out_var, success ? 1 : 0);
+			else ApplyManiacSaveResult(operation, success, Main_Data::game_maniac_self_variables.get());
+			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
 	}
@@ -6164,7 +6282,7 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 	write_number(com.parameters[0], mouse_pos.x);
 	write_number(com.parameters[1], mouse_pos.y);
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -6216,155 +6334,7 @@ bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand cons
 	return true;
 }
 
-bool Game_Interpreter::CommandManiacShowStringPicture(lcf::rpg::EventCommand const& com) {
-	if (!Player::IsPatchManiac()) {
-		return true;
-	}
 
-	int pic_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[1]);
-
-	if (pic_id <= 0) {
-		Output::Error("ShowStringPic: Requested invalid picture id ({})", pic_id);
-		return true;
-	}
-
-	Game_Windows::WindowParams params = {};
-	Game_Windows::WindowText text;
-
-	params.position_x = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[2]);
-	params.position_y = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[3]);
-	params.magnify_width = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);
-	params.top_trans = ValueOrVariableBitfield(com.parameters[0], 3, com.parameters[5]);
-	params.red = com.parameters[6];
-	params.green = com.parameters[7];
-	params.blue = com.parameters[8];
-	params.saturation = com.parameters[9];
-	params.effect_mode = com.parameters[10];
-	params.effect_power = com.parameters[11];
-
-	params.map_layer = com.parameters[15];
-	params.battle_layer = com.parameters[16];
-	params.flags = com.parameters[17];
-
-	params.magnify_width = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);
-	if (com.parameters.size() > 23 && com.parameters[0] >= 0x10000000 && params.effect_mode == 0) {
-		// The >= 0x10000000 check is needed because this bit is set when independent width/height scaling is used
-		// When using special effects on Maniacs, Height is set to Width
-		params.magnify_height = ValueOrVariableBitfield((com.parameters[0] >> 1), 7, com.parameters[23]);
-	} else {
-		params.magnify_height = params.magnify_width;
-	}
-
-	int flags = com.parameters[12];
-	int blend_mode = flags & 0xF;
-	if (blend_mode == 1) {
-		params.blend_mode = (int)Bitmap::BlendMode::Multiply;
-	} else if (blend_mode == 2) {
-		params.blend_mode = (int)Bitmap::BlendMode::Additive;
-	} else if (blend_mode == 3) {
-		params.blend_mode = (int)Bitmap::BlendMode::Overlay;
-	}
-	params.flip_x = (flags & 16) == 16;
-	params.flip_y = (flags & 32) == 32;
-	params.origin = (com.parameters[0] & (0xF << 24)) >> 24;
-
-	flags = com.parameters[13];
-	if (params.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-		params.effect_power = ValueOrVariableBitfield(flags, 6, params.effect_power);
-		int divisor = ValueOrVariableBitfield(flags, 7, com.parameters[21]);
-		if (divisor == 0) {
-			divisor = 1;
-		}
-		params.effect_power /= divisor;
-	}
-
-	params.fixed_to_map = (flags & 0xFF) > 0;
-	params.message_stretch = (flags & 0xF00) >> 8;
-
-	// Shifting values around to match System::Stretch enum
-	if (params.message_stretch == 0) {
-		params.message_stretch = 2;
-	} else {
-		params.message_stretch -= 1;
-	}
-
-	params.draw_frame = (flags & (1 << 12)) == 0;
-	text.draw_gradient = (flags & (1 << 13)) == 0;
-	text.draw_shadow = (flags & (1 << 14)) == 0;
-	text.bold = (flags & (1 << 15)) > 0;
-	params.border_margin = (flags & (1 << 16)) == 0;
-
-	params.width = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[18]);
-	params.height = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[19]);
-
-	if (params.width < 0 || params.height < 0) {
-		Output::Warning("ShowStringPic: Invalid window dimension {}x{} (id={})", params.width, params.height, pic_id);
-		return true;
-	}
-
-	flags = com.parameters[14];
-	params.use_transparent_color = (flags & 0xFF) > 0;
-	text.letter_spacing = (flags & (0xFF << 8)) >> 8;
-	text.line_spacing = (flags & (0xFF << 16)) >> 16;
-	text.font_size = ValueOrVariableBitfield(com.parameters[0], 5, com.parameters[20]);
-
-
-	// maniacs stores string parsing modes in the delimiters
-	// x01 -> literal string
-	// x02 -> direct reference
-	// x03 -> indirect reference
-	// for the displayed string, the id argument is in com.parameters[22]
-	// here we are capturing all the delimiters, but currently only need to support reading the first one
-	std::vector<int> delims;
-	auto components = Utils::Tokenize(com.string, [p = &delims](char32_t ch) {
-		if (ch == '\x01' || ch == '\x02' || ch == '\x03') {
-			p->push_back(static_cast<int>(ch));
-			return true;
-		}
-		return false;
-	});
-
-	if (components.size() < 2) {
-		Output::Warning("ShowStringPic: Bad text arg (id={})", pic_id);
-		return true;
-	}
-	// RPG_RT permits omitted system/font segments and fills them from the
-	// current system settings when the picture is created.
-	if (components.size() < 4) {
-		components.resize(4);
-	}
-
-	if (com.parameters.size() >= 23) {
-		text.text = ToString(Main_Data::game_strings->GetWithMode(
-			components[1],
-			delims[0] - 1,
-			com.parameters[22],
-			*Main_Data::game_variables
-		));
-	} else {
-		text.text = components[1];
-	}
-
-	params.system_name = components[2];
-	text.font_name = components[3];
-	if (params.system_name.empty()) {
-		params.system_name = ToString(Main_Data::game_system->GetSystemName());
-	}
-	if (text.font_name.empty()) {
-		text.font_name = Main_Data::game_system->GetFontId() == 0 ? "RPG2000" : "RPG2000G";
-	}
-
-	params.texts = {text};
-
-	bool async_wait;
-	Main_Data::game_windows->Create(pic_id, params, async_wait);
-
-	if (async_wait) {
-		_async_op = AsyncOp::MakeYield();
-	}
-
-	return true;
-}
 
 bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const& com) {
 	if (!Player::IsPatchManiac()) {
@@ -6405,15 +6375,13 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		const int64_t bottom = std::min(static_cast<int64_t>(y) + height, static_cast<int64_t>(frame_height));
 		// A wholly clipped rectangle does not allocate or change the destination.
 		if (right <= left || bottom <= top) return true;
-		auto bitmap = sprite.GetBitmap();
-		const int columns = frame_width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
-		Rect source(frame_width * (data.spritesheet_frame % columns),
-			frame_height * (data.spritesheet_frame / columns), frame_width, frame_height);
-		if (parameter(2) & 1) bitmap = sprite.GetPreparedBitmap(source);
+		const bool processed = (parameter(2) & 1) != 0;
+		auto bitmap = pic.GetManiacReadBitmap(processed);
+		if (!bitmap) return true;
 		std::vector<int32_t> values(static_cast<size_t>(count), 0);
 		for (int64_t sy = top; sy < bottom; ++sy) {
 			for (int64_t sx = left; sx < right; ++sx) {
-				const auto color = bitmap->GetColorAt(static_cast<int>(sx) + source.x, static_cast<int>(sy) + source.y);
+				const auto color = pic.ReadManiacPixel(*bitmap, processed, static_cast<int>(sx), static_cast<int>(sy));
 				uint32_t pixel = (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
 				if (!(parameter(2) & 2)) pixel |= uint32_t(color.alpha) << 24;
 				values[static_cast<size_t>((sy - y) * width + sx - x)] = static_cast<int32_t>(pixel);
@@ -6450,20 +6418,20 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 
 	if (active) switch (type) {
 		case 0:
-			x = Utils::RoundTo<int>(data.current_x);
-			y = Utils::RoundTo<int>(data.current_y);
+			x = ManiacPicture::Nearest(data.current_x);
+			y = ManiacPicture::Nearest(data.current_y);
 			break;
 		case 1:
-			x = Utils::RoundTo<int>(data.current_x);
-			y = Utils::RoundTo<int>(data.current_y);
-			width = Utils::RoundTo<int>(width * data.current_magnify / 100.0);
-			height = Utils::RoundTo<int>(height * data.maniac_current_magnify_height / 100.0);
+			x = ManiacPicture::Nearest(data.current_x);
+			y = ManiacPicture::Nearest(data.current_y);
+			width = ManiacPicture::Nearest(width * (data.current_magnify / 100.0));
+			height = ManiacPicture::Nearest(height * (data.maniac_current_magnify_height / 100.0));
 			break;
 		case 2:
-			x = Utils::RoundTo<int>(data.finish_x);
-			y = Utils::RoundTo<int>(data.finish_y);
-			width = Utils::RoundTo<int>(width * data.finish_magnify / 100.0);
-			height = Utils::RoundTo<int>(height * data.maniac_finish_magnify_height / 100.0);
+			x = ManiacPicture::Nearest(data.finish_x);
+			y = ManiacPicture::Nearest(data.finish_y);
+			width = ManiacPicture::Nearest(width * (data.finish_magnify / 100.0));
+			height = ManiacPicture::Nearest(height * (data.maniac_finish_magnify_height / 100.0));
 			break;
 	}
 
@@ -6503,7 +6471,7 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	write_number(parameter(6), width);
 	write_number(parameter(7), height);
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -6689,7 +6657,7 @@ bool Game_Interpreter::CommandManiacControlVarArray(lcf::rpg::EventCommand const
 			std::memmove(a, b, static_cast<size_t>(count) * sizeof(int32_t));
 			break;
 	}
-	if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+	Game_Map::RefreshAfterManiacChange();
 	return true;
 }
 
@@ -6722,7 +6690,7 @@ bool Game_Interpreter::CommandManiacKeyInputProcEx(lcf::rpg::EventCommand const&
 		Output::Warning("Maniac KeyInputProcEx: Joypad not supported");
 	}
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -6794,19 +6762,20 @@ bool Game_Interpreter::CommandManiacEditPicture(lcf::rpg::EventCommand const& co
 				: ReadVariable(static_cast<int>(base < 0 ? -slot : slot));
 			if (options & 1) pixel |= 0xff000000;
 			else if ((options & 2) && !(pixel & 0xff000000)) continue;
-			bitmap->SetColorAt(dx + px, dy + py, Color(pixel >> 16, pixel >> 8, pixel, pixel >> 24));
+			bitmap->SetManiacColorAt(dx + px, dy + py, Color(pixel >> 16, pixel >> 8, pixel, pixel >> 24));
 		}
 	}
 	return true;
 }
 
-AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id) {
+AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id, std::unique_ptr<Game_Interpreter>& invocation) {
 	const auto* event = lcf::ReaderUtil::GetElement(lcf::Data::commonevents, common_event_id);
 	if (!event) Output::Error("Maniac message hook: Invalid common event ID {}", common_event_id);
-	Game_Interpreter hook(false);
+	invocation = std::make_unique<Game_Interpreter>(false);
+	auto& hook = *invocation;
 	hook.maniac_message_hook = true;
 	hook.Push(event->event_commands, 0);
-	if (!hook.IsRunning()) return {};
+	if (!hook.IsRunning()) { invocation.reset(); return {}; }
 	auto& frame = hook._state.stack.back();
 	frame.easyrpg_self_scope = 1;
 	frame.easyrpg_self_map_id = 0;
@@ -6815,7 +6784,19 @@ AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id) {
 	// Each invocation has its own budget. A wait/failed dispatch stops this
 	// invocation; do not spin until completion or consume the caller's budget.
 	hook.Update();
-	return hook.GetAsyncOp();
+	const auto operation = hook.GetAsyncOp();
+	if (operation.GetType() != AsyncOp::eYieldRepeat && operation.GetType() != AsyncOp::eYield) invocation.reset();
+	return operation;
+}
+
+AsyncOp Game_Interpreter::ResumeManiacMessageHook(std::unique_ptr<Game_Interpreter>& invocation) {
+	if (!invocation) return {};
+	// Only host acquisition retains an invocation. Script wait/busy/budget
+	// already ended the local slice and never reach this continuation.
+	invocation->Update(false);
+	const auto operation = invocation->GetAsyncOp();
+	if (operation.GetType() != AsyncOp::eYieldRepeat && operation.GetType() != AsyncOp::eYield) invocation.reset();
+	return operation;
 }
 
 bool Game_Interpreter::CommandManiacControlTextProcessing(lcf::rpg::EventCommand const& com) {
@@ -6910,19 +6891,14 @@ bool Game_Interpreter::CommandManiacWritePicture(lcf::rpg::EventCommand const& c
 			Output::Error("ManiacWritePicture: Invalid picture ID {}", pic_id);
 		auto* picture = Main_Data::game_pictures->GetPicturePtr(pic_id);
 		if (picture && picture->sprite) {
-			auto& sprite = *picture->sprite;
-			bitmap = sprite.GetBitmap();
-			if (bitmap) {
-				const auto& data = picture->data;
-				const int width = sprite.GetFrameWidth(), height = sprite.GetFrameHeight();
-				const int cols = width == bitmap->GetWidth() ? 1 : std::max(1, data.spritesheet_cols);
-				const int rows = height == bitmap->GetHeight() ? 1 : std::max(1, data.spritesheet_rows);
-				Rect rect(width * (data.spritesheet_frame % cols), height * (data.spritesheet_frame / cols % rows), width, height);
-				if (parameter(4) & 1) bitmap = sprite.GetPreparedBitmap(rect);
-				rect.Adjust(bitmap->GetRect());
-				if (!rect.IsEmpty()) bitmap = Bitmap::CreateReadOnlyView(bitmap, rect);
-				else bitmap.reset();
-			}
+			const bool processed = (parameter(4) & 1) != 0;
+			const auto source = picture->GetManiacReadBitmap(processed);
+			if (!source) return true;
+			const int width = picture->sprite->GetFrameWidth(), height = picture->sprite->GetFrameHeight();
+			if (width <= 0 || height <= 0) return true;
+			bitmap = Bitmap::Create(width, height, true);
+			for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x)
+				bitmap->SetManiacColorAt(x, y, picture->ReadManiacPixel(*source, processed, x, y));
 		}
 		force_opaque = (parameter(4) & 2) != 0;
 	}
@@ -7148,11 +7124,13 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 		Output::Warning("ManiacDrawTileOnPicture: Rectangle exceeds representable dimensions");
 		return true;
 	}
-	if (tileset_id <= 0 || tileset_id == Game_Map::GetChipset()) tileset_id = Game_Map::GetChipset();
+	const bool current_chipset = tileset_id <= 0 || tileset_id == Game_Map::GetChipset();
+	if (current_chipset) tileset_id = Game_Map::GetChipset();
 	const auto* tileset = lcf::ReaderUtil::GetElement(lcf::Data::chipsets, tileset_id);
 	BitmapRef chipset;
 	if (tileset) {
-		auto* request = AsyncHandler::RequestFile("ChipSet", tileset->chipset_name);
+		const auto name = current_chipset ? Game_Map::GetChipsetName() : std::string_view(tileset->chipset_name);
+		auto* request = AsyncHandler::RequestFile("ChipSet", name);
 		request->SetGraphicFile(true);
 		request->SetImportantFile(true);
 		request->Start();
@@ -7160,11 +7138,12 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 			_async_op = AsyncOp::MakeYieldRepeat();
 			return true;
 		}
-		chipset = request->IsSuccess() ? Cache::Chipset(tileset->chipset_name) : Bitmap::Create(480, 256);
+		chipset = request->IsSuccess() ? Cache::Chipset(name) : Bitmap::Create(480, 256, true);
 	}
 	auto bitmap = picture->GetMutableBitmap();
+	if (!bitmap) return true;
 	const int options = parameter(7);
-	if (options & 2) bitmap->ClearRect(Rect(x, y, static_cast<int>(pixel_width), static_cast<int>(pixel_height)));
+	if (options & 2) picture->ClearManiacTileRect(Rect(x, y, static_cast<int>(pixel_width), static_cast<int>(pixel_height)));
 	// Native 3028 clears the unoffset rectangle, then draws into the selected sheet frame.
 	int64_t draw_x = x, draw_y = y;
 	if (picture->NumSpriteSheetFrames() > 1) {
@@ -7200,9 +7179,9 @@ bool Game_Interpreter::CommandManiacDrawTileOnPicture(lcf::rpg::EventCommand con
 	}
 	if (chipset && tileset) {
 		if (time == -1) time = Main_Data::game_system->GetFrameCounter();
-		TilemapLayer::DrawManiacTileRectangle(*bitmap, *chipset,
+		TilemapLayer::DrawManiacTileRectangle(*picture, *chipset,
 			Rect(static_cast<int>(draw_x), static_cast<int>(draw_y), width, height), std::move(values),
-			parameter(9) != 0, options, time, tileset->animation_type, tileset->animation_speed);
+			parameter(9) != 0, options, time, tileset->animation_type, tileset->animation_speed, current_chipset);
 	}
 	return true;
 }
@@ -7483,12 +7462,17 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 	return true;
 }
 
-bool Game_Interpreter::CommandManiacChangePictureId(lcf::rpg::EventCommand const&) {
-	if (!Player::IsPatchManiac()) {
-		return true;
-	}
-
-	Output::Warning("Maniac Patch: Command ChangePictureId not supported");
+bool Game_Interpreter::CommandManiacChangePictureId(const lcf::rpg::EventCommand& com) {
+	if (!Player::IsPatchManiac()) return true;
+	const auto parameter = [&](size_t index) -> int32_t { return index < com.parameters.size() ? com.parameters[index] : 0; };
+	const uint32_t modes = parameter(1);
+	const auto numeric = [&](int32_t value, unsigned mode) {
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
+	const int32_t count = numeric(parameter(3), (modes >> 4) & 15);
+	const int32_t target = numeric(parameter(4), (modes >> 8) & 255);
+	const int32_t source = numeric(parameter(2), modes & 15);
+	Main_Data::game_pictures->ChangeManiacIds(parameter(0), source, count, target, (parameter(5) & 1) != 0);
 	return true;
 }
 
@@ -8324,6 +8308,14 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	if (maniac_generated_command_pending) {
+		// YieldRepeat is still the same native dispatch. Busy/false retries
+		// instead regenerate below, including their expression side effects.
+		const bool result = DispatchCommand(*maniac_generated_command_pending);
+		ManiacPatch::SetGeneratedCommonNameCache(maniac_generated_command_pending->easyrpg_maniac_common_name_cache);
+		if (!result || _async_op.GetType() != AsyncOp::eYieldRepeat) maniac_generated_command_pending.reset();
+		return result;
+	}
 
 	enum class ProcessingMode {
 		Constant = 0, // 0 and 1: Parameters read from variables
@@ -8426,8 +8418,9 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 
 	// Native redispatches the generated command in this interpreter invocation.
 	// A busy command returns false against the original 3019 cursor and is regenerated on retry.
-	const bool result = ExecuteCommand(cmd);
+	const bool result = DispatchCommand(cmd);
 	ManiacPatch::SetGeneratedCommonNameCache(cmd.easyrpg_maniac_common_name_cache);
+	if (result && _async_op.GetType() == AsyncOp::eYieldRepeat) maniac_generated_command_pending = std::move(cmd);
 	return result;
 }
 

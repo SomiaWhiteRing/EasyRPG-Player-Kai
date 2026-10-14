@@ -26,6 +26,8 @@
 #include "game_pictures.h"
 #include "window_selectable.h"
 
+namespace ManiacTextPicture { struct Operation; }
+
 /*
 FIXME:
 Bold/Italic: Will only work when the font provides a bold/italic typeface
@@ -70,6 +72,10 @@ public:
 
 	bool Create(int id, const WindowParams& params, bool& async_wait);
 	void Erase(int id);
+	void Exchange(int source, int target);
+	bool HasPendingRequest(int id) const;
+	void CreateManiacTextPicture(int id, const std::shared_ptr<ManiacTextPicture::Operation>& operation);
+	void RestoreManiacTextPicture(Game_Pictures::Picture& picture);
 
 	struct Window_User {
 		explicit Window_User(int id) { data.ID = id; }
@@ -91,13 +97,14 @@ public:
 
 		std::unique_ptr<Window_Selectable> window;
 		std::vector<FileRequestBinding> request_ids;
+		std::shared_ptr<ManiacTextPicture::Operation> maniac_text_picture;
 	};
 
 	Window_User& GetWindow(int id);
 	Window_User* GetWindowPtr(int id);
 
 private:
-	std::vector<Window_User> windows;
+	std::vector<std::shared_ptr<Window_User>> windows;
 };
 
 #endif

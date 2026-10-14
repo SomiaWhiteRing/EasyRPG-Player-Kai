@@ -1,0 +1,55 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_140024bf0(undefined8 param_1,undefined8 param_2,longlong param_3)
+
+{
+  uint uVar1;
+  longlong lVar2;
+  ulonglong uVar3;
+  ulonglong uVar4;
+  longlong lVar5;
+  double dVar6;
+  undefined1 auStack_38 [32];
+  tagPOINT local_18;
+  ulonglong local_10;
+
+  local_10 = DAT_140257140 ^ (ulonglong)auStack_38;
+  if (*(uint *)(param_3 + 0x20) < 4) {
+    GetCursorPos(&local_18);
+    ScreenToClient(DAT_140269638,&local_18);
+  }
+  else {
+    uVar1 = *(uint *)(*(longlong *)(param_3 + 0x18) + 0xc);
+    GetCursorPos(&local_18);
+    ScreenToClient(DAT_140269638,&local_18);
+    if ((uVar1 & 1) != 0) goto LAB_140024c99;
+  }
+  dVar6 = (double)nearbyint((double)local_18.x * _DAT_1402695c0);
+  local_18.x = (LONG)dVar6;
+  dVar6 = (double)nearbyint((double)local_18.y * _DAT_1402695c8);
+  local_18.y = (LONG)dVar6;
+LAB_140024c99:
+  uVar4 = 0;
+  uVar3 = uVar4;
+  if (*(int *)(param_3 + 0x20) != 0) {
+    uVar3 = (ulonglong)**(uint **)(param_3 + 0x18);
+  }
+  FUN_14008c9e0(uVar3,local_18.x);
+  uVar3 = uVar4;
+  if (1 < *(uint *)(param_3 + 0x20)) {
+    uVar3 = (ulonglong)*(uint *)(*(longlong *)(param_3 + 0x18) + 4);
+  }
+  FUN_14008c9e0(uVar3,local_18.y);
+  if (DAT_14026944a == '\0') {
+    lVar5 = (longlong)*(int *)*DAT_1402696a0;
+    lVar2 = *(longlong *)((int *)*DAT_1402696a0 + 2);
+    if (0 < lVar5) {
+      do {
+        FUN_140061b20(*(undefined8 *)(lVar2 + uVar4 * 8));
+        uVar4 = uVar4 + 1;
+      } while ((longlong)uVar4 < lVar5);
+    }
+  }
+  return;
+}

@@ -33,6 +33,7 @@
 class Window_Message;
 class AsyncOp;
 class Game_BaseInterpreterContext;
+class Game_Interpreter;
 
 namespace Game_Message {
 
@@ -69,15 +70,15 @@ namespace Game_Message {
 		int event_id = 0;
 	};
 	bool RunManiacSystemHook(ManiacHookCaller caller, const int32_t* packet, size_t count,
-		const std::string* text, AsyncOp& operation);
+		const std::string* text, std::unique_ptr<Game_Interpreter>& invocation, AsyncOp& operation);
+	AsyncOp ResumeManiacMessageHook();
 	int32_t ReadManiacHookResult(ManiacHookCaller caller, uint32_t offset, int32_t fallback);
 	const char* ParseManiacNumbers(const char* iter, const char* end, ManiacHookCaller caller,
 		std::array<int32_t, 2>& numbers, bool evaluate = true);
 	const char* ManiacIconEnd(const char* iter, const char* end);
 	const char* ParseManiacFace(const char* iter, const char* end, ManiacHookCaller caller,
 		std::array<int32_t, 2>& numbers, std::optional<std::string>& name);
-	const char* ProcessManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller,
-		std::array<int32_t, 8>& packet, AsyncOp& operation);
+	const char* ParseManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller);
 
 	/** Callback type for WordWrap function */
 	using WordWrapCallback = const std::function<void(std::string_view line)>;

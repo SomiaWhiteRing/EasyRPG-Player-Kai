@@ -30,6 +30,7 @@
 #include "opacity.h"
 #include "span.h"
 #include "rect.h"
+#include "game_pictures.h"
 
 class TilemapLayer;
 
@@ -63,8 +64,8 @@ public:
 
 	void Draw(Bitmap& dst, uint8_t z_order, int render_ox, int render_oy);
 	// rectangle width/height are tile counts; x/y are destination pixels.
-	static void DrawManiacTileRectangle(Bitmap& dst, const Bitmap& chipset, Rect rectangle,
-		std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed);
+	static void DrawManiacTileRectangle(Game_Pictures::Picture& picture, const Bitmap& chipset, Rect rectangle,
+		std::vector<int32_t> source, bool upper, int options, int time, int animation_type, int animation_speed, bool skip_alpha_zero);
 
 	BitmapRef const& GetChipset() const;
 	void SetChipset(BitmapRef const& nchipset);

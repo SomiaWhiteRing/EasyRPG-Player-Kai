@@ -1,0 +1,78 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8 ** FUN_140006a00(undefined8 **param_1,longlong param_2,ulonglong *param_3)
+
+{
+  undefined8 *puVar1;
+  longlong *plVar2;
+  undefined8 **ppuVar3;
+  undefined8 ***pppuVar4;
+  longlong lVar5;
+  undefined1 auStack_e8 [32];
+  undefined8 **local_c8;
+  longlong lStack_c0;
+  longlong local_b8;
+  ulonglong uStack_b0;
+  undefined8 **local_a8 [2];
+  undefined8 local_98;
+  ulonglong local_90;
+  undefined8 local_88;
+  undefined8 uStack_80;
+  undefined8 local_78;
+  undefined8 uStack_70;
+  undefined1 local_68 [32];
+  undefined8 **local_48;
+  undefined1 local_40;
+  ulonglong local_38;
+
+  local_38 = DAT_140257140 ^ (ulonglong)auStack_e8;
+  puVar1 = (undefined8 *)*param_3;
+  plVar2 = (longlong *)param_3[1];
+  local_88 = 0;
+  uStack_80 = 0;
+  local_78 = 0;
+  uStack_70 = 0;
+  lVar5 = -1;
+  do {
+    lVar5 = lVar5 + 1;
+  } while (*(char *)(param_2 + lVar5) != '\0');
+  local_48 = param_1;
+  FUN_140008440(&local_88);
+  ppuVar3 = (undefined8 **)FUN_140007d00(local_68,&local_88);
+  local_48 = ppuVar3;
+  if (ppuVar3[2] != (undefined8 *)0x0) {
+    FUN_140007ee0(ppuVar3,&DAT_1402141e8,2);
+  }
+  (**(code **)(*plVar2 + 0x10))(plVar2,local_a8,(ulonglong)puVar1 & 0xffffffff);
+  pppuVar4 = local_a8;
+  if (0xf < local_90) {
+    pppuVar4 = (undefined8 ***)local_a8[0];
+  }
+  FUN_140007ee0(ppuVar3,pppuVar4,local_98);
+  FUN_140007e80(local_a8);
+  local_c8 = (undefined8 **)*ppuVar3;
+  lStack_c0 = (longlong)ppuVar3[1];
+  local_b8 = (longlong)ppuVar3[2];
+  uStack_b0 = (ulonglong)ppuVar3[3];
+  ppuVar3[2] = (undefined8 *)0x0;
+  ppuVar3[3] = (undefined8 *)0xf;
+  *(undefined1 *)ppuVar3 = 0;
+  FUN_140007e80(ppuVar3);
+  local_48 = &local_c8;
+  if ((undefined8 *)0xf < uStack_b0) {
+    local_48 = local_c8;
+  }
+  *param_1 = std::exception::vftable;
+  param_1[1] = (undefined8 *)0x0;
+  param_1[2] = (undefined8 *)0x0;
+  local_40 = 1;
+  __std_exception_copy(&local_48);
+  *param_1 = std::runtime_error::vftable;
+  FUN_140007e80(&local_c8);
+  *param_1 = std::_System_error::vftable;
+  param_1[3] = puVar1;
+  param_1[4] = plVar2;
+  FUN_140007e80(&local_88);
+  *param_1 = std::ios_base::failure::vftable;
+  return param_1;
+}

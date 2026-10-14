@@ -1,0 +1,140 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+void FUN_140018d10(longlong param_1,ulonglong param_2,int param_3,undefined8 param_4,char param_5)
+
+{
+  uint uVar1;
+  uint uVar2;
+  longlong lVar3;
+  double dVar4;
+  double dVar5;
+  uint uVar6;
+  uint uVar7;
+  int iVar8;
+  int iVar9;
+  int iVar10;
+  uint uVar11;
+  int iVar12;
+  int iVar13;
+  uint uVar14;
+  uint uVar15;
+  double dVar16;
+  double dVar17;
+  undefined1 auStack_108 [32];
+  int local_e8;
+  int local_e4;
+  byte local_e0;
+  int local_dc;
+  int local_d8;
+  int local_d0;
+  double local_c8;
+  double local_c0;
+  double local_b8;
+  ulonglong local_b0;
+
+  local_b0 = DAT_140257140 ^ (ulonglong)auStack_108;
+  uVar11 = 0;
+  dVar4 = *(double *)(param_1 + 0x20) * 0.01;
+  local_d0 = (int)param_2;
+  dVar5 = *(double *)(param_1 + 0x28) * 0.01;
+  if (*(longlong *)(*(longlong *)(param_1 + 0x90) + 0x60) == 0) {
+    param_2 = (longlong)*(int *)(param_1 + 0xe8) % (longlong)*(int *)(param_1 + 0xd8) & 0xffffffff;
+  }
+  dVar16 = (double)FUN_1401daf40(param_1,param_2);
+  dVar17 = (double)FUN_1401dbb20();
+  uVar1 = *(uint *)(param_1 + 0xe0);
+  uVar2 = *(uint *)(param_1 + 0xe4);
+  uVar14 = *(uint *)(DAT_1402694a0 + 0x2c);
+  local_e0 = (byte)uVar1 & 1;
+  uVar15 = uVar14 - (int)uVar14 / 2;
+  uVar6 = uVar15;
+  uVar7 = uVar11;
+  if (param_5 != '\0') {
+    uVar6 = uVar14;
+    uVar7 = uVar15;
+  }
+  if (((uVar1 & 1) != 0) || (iVar10 = local_d8, (uVar2 & 1) != 0)) {
+    local_d8 = (int)ROUND((double)((int)uVar1 / 2) * dVar4);
+    iVar10 = (int)ROUND((double)((int)uVar2 / 2) * dVar4);
+  }
+  iVar12 = (int)ROUND(ABS((double)(int)ROUND((double)(int)uVar1 * dVar4) * dVar16) +
+                      ABS((double)(int)ROUND((double)(int)uVar2 * dVar5) * dVar17));
+  if (((uVar2 & 1) == 0) || (dVar5 <= 0.0)) {
+    iVar9 = iVar12 / 2;
+  }
+  else {
+    iVar8 = (int)ROUND(ABS((double)local_d8 * dVar16) + ABS((double)iVar10 * dVar17));
+    iVar9 = -iVar8;
+    if (iVar9 < 0) {
+      iVar9 = iVar8;
+    }
+  }
+  iVar8 = -iVar9;
+  uVar15 = iVar8 + param_3;
+  uVar14 = param_3 + 1 + (iVar12 - iVar9);
+  if ((int)uVar15 < (int)uVar7) {
+    iVar8 = iVar8 + (uVar7 - uVar15);
+    uVar15 = uVar7;
+  }
+  if ((int)uVar6 < (int)uVar14) {
+    uVar14 = uVar6;
+  }
+  local_dc = uVar14 - uVar15;
+  local_b8 = ABS((double)(int)ROUND((double)(int)uVar1 * dVar4) * dVar17) +
+             ABS((double)(int)ROUND((double)(int)uVar2 * dVar5) * dVar16);
+  iVar12 = -(int)ROUND(local_b8);
+  if (iVar12 < 0) {
+    iVar12 = (int)ROUND(local_b8);
+  }
+  if (((uVar1 & 1) == 0) || (dVar4 <= 0.0)) {
+    iVar10 = iVar12 / 2;
+  }
+  else {
+    local_b8 = ABS((double)iVar10 * dVar16) + ABS((double)local_d8 * dVar17);
+    iVar10 = -(int)ROUND(local_b8);
+    if (iVar10 < 0) {
+      iVar10 = (int)ROUND(local_b8);
+    }
+  }
+  iVar13 = local_d0 - iVar10;
+  iVar9 = 0;
+  if (-1 < iVar13) {
+    iVar9 = iVar13;
+  }
+  iVar12 = local_d0 + 1 + (iVar12 - iVar10);
+  local_e8 = *(int *)(DAT_1402694a0 + 0x28);
+  if (iVar12 <= *(int *)(DAT_1402694a0 + 0x28)) {
+    local_e8 = iVar12;
+  }
+  local_e8 = local_e8 - iVar9;
+  if ((0 < local_dc) && (0 < local_e8)) {
+    lVar3 = *(longlong *)(param_1 + 0x90);
+    local_e4 = *(int *)(lVar3 + 0x18);
+    iVar12 = -iVar10 - iVar13;
+    if (-1 < iVar13) {
+      iVar12 = -iVar10;
+    }
+    if (local_e4 < 0xff) {
+      uVar11 = 2;
+    }
+    local_c8 = ((double)iVar8 * (dVar17 / dVar5) + (dVar16 / dVar5) * (double)iVar12 +
+               (double)((int)uVar2 / 2)) - 0.1;
+    local_c0 = (((dVar17 / dVar4) * (double)iVar12 - (double)iVar8 * (dVar16 / dVar4)) +
+               (double)((int)uVar1 / 2)) - 0.1;
+                    /* WARNING: Could not recover jumptable at 0x000140019181. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+    (*(code *)(IMAGE_DOS_HEADER_140000000.e_magic +
+              *(uint *)(&DAT_14001a738 +
+                       (longlong)
+                       (int)((*(byte *)(lVar3 + 0x5d) & 3) << 2 |
+                             (uint)(*(char *)(lVar3 + 0x5c) != '\0') | uVar11) * 4)))
+              (IMAGE_DOS_HEADER_140000000.e_magic +
+               *(uint *)(&DAT_14001a738 +
+                        (longlong)
+                        (int)((*(byte *)(lVar3 + 0x5d) & 3) << 2 |
+                              (uint)(*(char *)(lVar3 + 0x5c) != '\0') | uVar11) * 4),
+               *(int *)(DAT_1402694a0 + 0x24) + local_e8 * -4);
+    return;
+  }
+  return;
+}

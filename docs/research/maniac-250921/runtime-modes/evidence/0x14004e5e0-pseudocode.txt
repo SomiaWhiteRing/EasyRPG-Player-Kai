@@ -1,0 +1,28 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+undefined8 FUN_14004e5e0(longlong param_1)
+
+{
+  undefined8 uVar1;
+  longlong lVar2;
+  undefined1 auStack_58 [32];
+  undefined8 local_38;
+  undefined8 uStack_30;
+  undefined8 local_28;
+  undefined8 uStack_20;
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStack_58;
+  local_38 = 0;
+  uStack_30 = 0;
+  lVar2 = -1;
+  local_28 = 0;
+  uStack_20 = 0;
+  do {
+    lVar2 = lVar2 + 1;
+  } while (*(short *)(param_1 + lVar2 * 2) != 0);
+  FUN_14000ff20(&local_38,param_1);
+  uVar1 = FUN_14004e4c0(&local_38);
+  FUN_14000feb0(&local_38);
+  return uVar1;
+}

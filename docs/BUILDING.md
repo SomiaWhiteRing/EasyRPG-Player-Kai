@@ -52,6 +52,23 @@ Step-by-step instructions:
 CMake is the only supported way to build Player for Windows. All dependencies
 must be installed with [vcpkg].
 
+For local Windows builds, use the repository's PowerShell entry point:
+
+```powershell
+& ./builds/cmake/build-windows.ps1 -BuildDirectory C:/build/player `
+    -ConfigureArguments @('-DCMAKE_TOOLCHAIN_FILE=C:/buildscripts/windows/vcpkg/scripts/buildsystems/vcpkg.cmake', '-DVCPKG_TARGET_TRIPLET=x64-windows-static', '-DPLAYER_BUILD_LIBLCF=ON')
+```
+
+Use an ASCII path for the build directory, including when using an existing
+junction. The script also creates an ASCII source junction for a fresh build
+when needed. Existing builds reuse their cached source and CMake executable.
+Both configuration and compilation run from the ASCII build directory:
+Windows CMake lookup can crash from a non-ASCII working directory even when
+the `-S` and `-B` arguments already use ASCII aliases. No global environment
+changes are required. To rebuild the existing non-UI tests, pass
+`-Targets @('EasyRPG_Player_exe', 'test_runner_player')` with tests enabled in
+the build cache.
+
 
 ## libretro core:
 

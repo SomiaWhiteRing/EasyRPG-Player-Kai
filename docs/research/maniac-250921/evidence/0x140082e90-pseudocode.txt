@@ -1,0 +1,61 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+
+void FUN_140082e90(longlong param_1,undefined8 param_2)
+
+{
+  undefined1 auStack_128 [28];
+  int iStack_10c;
+  longlong local_108;
+  undefined1 local_100 [128];
+  undefined **local_80 [13];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStack_128;
+  FUN_1401fa300(&local_108,0,0xe8);
+  FUN_140048a60(&local_108);
+  if (*(int *)(param_1 + 0x10) != 0) {
+    FUN_1400ca1d0(param_2,1);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x10));
+  }
+  if (*(int *)(param_1 + 0x14) != 0) {
+    FUN_1400ca1d0(param_2,2);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x14));
+  }
+  if (*(int *)(param_1 + 0x18) != 0) {
+    FUN_1400ca1d0(param_2,3);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x18));
+  }
+  if (*(char *)(param_1 + 0x2a) != '\0') {
+    FUN_1400ca1d0(param_2,4);
+    FUN_1400ca070(param_2,*(undefined1 *)(param_1 + 0x2a));
+  }
+  if (*(char *)(param_1 + 0x29) != '\0') {
+    FUN_1400ca1d0(param_2,5);
+    FUN_1400ca070(param_2,*(undefined1 *)(param_1 + 0x29));
+  }
+  if (*(int *)(param_1 + 0x1c) != 0) {
+    FUN_1400ca1d0(param_2,6);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x1c));
+  }
+  if (*(int *)(param_1 + 0x20) != 0) {
+    FUN_1400ca1d0(param_2,7);
+    FUN_1400ca070(param_2,*(undefined4 *)(param_1 + 0x20));
+  }
+  if (*(char *)(param_1 + 0x2b) != '\0') {
+    FUN_1400ca1d0(param_2,8);
+    FUN_1400ca070(param_2,*(undefined1 *)(param_1 + 0x2b));
+  }
+  FUN_1400ca1d0(param_2,0);
+  *(undefined ***)(local_100 + (longlong)*(int *)(local_108 + 4) + -8) =
+       std::basic_ostringstream<char,std::char_traits<char>,std::allocator<char>_>::vftable;
+  *(int *)((longlong)&iStack_10c + (longlong)*(int *)(local_108 + 4)) =
+       *(int *)(local_108 + 4) + -0x88;
+  FUN_1400489f0(local_100);
+  *(undefined ***)(local_100 + (longlong)*(int *)(local_108 + 4) + -8) =
+       std::basic_ostream<char,std::char_traits<char>_>::vftable;
+  *(int *)((longlong)&iStack_10c + (longlong)*(int *)(local_108 + 4)) =
+       *(int *)(local_108 + 4) + -0x10;
+  local_80[0] = std::ios_base::vftable;
+  std::ios_base::_Ios_base_dtor((ios_base *)local_80);
+  return;
+}

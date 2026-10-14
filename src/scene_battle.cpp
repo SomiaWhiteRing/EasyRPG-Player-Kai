@@ -343,13 +343,11 @@ bool Scene_Battle::UpdateEvents() {
 		auto aop = interp.GetAsyncOp();
 		if (aop.GetType() == AsyncOp::eSave) {
 			// Maniac event saves are also valid while a troop page is running.
-			const bool success = Scene_Save::Save(FileFinder::Save(), aop.GetSaveSlot());
-			if (aop.GetSaveResultVar() > 0) {
-				Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
-				Game_Map::SetNeedRefresh(true);
-			} else if (ApplyManiacSaveResult(aop, success,
-				Main_Data::game_maniac_self_variables.get())) {
-				Game_Map::SetNeedRefresh(true);
+			const bool success = Scene_Save::Save(FileFinder::Save(), aop.GetSaveSlot(), true, aop.GetSaveSlot() <= 15);
+			if (aop.IsSaveResultEnabled()) {
+				if (aop.GetSaveResultVar() > 0) Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
+				else ApplyManiacSaveResult(aop, success, Main_Data::game_maniac_self_variables.get());
+				Game_Map::RefreshAfterManiacChange();
 			}
 		}
 

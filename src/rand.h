@@ -43,6 +43,9 @@ using RNG = std::mt19937;
  */
 int32_t GetRandomNumber(int32_t from, int32_t to);
 
+/** EasyRPG presentation randomness; does not advance the Maniac gameplay seed. */
+int32_t GetVisualRandomNumber(int32_t from, int32_t to);
+
 /**
  * Gets the seeded Random Number Generator (RNG).
  *

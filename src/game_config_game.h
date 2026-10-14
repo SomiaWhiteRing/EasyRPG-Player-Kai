@@ -57,6 +57,14 @@ struct Game_ConfigGame {
 
 	int engine = 0;
 
+	// Project runtime settings from RPG_RT.ini, independent of patch detection.
+	bool maniac_pf = false;
+	int maniac_steps_per_frame = 0;
+
+	int GetManiacExecutionLimit() const {
+		return maniac_steps_per_frame > 0 ? maniac_steps_per_frame : maniac_pf ? 200000 : 10000;
+	}
+
 	/**
 	 * Create a game config from the config file in the game directory, then loads command line arguments.
 	 */

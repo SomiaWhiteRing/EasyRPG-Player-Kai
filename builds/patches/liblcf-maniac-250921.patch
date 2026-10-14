@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 5ba56ac..83459db 100644
+index 5ba56ac..c4c0007 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -107,6 +107,7 @@ set(LCF_SOURCES
@@ -99,7 +99,7 @@ index 2e82eaf..de0d27d 100644
  SavePicture,start_x,f,Double,0x02,0.0,0,0,X position where picture was originally shown
  SavePicture,start_y,f,Double,0x03,0.0,0,0,Y position where picture was originally shown
 diff --git a/generator/csv/fields_easyrpg.csv b/generator/csv/fields_easyrpg.csv
-index e59140f..b71bed2 100644
+index e59140f..65ab28e 100644
 --- a/generator/csv/fields_easyrpg.csv
 +++ b/generator/csv/fields_easyrpg.csv
 @@ -1,14 +1,41 @@
@@ -144,15 +144,17 @@ index e59140f..b71bed2 100644
  SaveEventExecState,easyrpg_active,f,Boolean,0xC9,False,0,0,When true state of an event is preserved in easyrpg_string and easyrpg_parameters
  SaveEventExecState,easyrpg_string,f,DBString,0xCA,,0,0,Preserved string data of an event
  SaveEventExecState,easyrpg_parameters,f,Vector<Int32>,0xCB,,0,0,Preserved int parameter of an event
-@@ -18,6 +45,7 @@ SavePicture,easyrpg_blend_mode,f,Int32,0xC9,0,0,1,Blend mode to use for blit. Se
+@@ -18,6 +45,9 @@ SavePicture,easyrpg_blend_mode,f,Int32,0xC9,0,0,1,Blend mode to use for blit. Se
  SavePicture,easyrpg_type,f,Enum<EasyRpgPictureType>,0xCA,0,0,1,Type of this picture
  SavePicture,maniac_current_magnify_height,f,Double,0x0A,100.0,0,0,Current zoom level of picture (y direction).
  SavePicture,maniac_finish_magnify_height,f,Int32,0x24,100,0,0,Final zoom level to animate picture to (y direction).
 +SavePicture,maniac_image_data,f,Vector<UInt8>,0x1C,,0,0,Zlib compressed BGRA pixels of an original Maniac mutable picture
++SavePicture,maniac_spritesheet_start,f,Int32,0x1D,0,0,0,Maniac automatic sheet start frame
++SavePicture,maniac_spritesheet_end,f,Int32,0x1E,0,0,0,Maniac automatic sheet end frame
  SaveEasyRpgWindow,texts,f,Array<SaveEasyRpgText>,0x01,,0,0,Texts to render
  SaveEasyRpgWindow,width,f,Int32,0x02,0,0,0,Window width (px)
  SaveEasyRpgWindow,height,f,Int32,0x03,0,0,0,Window height (px)
-@@ -39,6 +67,7 @@ SaveMapEventBase,easyrpg_runtime_flags,f,EasyRpgEventRuntime_Flags,0xCC,0,0,0,Ru
+@@ -39,6 +69,7 @@ SaveMapEventBase,easyrpg_runtime_flags,f,EasyRpgEventRuntime_Flags,0xCC,0,0,0,Ru
  SavePartyLocation,maniac_horizontal_pan_speed,f,Double,0x8D,0,0,0,horizontal speed in the scrolls of the screen
  SavePartyLocation,maniac_vertical_pan_speed,f,Double,0x8E,0,0,0,vertical speed in the scrolls of the screen
  SaveSystem,maniac_strings,f,Vector<DBString>,0x24,,0,0,rpg::Strings
@@ -160,7 +162,7 @@ index e59140f..b71bed2 100644
  SaveSystem,maniac_message_window_width,f,Int32,0x2D,0,0,0,Width of the message window in pixels
  SaveSystem,maniac_message_window_height,f,Int32,0x2E,0,0,0,Height of the message window in pixels
  SaveSystem,maniac_message_font_name,f,DBString,0x2F,,0,0,Font to use in the message window
-@@ -49,9 +78,11 @@ SaveSystem,maniac_message_hook_callback_system_variable,f,Int32,0x43,0,0,0,Varia
+@@ -49,9 +80,11 @@ SaveSystem,maniac_message_hook_callback_system_variable,f,Int32,0x43,0,0,0,Varia
  SaveSystem,maniac_message_hook_callback_system_string_variable,f,Int32,0x44,0,0,0,String Variable populated when hook is invoked
  SaveSystem,maniac_message_hook_callback_user_variable,f,Int32,0x45,0,0,0,Variable (starting range) populated when hook is invoked
  SaveSystem,maniac_message_hook_callback_user_string_variable,f,Int32,0x46,0,0,0,String Variable populated when hook is invoked (TODO: Difference between System and User callback)
@@ -175,7 +177,7 @@ index e59140f..b71bed2 100644
  SaveSystem,maniac_joypad_bindings,,Vector<UInt8>,0x8B,,0,0,"JoyLeft, JoyRight, JoyUp, JoyDown, Joy1, ... Joy12"
  SaveSystem,maniac_message_spacing_char,f,Int32,0x8E,0,0,0,Additional spacing between characters in the message window (Editor value - 1)
  SaveSystem,maniac_message_spacing_line,f,Int32,0x8F,0,0,0,Additional spacing between lines in the message window (Editor value - 1)
-@@ -133,6 +164,7 @@ Terms,easyrpg_battle2k3_escape,f,DBString,0xD8,DBString(kDefaultTerm),0,1,RPG Ma
+@@ -133,6 +166,7 @@ Terms,easyrpg_battle2k3_escape,f,DBString,0xD8,DBString(kDefaultTerm),0,1,RPG Ma
  Terms,easyrpg_battle2k3_special_combat_back,f,DBString,0xD9,,0,1,Message for back and pincer attack
  Terms,easyrpg_battle2k3_skill,f,DBString,0xDA,DBString(kDefaultTerm),0,1,RPG Maker 2003 battle general skill start notification
  Terms,easyrpg_battle2k3_item,f,DBString,0xDB,DBString(kDefaultTerm),0,1,RPG Maker 2003 battle general item start notification
@@ -193,7 +195,7 @@ index 2f4738c..586b350 100644
  lsd,SaveEasyRpgText,,0
 +lsd,SaveEasyRpgSelfVariableBank,,0
 diff --git a/generator/generate.py b/generator/generate.py
-index 4afad37..0f7d4b0 100755
+index 4afad37..0f7d4b0 100644
 --- a/generator/generate.py
 +++ b/generator/generate.py
 @@ -451,7 +451,7 @@ def generate():
@@ -206,10 +208,10 @@ index 4afad37..0f7d4b0 100755
              with openToRender(filepath) as f:
                  f.write(rpg_header_tmpl.render(
 diff --git a/generator/templates/reader.tmpl b/generator/templates/reader.tmpl
-index af590de..482062c 100644
+index af590de..1066eaa 100644
 --- a/generator/templates/reader.tmpl
 +++ b/generator/templates/reader.tmpl
-@@ -19,7 +19,17 @@ char const* const Struct<rpg::{{ LCF_CURRENT_STRUCT }}>::name = "{{ LCF_CURRENT_
+@@ -19,7 +19,23 @@ char const* const Struct<rpg::{{ LCF_CURRENT_STRUCT }}>::name = "{{ LCF_CURRENT_
  
  {%- for field in fields[struct_base]|field_is_written|list + fields[struct_name]|field_is_written|list %}
  {%- if field|lcf_type in ["Typed", "DatabaseVersion"] %}
@@ -222,13 +224,19 @@ index af590de..482062c 100644
 +static ManiacGlobalVariablesField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
 +{%- elif struct_name == "SavePicture" and field.name == "fixed_to_map" %}
 +static ManiacPictureFlagsField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
++{%- elif struct_name == "SavePicture" and field.name == "use_transparent_color" %}
++static ManiacPictureTransparencyField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
 +{%- elif struct_name == "SavePicture" and field.name == "current_bot_trans" %}
 +static ManiacPictureDimensionsField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
++{%- elif struct_name == "SavePicture" and field.name == "spritesheet_play_once" %}
++static ManiacPictureFinishField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
++{%- elif struct_name == "SavePicture" and field.name == "flags" %}
++static ManiacPictureLifecycleField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
 +{%- elif field.type.endswith("_Flags") %}
  static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, rpg::{{ LCF_CURRENT_STRUCT }}::{{ field|flag_type(struct_name) }}> static_{{ field.name }}(
  {%- else %}
  static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cpp_type }}> static_{{ field.name }}(
-@@ -27,7 +37,7 @@ static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cp
+@@ -27,7 +43,7 @@ static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cp
  	&rpg::{{ LCF_CURRENT_STRUCT }}::{{ field.name }},
  	{{ LCF_CHUNK_SUFFIX }}::Chunk{{ LCF_CURRENT_STRUCT }}::{{ field.name }},
  	"{{ field.name }}",
@@ -238,10 +246,10 @@ index af590de..482062c 100644
  );
  {%- elif field|lcf_type in ["Empty"] %}
 diff --git a/generator/templates/rpg_header.tmpl b/generator/templates/rpg_header.tmpl
-index 3f0a353..ccf9676 100644
+index 3f0a353..9df44bc 100644
 --- a/generator/templates/rpg_header.tmpl
 +++ b/generator/templates/rpg_header.tmpl
-@@ -98,6 +98,24 @@ namespace rpg {
+@@ -98,6 +98,28 @@ namespace rpg {
  		{%- endif %}
  	{%- endif %}
  	{%- endfor %}
@@ -261,6 +269,10 @@ index 3f0a353..ccf9676 100644
 +	{%- if struct_name == "SavePicture" %}
 +		// Maniac reuses the follow-map word and bottom-transparency chunk for image storage.
 +		uint32_t maniac_image_flags = 0;
++		uint32_t maniac_transparency_flags = 0;
++		uint32_t maniac_lifecycle_flags = 0x61;
++		int32_t maniac_spritesheet_finish = 0;
++		bool maniac_picture_active = false;
 +		std::vector<int32_t> maniac_image_dimensions;
 +	{%- endif %}
  	};
@@ -288,51 +300,53 @@ delta 14
 WcmZ3umTAWtrVXb$HXC>5@d5xfbOxgU
 
 diff --git a/src/generated/lcf/lsd/chunks.h b/src/generated/lcf/lsd/chunks.h
-index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..1fe4c0ae4127b621d399e24ccad68a7a3180d806 100644
+index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..0e069b5661fea84ac4044d7f202fa67668e57250 100644
 GIT binary patch
-delta 4735
-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
+delta 4947
+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
+PMoG`5XG^1(KVSL}n=egV
 
-delta 321
-zcmZoUz_ev9(}sB*leM@uZ`R>4VV$fgRJ{3zkTi>dTVhFKj&Ej#f?H8yZfbFMW`Tl+
-zfvsPDUaF3Qp{=35sg8mXkTTX$Fa}aanv)-jtBb)k1!N|dloq8b_+;j0mP`(k(5??l
-zEXvF;EmnXl$uB6$%+D)U(1?goh;USha8ihH*3?sQv{LXbP7emz=kMmG9~7LCnN|X{
-zTHi!d!O2P?B(=CCASba>!8<jzK;Pd_AE*c<YXp?nQE;|W2uLg~PE|<DPX^kRlV4n-
-z5T2M>q8}t%ng>#5sHvc(&&A2fnVXoGnV1|8b;RbU5^U_7LzI^DOjhid-Q1`zW;Ur-
-kdUHa$ug>H}O45@XX0uO@n(_oF31)Bho%Mie^7Hw!01Rnq1poj5
+delta 314
+zcmca`kZH?YrVaBrCTnqR-mJr8!aDhiVDaX~LeeY-Ziyv{Ilh?{3T{P-xv9n3nFR_O
+z2DX0rd8s-IhPH<KraB5nK+0H0!5ByxX-?*sP#1%13dl?@DJ@D>@X5^0EScOOp<N%A
+zSd^JxTC4z9l3!4gnV(mzpb-(F5aFm0;iM4Ztf{BqXr<s=oE{9a&)>~WKPWgOGpz(@
+zwZ4g_f|Hd(NNRCOKu%(%f_G|afxf?=K2Q-z)(9xCqu^|%5Rh0}oT`wPpA57sC%?Ev
+zAv`g&L_bKjG!LZAP*XumpNo@|GdD3WGch?H>WIz4l5Fgoo0OLGOcu<L-t284VK(_p
+ft@LJ{3}2nehI5oAt4)0ZqBl#<e!w(&^8#4_HgaUZ
 
 diff --git a/src/generated/lcf/rpg/eventcommand.h b/src/generated/lcf/rpg/eventcommand.h
 index 0e5ed36e4b8fc1918b826a6add1dfdf49fe77802..4aa19499a9d74a1dba31f30c8c810bbf72c59a87 100644
@@ -442,17 +456,19 @@ delta 17
 YcmaDX{Y!j95bI`PHW8N1{@hcT06abgo&W#<
 
 diff --git a/src/generated/lcf/rpg/savepicture.h b/src/generated/lcf/rpg/savepicture.h
-index bb8e09e8b28de642e3d03418fdcaaef59d64d256..81e35ca4d01cb1212a7d8e7aa7706c4aa8682725 100644
+index bb8e09e8b28de642e3d03418fdcaaef59d64d256..85325fcfe43ea87e1fcf4ee0ce7f25b25decc96a 100644
 GIT binary patch
-delta 299
-zcmZXPI}ZUt6oo@0OCl1b=0>4gghs4Ys1)?N&9yt2*qM=;yF?-WgI=W<$@+CF<576D
-zU(P+>xkvBnU)*f2w`L(JomR8M;@&Y7b-ORpOSq&?Kz$G>IfeljIA=kGgkIip8Vwjf
-zIcSy`W`Gt9W-5-=#ud1NjnWaIj9{vWlyFI-G%M6hhFb_1iCo&WhG!`lyTF!D>bCfy
-zZMOpY*3M#_8}Om|aDT3Rr+-&+!KC3z8k^sFhw>mjmqvxAJ+9RtuK&FRz7P5zr?<)}
-Fa|aHTXd(ar
+delta 663
+zcmaiyJxc>Y5QZ_0L_q{go53Prk;D%W$%lxQp#FwqvNxAo+}k~N=Mq!M{RjJ0_9Eop
+zS-Hu1<j5J)&OGnTy!-CFKfnKOH}(e;5^U_^tnql1Hyww)UQrojQuA%VcaWf#C<2+_
+zn1T=)`v=XYZ(d&oTsB>5C6kMZIB<-XVF(vHIMQKBb-VC_I`?b9Qs&43#{`j4%1qk{
+zrZ6=&1oVQDVKzydEozsdB`szk;!MAK+QRBaaNdx=wd2oRnyB7cn1~dPUAcRW<b~1d
+z>|hI8kV-}*W<t>#d%L;ZVLOsqy13jvGDek;_>@Y)nWX>)%L#cTLgi>VuNussrOjYu
+zLfT2Ao#)^CA14osujA*#+>2W+P@P(eFdTxdmpAx-g00AE-J1G*{V!H|ZxQ?6;^*{p
+F?-!tt=7<0Q
 
-delta 22
-ecmdmDJJ))HF4JavCR@JEfr1mbHw(%xW&{9QA_pA+
+delta 26
+icmbR1FxPs6F4JavCR@JEPC^s7Cw~yt-@H<;gb@IK9SJM|
 
 diff --git a/src/generated/lcf/rpg/savescreen.h b/src/generated/lcf/rpg/savescreen.h
 index b10b609717cc1d72aeb66a5a9d6f45718c2852cd..f5fc2a6850cbb2613057c8e061562753c06328a6 100644
@@ -468,37 +484,37 @@ delta 17
 ZcmbQDxLA5a7~AGn_A=JZd-<+20suR`29N*%
 
 diff --git a/src/generated/lcf/rpg/savesystem.h b/src/generated/lcf/rpg/savesystem.h
-index 8afd2101fac8e4cc0191e78626792d3a99a162dd..0877516305825a08a2e53b865699a0c02079ae2c 100644
+index 8afd2101fac8e4cc0191e78626792d3a99a162dd..77c1dcc1815a92726440d5c0d806b12b85415fb9 100644
 GIT binary patch
-delta 1788
-zcmaJ>&2JM&6jwGxZm5YVNeEJcm?n7ReAx+E46@0g9}*}oN!22t0(CR?&e|jP!_15m
-z<$$anD(Dftp8D}0^pMDh9(t;J=&gk!{)t{%2?@0aP-kbe$$D*i+L_;b@ArOh_PzIb
-z>u+c8Y6_mGGskUQBPJJ^33xIx@s_$0&k8Ol)P;J2ux;!F$f+*GWZ0|2?;~f%6l^o>
-z64N3M-bHI@89qqO1R2JY#zYwQsEY;lJ=1n@od;<`Q9INUjo_M53=Kl-4G}PRs;M83
-zU2jQYmra3ONq}o+6${}I6Fao-xx`bB<>SM{2{)H;j_bs9{T3%-MkRJU{UNIQz7x@L
-z!Khc~W=q&BMd@K<M@maib(-no;6#&~jNES#-kk=%&6EaLmY3miW^A0bJaeZ(Jd=93
-zCg?U%d0u56Z44I*Xp_;pG&m?sgqnEQ@v(&{M;5917O_xu7l{Tzl1EUNAZ*M3fT-Ze
-z_L+P!sg&I#EDx_U=h`8QdB76X-CIm#HJgm^@P&e^NZ>6MRS0P!|4`Nr6}5)cAP7ge
-zDcb|t%y*R{*)5)hnN%nrj9?FKAERXFK!}QqQuPSwvi1`amtA-KDt1g>!wzQLJbcAS
-z^#e&yJ%@TkzM@qs`CP!ir)D}ooxC&D4!c5ij_Pi-wuV^#pjnP!S-Y+yr^_JQzt>xW
-z{d}Y8NCvct{O{r5{9l-w1=$%%ZBcA!@5j(JZOL$(4Ij=ToH%`<9j`kU`KI(eF8vfF
-z2Di6}BZsyc?S3R`$a_N-+|NJS0?CR)Jc<xB*adEj)0*P$Y@YsM$av$Xh><1N2)uW8
-zVn{6uxO;Z;?bzCY7n8RDO{Gw@BVsIF+asWWW_qNvHMKH09bX->2>S?!FV68opY0Lz
-z?y+_<XjFrYuEVwI4fs;O0)I?zLVC6gcV|9>uV+i}*GvW8&6Pl${}lG*cObh3##|Y`
-z%YLq{uE2h744%zp;iCRAygz>he%34S>wFom&VHn=8p>Q<$ii>4pTN_FGTh1Cfa+oy
-z{>)Y2<zfl^xlQ<LsRaMbRUn-&!GrmA_$FTlZDAcI3*(w`0p8Ki!^4I3;JBX~)r?hz
-zq!(`nM}-&)`F`=XW&{~W2Mjo=XJL6s0vAJ<qH_6V>6&H~L*&vyPztW+HwG?+;APm)
-T-;?EzX~ocfvv4~&?iKKV89Z`k
+delta 1815
+zcmaJ>&2JM&6jwGxZotGq96(B<ObFgMU$#S>1bNAUwkkBxfKWxL08Pf;S$o8On4NK=
+z9FWyhxuSOi<v-{l$cG+!snkPnZ4u(1=mn&z5<Rr)>})oy*KQB~nBRNv_kM5Yz4vVU
+zoqcdE1#i-s;})q=%mwiU{5Ep#BXy*%85~Zk19JuScZeMzXSxvV6Soe(j-1ab*z$=(
+zu}N*Rhc-|NK1t048OD;vL>O_ILj?0&Y}usFgEXP2U1o|#aLg!%24(ez2$(z7)c42q
+zmK1gw3*<-wQo|1AoYX0HycVY+l~OU5{uEU`&yM`K@R?iZxFxLRHR)jyTjoqpbed^>
+za4JDsB|_K~6Pwjthq~&D&Rb26efqdXxl&^sA0Ad=@FG(gTrQR1StdK?w_Lp2pe|-E
+zsR_12m6*RXPq&7PMRdz&b!o6ss0KC3p6wA6F^)`H^Gs@@>K+meiX@L<4n@S0uYj1~
+z$nt!7U$Pwk5%ml3PiCqevfx9OKu~YRkrg+6%4I2srPIJ$D!M^w6M09ncA2O(qy|Ab
+zB2C#G$nrf$DU!Y7n#7k1<*icUqMc)m?j8zJaZ#!sAzjvfLgKRPwpS%K<~3pypW~xj
+z3?3{{{X~A4YcrS1TQn;bj|=$g%uMHpQ}>73VNa;OQN4{eHjrO9Y?TkNtX<cU-DQx?
+z-|H>Ge!kIcBm>%1zI!+}{}-kvL3Tz`TNE4G`!RIQS~A@7hmR%^PM*Egj@KQF{IB#q
+zF8vfF#<sVJ4-RcL*!@V<i1&snxSxNt1CkYocoZR6FtkpKvzp@W+&cT+5PUwF8B)su
+z9!!p(h^-0uWBe;X6Dbt!gcy6*wt%aX=b)J$>1<Dw261vXbd`}bM$)2}h_8@Xy4Y%g
+zZ>D&$&lZV!_gFg_G^)Y$tPa;NYyr#~@an>CKzRcm%zO<8`3k(9*@W_(0pj8vZDko=
+z=Ckm6E(Zg-ZTNWp3hd_|!q4*ttm?P5m9jEd7jp2UeiL3T7;tU&CR7&<_+|DE{3(C$
+z=f8xfO9uR&zX9n&1-!W}cwR8z{oE#u7ss^nB{;2LgeUWx!QYqpQLVh95N$ysD<M)=
+z$hQF!WE>qR!zn!n>BYNRc{OxdQ!e|9_q6g_h^#B5v?P)B5V@?7pO&u6`00FBelHhu
+nu)mmsFA7_-_UynaOc!$Srtq1zT2hJD6>ztBPg^g+L6Q6mQPp{W
 
-delta 437
-zcmXYtze_?<9L4dKJcZKgIaQEZnooT{?(-SxO9&dQUX<7`X-RQ0DvN3ff^uuAkkil_
-z^kWGM9yCac{Q)h}R&6yEM9|jI_2P8S{hWI^@cmw`<Ze?u{`em2&S5p9+B$+~-i_}z
-z2X1`4m2@dhIBHio)j(e8ajb7_FRz!j*aOavqV*|M>^STct@EyXJKlPy@#SMxBwf6<
-z<0DOY@fW%pJ#RAU-IUkzrR98KsllvLK;SqsgtFd`tKbx~vcQozBdVBYmJ&^E5FQU=
-z2DPw<(+ERTA=5^kEZ8*Eh#ya(84!)eQ5NUIIc8a2mi)+tc^o)f;EI@>rq_!o2Lm{X
-zr12XZhF3DNFB-U%CLx3jNOA_JRIBnV{9yy*ib>ZKcvPmb7)fA3HSr!X@T!h;Q93Dm
-zP+w6+9z`;WAIZQ6nZTZGU`3m^(I27*eM$g-S{6_Y97nV0rYH94V>qLFq0eD}B%sGq
-RxF#Mh7DpwvTNn3W{vQ;Tl(7H+
+delta 455
+zcmXYsK}#D!7>3Dc*aXzH-R;F7Nmn;yv)Rq;WD}}WK@e;bC5B*IdosZuB5D-%D44zV
+zA`)INJ+@SPEi8Bt4{d*dm*PphNl%5Af;SJH9lXrE-^26q&ivizx4ynqaId6-vsf?)
+z4A0<7NuZ)@L2_ht0OyYqIDAYA<!Gy^*w*&m+E#a04v0VL1i#gO6o;c`@Hu%A#iwVB
+z_@l?r(1!x9vjJQi?~)HY>FMe8j<ebBuC-TJ9$3)LsD!xB;d>MKlC4Kv_@*Y#o@aoX
+z4dPD1cT~ctG^nZIhuMsXDTG26YxP`B#*i>ce&(7HhVPa}SW$wO)soRsL+%=ASqk3A
+zhcJ?#7sO@4EJ^b?-;hz7zHK07FA!D^``~9YIJFmWm*udXCVD2vxw8Z{$5AcJ<3nx=
+zmxVeEi{lNg;hXgWH?)ekc`p8<pySTsR^(r9jTA+lqakcqXRq<k=D26eIB+<Qipvr4
+lY*WK{Ap_m300oW{?-j=A6ui<LKGLV8G>Lv`KfDs<_J0KkmQVly
 
 diff --git a/src/generated/lcf/rpg/system.h b/src/generated/lcf/rpg/system.h
 index eb9c625a27ec5ae10ebfde49371ab536036fd5e6..cb356bce814c595713a43b818fb94626bb727b0a 100644
@@ -598,15 +614,20 @@ delta 16
 YcmaE?xk!FPAMa*$p%aXgr;GRi06Q%PSO5S3
 
 diff --git a/src/generated/lsd_savepicture.cpp b/src/generated/lsd_savepicture.cpp
-index caa8d12f618ca6bc46f03deafbc44b7b4a81acc2..8676f0d28ff3fd769eef3d6ae796b53506d27233 100644
+index caa8d12f618ca6bc46f03deafbc44b7b4a81acc2..31ee23c19a4256f71499fb7ab6187bdcb75f46a2 100644
 GIT binary patch
-delta 212
-zcmZqh`sKZ$kyXeyF)uSQIUqB+q_im2EhjO(c=ASOvCWHEpRtLf$hl<ZrsfrA=I22a
-ztmauHJeiMKMX$Id#mcHIHMu0e$fh(iuf!t0#LiBkxFoS8GdVsNY<hfVZen_Bd`e<T
-l;^d9;vRp`9MNvgH3`IIzoJtsin;jIYStQkP8oWcr0{~N<PbL5W
+delta 581
+zcmZqh`s2T$kyXeyF)uSQIUqB+q_im2EhjO(c=ASOvCWHE|1nCU$b}Ro<`owt7NzDT
+zSAvxsWIxU#j-tdRGdDG_I5R&FV#aD74HjV(1#X#nnZ+4k-CqQLFp8l_`edf1CRZls
+zq=MxYgmrl*^D(RF6_=z~S(T+Gm*f}OlxF6YSj3mu*(ns4B$i|*$LE4wAD@|<n4TJ+
+zl30>Bd85267ZO)dR8b8>kq#H95{BSpMs7!OsAzFPQD#YMaYkxtNj%V|qR9v4<OI<L
+zOC|#iH^!l(1j!C`jgz>Y#IR^f%}W8fo*!8`NDOF;0e0m$>;P)o?4VH1603$Qlz<x1
+U<d7`|`55GWJW4?B+M(hB0FIX1R{#J2
 
-delta 43
-xcmez6-QcyMk#+KaF<F+R{QR8FD_Nhhfq0V>Sj0D<<(VkFSz9rWW%5>4R{)cL5iS4#
+delta 117
+zcmez4-{7^Ok#(|zqAW{Netyp8m8}05K|Ed%&rYGZB(WqjIexMOhv?=n>?>J7Qj-%{
+z#5dpO5oeivj}NL#TJQ&0mv~V@x|LOMVp(cHW^zesQL2@dTTWtn@n(BrUEa+vmGW37
+IZ&!B(0J4QCl>h($
 
 diff --git a/src/generated/lsd_savescreen.cpp b/src/generated/lsd_savescreen.cpp
 index bdf4b76f4488f051a76e2bc0d0f9857ab9136061..443087f8608323e3d3ec5e7781b3d62248224073 100644
@@ -623,30 +644,31 @@ delta 16
 Ycmdn!cFKH1xcKJ1vcfErFDfMf06g0Up#T5?
 
 diff --git a/src/generated/lsd_savesystem.cpp b/src/generated/lsd_savesystem.cpp
-index b53ea34d8365e24f7f6fc9963ad7759d1e7513fb..53caaf41f10e4129873ff177d3a2f8a0549d6133 100644
+index b53ea34d8365e24f7f6fc9963ad7759d1e7513fb..2d8eb9f26eec7d024c3f8a4cdf13169444c505cd 100644
 GIT binary patch
-delta 1731
-zcmah}O-~b16iq`*OADPrs1!76RfJL`G@61T6yk;$H9$z*naQKPwqs_dGV@AflwkM;
-z;9atE>p~@idv+S*0v7%Zqx=Em`zX^lQyO>k&bjx#d(WKv{_cj34nm)oy9b{lOGl+8
-zqqdHWwT4bgRqVj3l7ctgWhhLk@F_A5$I*VsMa`5P{0!MTS~r@}-=Z&Q^t@Y(J?@6R
-z>7jTTm9XXzWD`KMS9`o8ob_hj-Hl%N05TcxxoPq)v=#`NnWY#%Vrzp{XdO-qV<YEG
-zFc({JI+|w<^zjhgBG}$S2CEQ2Xqi!8Ot6-hOIx|*i_~mnRbVrH8Gh%Y7g76ZHe<d$
-z33s}Lm&9ypm1mW0WMXXt8|W45y&a_O=Yo;J;&PGI@HBk9-3MQj@0mQQV6Jbb4y+h!
-z=EBsr$)w9$!wv9U`m;?$^qQrW4OD@%h$N(sgUxJKsOW<$PH<8m4TsrB!ha2YgH)M*
-z@{uYh+{f8qC6Pk^LzuM+zb0;pk88Q93~#=Q^-8tPv;qaDvZ@ZauN8H8tWF&?tC8Xj
-zx&}lqX-$)_BSH+UAw#cNCbsx~C;_m!CF22DzSc*<pV++!zYq2%N8)C!?qFG5rN@Jq
-zrl96x5srW|H7s$5*@tj2ZVt$czD8`_s)$G7LG}Z4(O`2FM^IXwl=B6?V}69~m=BTE
-z_Tkj{%V19Qy2*+8c>JZK*?6;#9j;Bh?46skWLk)<h=j5qA@p!(?{9~g;}dq>(i&B4
-zX}SeU@(SBsRl-n-=vyExJ{iPicLzCG3FqOYD*`8xsJm0x4ewAlqLTEO(W&qFJ;0qr
-zU$zd+`P1_sTI^L@P)b}aEg%bl<75hwbBTHRt(9Ur6ce?){etHUX|WJLis^*35N>jA
-tyKAVE#rGFR5}pI8m);hOeSQPb2x<Vu{aO4Hk`2&Ue9|9O9K-j;qknnQd)NQ~
+delta 1749
+zcmah}O-~b16iq`*OADPrs1`J8RfJL?G%*E3D8!f$qXr0xJ2QEd*LKXzRA#0$MhS*r
+z0Ny2T+`3T7@B`Rsj0;%!GmP>FjPIjN-<#67n|JQLXYRT0-1m1kbaW8<vfMrR6j?ed
+zEg7|SWUMuGw^YRrtSTvZ(_MzblnS3CV{jbphg{T5iOJ89t)q3Lnf)#Lf@IHowb<is
+z*qgo*FQXFH92eOxpxJ9Z{t?c4Gw&v&H+;aIi1*wwSr=Lhgv`uRj2*GHK^a<y)57TR
+zc_dhiEjS&?(+2ujif*~s-a-at2q1)JM9K+r`L(2#OH!t0BdY?N>C5mt7riL7pQak~
+z?M1lLPZ%Yps#R81wvmao4Q!xSwD)$9w4V!R2FXQ|)$lZYy3+?=lOO1KQo&kDQ->&*
+zHFIHUn=;|&EpY>^mRz=pT)k##Wdl{<EFuh2ios?!%cm&86(^`v3d3Rc5%*t1-*BsR
+ze&Uf#j=PUVgG{`H+(VeQ3ctp0^N;JfsSInriuFph&9oc^I%QQI@LntGP^3;AGz)tZ
+z!*R1#cd#f{>G2_|5!75P!VplVhJ@H*_5mD>nFHeDt+}>tRrr$L&wix0I@sJFhljMf
+zTh14l=VgR?UP1)*5>AY`4CZ*RmmD97k1`>eTf9m3+0{#0^Ka|Obq%Z`L$6pSw%DR8
+z0kFC5V*yy4pA>>Wv4{QSHc?3{zjQPkZ`QHHnB%Q;lQh#pL_Ptf_rb5ho4vOkqQ+0y
+zbxUhhv8Cx2D9NjIg;fDVC0E}9?(~TuE}A?TgOzX|PP!s+5{Y^{h28K@Q-=Q#l40MK
+zC&&y%9=HyX^B3qpVZL5%Nh$uE3VTRX;5eCr<XmE2d~$`H4rH9mUo&{Vkmh^wqnJ(z
+zd*LPLw!7f{f|BqJPOSR2SnQMiwZAY-{H1t5i$|eJ$pOSjZBisJG!~!q2ZxX0`{L0*
+Dw|;_F
 
-delta 274
+delta 262
 zcmdlooAF;0;|71W$qC$wlP|D}O>Sa~VKkh)fYp4m7<(O5lpV+xoP3-;aq?je{mBLV
-ze4A4_yxArP@bXSxC$w<$d@*Io$s70tCU+R-PL45@nS6nn6=)Vaw~JG7Nl|8Ax}BZE
-z<ON=$lTC~!PhManKlz^t`{vEYPF$O}*<~@pR8MAglwiv*D9OyvoBR>zkO}te>=178
-zWI<zfNhn)~i&H5#F)uSQIUXh($YKC9WHYN{6U$^}H;K)M+=`edS9=*xPVnXcSvXnF
-lgk$p)udR%exA|DY>?!mXo-FIgKe@<TYI1`U&t!MsTmX8aV8Q?Z
+ze4A4_yxArP@bXSxC$w<$d@*Io$s70tCT}*#ojk`#X7UAQR-jqzoGwnmB}JKe>2{Mn
+z3|CD~FqNPD)|h?sJtHkHpmK@L+w8I!VQMF{I!dtR7nEe?=S}_ybjAdGb{MzOP(uPD
+zQ>??qsg#?TmzkIx4^?~6&=6+CW>&{0mdVO)5}OaX6){ha^fI12!J7kQ<zzl%j>#&%
+Y;y|{*=9gZ*jFY$eSg}LRoaDO&0G#7qm;e9(
 
 diff --git a/src/generated/rpg_save.cpp b/src/generated/rpg_save.cpp
 index 38ead6ee377a8d1a752ed5ce08a190add11459cb..74ccc596ff683d52572291947ebfee91c6659da8 100644
@@ -714,14 +736,15 @@ delta 11
 ScmaDVFpF=)L$=8}9F_nbsRT6u
 
 diff --git a/src/generated/rpg_savepicture.cpp b/src/generated/rpg_savepicture.cpp
-index afa98f985174355e45628acc0196b10754ddc02f..922d91d3ad1af69ec019629bbcd785cab91ff6e8 100644
+index afa98f985174355e45628acc0196b10754ddc02f..df8c03221495720a6d07f744dcb73281d19104a3 100644
 GIT binary patch
-delta 96
-zcmcaF)+(_<jay7dAvZBEGch?nGdD3kH9jS=B+*vMda@mptRRNO<OC*DWem~i%vftK
-V&RQ<c{9*+g8wI6UrO7hf&Hyp*A3*>B
+delta 231
+zcmcaF)-Aa~jay7dAvZBEGch?nGdD3kH9jS=B+*vMda@mptRRNO<OC+udJNI%%vftK
+z&RQ<c{9*+g8wI6UB_J2dhMQhoP?TAcTAY!ZS`uGel2}w?s{~Y=pOmEsH4j4p4nwqH
+RrljVj;4=d#Jz0j^831ehPhbE5
 
 delta 11
-ScmZpbxG%OrjeGJLZc6|fBLo)!
+ScmeB{yf3yvjeBwsk0k&Z0|TW1
 
 diff --git a/src/generated/rpg_savescreen.cpp b/src/generated/rpg_savescreen.cpp
 index ccb4d89246c026876746ae51226ecba1d135d72b..85bee12d7bcb66f8b86e1d638a46f3d124ef61c2 100644
@@ -735,22 +758,20 @@ delta 11
 ScmZn{>lNA{!7*8g>ni{iOark1
 
 diff --git a/src/generated/rpg_savesystem.cpp b/src/generated/rpg_savesystem.cpp
-index 18e0f5ba0047f69fb4ee0b90f770a1bbddf208a9..946aa111df1241a71a22c6c3bc6686c0efeb0442 100644
+index 18e0f5ba0047f69fb4ee0b90f770a1bbddf208a9..59ddbccc50a4382a2c41a90e6af67f8c368a3c76 100644
 GIT binary patch
-delta 864
-zcmaiyJx;?g9L0qYiGm<iKb8s!wG~v2Kt*(5p|CQra0AOtoWzhgZS1t_)EhA118@aU
-zE`h`V3o{dAC60ibh|0949qsqt&;Ea;*5}F7mu5kNp$%MUBS0C9*+rw<twp`tcDSJM
-zdZ9AOe26$om$*OQHX>RRgvN1A24KQaJcNNV_baXogLndohgLE`JhS{qa$^`G;Gh7G
-zl@v+;gGea0MSCJX)mjs|E-8?|ybinif1>3fWH=(g4WLJrFk^1w(?WGWo5%<|%vZVj
-zn^|pU79U~HS5G&WQbT{$c)Orq^&n#b0x-ZH2@%OdVmX*-f(<F_CWHzJIhQSIQ5I7c
-ze=P1b!ziIhsz#0BgJO9{vReFQ_v69T4UjPR^h{L7>t;pEPctt6Hg*1PZl%xWc=Mo7
-zL5v0oqRaKorP=y&t7IOje;^f-&6M8ZzQwOgH=Q^kVB{kLFo8D1!=?ROGNgy)`;8xI
-CEj26v
+delta 765
+zcmaiy!AiqG5QY&kC5ju=9xQ^ig^C4f(SsN3vn<nOlB^^f-QBc$>Kk})Z(e)_OI||o
+zpcfy(W5Gu-ZBWxDw#V83n}23!CTTx*pFfQ@a0WJY!A2?-2zA-)_3BaosuM0Kx?xpE
+zGY+{^N~P}?n`R{IsYCOmo;P4zp%_3=n)f5FN~U52+{2|FR7{cooLm7RQU?RLD|N}~
+za~82=b~>I&PmJSH{$II-tnw<`<^8224?(erQ#SxlmYSKrke*nz!`ViL%u#+Bt=~xP
+zXomR6JimOqnUt87S3`F!Yb%UmiCG7FO!nvEm+g-SQZZ?)+|%>4qHd6?kwyAx=Rkjv
+zihd^>$(Y=(cl)4JfD{7e@ep~T`hq^au$Fr*slb~UWdZ+_rlfA~iZc;&I`olK#=%x>
+OP&kePkhJ#h*S-NkVh~9H
 
-delta 116
-zcmcbwzgcs`Q?|(x90r?%IQO$nJ}q!^@;V`o$$tfTHa``tWS%@-lvgA_DN8RmF)uSQ
-zIX<l@F*mh1JF{SNqoDBQN20cD`2{7J`FWEkvM5fL6J&>R^O?*h-xGs#^90o<KNaKO
-JTr8Hu2mnJlD<=Q|
+delta 75
+zcmbQGzgcs`Q?|(x90r?%IQO$njuJSzIYF?8d2)tm5nFyiNoIcD<cTbbll{clVcdKs
+Sv&kO>;M{d$YMbT7su=+ra~jJ4
 
 diff --git a/src/generated/rpg_system.cpp b/src/generated/rpg_system.cpp
 index a8c7bfffb86b08cac2b1e3d80dbbf47001a5f50e..0a7558fadb802d0f2ccbff88059c2eaf5d9ac321 100644
@@ -846,10 +867,10 @@ index e26d3cc..c771105 100644
  }
  
 diff --git a/src/reader_struct.h b/src/reader_struct.h
-index a3f9158..cbbb966 100644
+index a3f9158..830fc79 100644
 --- a/src/reader_struct.h
 +++ b/src/reader_struct.h
-@@ -428,6 +428,112 @@ struct TypedField : public Field<S> {
+@@ -428,6 +428,196 @@ struct TypedField : public Field<S> {
  		Field<S>(id, name, present_if_default, is2k3), ref(ref) {}
  };
  
@@ -880,6 +901,32 @@ index a3f9158..cbbb966 100644
 +	}
 +};
 +
++// Text pictures reuse the transparency word for byte-sized character/line spacing.
++template <class S>
++struct ManiacPictureTransparencyField : public TypedField<S, bool> {
++	using Base = TypedField<S, bool>;
++	using Base::Base;
++	static int32_t Value(const S& obj) {
++		const uint32_t alpha = obj.use_transparent_color ? (obj.maniac_transparency_flags & 255 ? obj.maniac_transparency_flags & 255 : 1) : 0;
++		return static_cast<int32_t>((obj.maniac_transparency_flags & 0xffffff00) | alpha);
++	}
++	void ReadLcf(S& obj, LcfReader& stream, uint32_t length) const override {
++		int32_t value = 0;
++		TypeReader<int32_t>::ReadLcf(value, stream, length);
++		obj.maniac_transparency_flags = static_cast<uint32_t>(value);
++		obj.use_transparent_color = (value & 255) != 0;
++	}
++	void WriteLcf(const S& obj, LcfWriter& stream) const override {
++		TypeReader<int32_t>::WriteLcf(Value(obj), stream);
++	}
++	int LcfSize(const S& obj, LcfWriter& stream) const override {
++		return TypeReader<int32_t>::LcfSize(Value(obj), stream);
++	}
++	bool IsDefault(const S& obj, const S& ref, bool) const override {
++		return Value(obj) == Value(ref);
++	}
++};
++
 +// Chunk 0x12 is a double in unpatched engines, but two little-endian int32
 +// dimensions in Maniac. Buffer both views until the runtime selects the engine.
 +template <class S>
@@ -893,12 +940,70 @@ index a3f9158..cbbb966 100644
 +		obj.maniac_image_dimensions = {static_cast<int32_t>(bits), static_cast<int32_t>(bits >> 32)};
 +	}
 +	void WriteLcf(const S& obj, LcfWriter& stream) const override {
-+		if (obj.maniac_image_flags >> 24 == 2 && obj.maniac_image_dimensions.size() == 2)
++		if ((obj.maniac_picture_active || obj.maniac_image_flags >> 24 == 1 || obj.maniac_image_flags >> 24 == 2) && obj.maniac_image_dimensions.size() == 2)
 +			stream.Write(obj.maniac_image_dimensions);
 +		else Base::WriteLcf(obj, stream);
 +	}
 +	bool IsDefault(const S& obj, const S& ref, bool is2k3) const override {
-+		return obj.maniac_image_flags >> 24 == 2 ? obj.maniac_image_dimensions.empty() : Base::IsDefault(obj, ref, is2k3);
++		return obj.maniac_picture_active || obj.maniac_image_flags >> 24 == 1 || obj.maniac_image_flags >> 24 == 2
++			? obj.maniac_image_dimensions.empty() : Base::IsDefault(obj, ref, is2k3);
++	}
++};
++
++// Chunk 0x18 is a raw little-endian finish word in Maniac. Keep the bool
++// view and one-byte format for ordinary RPG_RT saves.
++template <class S>
++struct ManiacPictureFinishField : public TypedField<S, bool> {
++	using Base = TypedField<S, bool>;
++	using Base::Base;
++	void ReadLcf(S& obj, LcfReader& stream, uint32_t length) const override {
++		if (length == 4) {
++			std::vector<int32_t> word;
++			stream.Read(word, 4);
++			obj.maniac_spritesheet_finish = word[0];
++		}
++		else {
++			Base::ReadLcf(obj, stream, length);
++			obj.maniac_spritesheet_finish = obj.spritesheet_play_once ? 1 : 0;
++		}
++		obj.spritesheet_play_once = obj.maniac_spritesheet_finish == 1;
++	}
++	void WriteLcf(const S& obj, LcfWriter& stream) const override {
++		if (obj.maniac_picture_active) stream.Write(std::vector<int32_t>{obj.maniac_spritesheet_finish});
++		else Base::WriteLcf(obj, stream);
++	}
++	int LcfSize(const S& obj, LcfWriter& stream) const override {
++		return obj.maniac_picture_active ? 4 : Base::LcfSize(obj, stream);
++	}
++	bool IsDefault(const S& obj, const S& ref, bool is2k3) const override {
++		return obj.maniac_picture_active ? obj.maniac_spritesheet_finish == ref.maniac_spritesheet_finish : Base::IsDefault(obj, ref, is2k3);
++	}
++};
++
++// Known flags retain the existing bool API; opaque lifecycle bits survive LSD.
++template <class S>
++struct ManiacPictureLifecycleField : public TypedField<S, typename S::Flags> {
++	using Base = TypedField<S, typename S::Flags>;
++	using Base::Base;
++	static int32_t Value(const S& obj) {
++		uint32_t value = obj.maniac_lifecycle_flags & ~127u;
++		for (size_t i = 0; i < obj.flags.flags.size(); ++i) value |= uint32_t(obj.flags.flags[i]) << i;
++		return static_cast<int32_t>(value);
++	}
++	void ReadLcf(S& obj, LcfReader& stream, uint32_t length) const override {
++		int32_t value = 0;
++		TypeReader<int32_t>::ReadLcf(value, stream, length);
++		obj.maniac_lifecycle_flags = static_cast<uint32_t>(value);
++		for (size_t i = 0; i < obj.flags.flags.size(); ++i) obj.flags.flags[i] = (obj.maniac_lifecycle_flags & (1u << i)) != 0;
++	}
++	void WriteLcf(const S& obj, LcfWriter& stream) const override {
++		TypeReader<int32_t>::WriteLcf(Value(obj), stream);
++	}
++	int LcfSize(const S& obj, LcfWriter& stream) const override {
++		return TypeReader<int32_t>::LcfSize(Value(obj), stream);
++	}
++	bool IsDefault(const S& obj, const S& ref, bool) const override {
++		return Value(obj) == Value(ref);
 +	}
 +};
 +

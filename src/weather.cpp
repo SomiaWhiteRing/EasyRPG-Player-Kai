@@ -312,7 +312,7 @@ void Weather::CreateFogOverlay() {
 	auto* sand_img = reinterpret_cast<uint32_t*>(sand_bitmap->pixels());
 
 	for (int i = 0; i < w * h; ++i) {
-		int px = Rand::GetRandomNumber(0, num_overlay_colors - 1);
+		int px = Rand::GetVisualRandomNumber(0, num_overlay_colors - 1);
 		// FIXME: This only works for 32bit pixel formats
 		fog_img[i] = fog_pixels[px];
 		sand_img[i] = sand_pixels[px];

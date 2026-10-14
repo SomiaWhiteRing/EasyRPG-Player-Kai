@@ -57,6 +57,7 @@ public:
 	static MapUpdateAsyncContext FromMessage(AsyncOp aop);
 
 	AsyncOp GetAsyncOp() const;
+	void SetAsyncOp(AsyncOp operation) { async_op = operation; }
 
 	int GetParallelCommonEvent() const;
 	int GetParallelMapEvent() const;
@@ -545,6 +546,9 @@ namespace Game_Map {
 	 * @param refresh need refresh flag.
 	 */
 	void SetNeedRefresh(bool refresh);
+
+	/** Refresh map pages at a Maniac command's commit point in im mode. */
+	void RefreshAfterManiacChange();
 
 	/**
 	 * Gets lower passages list.

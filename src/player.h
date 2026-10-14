@@ -288,6 +288,7 @@ namespace Player {
 	 * @return True when the Maniac Patch is active
 	 */
 	bool IsPatchManiac();
+	bool IsManiacPf();
 
 	/**
 	 * @return True when Ineluki Key Patch is active
@@ -531,6 +532,10 @@ inline bool Player::IsPatchManiac() {
 		return *f;
 #endif
 	return game_config.patch_maniac.Get() > 0;
+}
+
+inline bool Player::IsManiacPf() {
+	return IsPatchManiac() && game_config.maniac_pf;
 }
 
 inline bool Player::IsPatchKeyPatch() {

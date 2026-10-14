@@ -1,0 +1,192 @@
+/* WARNING: Function: __security_check_cookie replaced with injection: security_check_cookie */
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined8 FUN_140182c20(void)
+
+{
+  char cVar1;
+  DWORD DVar2;
+  LSTATUS LVar3;
+  int iVar4;
+  BOOL BVar5;
+  HRSRC pHVar6;
+  HGLOBAL pvVar7;
+  LPVOID pvVar8;
+  undefined8 *puVar9;
+  undefined8 *puVar10;
+  undefined8 uVar11;
+  longlong lVar12;
+  undefined4 extraout_var;
+  tagRECT *lpFileName;
+  wchar_t *_Str1;
+  undefined1 auStackY_208 [32];
+  WNDCLASSEXW local_1a8;
+  tagRECT local_158;
+  undefined8 local_148;
+  ulonglong uStack_140;
+  tagRECT local_138;
+  undefined8 local_128;
+  undefined8 uStack_120;
+  undefined1 local_118 [16];
+  undefined1 local_108 [240];
+  ulonglong local_18;
+
+  local_18 = DAT_140257140 ^ (ulonglong)auStackY_208;
+  pHVar6 = FindResourceW(DAT_140278fc8,(LPCWSTR)0x64,(LPCWSTR)0xa);
+  if ((pHVar6 != (HRSRC)0x0) && (pvVar7 = LoadResource((HMODULE)0x0,pHVar6), pvVar7 != (HGLOBAL)0x0)
+     ) {
+    DVar2 = SizeofResource((HMODULE)0x0,pHVar6);
+    pvVar8 = LockResource(pvVar7);
+    local_138._0_8_ = (ulonglong)(uint)local_138.top << 0x20;
+    AddFontMemResourceEx(pvVar8,DVar2,(PVOID)0x0,(DWORD *)&local_138);
+  }
+  pHVar6 = FindResourceW(DAT_140278fc8,(LPCWSTR)0x65,(LPCWSTR)0xa);
+  if ((pHVar6 != (HRSRC)0x0) && (pvVar7 = LoadResource((HMODULE)0x0,pHVar6), pvVar7 != (HGLOBAL)0x0)
+     ) {
+    DVar2 = SizeofResource((HMODULE)0x0,pHVar6);
+    pvVar8 = LockResource(pvVar7);
+    local_138._0_8_ = local_138._0_8_ & 0xffffffff00000000;
+    AddFontMemResourceEx(pvVar8,DVar2,(PVOID)0x0,(DWORD *)&local_138);
+  }
+  SetThreadLocale(0x800);
+  FUN_1400c9750();
+  local_1a8.cbSize = 0x50;
+  local_1a8.style = 3;
+  local_1a8.lpfnWndProc = FUN_140183bc0;
+  local_1a8.cbClsExtra = 0;
+  local_1a8.cbWndExtra = 0;
+  local_1a8.hInstance = DAT_140278fc8;
+  local_1a8.hIcon = LoadIconW(DAT_140278fc8,(LPCWSTR)0x6b);
+  local_1a8.hCursor = LoadCursorW((HINSTANCE)0x0,(LPCWSTR)0x7f00);
+  local_1a8.hbrBackground = GetStockObject(4);
+  local_1a8.lpszMenuName = (LPCWSTR)0x0;
+  local_1a8.lpszClassName = L"rm2k3";
+  local_1a8.hIconSm = LoadIconW(local_1a8.hInstance,(LPCWSTR)0x6b);
+  RegisterClassExW(&local_1a8);
+  DAT_140269638 =
+       CreateWindowExW(0,L"rm2k3",L"RPG_RT",0,-0x80000000,0,-0x80000000,0,(HWND)0x0,(HMENU)0x0,
+                       DAT_140278fc8,(LPVOID)0x0);
+  if (DAT_140269638 == (HWND)0x0) {
+    return 0;
+  }
+  GetWindowRect(DAT_140269638,&local_158);
+  GetClientRect(DAT_140269638,&local_138);
+  MoveWindow(DAT_140269638,local_158.left,local_158.top,
+             ((local_158.right - local_138.right) - local_158.left) + DAT_140257dfc * 2,
+             ((local_158.bottom - local_138.bottom) - local_158.top) + DAT_140257df8 * 2,0);
+  DAT_1402603ac = 1;
+  DAT_14026cdb4 = 0;
+  _DAT_14026cdb8 = 4;
+  FUN_1400961c0();
+  timeGetDevCaps((LPTIMECAPS)&DAT_14026cd78,8);
+  timeBeginPeriod(DAT_14026cd78);
+  DAT_14026d0dc = timeSetEvent(10,DAT_14026cd78,FUN_140096130,0,1);
+  InitializeCriticalSection((LPCRITICAL_SECTION)&DAT_14026cd50);
+  _DAT_14026cd80 = 0x34;
+  _DAT_14026cd84 = 0x83;
+  FUN_1400592f0();
+  puVar9 = (undefined8 *)FUN_1400ca620(0x28);
+  puVar10 = (undefined8 *)FUN_1400ca620(0x20);
+  *puVar10 = _guard_check_icall;
+  puVar10[1] = _guard_check_icall;
+  puVar10[2] = FUN_1400b9110;
+  puVar10[3] = _guard_check_icall;
+  *puVar9 = puVar10;
+  uVar11 = FUN_140013010(0x140,0xf0);
+  puVar9[1] = uVar11;
+  uVar11 = FUN_140013010(0x140,0xf0);
+  puVar9[2] = uVar11;
+  lVar12 = FUN_1401a4bf0();
+  FUN_1401a4cc0(lVar12,0x140,0xf0);
+  puVar9[3] = lVar12;
+  *(undefined1 *)(lVar12 + 0x5e) = 1;
+  FUN_1401fa300(local_118,0,0xf8);
+  FUN_140053440(local_118);
+  FUN_140048f90(local_108,&DAT_140221480,0x3d38);
+  FUN_140010130(local_118,lVar12);
+  FUN_140053350(local_118);
+  DAT_14026d130 = puVar9;
+  cVar1 = FUN_14004edb0();
+  if (cVar1 == '\0') {
+    local_138._0_8_ = (HKEY)0x0;
+    local_138.right = 0;
+    local_138.bottom = 0;
+    local_128 = 0;
+    uStack_120 = 0;
+    lVar12 = -1;
+    do {
+      lVar12 = lVar12 + 1;
+    } while (*(short *)(DAT_14026d2c8 + lVar12 * 2) != 0);
+    FUN_14000ff20(&local_138);
+    puVar9 = (undefined8 *)FUN_140049880(&local_138,L"\\RPG_RT.ini",0xb);
+    local_158._0_8_ = *puVar9;
+    local_158._8_8_ = puVar9[1];
+    local_148 = puVar9[2];
+    uStack_140 = puVar9[3];
+    puVar9[2] = 0;
+    puVar9[3] = 7;
+    *(undefined2 *)puVar9 = 0;
+    FUN_14000feb0(&local_138);
+    lpFileName = &local_158;
+    if ((((7 < uStack_140) &&
+         (lpFileName = (tagRECT *)local_158._0_8_, (tagRECT *)local_158._0_8_ == (tagRECT *)0x0)) ||
+        (DVar2 = GetFileAttributesW((LPCWSTR)lpFileName), DVar2 == 0xffffffff)) ||
+       ((DVar2 & 0x10) != 0)) {
+      FUN_14000feb0(&local_158);
+      goto LAB_1401830d8;
+    }
+    FUN_14000feb0(&local_158);
+  }
+  DAT_1402603ae = 1;
+  FUN_14017bfe0();
+  if ((DAT_140257dfc != *(int *)(DAT_1402694a0 + 0x28)) ||
+     (DAT_140257dfc != *(int *)(DAT_1402694a0 + 0x2c))) {
+    FUN_140053b90();
+  }
+  FUN_140183630(DAT_14026d130 + 4,(longlong)DAT_14026d130 + 0x24);
+  SetWindowTextW(DAT_140269638,DAT_14026d2d0);
+LAB_1401830d8:
+  _DAT_1402702b0 = 0;
+  DAT_1402702b4 = 2;
+  _DAT_1402702b8 = 0;
+  _DAT_1402702bc = 0;
+  DAT_1402702c0 = 1;
+  LVar3 = RegOpenKeyExW((HKEY)0xffffffff80000001,L"Software\\KADOKAWA\\rpg2003",0,0x20019,
+                        (PHKEY)&local_138);
+  if (LVar3 == 0) {
+    local_158.left = 0x10;
+    local_158.top = 0;
+    RegQueryValueExW((HKEY)local_138._0_8_,L"VideoSettings",(LPDWORD)0x0,(LPDWORD)0x0,&DAT_1402702b0
+                     ,(LPDWORD)&local_158);
+    _DAT_1402702a0 = CONCAT44(DAT_1402702b4,CONCAT22(_DAT_1402702b2,_DAT_1402702b0));
+    _DAT_1402702a8 = CONCAT44(CONCAT22(uRam00000001402702be,_DAT_1402702bc),_DAT_1402702b8);
+    local_158._0_8_ = (tagRECT *)0x8;
+    RegQueryValueExW((HKEY)local_138._0_8_,L"DebugSettings",(LPDWORD)0x0,(LPDWORD)0x0,&DAT_140270068
+                     ,(LPDWORD)&local_158);
+    RegCloseKey((HKEY)local_138._0_8_);
+  }
+  else {
+    _DAT_1402702a0 = CONCAT44(DAT_1402702b4,CONCAT22(_DAT_1402702b2,_DAT_1402702b0));
+    _DAT_1402702a8 = CONCAT26(uRam00000001402702be,CONCAT24(_DAT_1402702bc,_DAT_1402702b8));
+  }
+  if (DAT_14027a478 < 4) {
+    _Str1 = L"";
+  }
+  else {
+    _Str1 = *(wchar_t **)(DAT_14027a840 + 0x18);
+  }
+  iVar4 = _wcsicmp(_Str1,L"FullScreen");
+  if (iVar4 == 0) {
+    _DAT_1402702a0 = CONCAT11(1,DAT_1402702a0);
+  }
+  else {
+    iVar4 = _wcsicmp(_Str1,L"Window");
+    if (iVar4 == 0) {
+      _DAT_1402702a0 = (ushort)DAT_1402702a0;
+    }
+  }
+  FUN_1400da130();
+  ShowWindow(DAT_140269638,1);
+  BVar5 = UpdateWindow(DAT_140269638);
+  return CONCAT71((int7)(CONCAT44(extraout_var,BVar5) >> 8),1);
+}

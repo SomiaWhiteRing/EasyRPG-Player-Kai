@@ -203,7 +203,8 @@ public:
 		return !evaluate ? 0 : type == 'V' ? HookReadNumber(caller, id)
 			: Decimal(type == 'T' ? HookReadString(caller, id).first : ActorName(id));
 	}
-	bool MixedToken(int32_t& number, std::string& value, bool& present) {
+	bool MixedToken(int32_t& number, std::string& value, bool& present,
+		bool read_number = true, bool read_string = true) {
 		if (pos != end && *pos == '"') {
 			++pos;
 			while (pos != end && *pos != '"') {
@@ -223,7 +224,9 @@ public:
 			const uint32_t bits = 0u - static_cast<uint32_t>(id);
 			std::memcpy(&id, &bits, sizeof(id));
 		}
-		if (evaluate) {
+		// Number() still evaluates nested IDs when the corresponding root
+		// output is disabled. Only the final V/T/N lookup is suppressed.
+		if (evaluate && (type == 'V' ? read_number : read_string)) {
 			if (type == 'V') number = HookReadNumber(caller, id);
 			else if (type == 'T') std::tie(value, present) = HookReadString(caller, id);
 			else { value = ActorName(id); present = !value.empty(); }
@@ -385,7 +388,7 @@ const char* Game_Message::ParseManiacFace(const char* iter, const char* end, Man
 }
 
 bool Game_Message::RunManiacSystemHook(ManiacHookCaller caller, const int32_t* packet, size_t count,
-	const std::string* text, AsyncOp& operation) {
+	const std::string* text, std::unique_ptr<Game_Interpreter>& invocation, AsyncOp& operation) {
 	if (!Player::IsPatchManiac()) return false;
 	const auto& config = Main_Data::game_system->GetSaveData();
 	const auto& flags = config.maniac_message_hook_flags;
@@ -402,7 +405,7 @@ bool Game_Message::RunManiacSystemHook(ManiacHookCaller caller, const int32_t* p
 	if (number_base != 0) {
 		for (uint32_t index = 0; index < count; ++index) HookWriteNumber(caller, HookOffset(number_base, index), packet[index]);
 	}
-	operation = Game_Interpreter::RunManiacMessageHook(event_id);
+	operation = Game_Interpreter::RunManiacMessageHook(event_id, invocation);
 	return true;
 }
 
@@ -412,8 +415,7 @@ int32_t Game_Message::ReadManiacHookResult(ManiacHookCaller caller, uint32_t off
 	return base == 0 ? fallback : HookReadNumber(caller, HookOffset(base, offset));
 }
 
-const char* Game_Message::ProcessManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller,
-	std::array<int32_t, 8>& packet, AsyncOp& operation) {
+const char* Game_Message::ParseManiacUserHook(const char* iter, const char* end, ManiacHookCaller caller) {
 	const auto& config = Main_Data::game_system->GetSaveData();
 	const bool enabled = config.maniac_message_hook_flags.user_event && config.maniac_message_hook_common_event_id > 0;
 	UserHookParser parser(iter, end, caller);
@@ -424,7 +426,9 @@ const char* Game_Message::ProcessManiacUserHook(const char* iter, const char* en
 			bool present = false;
 			std::string value;
 			int32_t number = 0;
-			const bool string_token = parser.MixedToken(number, value, present);
+			const bool string_token = parser.MixedToken(number, value, present,
+				enabled && config.maniac_message_hook_callback_user_variable != 0,
+				enabled && config.maniac_message_hook_callback_user_string_variable != 0);
 			// Assignment precedes the delimiter result, including the final token.
 			if (string_token) {
 				const int base = config.maniac_message_hook_callback_user_string_variable;
@@ -444,9 +448,6 @@ const char* Game_Message::ProcessManiacUserHook(const char* iter, const char* en
 			while (parser.pos != end && *parser.pos != ']') ++parser.pos;
 			if (parser.pos != end) ++parser.pos;
 		} else if (parser.pos != end && *parser.pos == ';') ++parser.pos;
-	}
-	if (RunManiacSystemHook(caller, packet.data(), packet.size(), nullptr, operation)) {
-		for (uint32_t index = 1; index <= 4; ++index) packet[index] = ReadManiacHookResult(caller, index, packet[index]);
 	}
 	return parser.pos;
 }
@@ -548,6 +549,10 @@ AsyncOp Game_Message::Update() {
 		return window->GetAsyncOp();
 	}
 	return {};
+}
+
+AsyncOp Game_Message::ResumeManiacMessageHook() {
+	return window ? window->ResumeManiacMessageHook() : AsyncOp{};
 }
 
 AsyncOp Game_Message::SetPendingMessage(PendingMessage&& pm, const Game_BaseInterpreterContext* caller) {
