@@ -143,7 +143,7 @@ public:
 		ShowParams GetShowParams() const;
 		void SetNonEffectParams(const Params& params, bool set_positions);
 
-		bool Show(const ShowParams& params);
+		bool Show(const ShowParams& params, bool reuse_pixels = false);
 		void Move(const MoveParams& params);
 		void Erase();
 		bool Exists() const;
@@ -157,7 +157,7 @@ public:
 		BitmapRef GetMutableBitmap(bool flatten_spritesheet = false);
 		void InitManiacPixelLayout(bool resource_shared);
 		void ResetManiacPixelLayout();
-		void RecordManiacProcessedFrame(const Bitmap& frame);
+		void RecordManiacProcessedFrame(const BitmapRef& frame);
 		BitmapRef GetManiacReadBitmap(bool processed) const;
 		Color ReadManiacPixel(const Bitmap& source, bool processed, int x, int y) const;
 		void ClearManiacTileRect(const Rect& rect);

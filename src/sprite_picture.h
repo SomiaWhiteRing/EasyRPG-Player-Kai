@@ -37,7 +37,7 @@ public:
 
 	void Draw(Bitmap& dst) override;
 
-	void OnPictureShow();
+	void OnPictureShow(bool reuse_pixels = false);
 	void SetPictureId(int id);
 	void UpdateManiacPixels();
 	BitmapRef GetPreparedBitmap(Rect& rect) const;

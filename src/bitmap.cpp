@@ -416,6 +416,47 @@ void Bitmap::ResetManiacPresentation() {
 	}
 }
 
+void Bitmap::CopyManiacPixels(int x, int y, const Bitmap& source, Rect source_rect,
+		bool chromakey, bool presentation) {
+	Rect destination(x, y, source_rect.width, source_rect.height);
+	if (!Rect::AdjustRectangles(source_rect, destination, source.GetRect())
+			|| !Rect::AdjustRectangles(destination, source_rect, GetRect())) return;
+
+	EnableManiacPixels();
+	const Bitmap* logical_source = &source;
+	int source_x = source_rect.x, source_y = source_rect.y;
+	while (logical_source->maniac_pixels.empty() && logical_source->pixel_owner) {
+		source_x += logical_source->maniac_view_origin.x;
+		source_y += logical_source->maniac_view_origin.y;
+		logical_source = logical_source->pixel_owner.get();
+	}
+	const bool straight = !logical_source->maniac_pixels.empty() && !logical_source->maniac_presentation;
+	const int destination_width = width(), source_width = logical_source->width();
+	auto* display = static_cast<uint8_t*>(pixels());
+	const int display_pitch = pitch(), bytes = format.bytes;
+	bool written = false;
+	for (int row = 0; row < source_rect.height; ++row) {
+		const auto* input = straight ? logical_source->maniac_pixels.data()
+			+ static_cast<size_t>(source_y + row) * source_width + source_x : nullptr;
+		auto* output = maniac_pixels.data() + static_cast<size_t>(destination.y + row) * destination_width + destination.x;
+		auto* pixel = display + static_cast<size_t>(destination.y + row) * display_pitch + destination.x * bytes;
+		for (int column = 0; column < source_rect.width; ++column, pixel += bytes) {
+			auto color = input ? input[column] : source.GetManiacColorAt(source_rect.x + column, source_rect.y + row);
+			if (chromakey && color.alpha == 0) continue;
+			written = true;
+			output[column] = color;
+			if (presentation) color.alpha = 255;
+			else MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
+			const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
+			std::memcpy(pixel, &packed, bytes);
+		}
+	}
+	if (written) {
+		if (presentation) maniac_presentation = true;
+		++maniac_revision;
+	}
+}
+
 void Bitmap::HueChangeBlit(int x, int y, Bitmap const& src, Rect const& src_rect_, double hue_) {
 	Rect dst_rect(x, y, 0, 0), src_rect = src_rect_;
 

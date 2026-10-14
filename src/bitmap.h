@@ -259,6 +259,9 @@ public:
 	void SetColorAt(int x, int y, const Color& color);
 	Color GetManiacColorAt(int x, int y) const;
 	void SetManiacColorAt(int x, int y, Color color, bool presentation = false);
+	/** Copies straight Maniac colors; presentation makes only the display pixels opaque. */
+	void CopyManiacPixels(int x, int y, const Bitmap& source, Rect source_rect,
+		bool chromakey = false, bool presentation = false);
 	void EnableManiacPixels();
 	void ResetManiacPresentation();
 	uint64_t GetManiacRevision() const { return pixel_owner ? pixel_owner->GetManiacRevision() : maniac_revision; }

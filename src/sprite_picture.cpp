@@ -40,13 +40,15 @@ feature_priority_layers(Player::IsPatchManiac() || Player::IsMajorUpdatedVersion
 	SetZ(Priority_PictureOld + pic_id);
 }
 
-void Sprite_Picture::OnPictureShow() {
-	if (Player::IsPatchManiac() && GetBitmap()) {
+void Sprite_Picture::OnPictureShow(bool reuse_pixels) {
+	if (!reuse_pixels && Player::IsPatchManiac() && GetBitmap()) {
 		auto& picture = Main_Data::game_pictures->GetPicture(pic_id);
 		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
 	}
-	maniac_source.reset();
-	maniac_prepared.reset();
+	if (!reuse_pixels) {
+		maniac_source.reset();
+		maniac_prepared.reset();
+	}
 	last_spritesheet_frame = -1;
 	UpdatePictureZ();
 }
@@ -219,7 +221,7 @@ void Sprite_Picture::UpdateManiacPixels() {
 	Rect rect;
 	const auto previous = maniac_prepared;
 	if (auto prepared = PrepareManiacBitmap(rect); prepared && (initialize || prepared != previous))
-		picture.RecordManiacProcessedFrame(*prepared);
+		picture.RecordManiacProcessedFrame(prepared);
 }
 
 BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {

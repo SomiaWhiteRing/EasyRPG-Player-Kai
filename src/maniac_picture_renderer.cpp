@@ -181,6 +181,10 @@ BitmapRef Prepare(const Bitmap& source, Rect frame, const lcf::rpg::SavePicture&
 	result->EnableManiacPixels();
 	const int flash = picture.flags.affected_by_flash ? Round(screen.flash_current_level) * 8 : 0;
 	const std::array<int, 3> flash_color = {screen.flash_red * 8, screen.flash_green * 8, screen.flash_blue * 8};
+	if (!horizontal && !vertical && tone == std::array<int, 4>{100, 100, 100, 100} && flash <= 0) {
+		result->CopyManiacPixels(0, 0, source, frame);
+		return result;
+	}
 	for (int y = 0; y < frame.height; ++y) for (int x = 0; x < frame.width; ++x) {
 		Color pixel = source.GetManiacColorAt(frame.x + (horizontal ? frame.width - x - 1 : x), frame.y + (vertical ? frame.height - y - 1 : y));
 		if (pixel.alpha || !chromakey) {
@@ -210,7 +214,12 @@ void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePictu
 	const int opacity = Nearest(255.0 - picture.current_top_trans * 255.0 * 0.01);
 	const int blend = (static_cast<uint32_t>(picture.finish_bot_trans) >> 8) & 3;
 	const double sx = picture.current_magnify * 0.01, sy = picture.maniac_current_magnify_height * 0.01;
-	if (picture.effect_mode == 0 && picture.current_rotation == 0.0) Scaled(destination, prepared, x, y, picture.current_magnify, picture.maniac_current_magnify_height, blend, opacity, chromakey);
+	if (picture.effect_mode == 0 && picture.current_rotation == 0.0
+			&& Truncate(picture.current_magnify) == 100 && Truncate(picture.maniac_current_magnify_height) == 100
+			&& blend == 0 && opacity >= 255) {
+		destination.CopyManiacPixels(x - prepared.GetWidth() / 2, y - prepared.GetHeight() / 2,
+			prepared, prepared.GetRect(), chromakey, true);
+	} else if (picture.effect_mode == 0 && picture.current_rotation == 0.0) Scaled(destination, prepared, x, y, picture.current_magnify, picture.maniac_current_magnify_height, blend, opacity, chromakey);
 	else if (picture.effect_mode == 2) Wave(destination, prepared, x, y, sx, sy, Nearest(picture.current_effect_power * 4.0), picture.current_waver, blend, opacity, chromakey);
 	else Rotated(destination, prepared, x, y, sx, sy, -picture.current_rotation * (picture.effect_mode == 1 ? 1.40625 : 1.0), blend, opacity, chromakey);
 }

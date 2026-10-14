@@ -294,7 +294,7 @@ void Game_Pictures::OnBattleEnd() {
 	}
 }
 
-bool Game_Pictures::Picture::Show(const ShowParams& params) {
+bool Game_Pictures::Picture::Show(const ShowParams& params, bool reuse_pixels) {
 	const bool was_maniac_text = Player::IsPatchManiac() && (data.maniac_image_flags >> 24) == 1;
 	if (was_maniac_text) Erase();
 	needs_update = true;
@@ -303,7 +303,7 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 		if (IsWindowAttached() && Main_Data::game_windows) Main_Data::game_windows->Erase(data.ID);
 		request_id = {};
 		bitmap_modified = false;
-		ResetManiacPixelLayout();
+		if (!reuse_pixels) ResetManiacPixelLayout();
 	}
 	position_scaled = params.position_scaled;
 	data.maniac_image_flags = params.maniac_image_flags;
@@ -391,12 +391,13 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 bool Game_Pictures::Show(int id, const ShowParams& params) {
 	auto& pic = GetPicture(id);
 	const bool reuse = Player::IsPatchManiac() && !params.name.empty() && pic.data.name == params.name
+		&& !pic.bitmap_modified && !pic.IsWindowAttached()
 		&& pic.sprite && pic.sprite->GetBitmap() && !pic.IsRequestPending()
 		&& pic.data.spritesheet_cols == params.spritesheet_cols && pic.data.spritesheet_rows == params.spritesheet_rows
 		&& pic.data.spritesheet_frame == params.spritesheet_frame && pic.data.spritesheet_speed == params.spritesheet_speed;
-	if (pic.Show(params)) {
+	if (pic.Show(params, reuse)) {
 		if (reuse) {
-			pic.sprite->OnPictureShow();
+			pic.sprite->OnPictureShow(true);
 			pic.sprite->SetVisible(true);
 			pic.ApplyOrigin(false);
 			pic.sprite->UpdateManiacPixels();
@@ -769,15 +770,19 @@ void Game_Pictures::Picture::InitManiacPixelLayout(bool resource_shared) {
 	}
 }
 
-void Game_Pictures::Picture::RecordManiacProcessedFrame(const Bitmap& frame) {
+void Game_Pictures::Picture::RecordManiacProcessedFrame(const BitmapRef& frame) {
 	if (!maniac_processed) return;
-	if (frame.GetWidth() > maniac_image_width || frame.GetHeight() > maniac_image_height)
+	if (frame->GetWidth() > maniac_image_width || frame->GetHeight() > maniac_image_height)
 		Output::Error("Maniac picture {} frame exceeds processed allocation", data.ID);
+	// Resource pictures expose the same prepared frame to drawing and pixel
+	// queries. Mutable kind2 allocations must retain pixels outside this frame.
+	if (maniac_resource_shared && frame->GetWidth() == maniac_image_width && frame->GetHeight() == maniac_image_height) {
+		maniac_processed = frame;
+		return;
+	}
 	// Native e40c0 writes this frame to origin0; the rest of a kind2 full
 	// allocation keeps its earlier/zero pixels. Display still uses Sprite's frame.
-	for (int y = 0; y < frame.GetHeight(); ++y)
-		for (int x = 0; x < frame.GetWidth(); ++x)
-			maniac_processed->SetManiacColorAt(x, y, frame.GetManiacColorAt(x, y));
+	maniac_processed->CopyManiacPixels(0, 0, *frame, frame->GetRect());
 }
 
 BitmapRef Game_Pictures::Picture::GetManiacReadBitmap(bool processed) const {
