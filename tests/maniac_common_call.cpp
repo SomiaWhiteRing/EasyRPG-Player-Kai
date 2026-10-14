@@ -202,10 +202,8 @@ TEST_CASE("Maniac 1005 creates fresh fields without copying a dirty caller") {
 	};
 	struct Restore {
 		int patch = Player::game_config.patch_maniac.Get();
-		int version = Player::game_config.maniac_version.Get();
 		~Restore() {
 			Player::game_config.patch_maniac.Set(patch);
-			Player::game_config.maniac_version.Set(version);
 		}
 	};
 	Graphics::Init();
@@ -213,7 +211,6 @@ TEST_CASE("Maniac 1005 creates fresh fields without copying a dirty caller") {
 		MockGame game(MockMap::eNone);
 		Restore restore;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		lcf::Data::commonevents.clear();
 		Game_Map::GetCommonEvents().clear();
 		for (int id = 1; id <= 2; ++id) {
@@ -343,11 +340,9 @@ TEST_CASE("Maniac 250921 common call error and depth boundaries") {
 	};
 	struct Restore {
 		int patch = Player::game_config.patch_maniac.Get();
-		int version = Player::game_config.maniac_version.Get();
 		~Restore() {
 			Output::SetLogCallback(nullptr);
 			Player::game_config.patch_maniac.Set(patch);
-			Player::game_config.maniac_version.Set(version);
 		}
 	};
 	Graphics::Init();
@@ -355,7 +350,6 @@ TEST_CASE("Maniac 250921 common call error and depth boundaries") {
 		MockGame game(MockMap::eNone);
 		Restore restore;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		lcf::Data::commonevents.clear();
 		Game_Map::GetCommonEvents().clear();
 		lcf::Data::commonevents.emplace_back();

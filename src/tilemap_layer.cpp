@@ -938,9 +938,9 @@ void TilemapLayer::SetMapTileDataAt(int x, int y, int tile_id, bool disable_auto
 	substitutions = Game_Map::GetTilesLayer(layer);
 
 	bool is_autotile = IsTileFromBlock(tile_id, BLOCK_A) || IsTileFromBlock(tile_id, BLOCK_B) || IsTileFromBlock(tile_id, BLOCK_D);
-	const bool native250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 
-	if (native250921 && !disable_autotile) {
+	if (maniac && !disable_autotile) {
 		const bool loop_horizontal = Game_Map::LoopHorizontal();
 		const bool loop_vertical = Game_Map::LoopVertical();
 		const int link = chipset ? ManiacAutotileLink(*chipset) : -1;

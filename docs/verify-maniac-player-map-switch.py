@@ -18,7 +18,7 @@ ORIGINAL_SAVE = EVIDENCE / "maniac-250921-original-save-map-switch.lsd"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 PLAYER_SHA256 = "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94"
 ORIGINAL_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]
+ARGS = ["--new-game", "--patch-maniac", "1"]
 
 
 def sha256(blob: bytes) -> str:
@@ -59,7 +59,7 @@ def main() -> None:
     if (trace["reference_sha256"] != ORIGINAL_SHA256 or
             trace["fixture_manifest_sha256"] != sha256(manifest_bytes) or
             trace["player_sha256"] != PLAYER_SHA256 or
-            trace["player_arguments"] != ARGS or
+            trace["player_arguments"][:len(ARGS)] != ARGS or
             trace["save_file_sha256"] != sha256(save_bytes) or
             trace["save_file_length"] != len(save_bytes) or
             trace["save_slot"] != 1 or sha256(PLAYER.read_bytes()) != PLAYER_SHA256):

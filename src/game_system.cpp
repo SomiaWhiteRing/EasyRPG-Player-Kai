@@ -42,7 +42,7 @@
 namespace {
 	int32_t ManiacFaceDelay(int base, int range, bool positive) {
 		const int32_t lower = positive ? 0 : static_cast<int32_t>(0u - static_cast<uint32_t>(range));
-		const int32_t random = Player::game_config.maniac_version.Get() == 250921
+		const int32_t random = Player::IsPatchManiac()
 			? Main_Data::ManiacRandomInclusive(lower, range)
 			: Rand::GetRandomNumber(std::min(lower, range), std::max(lower, range));
 		return static_cast<int32_t>(static_cast<uint32_t>(base) + static_cast<uint32_t>(random));
@@ -268,10 +268,10 @@ bool Game_System::IsStopSoundFilename(std::string_view name, Filesystem_Stream::
 
 void Game_System::BgmPlay(lcf::rpg::Music const& bgm) {
 	const lcf::rpg::Music requested_music = bgm;
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	lcf::rpg::Music previous_music = data.current_music;
 	data.current_music = requested_music;
-	if (native_250921) {
+	if (maniac) {
 		previous_music.volume = Utils::Clamp<int32_t>(previous_music.volume, 0, 100);
 		previous_music.tempo = Utils::Clamp<int32_t>(previous_music.tempo, 10, 400);
 	}
@@ -323,7 +323,7 @@ void Game_System::BgmPlay(lcf::rpg::Music const& bgm) {
 
 	data.music_stopping = false;
 	// Native GetGameInfo and saves retain the request, separately from playback limits.
-	if (native_250921) data.current_music = requested_music;
+	if (maniac) data.current_music = requested_music;
 }
 
 void Game_System::BgmStop() {

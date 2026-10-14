@@ -40,7 +40,7 @@ bool Feature::HasRpg2k3BattleSystem() {
 }
 
 bool Feature::HasRow() {
-	if (HasRpg2k3BattleSystem() && Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (HasRpg2k3BattleSystem() && Player::IsPatchManiac()) {
 		if (auto scene = Scene::Find(Scene::Battle)) return !static_cast<Scene_Battle*>(scene.get())->IsManiacRowDisabled();
 	}
 	if (HasRpg2k3BattleSystem() && !lcf::Data::battlecommands.easyrpg_disable_row_feature) {

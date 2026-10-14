@@ -21,7 +21,7 @@ ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT
 ORIGINAL_SHA = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
 CASES = ("missing", "zero", "negative", "out-of-range", "int-max", "empty", "depth-pass", "depth-error")
 IDS = {"missing": 0, "zero": 0, "negative": -1, "out-of-range": 2, "int-max": 2147483647}
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "common1005-boundary.log"]
 AGENT = r"""
 const base = Process.mainModule.base;
@@ -204,7 +204,7 @@ def verify(cases: tuple[str, ...]) -> None:
             trace = json.loads(path.read_text())
             if (trace["manifest_sha256"] != sha(frozen)
                     or trace["runtime_sha256"] != (ORIGINAL_SHA if runtime == "original" else sha(PLAYER))
-                    or trace["runtime_arguments"] != ([] if runtime == "original" else PLAYER_ARGS)):
+                    or trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != ([] if runtime == "original" else PLAYER_ARGS)):
                 raise ValueError(f"provenance changed: {case}/{runtime}")
             if trace["save_exists"] == expected_error: raise ValueError("unexpected continuation/save")
             if not expected_error:

@@ -164,7 +164,7 @@ bool Emscripten_Interface_Private::UploadSavegameStep2(int slot, int buffer_addr
 
 	std::istream is(new Filesystem_Stream::InputMemoryStreamBufView(lcf::Span<uint8_t>(reinterpret_cast<uint8_t*>(buffer_addr), size)));
 
-	if (!lcf::LSD_Reader::Load(is, "", Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921)) {
+	if (!lcf::LSD_Reader::Load(is, "", Player::IsPatchManiac())) {
 		Output::Warning("Selected file is not a valid savegame");
 		return false;
 	}

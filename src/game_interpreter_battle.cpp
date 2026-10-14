@@ -108,7 +108,7 @@ Game_Interpreter_Battle::Game_Interpreter_Battle()
 
 bool Game_Interpreter_Battle::OnFinishStackFrame() {
 	const bool has_parent_frame = Game_Interpreter::OnFinishStackFrame();
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+	if (Player::IsPatchManiac()
 			&& !Game_Battle::IsManiacHookPumping()) {
 		// Only the native mode-2 battle interpreter polls input after cleanup.
 		// The five independent hook interpreters have mode 0.
@@ -301,7 +301,7 @@ bool Game_Interpreter_Battle::ExecuteCommand(lcf::rpg::EventCommand const& com) 
 // Commands
 
 bool Game_Interpreter_Battle::CommandCallCommonEvent(lcf::rpg::EventCommand const& com) {
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		return CommandManiacCallCommonEvent(com);
 	}
 	if (!Player::IsRPG2k3Commands()) {
@@ -568,7 +568,7 @@ bool Game_Interpreter_Battle::CommandTerminateBattle(lcf::rpg::EventCommand cons
 bool Game_Interpreter_Battle::CommandConditionalBranchBattle(lcf::rpg::EventCommand const& com) {
 	bool result = false;
 	int value1, value2;
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	const auto arg = [&](size_t index) { return index < com.parameters.size() ? com.parameters[index] : 0; };
 	const auto resolve = [&](int value, int mode) {
 		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
@@ -585,23 +585,23 @@ bool Game_Interpreter_Battle::CommandConditionalBranchBattle(lcf::rpg::EventComm
 		return true;
 	};
 
-	switch (native_250921 ? arg(0) : com.parameters[0]) {
+	switch (maniac ? arg(0) : com.parameters[0]) {
 		case 0:
 			// Switch
-			result = native_250921 ? (ReadSwitch(arg(1)) != 0) == (arg(2) == 0)
+			result = maniac ? (ReadSwitch(arg(1)) != 0) == (arg(2) == 0)
 				: Main_Data::game_switches->Get(com.parameters[1]) == (com.parameters[2] == 0);
 			break;
 		case 1:
 			// Variable
-			value1 = native_250921 ? ReadVariable(arg(1)) : Main_Data::game_variables->Get(com.parameters[1]);
-			if (native_250921) {
+			value1 = maniac ? ReadVariable(arg(1)) : Main_Data::game_variables->Get(com.parameters[1]);
+			if (maniac) {
 				value2 = resolve(arg(3), arg(2));
 			} else if (com.parameters[2] == 0) {
 				value2 = com.parameters[3];
 			} else {
 				value2 = Main_Data::game_variables->Get(com.parameters[3]);
 			}
-			switch (native_250921 ? arg(4) : com.parameters[4]) {
+			switch (maniac ? arg(4) : com.parameters[4]) {
 				case 0:
 					// Equal to
 					result = (value1 == value2);
@@ -630,33 +630,33 @@ bool Game_Interpreter_Battle::CommandConditionalBranchBattle(lcf::rpg::EventComm
 			break;
 		case 2: {
 			// Hero can act
-			const int actor_id = native_250921 ? resolve(arg(1), arg(2) & 15) : com.parameters[1];
+			const int actor_id = maniac ? resolve(arg(1), arg(2) & 15) : com.parameters[1];
 			auto* actor = Main_Data::game_actors->GetActor(actor_id);
 
 			if (!actor) {
-				if (native_250921) Output::Error("ConditionalBranchBattle: Invalid actor ID: {}", actor_id);
+				if (maniac) Output::Error("ConditionalBranchBattle: Invalid actor ID: {}", actor_id);
 				Output::Warning("ConditionalBranchBattle: Invalid actor ID {}", actor_id);
 			} else {
-				result = native_250921 ? can_act(*actor) : actor->CanAct();
+				result = maniac ? can_act(*actor) : actor->CanAct();
 			}
 			break;
 		}
 		case 3: {
 			// Monster can act
-			const int enemy_id = native_250921 ? resolve(arg(1), arg(2) & 15) : com.parameters[1];
+			const int enemy_id = maniac ? resolve(arg(1), arg(2) & 15) : com.parameters[1];
 			auto* enemy = Main_Data::game_enemyparty->GetEnemy(enemy_id);
 
 			if (!enemy) {
-				if (native_250921) Output::Error("ConditionalBranchBattle: Invalid enemy ID: {}", enemy_id);
+				if (maniac) Output::Error("ConditionalBranchBattle: Invalid enemy ID: {}", enemy_id);
 				Output::Warning("ConditionalBranchBattle: Invalid enemy ID {}", enemy_id);
 			} else {
-				result = native_250921 ? can_act(*enemy) : enemy->CanAct();
+				result = maniac ? can_act(*enemy) : enemy->CanAct();
 			}
 			break;
 		}
 		case 4:
 			// Monster is the current target
-			if (native_250921) {
+			if (maniac) {
 				const auto& context = Game_Battle::GetPrimaryInterpreterBattle();
 				const int enemy_index = resolve(arg(1), arg(2) & 15);
 				result = (context.current_maniac_target_type == 3 || context.current_maniac_target_type == 4)
@@ -667,7 +667,7 @@ bool Game_Interpreter_Battle::CommandConditionalBranchBattle(lcf::rpg::EventComm
 			break;
 		case 5: {
 			// Hero uses the ... command
-			if (native_250921) {
+			if (maniac) {
 				const int actor_id = resolve(arg(1), arg(3) & 15);
 				const int command_id = resolve(arg(2), (arg(3) >> 4) & 15);
 				if (Game_Battle::GetPrimaryInterpreterBattle().current_actor_id == actor_id) {
@@ -684,7 +684,7 @@ bool Game_Interpreter_Battle::CommandConditionalBranchBattle(lcf::rpg::EventComm
 			break;
 		}
 		case 6: {
-			if (!native_250921) break;
+			if (!maniac) break;
 			const int enemy_id = resolve(arg(1), arg(3) & 15);
 			const int state_id = resolve(arg(2), (arg(3) >> 4) & 15);
 			auto* enemy = Main_Data::game_enemyparty->GetEnemy(enemy_id);
@@ -722,19 +722,14 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 	if (!Player::IsPatchManiac()) {
 		return false;
 	}
-	const bool native_state = Player::game_config.maniac_version.Get() == 250921
-		&& hook_type == ManiacBattleHookType::SetState;
+	const bool native_state = hook_type == ManiacBattleHookType::SetState;
 	if (native_state && maniac_state_hook_running) return false;
-	const bool native_param = Player::game_config.maniac_version.Get() == 250921
-		&& hook_type == ManiacBattleHookType::StatChange;
+	const bool native_param = hook_type == ManiacBattleHookType::StatChange;
 	if (native_param && maniac_param_hook_running) return false;
-	const bool native_damage = Player::game_config.maniac_version.Get() == 250921
-		&& hook_type == ManiacBattleHookType::DamagePop;
+	const bool native_damage = hook_type == ManiacBattleHookType::DamagePop;
 	if (native_damage && maniac_damage_hook_running) return false;
-	const bool native_atb = Player::game_config.maniac_version.Get() == 250921
-		&& hook_type == ManiacBattleHookType::AtbIncrement;
-	const bool native_target = Player::game_config.maniac_version.Get() == 250921
-		&& hook_type == ManiacBattleHookType::Targetting;
+	const bool native_atb = hook_type == ManiacBattleHookType::AtbIncrement;
+	const bool native_target = hook_type == ManiacBattleHookType::Targetting;
 	auto* hook_interpreter = native_state ? maniac_state_interpreter.get()
 		: native_param ? maniac_param_interpreter.get()
 		: native_damage ? maniac_damage_interpreter.get()
@@ -744,88 +739,43 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 	int common_event_id = std::get<0>(maniac_hooks[hook_type]);
 	int variable_start_id = std::get<1>(maniac_hooks[hook_type]);
 
-	const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-	if (common_event_id == 0 || (!native250921 && common_event_id < 0)) {
+	if (common_event_id == 0) {
 		return false;
 	}
 
 	Game_CommonEvent* common_event = lcf::ReaderUtil::GetElement(Game_Map::GetCommonEvents(), common_event_id);
 	if (!common_event) {
-		if (native250921) {
-			Output::Error("CommandManiacControlBattle: Can't call invalid common event {}", common_event_id);
-		}
-		Output::Warning("CommandManiacControlBattle: Can't call invalid common event {}", common_event_id);
+		Output::Error("CommandManiacControlBattle: Can't call invalid common event {}", common_event_id);
 		return false;
 	}
 
-	// pushes the change variable events into the interpreters
-	// event queue, so we don't run into a race condition.
-	std::vector<lcf::rpg::EventCommand> pre_commands;
 	const size_t packet_size = hook_type == ManiacBattleHookType::AtbIncrement ? 4
-		: hook_type == ManiacBattleHookType::SetState && Player::game_config.maniac_version.Get() == 250921 ? 3 : 6;
-	if (native250921) {
-		const int values[] = {var1, var2, var3, var4, var5, var6};
-		const int64_t first = variable_start_id < 0 ? -static_cast<int64_t>(variable_start_id) : variable_start_id;
-		if (variable_start_id < 0) {
-			const auto* frame = GetFramePtr();
-			auto* state = Main_Data::game_maniac_self_variables.get();
-			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
-				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-			if (bank) {
-				bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(first + packet_size + 1)));
-				std::copy_n(values, packet_size, bank->numbers.begin() + first);
-			}
-		} else {
-			Main_Data::game_variables->EnsureSize(static_cast<size_t>(first + packet_size + 1));
-			for (size_t i = 0; i < packet_size; ++i) {
-				*Main_Data::game_variables->GetManiacWritable(static_cast<int>(static_cast<uint32_t>(variable_start_id) + i)) = values[i];
-			}
+		: hook_type == ManiacBattleHookType::SetState ? 3 : 6;
+	const int values[] = {var1, var2, var3, var4, var5, var6};
+	const int64_t first = variable_start_id < 0 ? -static_cast<int64_t>(variable_start_id) : variable_start_id;
+	if (variable_start_id < 0) {
+		const auto* frame = GetFramePtr();
+		auto* state = Main_Data::game_maniac_self_variables.get();
+		auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+			frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+		if (bank) {
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(first + packet_size + 1)));
+			std::copy_n(values, packet_size, bank->numbers.begin() + first);
+		}
+	} else {
+		Main_Data::game_variables->EnsureSize(static_cast<size_t>(first + packet_size + 1));
+		for (size_t i = 0; i < packet_size; ++i) {
+			*Main_Data::game_variables->GetManiacWritable(static_cast<int>(static_cast<uint32_t>(variable_start_id) + i)) = values[i];
 		}
 	}
 	// The native packet belongs to the calling interpreter before switching
 	// to the hook's independent SELF frame.
 	hook_interpreter->Push(common_event);
-	if (!native250921) {
-		for (size_t i = 0; i < packet_size; i++)
-		{
-			auto event_command = lcf::rpg::EventCommand();
-			event_command.code = static_cast<int>(lcf::rpg::EventCommand::Code::ControlVars);
-			event_command.parameters = lcf::DBArray<int32_t>(7);
-			event_command.parameters[1] = variable_start_id + i;
-			switch (i)
-			{
-				case 0:
-					event_command.parameters[5] = var1;
-					break;
-				case 1:
-					event_command.parameters[5] = var2;
-					break;
-				case 2:
-					event_command.parameters[5] = var3;
-					break;
-				case 3:
-					event_command.parameters[5] = var4;
-					break;
-				case 4:
-					event_command.parameters[5] = var5;
-					break;
-				case 5:
-					event_command.parameters[5] = var6;
-					break;
-				default:
-					break;
-			}
-			pre_commands.push_back(event_command);
-		}
-
-		// Push is actually "push_back", so this gets added before other events.
-		hook_interpreter->Push(pre_commands, 0);
-	}
 
 	// Necessary to start the sub-event.
 	const auto hook_scene = Scene::instance;
 	const auto retire_hook = [&]() {
-		if (!native250921 || !hook_interpreter->IsAsyncPending()) return false;
+		if (!hook_interpreter->IsAsyncPending()) return false;
 		const auto operation = hook_interpreter->GetAsyncOp();
 		const auto type = operation.GetType();
 		if (type != AsyncOp::eLoad && type != AsyncOp::eExitGame
@@ -885,32 +835,15 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 		// Native reads slot five from the base captured before the hook ran.
 		const uint32_t slot = static_cast<uint32_t>(variable_start_id)
 			+ (variable_start_id < 0 ? -5u : 5u);
-		*hook_result = native250921 ? ReadVariable(static_cast<int32_t>(slot))
-			: hook_interpreter->ReadVariable(static_cast<int32_t>(slot));
+		*hook_result = ReadVariable(static_cast<int32_t>(slot));
 	} else if (hook_type == ManiacBattleHookType::AtbIncrement && hook_result) {
 		// Native reads the increment from the currently registered ATB base.
 		const int base = std::get<1>(maniac_hooks[hook_type]);
 		const uint32_t slot = static_cast<uint32_t>(base) + (base < 0 ? -3u : 3u);
-		*hook_result = native250921 ? ReadVariable(static_cast<int32_t>(slot))
-			: hook_interpreter->ReadVariable(static_cast<int32_t>(slot));
+		*hook_result = ReadVariable(static_cast<int32_t>(slot));
 	}
 
 	return true;
-}
-
-bool Game_Interpreter_Battle::ProcessManiacSubEvents() {
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
-		// Native ATB/Targetting waits return to their action caller. Advancing
-		// them here would turn a limited slice into a global battle barrier.
-		return false;
-	}
-	// If we have sub-events we're going to update them immediately
-	// until the queue is empty while making the rest of the game wait.
-	if (Player::IsPatchManiac() && maniac_interpreter->IsRunning()) {
-		maniac_interpreter->Update();
-		return true;
-	}
-	return false;
 }
 
 bool Game_Interpreter_Battle::CommandManiacControlBattle(lcf::rpg::EventCommand const& com) {
@@ -918,44 +851,31 @@ bool Game_Interpreter_Battle::CommandManiacControlBattle(lcf::rpg::EventCommand 
 		return true;
 	}
 
-	if (Player::game_config.maniac_version.Get() == 250921) {
-		int common_event_id = 0;
-		const int mode = com.parameters[1] & 15;
-		const int reference = com.parameters[2];
-		if (mode == 0) common_event_id = reference;
-		else if (mode == 1) common_event_id = ReadVariable(reference);
-		else if (mode == 2) common_event_id = ReadVariableIndirect(reference);
-		else if (mode >= 3 && mode <= 5) {
-			const auto text = mode == 3 ? std::string_view(com.string)
-				: ReadString(mode == 4 ? reference : ResolveVariableIndirectAddress(reference));
-			const auto name = Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
-			common_event_id = mode == 3 ? com.easyrpg_maniac_common_name_cache : 0;
-			if (common_event_id == 0) {
-				for (const auto& candidate : lcf::Data::commonevents) {
-					if (Utils::DecodeUTF16(static_cast<std::string_view>(candidate.name), true) == name) {
-						common_event_id = candidate.ID;
-						break;
-					}
+	int common_event_id = 0;
+	const int mode = com.parameters[1] & 15;
+	const int reference = com.parameters[2];
+	if (mode == 0) common_event_id = reference;
+	else if (mode == 1) common_event_id = ReadVariable(reference);
+	else if (mode == 2) common_event_id = ReadVariableIndirect(reference);
+	else if (mode >= 3 && mode <= 5) {
+		const auto text = mode == 3 ? std::string_view(com.string)
+			: ReadString(mode == 4 ? reference : ResolveVariableIndirectAddress(reference));
+		const auto name = Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
+		common_event_id = mode == 3 ? com.easyrpg_maniac_common_name_cache : 0;
+		if (common_event_id == 0) {
+			for (const auto& candidate : lcf::Data::commonevents) {
+				if (Utils::DecodeUTF16(static_cast<std::string_view>(candidate.name), true) == name) {
+					common_event_id = candidate.ID;
+					break;
 				}
-				if (mode == 3) com.easyrpg_maniac_common_name_cache = common_event_id;
 			}
+			if (mode == 3) com.easyrpg_maniac_common_name_cache = common_event_id;
 		}
-		const int selector = com.parameters[0];
-		if (selector >= 0 && selector <= 4) {
-			maniac_hooks[static_cast<ManiacBattleHookType>(selector)] = {common_event_id, com.parameters[3]};
-		}
-		return true;
 	}
-
-	ManiacBattleHookType control_type_flags = static_cast<ManiacBattleHookType>(com.parameters[0]);
-	int common_event_identifier = ValueOrVariable(com.parameters[1], com.parameters[2]);
-	int value_reference_identifier = com.parameters[3];
-
-	// Sets the maniacs battle event hook to:
-	// the common event id and the variable id the developer would like to use.
-	std::get<0>(maniac_hooks[control_type_flags]) = common_event_identifier;
-	std::get<1>(maniac_hooks[control_type_flags]) = value_reference_identifier;
-
+	const int selector = com.parameters[0];
+	if (selector >= 0 && selector <= 4) {
+		maniac_hooks[static_cast<ManiacBattleHookType>(selector)] = {common_event_id, com.parameters[3]};
+	}
 	return true;
 }
 
@@ -964,120 +884,38 @@ bool Game_Interpreter_Battle::CommandManiacControlAtbGauge(lcf::rpg::EventComman
 		return true;
 	}
 
-	if (Player::game_config.maniac_version.Get() == 250921) {
-		if (!Game_Battle::IsBattleRunning()) {
-			return true;
-		}
-		auto resolve = [this](int mode, int value) {
-			return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
-		};
-		int amount = resolve(com.parameters[5], com.parameters[6]);
-		if (com.parameters[4] != 0) {
-			amount = static_cast<int32_t>(static_cast<uint32_t>(amount) * uint32_t{3000});
-		}
-		const int target_id = resolve(com.parameters[1], com.parameters[2]);
-		auto apply = [amount, target_id, &com](Game_Battler* battler, TargetType type) {
-			if (!battler) {
-				Output::Error("ManiacControlAtbGauge: Invalid {} ID: {}", target_text[type], target_id);
-				return;
-			}
-			const auto old = static_cast<uint32_t>(battler->GetAtbGauge());
-			switch (com.parameters[3]) {
-				case 0: battler->SetManiacAtbGauge(amount); break;
-				case 1: battler->SetManiacAtbGauge(static_cast<int32_t>(old + static_cast<uint32_t>(amount))); break;
-				case 2: battler->SetManiacAtbGauge(static_cast<int32_t>(old - static_cast<uint32_t>(amount))); break;
-			}
-		};
-		switch (com.parameters[0]) {
-			case 0: apply(Main_Data::game_actors->GetActor(target_id), Actor); break;
-			case 1: apply(Main_Data::game_party->GetActor(target_id), Member); break;
-			case 2:
-				for (auto* battler : Main_Data::game_party->GetActors()) apply(battler, Member);
-				break;
-			case 3: apply(Main_Data::game_enemyparty->GetEnemy(target_id), Enemy); break;
-			case 4:
-				for (auto* battler : Main_Data::game_enemyparty->GetEnemies()) apply(battler, Enemy);
-				break;
-		}
+	if (!Game_Battle::IsBattleRunning()) {
 		return true;
 	}
-
-	int target_flags = com.parameters[0];
-	int target_reference_flags = com.parameters[1];
-	int target_reference_identifier = com.parameters[2];
-	int operation_flags = com.parameters[3];
-	int operand_flags = com.parameters[4];
-	int value_reference_flags = com.parameters[5];
-	int value_reference_identifier = com.parameters[6];
-
-	int target_id = ValueOrVariable(target_reference_flags, target_reference_identifier);
-
-	auto getAtbValue = [this, value_reference_flags, value_reference_identifier](int flags) {
-		int value = ValueOrVariable(value_reference_flags, value_reference_identifier);
-
-		switch (flags) {
-			case 0:
-				// value
-				return value;
-				break;
-			case 1:
-				// percentage
-				return (int) ((double)value / 100 * Game_Battler::GetMaxAtbGauge());
-				break;
-			default: return 0;
-		}
+	auto resolve = [this](int mode, int value) {
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
 	};
-
-	auto executeOperation = [getAtbValue, operand_flags, target_id](int flags, Game_Battler* battler, TargetType battler_type) {
+	int amount = resolve(com.parameters[5], com.parameters[6]);
+	if (com.parameters[4] != 0) {
+		amount = static_cast<int32_t>(static_cast<uint32_t>(amount) * uint32_t{3000});
+	}
+	const int target_id = resolve(com.parameters[1], com.parameters[2]);
+	auto apply = [amount, target_id, &com](Game_Battler* battler, TargetType type) {
 		if (!battler) {
-			MissingTargetWarning("CommandManiacControlAtbGauge", battler_type, target_id);
+			Output::Error("ManiacControlAtbGauge: Invalid {} ID: {}", target_text[type], target_id);
 			return;
 		}
-
-		switch (flags) {
-			case 0:
-				// set
-				battler->SetAtbGauge(getAtbValue(operand_flags));
-				break;
-			case 1:
-				// add
-				battler->IncrementAtbGauge(getAtbValue(operand_flags));
-				break;
-			case 2:
-				// sub
-				battler->IncrementAtbGauge(-getAtbValue(operand_flags));
-				break;
+		const auto old = static_cast<uint32_t>(battler->GetAtbGauge());
+		switch (com.parameters[3]) {
+			case 0: battler->SetManiacAtbGauge(amount); break;
+			case 1: battler->SetManiacAtbGauge(static_cast<int32_t>(old + static_cast<uint32_t>(amount))); break;
+			case 2: battler->SetManiacAtbGauge(static_cast<int32_t>(old - static_cast<uint32_t>(amount))); break;
 		}
 	};
-
-	switch (target_flags) {
-		case 0:
-			// actor
-			if (target_id > 0) {
-				executeOperation(operation_flags, Main_Data::game_actors->GetActor(target_id), Actor);
-			}
-			break;
-		case 1:
-			// party member
-			executeOperation(operation_flags, Main_Data::game_party->GetActor(target_id), Member);
-			break;
+	switch (com.parameters[0]) {
+		case 0: apply(Main_Data::game_actors->GetActor(target_id), Actor); break;
+		case 1: apply(Main_Data::game_party->GetActor(target_id), Member); break;
 		case 2:
-			// entire party
-			for (Game_Battler* member : Main_Data::game_party->GetActors()) {
-				executeOperation(operation_flags, member, Member);
-			}
+			for (auto* battler : Main_Data::game_party->GetActors()) apply(battler, Member);
 			break;
-		case 3:
-			// troop member
-			if (target_id > 0) {
-				executeOperation(operation_flags, Main_Data::game_enemyparty->GetEnemy(target_id), Enemy);
-			}
-			break;
+		case 3: apply(Main_Data::game_enemyparty->GetEnemy(target_id), Enemy); break;
 		case 4:
-			// entire troop
-			for (Game_Battler* member : Main_Data::game_enemyparty->GetEnemies()) {
-				executeOperation(operation_flags, member, Enemy);
-			}
+			for (auto* battler : Main_Data::game_enemyparty->GetEnemies()) apply(battler, Enemy);
 			break;
 	}
 
@@ -1088,42 +926,10 @@ bool Game_Interpreter_Battle::CommandManiacChangeBattleCommandEx(lcf::rpg::Event
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
-	if (Player::game_config.maniac_version.Get() == 250921) {
-		if (Scene::instance && Scene::instance->type == Scene::Battle && Game_Battle::IsBattleRunning()) {
-			const auto arg = [&](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
-			static_cast<Scene_Battle*>(Scene::instance.get())->SetManiacBattleCommands(arg(0) != 0, arg(1));
-		}
-		return true;
+	if (Scene::instance && Scene::instance->type == Scene::Battle && Game_Battle::IsBattleRunning()) {
+		const auto arg = [&](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+		static_cast<Scene_Battle*>(Scene::instance.get())->SetManiacBattleCommands(arg(0) != 0, arg(1));
 	}
-
-	// 1 row removed
-	bool actor_command_flags = com.parameters[0];
-
-	lcf::Data::battlecommands.easyrpg_disable_row_feature = actor_command_flags;
-
-	// 10000 lose added
-	// 01000 win added
-	// 00100 escape removed
-	// 00010 auto removed
-	// 00001 fight removed
-	int party_command_flags = com.parameters[1];
-
-	lcf::Data::system.easyrpg_battle_options.clear();
-	for (size_t i = 0; i < Scene_Battle::BattleOptionType::Lose + 1; i++) {
-		bool party_command_flag = party_command_flags & (1 << i);
-		bool flag_is_set = i > 2;
-
-		if (party_command_flag == flag_is_set) {
-			lcf::Data::system.easyrpg_battle_options.push_back(i);
-		}
-	}
-
-	auto* scene_battle = static_cast<Scene_Battle*>(Scene::instance.get());
-
-	if (scene_battle) {
-		scene_battle->CreateOptions();
-	}
-
 	return true;
 }
 
@@ -1132,199 +938,82 @@ bool Game_Interpreter_Battle::CommandManiacGetBattleInfo(lcf::rpg::EventCommand 
 		return true;
 	}
 
-	if (Player::game_config.maniac_version.Get() == 250921) {
-		if (!Game_Battle::IsBattleRunning()) return true;
-		const int selector = com.parameters[0];
-		const int property = com.parameters[1];
-		const int mode = com.parameters[2];
-		const int target = mode == 0 ? com.parameters[3] : mode == 1
-			? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3]);
-		const int base = com.parameters[4];
-		const auto write = [&](const std::vector<int32_t>& values, size_t capacity) {
-			const int64_t first = base < 0 ? -static_cast<int64_t>(base) : base;
-			if (base < 0) {
-				const auto* frame = GetFramePtr();
-				auto* state = Main_Data::game_maniac_self_variables.get();
-				auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
-					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-				if (!bank) return;
-				bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(first) + capacity + 1));
-				std::copy(values.begin(), values.end(), bank->numbers.begin() + first);
-			} else {
-				Main_Data::game_variables->EnsureSize(static_cast<size_t>(first) + capacity + 1);
-				for (size_t i = 0; i < values.size(); ++i) {
-					auto* slot = Main_Data::game_variables->GetManiacWritable(static_cast<int>(first + i));
-					if (slot) *slot = values[i];
-				}
-			}
-		};
-		const auto movable = [](Game_Battler& battler) {
-			return battler.CanManiacMove();
-		};
-		if (selector == 2 || selector == 4) {
-			std::vector<Game_Battler*> members;
-			if (selector == 2) Main_Data::game_party->GetBattlers(members);
-			else Main_Data::game_enemyparty->GetBattlers(members);
-			std::vector<int32_t> values(1, 0);
-			for (size_t i = 0; i < members.size(); ++i) {
-				auto& member = *members[i];
-				const bool matches = property == 0 ? !member.IsHidden()
-					: property == 1 ? member.GetHp() > 0
-					: property == 2 ? movable(member) : false;
-				if (matches) values.push_back(static_cast<int32_t>(i));
-			}
-			values[0] = static_cast<int32_t>(values.size() - 1);
-			write(values, members.size() + 1);
-			return true;
-		}
-		Game_Battler* battler = nullptr;
-		switch (selector) {
-			case 0: battler = Main_Data::game_actors->GetActor(target); break;
-			case 1: battler = Main_Data::game_party->GetActor(target); break;
-			case 3: battler = Main_Data::game_enemyparty->GetEnemy(target); break;
-			default: return true;
-		}
-		if (!battler) {
-			Output::Error("ManiacGetBattleInfo: Invalid {} ID: {}", selector == 3 ? "enemy" : "actor", target);
-		}
-		std::vector<int32_t> values;
-		if (property == 0) {
-			values = {battler->GetAtkModifier(), battler->GetDefModifier(), battler->GetSpiModifier(), battler->GetAgiModifier()};
-		} else if (property == 1) {
-			const auto& states = battler->GetStates();
-			values.push_back(static_cast<int32_t>(states.size()));
-			for (const auto state : states) values.push_back(static_cast<uint16_t>(state));
-		} else if (property == 2) {
-			values = battler->GetManiacAttributeRates();
-		} else if (property == 3) {
-			const auto action = battler->GetBattleAlgorithm();
-			// Native retains basic Defense after removing it from the action queue.
-			const bool defending_action = action
-				? action->GetActionType() == lcf::rpg::EnemyAction::Kind_basic
-					&& action->GetActionId() == lcf::rpg::EnemyAction::Basic_defense
-				: battler->IsDefending();
-			values = {battler->GetBattlePosition().x, battler->GetBattlePosition().y,
-				movable(*battler), defending_action, battler->IsCharged(), !battler->IsHidden()};
+	if (!Game_Battle::IsBattleRunning()) return true;
+	const int selector = com.parameters[0];
+	const int property = com.parameters[1];
+	const int mode = com.parameters[2];
+	const int target = mode == 0 ? com.parameters[3] : mode == 1
+		? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3]);
+	const int base = com.parameters[4];
+	const auto write = [&](const std::vector<int32_t>& values, size_t capacity) {
+		const int64_t first = base < 0 ? -static_cast<int64_t>(base) : base;
+		if (base < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(first) + capacity + 1));
+			std::copy(values.begin(), values.end(), bank->numbers.begin() + first);
 		} else {
-			return true;
+			Main_Data::game_variables->EnsureSize(static_cast<size_t>(first) + capacity + 1);
+			for (size_t i = 0; i < values.size(); ++i) {
+				auto* slot = Main_Data::game_variables->GetManiacWritable(static_cast<int>(first + i));
+				if (slot) *slot = values[i];
+			}
 		}
-		write(values, values.size());
+	};
+	const auto movable = [](Game_Battler& battler) {
+		return battler.CanManiacMove();
+	};
+	if (selector == 2 || selector == 4) {
+		std::vector<Game_Battler*> members;
+		if (selector == 2) Main_Data::game_party->GetBattlers(members);
+		else Main_Data::game_enemyparty->GetBattlers(members);
+		std::vector<int32_t> values(1, 0);
+		for (size_t i = 0; i < members.size(); ++i) {
+			auto& member = *members[i];
+			const bool matches = property == 0 ? !member.IsHidden()
+				: property == 1 ? member.GetHp() > 0
+				: property == 2 ? movable(member) : false;
+			if (matches) values.push_back(static_cast<int32_t>(i));
+		}
+		values[0] = static_cast<int32_t>(values.size() - 1);
+		write(values, members.size() + 1);
 		return true;
 	}
-
-	int target_flags = com.parameters[0];
-	int target_reference_flags = com.parameters[2];
-	int target_reference_identifier = com.parameters[3];
-	int information_flags = com.parameters[1];
-	int information_identifier = com.parameters[4];
-
-	int target_id = ValueOrVariable(target_reference_flags, target_reference_identifier);
-
-	auto executeOperationSingle = [information_flags, information_identifier, target_id](Game_Battler* battler, TargetType battler_type) {
-		if (!battler) {
-			MissingTargetWarning("CommandManiacGetBattleInfo", battler_type, target_id);
-			return;
-		}
-
-		switch (information_flags)
-		{
-			case 0:
-				// parameter buffs: attack, defense, mind, agility
-				Main_Data::game_variables->Set(information_identifier, battler->GetAtkModifier());
-				Main_Data::game_variables->Set(information_identifier + 1, battler->GetDefModifier());
-				Main_Data::game_variables->Set(information_identifier + 2, battler->GetSpiModifier());
-				Main_Data::game_variables->Set(information_identifier + 3, battler->GetAgiModifier());
-				break;
-			case 1:
-			{
-				// states: size, [...state_id]
-				auto states = lcf::Data::states.size();
-				Main_Data::game_variables->Set(information_identifier, states);
-				for (size_t i = 0; i < states; i++)
-				{
-					Main_Data::game_variables->Set(information_identifier + i + 1, battler->HasState(lcf::Data::states[i].ID));
-				}
-				break;
-			}
-			case 2:
-			{
-				// elements: size, [...element_id]
-				auto elements = lcf::Data::attributes.size();
-				Main_Data::game_variables->Set(information_identifier, elements);
-				for (size_t i = 0; i < elements; i++)
-				{
-					Main_Data::game_variables->Set(information_identifier + i + 1, battler->GetAttributeRateShift(lcf::Data::attributes[i].ID) + 1);
-				}
-				break;
-			}
-			case 3:
-				// others: x, y, can move, defending, charging, appeared
-				Main_Data::game_variables->Set(information_identifier, battler->GetBattlePosition().x);
-				Main_Data::game_variables->Set(information_identifier + 1, battler->GetBattlePosition().y);
-				Main_Data::game_variables->Set(information_identifier + 2, battler->CanAct());
-				Main_Data::game_variables->Set(information_identifier + 3, battler->IsDefending());
-				Main_Data::game_variables->Set(information_identifier + 4, battler->IsCharged());
-				Main_Data::game_variables->Set(information_identifier + 5, !battler->IsHidden());
-				break;
-		}
-	};
-
-	auto executeOperationMany = [information_flags](Game_Battler* battler) {
-		switch (information_flags)
-		{
-			case 0:
-				// list of members
-				return true;
-			case 1:
-				// list of members alive
-				return !battler->IsDead();
-			case 2:
-				// list of members who can move
-				return battler->CanAct();
-		}
-
-		return false;
-	};
-
-	switch (target_flags) {
-		case 0:
-			// actor
-			if (target_id > 0) {
-				executeOperationSingle(Main_Data::game_actors->GetActor(target_id), Actor);
-			}
-			break;
-		case 1:
-			// party member
-			executeOperationSingle(Main_Data::game_party->GetActor(target_id), Member);
-			break;
-		case 2:
-		{
-			// entire party
-			auto count = 0;
-			for (Game_Battler* member : Main_Data::game_party->GetActors()) {
-				count += executeOperationMany(member);
-			}
-			Main_Data::game_variables->Set(information_identifier, count);
-			break;
-		}
-		case 3:
-			// troop member
-			if (target_id > 0) {
-				executeOperationSingle(Main_Data::game_enemyparty->GetEnemy(target_id), Enemy);
-			}
-			break;
-		case 4:
-		{
-			// entire troop
-			auto count = 0;
-			for (Game_Battler* member : Main_Data::game_enemyparty->GetEnemies()) {
-				count += executeOperationMany(member);
-			}
-			Main_Data::game_variables->Set(information_identifier, count);
-			break;
-		}
+	Game_Battler* battler = nullptr;
+	switch (selector) {
+		case 0: battler = Main_Data::game_actors->GetActor(target); break;
+		case 1: battler = Main_Data::game_party->GetActor(target); break;
+		case 3: battler = Main_Data::game_enemyparty->GetEnemy(target); break;
+		default: return true;
 	}
-
+	if (!battler) {
+		Output::Error("ManiacGetBattleInfo: Invalid {} ID: {}", selector == 3 ? "enemy" : "actor", target);
+	}
+	std::vector<int32_t> values;
+	if (property == 0) {
+		values = {battler->GetAtkModifier(), battler->GetDefModifier(), battler->GetSpiModifier(), battler->GetAgiModifier()};
+	} else if (property == 1) {
+		const auto& states = battler->GetStates();
+		values.push_back(static_cast<int32_t>(states.size()));
+		for (const auto state : states) values.push_back(static_cast<uint16_t>(state));
+	} else if (property == 2) {
+		values = battler->GetManiacAttributeRates();
+	} else if (property == 3) {
+		const auto action = battler->GetBattleAlgorithm();
+		// Native retains basic Defense after removing it from the action queue.
+		const bool defending_action = action
+			? action->GetActionType() == lcf::rpg::EnemyAction::Kind_basic
+				&& action->GetActionId() == lcf::rpg::EnemyAction::Basic_defense
+			: battler->IsDefending();
+		values = {battler->GetBattlePosition().x, battler->GetBattlePosition().y,
+			movable(*battler), defending_action, battler->IsCharged(), !battler->IsHidden()};
+	} else {
+		return true;
+	}
+	write(values, values.size());
 	return true;
 }
 

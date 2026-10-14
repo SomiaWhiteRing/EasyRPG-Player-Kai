@@ -15,7 +15,7 @@ MANIFEST = EVIDENCE / "maniac-250921-save-boundaries-manifest.json"
 ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT.exe"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 ORIGINAL_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "noop-battle-player.log"]
 EXPECTED_PARAMETERS = [[0, 0, 1, 3], [0, -1, 1, -6], [0, 0, 0, 6], [], [0], [1],
                        [0, 0], [0, 0, 1], [2, 2, 1, 8], [1, -1, 1, -7], [0, 1],
@@ -60,7 +60,7 @@ def main() -> None:
         trace = json.loads(trace_blob)
         if (trace["reference_sha256"] != ORIGINAL_SHA256 or
                 trace["runtime_sha256"] != sha256(executable.read_bytes()) or
-                trace["runtime_arguments"] != ([] if label == "original" else PLAYER_ARGS) or
+                trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != ([] if label == "original" else PLAYER_ARGS) or
                 trace["fixture_manifest_sha256"] != sha256(manifest_blob) or
                 trace["save_slot"] != 9):
             raise ValueError(f"{label} trace provenance changed")

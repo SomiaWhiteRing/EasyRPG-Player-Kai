@@ -42,7 +42,6 @@ struct Game_ConfigGame {
 	BoolConfigParam patch_destiny{ "Destiny Patch", "", "Patch", "Destiny", false };
 	BoolConfigParam patch_dynrpg{ "DynRPG", "", "Patch", "DynRPG", false };
 	ConfigParam<int> patch_maniac{ "Maniac Patch", "", "Patch", "Maniac", 0 };
-	ConfigParam<int> maniac_version{ "Maniac Version", "Original Maniac release (241028 or 250921)", "Patch", "ManiacVersion", 0 };
 	BoolConfigParam patch_common_this_event{ "Common This Event", "Support \"This Event\" in Common Events", "Patch", "CommonThisEvent", false };
 	BoolConfigParam patch_unlock_pics{ "Unlock Pictures", "Allow picture commands while a message is shown", "Patch", "PicUnlock", false };
 	BoolConfigParam patch_key_patch{ "Ineluki Key Patch", "Support \"Ineluki Key Patch\"", "Patch", "KeyPatch", false };

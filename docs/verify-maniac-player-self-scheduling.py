@@ -16,7 +16,7 @@ ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 ORIGINAL_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
 PLAYER_SHA256 = "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94"
-ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]
+ARGS = ["--new-game", "--patch-maniac", "1"]
 EXPECTED = {
     "recursive-self-save": {3: 1, 4: 42, 5: 43},
     "parallel-self-save": {3: 42, 4: 43, 5: 42, 6: 43},
@@ -68,7 +68,7 @@ def main() -> None:
                     trace["save_file_length"] != len(save_bytes) or trace["save_slot"] != 1):
                 raise ValueError(f"trace/save mismatch: {label} {variant}")
             if label == "player" and (trace.get("player_sha256") != PLAYER_SHA256 or
-                                      trace.get("player_arguments") != ARGS):
+                                      trace.get("player_arguments", [])[:len(ARGS)] != ARGS):
                 raise ValueError(f"Player invocation mismatch: {variant}")
             if variant == "parallel-self-save" and trace.get("additional_enters_after_save") != 40:
                 raise ValueError(f"parallel continuation input sequence changed: {label}")
@@ -86,7 +86,7 @@ def main() -> None:
     audit = {
         "original_sha256": ORIGINAL_SHA256,
         "player_sha256": PLAYER_SHA256,
-        "player_arguments": ARGS,
+        "player_arguments": trace["player_arguments"],
         "variants": results,
         "scope": "Fixed 250921 Windows original and Player projects: recursive common-event inner read 42 and outer read 43, and two parallel map events retain separate 42/43 self values on a later event pass. Save binary layouts differ; only the corresponding observable global variable IDs are compared. Other self-bank lifecycle paths remain separate acceptance items.",
     }

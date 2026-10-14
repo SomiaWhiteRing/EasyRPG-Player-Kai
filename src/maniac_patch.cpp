@@ -49,7 +49,7 @@ namespace {
 	int32_t generated_common_name_cache = 0;
 	template<typename T>
 	const T* FindLcfStringRecord(std::string_view type, const std::vector<T>& records, int id) {
-		if (Player::game_config.maniac_version.Get() != 250921) {
+		if (!Player::IsPatchManiac()) {
 			return lcf::ReaderUtil::GetElement(records, id);
 		}
 		const auto it = std::find_if(records.begin(), records.end(), [id](const T& record) {
@@ -208,14 +208,14 @@ struct ProcessAssignmentRet {
 		const int address = target();
 		const bool numeric = op == Op::Var || op == Op::SelfVar || op == Op::VarIndirect || op == Op::SelfVarIndirect;
 		const bool boolean = op == Op::Switch || op == Op::SelfSwitch || op == Op::SwitchIndirect || op == Op::SelfSwitchIndirect;
-		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
+		const bool maniac = Player::IsPatchManiac();
 		if (!numeric && !boolean) {
 			Output::Warning("Maniac: Expression assignment {} is not a lvalue", static_cast<int>(op));
 			return 0;
 		}
 		// Native 8c730 sign-extends index + 1 before resizing. INT_MAX
 		// therefore fails the vector's maximum-length check before allocation.
-		if (native250921 && numeric && !prepared_range && (address == INT32_MAX || address == -INT32_MAX)) {
+		if (maniac && numeric && !prepared_range && (address == INT32_MAX || address == -INT32_MAX)) {
 			Output::Error("Maniac: Expression vector length exceeds signed index range.");
 		}
 		if (address < 0) {
@@ -224,7 +224,7 @@ struct ProcessAssignmentRet {
 			auto* bank = state ? state->Ensure(frame.easyrpg_self_scope,
 				frame.easyrpg_self_map_id, frame.easyrpg_self_event_id) : nullptr;
 			const int64_t slot = -static_cast<int64_t>(address);
-			if (!bank || (!native250921 && slot > 1000000)) return 0;
+			if (!bank || (!maniac && slot > 1000000)) return 0;
 			if (numeric) {
 				bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(slot + 1)));
 				bank->numbers[static_cast<size_t>(slot)] = value;
@@ -235,7 +235,7 @@ struct ProcessAssignmentRet {
 			Game_Map::SetNeedRefresh(true);
 			return numeric ? value : value != 0;
 		}
-		if (!native250921 && address > 1000000) return 0;
+		if (!maniac && address > 1000000) return 0;
 		if (numeric) {
 			if (auto* destination = Main_Data::game_variables->GetManiacWritable(address)) {
 				*destination = value;
@@ -594,11 +594,11 @@ int Process(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator e
 }
 
 bool PrepareNumericRange(int low, int high, bool self, const Game_BaseInterpreterContext& ip) {
-	if (low < 0 || (Player::game_config.maniac_version.Get() != 250921 && high > 1000000)) return false;
-	const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-	const size_t size = static_cast<size_t>(high) + (native250921 ? 2 : 1);
+	if (low < 0 || (!Player::IsPatchManiac() && high > 1000000)) return false;
+	const bool maniac = Player::IsPatchManiac();
+	const size_t size = static_cast<size_t>(high) + (maniac ? 2 : 1);
 	if (!self) {
-		if (!native250921) return Main_Data::game_variables->GetManiacWritable(high) != nullptr;
+		if (!maniac) return Main_Data::game_variables->GetManiacWritable(high) != nullptr;
 		Main_Data::game_variables->EnsureSize(size - 1); // GLOBAL physical zero is separate.
 		return true;
 	}
@@ -616,7 +616,7 @@ int EvaluateNumericArrayFunction(Fn selector, int32_t base, int32_t raw_count,
 	const int64_t first = std::abs(static_cast<int64_t>(base));
 	const int64_t count = std::max<int64_t>(raw_count, selector == Fn::ArraySum ? 0 : 1);
 	const int64_t prepared_high = first + count;
-	if (Player::game_config.maniac_version.Get() != 250921 && prepared_high > 1000000) {
+	if (!Player::IsPatchManiac() && prepared_high > 1000000) {
 		Output::Warning("Maniac: Expression array function exceeds safe storage limit");
 		return 0;
 	}
@@ -629,7 +629,7 @@ int EvaluateNumericArrayFunction(Fn selector, int32_t base, int32_t raw_count,
 	for (int64_t offset = 0; offset < count; ++offset) {
 		const int32_t id = base < 0 ? NegativeAbs32(static_cast<int32_t>(first + offset))
 			: static_cast<int32_t>(first + offset);
-		const int32_t value = id == 0 && Player::game_config.maniac_version.Get() == 250921
+		const int32_t value = id == 0 && Player::IsPatchManiac()
 			? Main_Data::game_variables->GetManiacRawSlot(0) : ip.ReadVariable(id);
 		if (selector == Fn::ArraySum) sum += static_cast<uint32_t>(value);
 		else if (selector == Fn::ArrayMin) extremum = std::min(extremum, value);
@@ -667,12 +667,12 @@ int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
 	}
 	const int32_t low = std::min(first, second);
 	const int32_t high = std::max(first, second);
-	const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-	if (low < 0 || (!native250921 && high > 1000000)) {
+	const bool maniac = Player::IsPatchManiac();
+	if (low < 0 || (!maniac && high > 1000000)) {
 		Output::Warning("Maniac: Expression assignment range exceeds safe storage limit");
 		return 0;
 	}
-	if (native250921 && !numeric && high == INT32_MAX) {
+	if (maniac && !numeric && high == INT32_MAX) {
 		Output::Error("Maniac: Expression assignment range exceeds signed index range");
 	}
 	const int rhs_token = it == end ? 0 : *it;
@@ -711,11 +711,11 @@ int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
 		const bool source_self = rhs_token == static_cast<int>(Op::SelfVar) ||
 			rhs_token == static_cast<int>(Op::SelfSwitch);
 		if (numeric && !PrepareNumericRange(low, high, self, ip)) return 0;
-		range_prepared = native250921 && numeric;
+		range_prepared = maniac && numeric;
 		for (int64_t index = low; index <= high; ++index) {
 			const int64_t source_index = static_cast<int64_t>(source_low) + index - low;
 			int32_t rhs = 0;
-			if (source_low >= 0 && source_index <= source_high && (native250921 || source_index <= 1000000)) {
+			if (source_low >= 0 && source_index <= source_high && (maniac || source_index <= 1000000)) {
 				const int source_id = source_self ? NegativeAbs32(static_cast<int32_t>(source_index))
 					: static_cast<int>(source_index);
 				rhs = ip.ReadVariable(source_id); // Native switch range copy also reads numeric storage.
@@ -728,7 +728,7 @@ int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
 	if (numeric) {
 		const bool broadcast_self = rhs_token == static_cast<int>(Op::SelfVar);
 		if (!PrepareNumericRange(low, high, broadcast_self, ip)) return 0;
-		range_prepared = native250921;
+		range_prepared = maniac;
 		for (int64_t index = low; index <= high; ++index) {
 			last = destination(low, broadcast_self).apply(token, rhs); // Native repeats the first pointer.
 		}
@@ -1089,9 +1089,9 @@ std::string_view ManiacPatch::GetLcfName(int data_type, int id, bool is_dynamic,
 	case 7:	 return get_name("State", lcf::Data::states);   //.state[a].name
 	case 8:	 return get_name("Animation", lcf::Data::animations);   //.anim[a].name
 	case 9:	 return get_name("Chipset", lcf::Data::chipsets);   //.tileset[a].name
-	case 10: return Player::game_config.maniac_version.Get() == 250921
+	case 10: return Player::IsPatchManiac()
 		? get_name("Switch", lcf::Data::switches) : Main_Data::game_switches->GetName(id); //.s[a].name
-	case 11: return Player::game_config.maniac_version.Get() == 250921
+	case 11: return Player::IsPatchManiac()
 		? get_name("Variable", lcf::Data::variables) : Main_Data::game_variables->GetName(id); //.v[a].name
 	case 12: return {};  // FIXME: .t[a].name -- not sure how to get this for now
 	case 13: //.cev[a].name
@@ -1100,14 +1100,14 @@ std::string_view ManiacPatch::GetLcfName(int data_type, int id, bool is_dynamic,
 		if (id > 0 && static_cast<int>(Game_Map::GetCommonEvents().size()) >= id) {
 			return Game_Map::GetCommonEvents()[id - 1].GetName();
 		}
-		if (Player::game_config.maniac_version.Get() == 250921) {
+		if (Player::IsPatchManiac()) {
 			Output::Error("GetLcfName: Common Event {} was not found.", id);
 		}
 		break;
 	}
 	case 14: return get_name("Class", lcf::Data::classes);   //.class[a].name
 	case 15: return get_name("BattlerAnimation", lcf::Data::battleranimations);   //.anim2[a].name
-	case 16: return Player::game_config.maniac_version.Get() == 250921
+	case 16: return Player::IsPatchManiac()
 		? get_name("Map", lcf::Data::treemap.maps) : Game_Map::GetMapName(id); //.map[a].name
 	case 17:   //.mev[a].name
 	{
@@ -1115,7 +1115,7 @@ std::string_view ManiacPatch::GetLcfName(int data_type, int id, bool is_dynamic,
 		if (map != nullptr) {
 			return map->GetName();
 		}
-		if (Player::game_config.maniac_version.Get() == 250921) {
+		if (Player::IsPatchManiac()) {
 			Output::Error("GetLcfData: Map Event {} was not found.", id);
 		}
 		break;

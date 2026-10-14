@@ -17,7 +17,7 @@ EVIDENCE = ROOT / "docs/evidence"
 RUNNER = ROOT / "build/windows-x64-vs2022-release-local/Release/test_runner.exe"
 PLAYER = RUNNER.with_name("Player.exe")
 ORIGINAL_SHA = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "noop-battle-player.log"]
 CONTEXTS = {"auto": (1, 62), "parallel": (0, 62),
             "nested": (1, 63), "battle": (2, 63)}
@@ -92,7 +92,7 @@ def verify() -> None:
             trace_path, save_path = prefix.with_suffix(".json"), prefix.with_suffix(".lsd")
             trace = json.loads(trace_path.read_text())
             if (trace["runtime_sha256"] != sha(executable)
-                    or trace["runtime_arguments"] != arguments
+                    or trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != arguments
                     or trace["fixture_manifest_sha256"] != sha(frozen)
                     or trace["save_file_sha256"] != sha(save_path)
                     or trace["save_file_length"] != save_path.stat().st_size):

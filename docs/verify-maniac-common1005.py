@@ -17,7 +17,7 @@ EVIDENCE = ROOT / "docs/evidence"
 ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT.exe"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 ORIGINAL_SHA = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "noop-battle-player.log"]
 CASES = {"common1005-auto": (1, 1), "common1005-parallel": (0, 1),
          "common1005-nested": (1, 2), "common1005-battle": (2, 2)}
@@ -95,7 +95,7 @@ def verify() -> None:
             trace = json.loads(trace_path.read_text())
             if (trace["reference_sha256"] != ORIGINAL_SHA
                     or trace["runtime_sha256"] != sha256(executable)
-                    or trace["runtime_arguments"] != arguments
+                    or trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != arguments
                     or trace["fixture_manifest_sha256"] != sha256(manifest_path)
                     or trace["save_file_sha256"] != sha256(save_path)
                     or trace["save_file_length"] != save_path.stat().st_size

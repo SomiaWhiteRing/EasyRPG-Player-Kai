@@ -127,8 +127,8 @@ def capture_stage_once(fixture: Path, runtime: str, stage: int) -> None:
             raise RuntimeError(f"{runtime} restart input differs from frozen Save01")
     executable = fixture / "RPG_RT.exe" if runtime == "original" else PLAYER
     arguments = ([] if runtime == "original" else
-                 ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"] if stage == 1 else
-                 ["--load-game-id", "1", "--patch-maniac", "1", "--maniac-version", "250921"])
+                 ["--new-game", "--patch-maniac", "1"] if stage == 1 else
+                 ["--load-game-id", "1", "--patch-maniac", "1"])
     startup = subprocess.STARTUPINFO()
     startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     startup.wShowWindow = 0

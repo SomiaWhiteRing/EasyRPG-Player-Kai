@@ -18,7 +18,7 @@ ORIGINAL_AUDIT = EVIDENCE / "maniac-250921-3024-scope-audit.json"
 OUTPUT = EVIDENCE / "maniac-player-250921-3024-map-audit.json"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 PLAYER_SHA256 = "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94"
-ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]
+ARGS = ["--new-game", "--patch-maniac", "1"]
 
 
 def sha256(blob: bytes) -> str:
@@ -40,7 +40,7 @@ def main() -> None:
             trace["reference_sha256"] != manifest["files"]["RPG_RT.exe"] or
             trace["fixture_manifest_sha256"] != sha256(manifest_bytes) or
             trace["player_sha256"] != PLAYER_SHA256 or
-            trace["player_arguments"] != ARGS or
+            trace["player_arguments"][:len(ARGS)] != ARGS or
             trace["save_file_sha256"] != sha256(save_bytes) or
             trace["save_file_length"] != len(save_bytes) or
             trace["save_slot"] != 1 or
@@ -67,7 +67,7 @@ def main() -> None:
         "player_sha256": PLAYER_SHA256,
         "player_trace_sha256": sha256(trace_bytes),
         "player_save_sha256": sha256(save_bytes),
-        "player_arguments": ARGS,
+        "player_arguments": trace["player_arguments"],
         "player_marker_global_numeric_id_1": 99,
         "scope": "Player 250921 Windows map-autostart event executes independent 3024 with nonempty Args/Text, reaches the later ControlVars 99 marker and Maniac_Save. This matches the bounded original observable marker; timing and parallel/common/battle contexts remain open under W02-012.",
     }

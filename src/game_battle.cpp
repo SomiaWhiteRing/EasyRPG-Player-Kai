@@ -207,8 +207,7 @@ void Game_Battle::UpdateAtbGauges() {
 	sum_agi *= 100;
 
 	const int max_atb = Game_Battler::GetMaxAtbGauge();
-	const bool native_maniac = Player::IsPatchManiac()
-		&& Player::game_config.maniac_version.Get() == 250921;
+	const bool native_maniac = Player::IsPatchManiac();
 
 	for (auto* bat: battlers) {
 		// RPG_RT always updates atb for non-hidden enemies, even if they can't act.
@@ -254,10 +253,6 @@ bool Game_Battle::ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType
 	} else {
 		return false;
 	}
-}
-
-bool Game_Battle::ManiacProcessSubEvents() {
-	return interpreter->ProcessManiacSubEvents();
 }
 
 void Game_Battle::ChangeBackground(const std::string& name) {

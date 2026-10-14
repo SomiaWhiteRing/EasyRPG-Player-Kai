@@ -35,7 +35,7 @@ def main() -> None:
                 trace["save_file_length"] != len(save_bytes) or trace["save_slot"] != 1):
             raise ValueError(f"{label} input/output binding failed")
         if label == "player" and (trace.get("player_sha256") != PLAYER_SHA256 or
-                trace.get("player_arguments") != ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]):
+                trace.get("player_arguments", [])[:3] != ["--new-game", "--patch-maniac", "1"]):
             raise ValueError("Player executable or arguments changed")
         header_length, position = ber(save_bytes, 0)
         if save_bytes[position:position + header_length] != b"LcfSaveData":

@@ -183,7 +183,7 @@ Window_Message::Window_Message(int ix, int iy, int iwidth, int iheight) :
 
 	// The 250921 face and animation start are system state restored before
 	// the map creates its message window. Keep them when recreating that window.
-	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) {
+	if (!Player::IsPatchManiac()) {
 		Main_Data::game_system->ClearMessageFace();
 	}
 	Game_Message::SetWindow(this);
@@ -468,7 +468,7 @@ void Window_Message::ProcessManiacFace(const char* end) {
 		Main_Data::game_system->SetMessageFaceIndex(numbers[0]);
 		pending_message.SetEnableFace(static_cast<uint8_t>(numbers[1]) != 0);
 	}
-	if (Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		Main_Data::game_system->SetManiacFaceAnimationFlags(0);
 	}
 	Main_Data::game_system->ResetManiacFaceAnimation();

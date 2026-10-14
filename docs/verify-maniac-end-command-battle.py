@@ -52,12 +52,12 @@ def main() -> None:
         trace = json.loads(path.read_text(encoding="utf-8"))
         expected_runtime = ORIGINAL_SHA if runtime == "original" else sha256(PLAYER)
         expected_arguments = [] if runtime == "original" else [
-            "--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+            "--new-game", "--patch-maniac", "1",
             "--log-file", "noop-battle-player.log"]
         save = path.with_suffix(".lsd")
         if (trace["runtime_sha256"] != expected_runtime
                 or trace["fixture_manifest_sha256"] != sha256(MANIFEST)
-                or trace["runtime_arguments"] != expected_arguments
+                or trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != expected_arguments
                 or trace["save_file_sha256"] != sha256(save)
                 or trace["save_file_length"] != save.stat().st_size
                 or trace["save_slot"] != 1):

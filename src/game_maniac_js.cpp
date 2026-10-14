@@ -298,7 +298,7 @@ private:
 		if (type == 2) {
 			string_present = Text(value, text);
 			if (!string_present) text.clear();
-			if (Player::game_config.maniac_version.Get() == 250921 && text.empty()) string_present = false;
+			if (Player::IsPatchManiac() && text.empty()) string_present = false;
 		} else if (JS_ToInt32(context, &number, value) < 0) number = 0;
 		// Both native setters and command returns ignore conversion failure:
 		// write zero or a null string and continue to the next destination.

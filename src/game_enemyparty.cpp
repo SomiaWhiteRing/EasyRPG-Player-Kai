@@ -103,9 +103,9 @@ std::vector<Game_Enemy*> Game_EnemyParty::GetEnemies() {
 
 int Game_EnemyParty::GetExp() const {
 	int sum = 0;
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	for (auto& enemy: enemies) {
-		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
+		if (maniac ? !enemy->IsHidden() : enemy->IsDead()) {
 			sum += enemy->GetExp();
 		}
 	}
@@ -114,9 +114,9 @@ int Game_EnemyParty::GetExp() const {
 
 int Game_EnemyParty::GetMoney() const {
 	int sum = 0;
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	for (auto& enemy: enemies) {
-		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
+		if (maniac ? !enemy->IsHidden() : enemy->IsDead()) {
 			sum += enemy->GetMoney();
 		}
 	}
@@ -124,9 +124,9 @@ int Game_EnemyParty::GetMoney() const {
 }
 
 void Game_EnemyParty::GenerateDrops(std::vector<int>& out) const {
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	for (auto& enemy: enemies) {
-		if (native_250921 ? !enemy->IsHidden() : enemy->IsDead()) {
+		if (maniac ? !enemy->IsHidden() : enemy->IsDead()) {
 			// Only roll if the enemy has something to drop
 			if (enemy->GetDropId() != 0) {
 				if (Rand::ChanceOf(enemy->GetDropProbability(), 100)) {

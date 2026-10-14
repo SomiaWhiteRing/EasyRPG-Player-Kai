@@ -7,7 +7,6 @@
 #include <filesystem>
 
 #include "doctest.h"
-#include "cmdline_parser.h"
 #include "game_interpreter.h"
 #include "game_interpreter_map.h"
 #include "game_interpreter_battle.h"
@@ -55,14 +54,12 @@ TEST_CASE("Maniac global save copies UTF16 strings and short close discards cach
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	const bool previous_opened = Main_Data::global_save_opened;
 	auto previous_switches = std::move(Main_Data::game_switches_global);
 	auto previous_variables = std::move(Main_Data::game_variables_global);
 	auto previous_strings = std::move(Main_Data::game_strings_global);
 	auto previous_self = std::move(Main_Data::game_maniac_self_variables);
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_switches_global = std::make_unique<Game_Switches>();
 	Main_Data::game_variables_global = std::make_unique<Game_Variables>(Game_Variables::min_2k3, Game_Variables::max_2k3);
 	Main_Data::game_strings_global = std::make_unique<Game_Strings>();
@@ -127,7 +124,6 @@ TEST_CASE("Maniac global save copies UTF16 strings and short close discards cach
 	Main_Data::game_maniac_self_variables = std::move(previous_self);
 	Main_Data::global_save_opened = previous_opened;
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Graphics::Quit();
 }
 
@@ -135,9 +131,7 @@ TEST_CASE("Maniac 250921 map range reads row-major GLOBAL and signed SELF source
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	Main_Data::game_variables->SetData({0, 1, 2, 3, 4});
 	auto* bank = Main_Data::game_maniac_self_variables->Ensure(2, 1, 1);
@@ -158,7 +152,6 @@ TEST_CASE("Maniac 250921 map range reads row-major GLOBAL and signed SELF source
 	REQUIRE(interpreter.ExecuteCommand(rewrite));
 	CHECK(Game_Map::GetMapDataDown()[5 * 20 + 9] == 3074); // Fixed 250921 lower table, not generic 3050.
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -167,9 +160,7 @@ TEST_CASE("Maniac 250921 single lower direct writes raw startY and selects layer
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::EventCommand rewrite;
 	rewrite.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::Maniac_RewriteMap);
 	rewrite.parameters = {0, 0, 0, 21, 2, 3, 1, 1, 1};
@@ -184,7 +175,6 @@ TEST_CASE("Maniac 250921 single lower direct writes raw startY and selects layer
 	REQUIRE(interpreter.ExecuteCommand(rewrite));
 	CHECK(Game_Map::GetMapDataUp()[5 * 20 + 8] == BLOCK_F + 143);
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Graphics::Quit();
 }
 
@@ -202,9 +192,7 @@ TEST_CASE("Maniac 250921 actor info uses bit zero numeric subject and signed str
 	MockGame game(MockMap::eNone);
 	lcf::Data::chipsets[0].ID = 1; // Mock chipset defaults to ID0; this test uses an explicit valid ID1.
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	Main_Data::game_strings = std::make_unique<Game_Strings>();
 	Main_Data::game_variables->Set(6, 2);
@@ -246,7 +234,6 @@ TEST_CASE("Maniac 250921 actor info uses bit zero numeric subject and signed str
 	REQUIRE(interpreter.ExecuteCommand(info));
 	CHECK(Main_Data::game_variables->GetManiacRawSlot(0) == 777);
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -255,11 +242,9 @@ TEST_CASE("Maniac 250921 BGM keeps raw settings and independently skips zero des
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	const auto previous_no_audio = Player::no_audio_flag;
 	Player::no_audio_flag = true;
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	Main_Data::game_strings = std::make_unique<Game_Strings>();
 	Main_Data::game_strings->SetManiacRawSlot(0, "zero");
@@ -296,7 +281,6 @@ TEST_CASE("Maniac 250921 BGM keeps raw settings and independently skips zero des
 	CHECK(Main_Data::game_variables->GetRange(1, 3) == std::vector<int>{91, 92, 93});
 	CHECK(ToString(Main_Data::game_strings->GetManiacRawSlot(0)) == "zero");
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Player::no_audio_flag = previous_no_audio;
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
@@ -306,9 +290,7 @@ TEST_CASE("Maniac 250921 pairs write global zero SELF and truncate negative came
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::SaveMapInfo map_state;
 	map_state.position_x = -17;
 	map_state.position_y = -31;
@@ -336,7 +318,6 @@ TEST_CASE("Maniac 250921 pairs write global zero SELF and truncate negative came
 	REQUIRE(bank->numbers.size() >= 16);
 	CHECK(std::vector<int>(bank->numbers.begin() + 10, bank->numbers.begin() + 16) == std::vector<int>{Player::screen_width, Player::screen_height, -1, -1, 7, -5});
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -345,9 +326,7 @@ TEST_CASE("Maniac 250921 tiles use runtime nibbles wrapped uint16 lookup and sig
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	auto map = MakeMockMap(MockMap::eNone);
 	map->scroll_type = lcf::rpg::Map::ScrollType_both;
 	Game_Map::Setup(std::move(map));
@@ -381,7 +360,6 @@ TEST_CASE("Maniac 250921 tiles use runtime nibbles wrapped uint16 lookup and sig
 	REQUIRE(interpreter.ExecuteCommand(info));
 	CHECK(Main_Data::game_variables->GetRange(20, 4) == std::vector<int>{0, 0, 0, 0});
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -390,9 +368,7 @@ TEST_CASE("Maniac 250921 interpreter tuple reads current and negative nest into 
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	lcf::rpg::SaveEventExecState frames;
 	frames.stack.resize(2);
@@ -426,7 +402,6 @@ TEST_CASE("Maniac 250921 interpreter tuple reads current and negative nest into 
 	REQUIRE(interpreter.ExecuteCommand(info));
 	CHECK(Main_Data::game_variables->GetRange(20, 5) == std::vector<int>{0, 0, 0, 0, 0});
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -454,9 +429,7 @@ TEST_CASE("Maniac 250921 pixels preserve RGB row order and mask alpha in signed 
 	auto previous_ui = std::move(DisplayUi);
 	DisplayUi = std::make_shared<PixelUi>(bitmap);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	lcf::rpg::EventCommand info;
 	info.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::Maniac_GetGameInfo);
@@ -489,7 +462,6 @@ TEST_CASE("Maniac 250921 pixels preserve RGB row order and mask alpha in signed 
 	std::memcpy(&stored_pixel, static_cast<const uint8_t*>(opaque->pixels()) + Bitmap::opaque_pixel_format.bytes, sizeof(stored_pixel));
 	CHECK(stored_pixel == Bitmap::opaque_pixel_format.rgba_to_uint32_t(40, 50, 60, 255));
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	DisplayUi = std::move(previous_ui);
 	Graphics::Quit();
@@ -2713,12 +2685,11 @@ TEST_CASE("Maniac new game cleanup clears prior map self bank") {
 	Graphics::Quit();
 }
 
-TEST_CASE("Maniac explicit release selects observed 241028 negative ControlVars behavior") {
+TEST_CASE("Maniac negative ControlVars target writes the current event SELF bank") {
 	Graphics::Init();
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
 		lcf::rpg::EventCommand write;
 		write.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::ControlVars);
@@ -2727,41 +2698,22 @@ TEST_CASE("Maniac explicit release selects observed 241028 negative ControlVars 
 		read.parameters = {0, 1, 0, 0, 1, -1, 0};
 		lcf::rpg::EventCommand marker = write;
 		marker.parameters = {0, 2, 0, 0, 0, 99, 0};
-		for (int version : {241028, 250921}) {
-			Player::game_config.maniac_version.Set(version);
-			Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
-			Main_Data::game_variables->Set(1, 0);
-			Main_Data::game_variables->Set(2, 0);
-			Game_Interpreter interpreter;
-			interpreter.Push({write, read, marker}, 1);
-			REQUIRE(interpreter.ExecuteCommand(write));
-			REQUIRE(interpreter.ExecuteCommand(read));
-			REQUIRE(interpreter.ExecuteCommand(marker));
-			CHECK(Main_Data::game_variables->Get(1) == (version == 241028 ? 0 : 42));
-			CHECK(Main_Data::game_variables->Get(2) == 99);
-			const auto* bank = Main_Data::game_maniac_self_variables->Find(2, 1, 1);
-			if (version == 241028) CHECK(bank == nullptr);
-			else CHECK(Game_ManiacSelfVariables::ReadNumber(bank, -1) == 42);
-		}
-		Player::game_config.maniac_version.Set(previous_version);
+		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+		Main_Data::game_variables->Set(1, 0);
+		Main_Data::game_variables->Set(2, 0);
+		Game_Interpreter interpreter;
+		interpreter.Push({write, read, marker}, 1);
+		REQUIRE(interpreter.ExecuteCommand(write));
+		REQUIRE(interpreter.ExecuteCommand(read));
+		REQUIRE(interpreter.ExecuteCommand(marker));
+		CHECK(Main_Data::game_variables->Get(1) == 42);
+		CHECK(Main_Data::game_variables->Get(2) == 99);
+		const auto* bank = Main_Data::game_maniac_self_variables->Find(2, 1, 1);
+		CHECK(Game_ManiacSelfVariables::ReadNumber(bank, -1) == 42);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_maniac_self_variables.reset();
 	}
 	Graphics::Quit();
-}
-
-TEST_CASE("Maniac release CLI selection stays separate from patch detection") {
-	CmdlineParser old_args({"player", "--maniac-version", "241028"});
-	Game_ConfigGame old_config;
-	old_config.LoadFromArgs(old_args);
-	CHECK(old_config.maniac_version.Get() == 241028);
-	CHECK_FALSE(old_config.patch_override);
-	CHECK(old_config.patch_maniac.Get() == 0);
-	CmdlineParser new_args({"player", "--patch-maniac", "1", "--maniac-version", "250921"});
-	Game_ConfigGame new_config;
-	new_config.LoadFromArgs(new_args);
-	CHECK(new_config.maniac_version.Get() == 250921);
-	CHECK(new_config.patch_maniac.Get() == 1);
 }
 
 TEST_CASE("Maniac string target with an unknown mode leaves the string unchanged") {
@@ -2844,9 +2796,7 @@ TEST_CASE("Maniac 250921 join reads signed string number and switch ranges") {
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		auto* bank = Main_Data::game_maniac_self_variables->Ensure(2, 1, 1);
@@ -2880,7 +2830,6 @@ TEST_CASE("Maniac 250921 join reads signed string number and switch ranges") {
 		CHECK(Main_Data::game_strings->Get(902) == "31|-5");
 		CHECK(Main_Data::game_strings->Get(903) == "ON|OFF");
 		CHECK(Main_Data::game_strings->Get(904) == "A|B");
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -2893,11 +2842,9 @@ TEST_CASE("Maniac 250921 join formats numbers and expands each terminated input"
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		const auto previous_syntax = lcf::Data::system.maniac_text_syntax;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		lcf::Data::system.maniac_text_syntax = 0;
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
@@ -2934,7 +2881,6 @@ TEST_CASE("Maniac 250921 join formats numbers and expands each terminated input"
 		CHECK(Main_Data::game_strings->Get(903) == "A|B");
 		lcf::Data::system.maniac_text_syntax = previous_syntax;
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -2959,11 +2905,9 @@ TEST_CASE("Maniac 250921 string sources expand before UTF16 padding and format s
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		const auto previous_syntax = lcf::Data::system.maniac_text_syntax;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		lcf::Data::system.maniac_text_syntax = 0;
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
@@ -3050,7 +2994,6 @@ TEST_CASE("Maniac 250921 string sources expand before UTF16 padding and format s
 		CHECK_FALSE(interpreter.IsManiacStringPresent(-21));
 		lcf::Data::system.maniac_text_syntax = previous_syntax;
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3063,11 +3006,9 @@ TEST_CASE("Maniac 250921 contextual expansion retains the native SELFS cursor") 
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		const auto previous_syntax = lcf::Data::system.maniac_text_syntax;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		lcf::Data::system.maniac_text_syntax = 0;
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
@@ -3088,7 +3029,6 @@ TEST_CASE("Maniac 250921 contextual expansion retains the native SELFS cursor") 
 		CHECK(Main_Data::game_strings->Get(901) == "OFF]X|ONX|42|self|ON|OFF\xED\xB8\x80" "2");
 		lcf::Data::system.maniac_text_syntax = previous_syntax;
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3101,9 +3041,7 @@ TEST_CASE("Maniac 250921 string assignments and append route signed targets") {
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		auto* bank = Main_Data::game_maniac_self_variables->Ensure(2, 1, 1);
@@ -3146,7 +3084,6 @@ TEST_CASE("Maniac 250921 string assignments and append route signed targets") {
 		CHECK(bank->strings[5] == "C");
 		CHECK(Main_Data::game_strings->Get(4) == "G");
 		CHECK(Main_Data::game_strings->GetManiacRawSlot(0) == "Z");
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3159,9 +3096,7 @@ TEST_CASE("Maniac 250921 string numeric consumers route SELF arrays and stored U
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		auto* bank = Main_Data::game_maniac_self_variables->Ensure(2, 1, 1);
@@ -3202,7 +3137,6 @@ TEST_CASE("Maniac 250921 string numeric consumers route SELF arrays and stored U
 		CHECK(Main_Data::game_strings->GetManiacVectorSize() == 21);
 		CHECK(Main_Data::game_strings->GetData().empty());
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3215,10 +3149,8 @@ TEST_CASE("Maniac 250921 text construction uses UTF16 slices and expands inputs 
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
@@ -3257,7 +3189,6 @@ TEST_CASE("Maniac 250921 text construction uses UTF16 slices and expands inputs 
 		CHECK(Main_Data::game_strings->Get(6) == "A");
 		CHECK(Main_Data::game_strings->Get(7) == std::string("\xF0\x9F\x98\x80\0Z", 6));
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3270,10 +3201,8 @@ TEST_CASE("Maniac 250921 regex uses UTF16 suffixes signed outputs captures and c
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
@@ -3324,7 +3253,6 @@ TEST_CASE("Maniac 250921 regex uses UTF16 suffixes signed outputs captures and c
 		CHECK(Main_Data::game_strings->Get(22) == "XXX");
 		CHECK(Main_Data::game_strings->Get(23) == "\\V[1]");
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3356,10 +3284,8 @@ TEST_CASE("Maniac 250921 PopLine signed overlap writes sequentially and expands 
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
@@ -3392,7 +3318,6 @@ TEST_CASE("Maniac 250921 PopLine signed overlap writes sequentially and expands 
 		REQUIRE(interpreter.ExecuteCommand(alias_lf));
 		CHECK(Main_Data::game_strings->Get(7) == "N");
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3405,10 +3330,8 @@ TEST_CASE("Maniac 250921 Instr uses UTF16 signed numeric outputs NULL priority a
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
@@ -3441,7 +3364,6 @@ TEST_CASE("Maniac 250921 Instr uses UTF16 signed numeric outputs NULL priority a
 		CHECK(interpreter.ReadVariable(-13) == 0);
 		CHECK(interpreter.ReadVariable(-10) == 0);
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3454,9 +3376,7 @@ TEST_CASE("Maniac 250921 direct string array consumers read physical zero") {
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		Main_Data::game_strings->SetManiacRawSlot(0, "12X");
@@ -3481,7 +3401,6 @@ TEST_CASE("Maniac 250921 direct string array consumers read physical zero") {
 		CHECK(interpreter.ReadString(-5) == "X");
 		CHECK(interpreter.ReadString(-6) == "X");
 		CHECK(Main_Data::game_strings->GetManiacRawSlot(0) == "12X");
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3501,9 +3420,7 @@ TEST_CASE("Maniac 250921 Split retains UTF16 units signed counts and sequential 
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		auto* bank = Main_Data::game_maniac_self_variables->Ensure(2, 1, 1);
@@ -3553,7 +3470,6 @@ TEST_CASE("Maniac 250921 Split retains UTF16 units signed counts and sequential 
 		CHECK(Main_Data::game_strings->GetData().count(30) == 0);
 		CHECK(Main_Data::game_strings->GetData().count(31) == 0);
 		CHECK(Main_Data::game_strings->GetData().count(40) == 1);
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
@@ -3577,10 +3493,8 @@ TEST_CASE("Maniac 250921 UTF8 file range keeps body literal resolves encoding an
 		REQUIRE(static_cast<bool>(fixture_fs));
 		FileFinder::SetSaveFilesystem(fixture_fs);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		const auto previous_escape = Player::escape_char;
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Player::escape_char = '\\';
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
@@ -3640,7 +3554,6 @@ TEST_CASE("Maniac 250921 UTF8 file range keeps body literal resolves encoding an
 		REQUIRE(raw_output.is_open());
 		CHECK(std::string(std::istreambuf_iterator<char>(raw_output), {}) == std::string("A\0\0\0B\0=\xD8\0\xDE\n\0", 12));
 		Player::escape_char = previous_escape;
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		FileFinder::SetSaveFilesystem(original_fs);
 		Main_Data::game_strings.reset();
@@ -3655,9 +3568,7 @@ TEST_CASE("Maniac 250921 message window keeps restored face configuration") {
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		lcf::rpg::SaveSystem saved;
 		saved.face_name = "restored";
 		saved.face_id = 2;
@@ -3670,7 +3581,6 @@ TEST_CASE("Maniac 250921 message window keeps restored face configuration") {
 			CHECK(Main_Data::game_system->GetMessageFaceName() == "restored");
 			CHECK(Main_Data::game_system->GetSaveData().maniac_face_start == 2);
 		}
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -3688,9 +3598,7 @@ TEST_CASE("Maniac 250921 battle no-ops reach adjacent markers in one update") {
 		auto previous_source = std::move(Input::source);
 		Input::source = std::make_unique<NoopSource>(Game_ConfigInput{}, Input::DirectionMappingArray{});
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		std::vector<lcf::rpg::EventCommand> commands;
 		for (int index = 0; index < 9; ++index) {
 			lcf::rpg::EventCommand noop;
@@ -3717,7 +3625,6 @@ TEST_CASE("Maniac 250921 battle no-ops reach adjacent markers in one update") {
 		}
 		CHECK(!battle.IsRunning());
 		Input::source = std::move(previous_source);
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -3739,14 +3646,12 @@ TEST_CASE("Maniac 250921 battle End Command polls input twice after frame cleanu
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		RestoreSource restore;
 		Input::source = std::make_unique<CountingSource>(Game_ConfigInput{}, Input::DirectionMappingArray{});
 		auto* source = static_cast<CountingSource*>(Input::source.get());
 		lcf::rpg::EventCommand end;
 		end.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::END);
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Game_Interpreter_Battle battle;
 		battle.Push(std::vector<lcf::rpg::EventCommand>{end}, 0);
 		battle.Update();
@@ -3759,13 +3664,6 @@ TEST_CASE("Maniac 250921 battle End Command polls input twice after frame cleanu
 		CHECK(!map.IsRunning());
 		CHECK(source->updates == 2);
 
-		Player::game_config.maniac_version.Set(241028);
-		Game_Interpreter_Battle earlier_battle;
-		earlier_battle.Push(std::vector<lcf::rpg::EventCommand>{end}, 0);
-		earlier_battle.Update();
-		CHECK(!earlier_battle.IsRunning());
-		CHECK(source->updates == 2);
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -3812,9 +3710,7 @@ TEST_CASE("Maniac 250921 battle typed return delivers and clears before both inp
 		MockGame game(MockMap::eNone);
 		RestoreBanks restore_banks;
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		int receiver = 2, source_type = 2;
 		SUBCASE("numeric") {}
 		SUBCASE("string") { receiver = 5; source_type = 5; }
@@ -3846,7 +3742,6 @@ TEST_CASE("Maniac 250921 battle typed return delivers and clears before both inp
 		CHECK(battle.IsRunning());
 		CHECK(source->updates == 2);
 		CHECK(source->compatible_polls == 2);
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -3857,9 +3752,7 @@ TEST_CASE("Maniac 250921 End Nest and opcode 40 do not consume the outer command
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		lcf::rpg::EventCommand end;
 		end.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::END);
 		SUBCASE("End Nest") {}
@@ -3876,7 +3769,6 @@ TEST_CASE("Maniac 250921 End Nest and opcode 40 do not consume the outer command
 		interpreter.Update();
 		CHECK(Main_Data::game_variables->Get(1) == 99);
 		CHECK(!interpreter.IsRunning());
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -3887,9 +3779,7 @@ TEST_CASE("Maniac 250921 parallel list boundary rewinds one retained frame") {
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		lcf::rpg::EventCommand increment;
 		increment.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::ControlVars);
 		increment.parameters = {0, 1, 0, 1, 0, 1, 0};
@@ -3905,7 +3795,6 @@ TEST_CASE("Maniac 250921 parallel list boundary rewinds one retained frame") {
 			CHECK(parallel.GetState().stack.front().event_id == 1);
 		}
 		Player::game_config.patch_maniac.Set(previous_patch);
-		Player::game_config.maniac_version.Set(previous_version);
 	}
 	Graphics::Quit();
 }
@@ -3989,9 +3878,7 @@ TEST_CASE("Maniac 250921 save resolves nonzero slot modes and invalid-slot resul
 		MockGame game(MockMap::eNone);
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_variables->Set(2, 7);
 		Main_Data::game_variables->Set(7, 9); // Distinguishes one lookup from indirect-of-indirect.
 		Main_Data::game_variables->Set(3, 99);
@@ -4027,7 +3914,6 @@ TEST_CASE("Maniac 250921 save resolves nonzero slot modes and invalid-slot resul
 		save.parameters = {};
 		REQUIRE(skipped.ExecuteCommand(save));
 		CHECK(!skipped.IsAsyncPending());
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		Main_Data::game_maniac_self_variables.reset();
 	}
@@ -4053,9 +3939,7 @@ TEST_CASE("Maniac 250921 load uses one lookup for every nonzero slot mode") {
 		REQUIRE(fixture_fs.IsFeatureSupported(Filesystem::Feature::Write));
 		FileFinder::SetSaveFilesystem(fixture_fs);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_variables->Set(2, 7);
 		Main_Data::game_variables->Set(7, 9);
 		lcf::rpg::EventCommand load;
@@ -4066,7 +3950,6 @@ TEST_CASE("Maniac 250921 load uses one lookup for every nonzero slot mode") {
 		REQUIRE(interpreter.ExecuteCommand(load));
 		CHECK(interpreter.GetAsyncOp().GetType() == AsyncOp::eLoad);
 		CHECK(interpreter.GetAsyncOp().GetSaveSlot() == 7);
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 		FileFinder::SetSaveFilesystem(original_fs);
 		std::filesystem::remove(folder / "Save07.lsd");
@@ -5188,13 +5071,10 @@ TEST_CASE("Maniac variable arrays retain the real SELF capacity boundary") {
 	REQUIRE(interpreter.ExecuteCommand(command));
 	CHECK(Main_Data::game_variables->Get(20) == 123);
 	CHECK(Main_Data::game_variables->Get(21) == 123);
-	const auto previous_version = Player::game_config.maniac_version.Get();
-	Player::game_config.maniac_version.Set(250921);
 	command.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::ControlVars);
 	command.parameters = {0, 22, 0, 0, 23, 0, -1000001, 2};
 	REQUIRE(interpreter.ExecuteCommand(command));
 	CHECK(Main_Data::game_variables->Get(22) == 246);
-	Player::game_config.maniac_version.Set(previous_version);
 	Player::game_config.patch_maniac.Set(previous_patch);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
@@ -5393,8 +5273,6 @@ TEST_CASE("Maniac CallCommand redispatches within its caller frame") {
 	command.parameters = {0, 10220, -200, 6, 0};
 	REQUIRE(interpreter.ExecuteCommand(command));
 	CHECK(interpreter.ReadVariable(-162) == 62);
-	const auto previous_version = Player::game_config.maniac_version.Get();
-	Player::game_config.maniac_version.Set(250921);
 	bank->numbers.resize(1000007);
 	for (int i = 0; i < 6; ++i) bank->numbers[1000001 + i] = generated[i];
 	bank->numbers[1000006] = 63;
@@ -5402,15 +5280,12 @@ TEST_CASE("Maniac CallCommand redispatches within its caller frame") {
 	REQUIRE(interpreter.ExecuteCommand(command));
 	CHECK(interpreter.ReadVariable(-162) == 63);
 	CHECK(bank->numbers.size() == 1000008); // Real source preparation, including its zero tail.
-	Player::game_config.maniac_version.Set(previous_version);
-	Player::game_config.maniac_version.Set(250921);
 	// Native inline values/mode words absent from the record default to zero.
 	// A small valid input still produces the real count beyond the removed cutoff.
 	command.parameters = {0x30, 10220, 12, 1000001, 0, 0, -164, 0, 0, 0, 64, 0, 0};
 	REQUIRE(interpreter.ExecuteCommand(command));
 	CHECK(interpreter.ReadVariable(-164) == 64);
 	CHECK(interpreter.GetState().stack.size() == 1);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_variables->Set(220, 88);
 	Main_Data::game_variables->Set(221, 220);
 	command.parameters = {0x30, 10220, 11, 6, 0, 0, -163, 0, 0, 0, 220, 0, 0x10};
@@ -5712,13 +5587,13 @@ TEST_CASE("Maniac CallEvent resolves common names and ID offsets") {
 	REQUIRE(this_event_call.GetState().stack.size() == 2);
 	CHECK(this_event_call.GetState().stack.back().easyrpg_self_scope == 2);
 	CHECK(this_event_call.GetState().stack.back().easyrpg_self_event_id == 1);
-	Main_Data::game_variables->Set(52, 10005);
+	Main_Data::game_variables->Set(52, 1);
 	Main_Data::game_variables->Set(53, 1);
 	command.parameters = {2, 52, 53};
-	Game_Interpreter indirect_this_event;
-	indirect_this_event.Push({command}, 1);
-	REQUIRE(indirect_this_event.ExecuteCommand(command));
-	CHECK(indirect_this_event.GetState().stack.size() == 1); // Selector 2 does not expand 10005.
+	Game_Interpreter indirect_event;
+	indirect_event.Push({command}, 1);
+	REQUIRE(indirect_event.ExecuteCommand(command));
+	CHECK(indirect_event.GetState().stack.size() == 2); // The indirect ID selects the current map event.
 	Player::game_config.patch_maniac.Set(previous_patch);
 	Main_Data::game_maniac_self_variables.reset();
 	Main_Data::game_strings.reset();
@@ -6079,9 +5954,7 @@ TEST_CASE("Maniac 250921 calls create fresh fields and retain empty frames") {
 	MockGame game(MockMap::eNone);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::EventCommand call;
 	call.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::CallEvent);
 	call.parameters = {0, 1};
@@ -6125,7 +5998,6 @@ TEST_CASE("Maniac 250921 calls create fresh fields and retain empty frames") {
 	CHECK(map.easyrpg_maniac_return_type == 0);
 	CHECK(map.easyrpg_maniac_return_address == 0);
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 	lcf::Data::commonevents.clear();
@@ -6136,7 +6008,6 @@ TEST_CASE("Maniac 250921 serialized command Text terminates at NUL but generated
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		lcf::rpg::EventCommand literal;
@@ -6144,7 +6015,6 @@ TEST_CASE("Maniac 250921 serialized command Text terminates at NUL but generated
 		literal.parameters = {0, 500, 500, 0, 0, 0, 0, 0};
 		literal.string = lcf::DBString(std::string("12\0ignored", 10));
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Game_Interpreter native;
 		native.Push({literal}, 0);
 		CHECK(native.GetState().stack.front().commands.front().string == "12");
@@ -6160,11 +6030,6 @@ TEST_CASE("Maniac 250921 serialized command Text terminates at NUL but generated
 		ordinary.Push({literal}, 0);
 		CHECK(ordinary.GetState().stack.front().commands.front().string.size() == 10);
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(241028);
-		Game_Interpreter other_version;
-		other_version.Push({literal}, 0);
-		CHECK(other_version.GetState().stack.front().commands.front().string.size() == 10);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings->SetManiacRawSlot(500, std::string("A\0B", 3), true);
 		lcf::rpg::EventCommand generated;
 		generated.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::Maniac_CallCommand);
@@ -6173,7 +6038,6 @@ TEST_CASE("Maniac 250921 serialized command Text terminates at NUL but generated
 		CHECK(Main_Data::game_strings->Get(601) == std::string("A\0B", 3));
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -6184,9 +6048,7 @@ TEST_CASE("Maniac 250921 zero-length string producers remove existing global slo
 	{
 		MockGame game(MockMap::eNone);
 		const auto previous_patch = Player::game_config.patch_maniac.Get();
-		const auto previous_version = Player::game_config.maniac_version.Get();
 		Player::game_config.patch_maniac.Set(1);
-		Player::game_config.maniac_version.Set(250921);
 		Main_Data::game_strings = std::make_unique<Game_Strings>();
 		Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		Main_Data::game_strings->SetManiacRawSlot(101, "abc", true);
@@ -6218,7 +6080,6 @@ TEST_CASE("Maniac 250921 zero-length string producers remove existing global slo
 		CHECK(Main_Data::game_strings->GetData().count(500) == 1);
 		Main_Data::game_strings.reset();
 		Main_Data::game_maniac_self_variables.reset();
-		Player::game_config.maniac_version.Set(previous_version);
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
@@ -6236,9 +6097,7 @@ TEST_CASE("Maniac return numeric parsing preserves surrogate units and empty lit
 	Main_Data::game_strings = std::make_unique<Game_Strings>();
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::EventCommand call;
 	call.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::CallEvent);
 	call.parameters = {0, 1, 0, 0x20, 0, 601};
@@ -6278,7 +6137,6 @@ TEST_CASE("Maniac return numeric parsing preserves surrogate units and empty lit
 	CHECK(Main_Data::game_strings->GetData().count(500) == 0);
 	CHECK(Main_Data::game_strings->GetData().count(501) == 0);
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Main_Data::game_strings.reset();
 	Graphics::Quit();
@@ -6290,9 +6148,7 @@ TEST_CASE("Maniac variable division and remainder use signed64 arithmetic and li
 	MockGame game(MockMap::eNone);
 	Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::EventCommand command;
 	command.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::ControlVars);
 	Game_Interpreter interpreter;
@@ -6337,7 +6193,6 @@ TEST_CASE("Maniac variable division and remainder use signed64 arithmetic and li
 	CHECK(interpreter.ReadVariable(-1) == -7);
 	Main_Data::game_variables = std::move(previous_variables);
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
 }
@@ -6349,9 +6204,7 @@ TEST_CASE("Maniac 250921 calls permit depth 8192 to append one more frame") {
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
 	lcf::rpg::SaveEventExecState seeded;
 	seeded.stack.resize(8192);
 	for (size_t i = 0; i < seeded.stack.size(); ++i) seeded.stack[i].ID = static_cast<int>(i + 1);
@@ -6368,12 +6221,11 @@ TEST_CASE("Maniac 250921 calls permit depth 8192 to append one more frame") {
 	legacy.Push({}, 1);
 	CHECK(legacy.GetState().stack.empty());
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Graphics::Quit();
 	lcf::Data::commonevents.clear();
 }
 
-TEST_CASE("Maniac called map event frame retains trigger context") {
+TEST_CASE("Maniac called map event frame uses the called-event context") {
 	Graphics::Init();
 	MockGame game(MockMap::eNone);
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
@@ -6393,7 +6245,7 @@ TEST_CASE("Maniac called map event frame retains trigger context") {
 	REQUIRE(interpreter.ExecuteCommand(call));
 	REQUIRE(interpreter.GetState().stack.size() == 2);
 	const auto& frame = interpreter.GetState().stack.back();
-	CHECK(frame.maniac_event_info == (0x10 | static_cast<int>(page->trigger)));
+	CHECK(frame.maniac_event_info == 0x15);
 	CHECK(frame.maniac_event_id == 1);
 	CHECK(frame.maniac_event_page_id == 1);
 	Player::game_config.patch_maniac.Set(previous_patch);
@@ -6482,6 +6334,9 @@ TEST_CASE("ChangePartyMember ignores actor zero without warning") {
 
 TEST_CASE("Maniac return destinations survive native and private scene saves") {
 	Graphics::Init();
+	lcf::Data::commonevents.clear();
+	lcf::Data::commonevents.emplace_back();
+	lcf::Data::commonevents.back().ID = 1;
 	MockGame game(MockMap::ePassBlock20x15);
 	auto previous_targets = std::move(Main_Data::game_targets);
 	auto previous_windows = std::move(Main_Data::game_windows);
@@ -6492,12 +6347,7 @@ TEST_CASE("Maniac return destinations survive native and private scene saves") {
 	Main_Data::game_dynrpg = std::make_unique<Game_DynRpg>();
 	Main_Data::game_strings = std::make_unique<Game_Strings>();
 	const auto previous_patch = Player::game_config.patch_maniac.Get();
-	const auto previous_version = Player::game_config.maniac_version.Get();
 	Player::game_config.patch_maniac.Set(1);
-	Player::game_config.maniac_version.Set(250921);
-	lcf::Data::commonevents.clear();
-	lcf::Data::commonevents.emplace_back();
-	lcf::Data::commonevents.back().ID = 1;
 	for (int destination = 0; destination < 5; ++destination) {
 		for (int kind = 0; kind < 3; ++kind) {
 			// All routing combinations use small data; one large slot per type/scope catches the old cap.
@@ -6572,7 +6422,6 @@ TEST_CASE("Maniac return destinations survive native and private scene saves") {
 		}
 	}
 	Player::game_config.patch_maniac.Set(previous_patch);
-	Player::game_config.maniac_version.Set(previous_version);
 	Main_Data::game_maniac_self_variables.reset();
 	Main_Data::game_targets = std::move(previous_targets);
 	Main_Data::game_windows = std::move(previous_windows);

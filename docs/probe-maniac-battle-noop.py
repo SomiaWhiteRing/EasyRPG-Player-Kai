@@ -15,7 +15,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "noop-battle-player.log"]
 AGENT = r"""
 const base = Process.mainModule.base;

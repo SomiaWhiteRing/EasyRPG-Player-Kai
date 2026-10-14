@@ -132,8 +132,7 @@ void Scene_Map::Start2(MapUpdateAsyncContext actx) {
 	// We do the start game fade in transition here instead of TransitionIn callback,
 	// in order to make async logic work properly.
 	auto& transition = Transition::instance();
-	if (transition.IsErasedNotActive() && !(Player::IsPatchManiac()
-		&& Player::game_config.maniac_version.Get() == 250921 && Main_Data::game_system->HasManiacMapStartup())) {
+	if (transition.IsErasedNotActive() && !(Player::IsPatchManiac() && Main_Data::game_system->HasManiacMapStartup())) {
 		transition.InitShow(Transition::TransitionFadeIn, this);
 	}
 
@@ -169,7 +168,7 @@ void Scene_Map::UpdateGraphics() {
 
 void Scene_Map::TransitionIn(SceneType prev_scene) {
 	auto& transition = Transition::instance();
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+	if (Player::IsPatchManiac()
 		&& Main_Data::game_system->HasManiacMapStartup()) return;
 
 	// Teleport already setup a transition.
@@ -279,7 +278,7 @@ void Scene_Map::vUpdate() {
 }
 
 void Scene_Map::UpdateStage1(MapUpdateAsyncContext actx) {
-	if (!actx.IsActive() && Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+	if (!actx.IsActive() && Player::IsPatchManiac()
 		&& Main_Data::game_system->AdvanceManiacMapStartup()) {
 		auto& transition = Transition::instance();
 		if (transition.IsErasedNotActive()) {

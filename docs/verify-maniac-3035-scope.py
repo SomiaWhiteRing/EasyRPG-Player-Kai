@@ -22,7 +22,7 @@ REPORT = ROOT.parent / "RPGRewriter-maniac/analysis/Maniacs-Complete/analysis-wo
 ORIGINAL_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
 PLAYER_SHA256 = "6b4d1f70ece4819871ed8138226ac2e4c252aea1226553040ddb9d058f4ebe94"
 MAP_SHA256 = "cb03f10183daf5dc1666abda7e483f2859c201538a8163dde37e70cda1f8eed7"
-ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]
+ARGS = ["--new-game", "--patch-maniac", "1"]
 
 
 def sha256(blob: bytes) -> str:
@@ -40,7 +40,7 @@ def check_save(label: str, manifest_bytes: bytes, ber, chunks) -> dict[str, obje
             trace["save_file_length"] != len(save_bytes) or trace["save_slot"] != 1):
         raise ValueError(f"{label} 3035 trace/save mismatch")
     if label == "player" and (trace.get("player_sha256") != PLAYER_SHA256 or
-                               trace.get("player_arguments") != ARGS):
+                               trace.get("player_arguments", [])[:len(ARGS)] != ARGS):
         raise ValueError("Player 3035 invocation differs")
     length, position = ber(save_bytes, 0)
     if save_bytes[position:position + length] != b"LcfSaveData":

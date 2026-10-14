@@ -185,7 +185,7 @@ std::vector<Meta::FileItem> Meta::BuildImportCandidateList(const FilesystemView&
 			// Note that corruptness is checked later (in window_savefile.cpp)
 			if (child_tree.Exists(ss.str())) {
 				auto filePath= child_tree.GetSubPath() + "/" + ss.str();
-				std::unique_ptr<lcf::rpg::Save> savegame = lcf::LSD_Reader::Load(filePath, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
+				std::unique_ptr<lcf::rpg::Save> savegame = lcf::LSD_Reader::Load(filePath, Player::encoding, Player::IsPatchManiac());
 				if (savegame != nullptr) {
 					if (savegame->party_location.map_id == pivot_map_id || pivot_map_id==0) {
 						FileItem item;

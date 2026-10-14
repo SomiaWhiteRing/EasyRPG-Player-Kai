@@ -87,7 +87,7 @@ bool Scene_Save::Save(const FilesystemView& fs, int slot_id, bool prepare_save) 
 	auto save_stream = FileFinder::Save().OpenOutputStream(filename);
 
 	if (!save_stream) {
-		if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+		if (Player::IsPatchManiac()) {
 			Output::Error("Failed saving to {}", filename);
 		}
 		Output::Warning("Failed saving to {}", filename);
@@ -164,7 +164,7 @@ bool Scene_Save::Save(std::ostream& os, int slot_id, bool prepare_save) {
 	save.easyrpg_data.maniac_global_variables.clear();
 	save.easyrpg_data.maniac_global_switches.clear();
 	if (Player::IsPatchManiac()) {
-		if (Player::game_config.maniac_version.Get() == 250921 && !ManiacOriginalSave::EncodeObservedGlobalScalars(save)) {
+		if (!ManiacOriginalSave::EncodeObservedGlobalScalars(save)) {
 			Output::Warning("Cannot encode Maniac global numeric/switch state in the observed original save format");
 			return false;
 		}

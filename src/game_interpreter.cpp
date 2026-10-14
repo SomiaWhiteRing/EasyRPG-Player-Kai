@@ -119,7 +119,7 @@ bool Game_Interpreter::IsRunning() const {
 
 // Setup.
 void Game_Interpreter::NormalizeSerializedManiacText(std::vector<lcf::rpg::EventCommand>& commands) {
-	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return;
+	if (!Player::IsPatchManiac()) return;
 	for (auto& command : commands) {
 		const std::string_view text = command.string;
 		const auto end = text.find('\0');
@@ -133,13 +133,12 @@ void Game_Interpreter::Push(
 	bool started_by_decision_key,
 	int event_page_id
 ) {
-	const bool native_250921 = Player::IsPatchManiac()
-		&& Player::game_config.maniac_version.Get() == 250921;
-	if (_list.empty() && !native_250921) {
+	const bool maniac = Player::IsPatchManiac();
+	if (_list.empty() && !maniac) {
 		return;
 	}
 
-	const int limit = native_250921 ? 8192 : call_stack_limit;
+	const int limit = maniac ? 8192 : call_stack_limit;
 	if (_state.stack.size() > static_cast<size_t>(limit)) {
 		Output::Error("Call Event limit ({}) has been exceeded", limit);
 	}
@@ -534,7 +533,7 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		// the next command inside the same dispatch call. They have no payload
 		// effect and must not consume an outer interpreter command slot.
 		const auto opcode = frame->commands[frame->current_command].code;
-		if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+		if (Player::IsPatchManiac()
 			&& (opcode == static_cast<int32_t>(lcf::rpg::EventCommand::Code::END)
 				|| opcode == 40 || opcode == 12110 || opcode == 3024 || opcode == 3035)) {
 			++frame->current_command;
@@ -602,7 +601,7 @@ void Game_Interpreter::Push(Game_Event* ev, const lcf::rpg::EventPage* page, boo
 
 void Game_Interpreter::Push(Game_CommonEvent* ev) {
 	auto list = ev->GetList();
-	if (!list.empty() || (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921)) {
+	if (!list.empty() || (Player::IsPatchManiac())) {
 		Push(std::move(list), 0, false);
 		auto& frame = _state.stack.back();
 		frame.easyrpg_self_scope = 1;
@@ -706,7 +705,7 @@ bool Game_Interpreter::ExecuteCommand() {
 bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 	switch (static_cast<Cmd>(com.code)) {
 		case Cmd::CallCommonEvent:
-			return Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+			return Player::IsPatchManiac()
 				? CommandManiacCallCommonEvent(com) : true;
 		case Cmd::ShowMessage:
 			return CmdSetup<&Game_Interpreter::CommandShowMessage, 0>(com);
@@ -849,7 +848,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::ChangeMainMenuAccess:
 			return CmdSetup<&Game_Interpreter::CommandChangeMainMenuAccess, 1>(com);
 		case Cmd::ConditionalBranch:
-			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921 && com.parameters.size() < 6) {
+			if (Player::IsPatchManiac() && com.parameters.size() < 6) {
 				auto padded = com;
 				padded.parameters = lcf::DBArray<int32_t>(6);
 				std::copy(com.parameters.begin(), com.parameters.end(), padded.parameters.begin());
@@ -859,7 +858,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::Label:
 			return true;
 		case Cmd::JumpToLabel:
-			if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) return CommandJumpToLabel(com);
+			if (Player::IsPatchManiac()) return CommandJumpToLabel(com);
 			return CmdSetup<&Game_Interpreter::CommandJumpToLabel, 1>(com);
 		case Cmd::Loop:
 			return CmdSetup<&Game_Interpreter::CommandLoop, 0>(com);
@@ -1237,11 +1236,6 @@ bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com)
 		const int64_t last_slot = last < 0 ? -static_cast<int64_t>(last) : last;
 		const int64_t low = std::min(first_slot, last_slot);
 		const int64_t high = std::max(first_slot, last_slot);
-		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-		if (!native250921 && high > 1000000) {
-			Output::Warning("ControlSwitches: Target exceeds safe storage limit");
-			return true;
-		}
 		const int operation = com.parameters[3];
 		if (first < 0) {
 			const auto* frame = GetFramePtr();
@@ -1249,7 +1243,7 @@ bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com)
 			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
 				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
 			if (!bank) return true;
-			bank->switches.resize(std::max(bank->switches.size(), static_cast<size_t>(high + (native250921 ? 2 : 1))));
+			bank->switches.resize(std::max(bank->switches.size(), static_cast<size_t>(high + 2)));
 			for (int64_t slot = low; slot <= high; ++slot) {
 				auto& value = bank->switches[static_cast<size_t>(slot)];
 				value = operation == 0 ? 1 : operation == 1 ? 0 : value == 0 ? 1 : 0;
@@ -1361,10 +1355,6 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		const bool self_array = base < 0;
 		const int64_t first_slot = self_array ? -static_cast<int64_t>(base) : base;
 		const int64_t last_slot = first_slot + count;
-		if (Player::game_config.maniac_version.Get() != 250921 && last_slot >= 1000000) {
-			Output::Warning("ControlVariables: Array operand exceeds safe storage limit");
-			return 0;
-		}
 		if (self_array) {
 			const auto* frame = GetFramePtr();
 			auto* state = Main_Data::game_maniac_self_variables.get();
@@ -1380,7 +1370,7 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		const int64_t read_count = operand == 25 ? count - 1 : count;
 		for (int64_t index = 0; index < read_count; ++index) {
 			const int id = static_cast<int>(self_array ? -(first_slot + index) : first_slot + index);
-			const int32_t element = id == 0 && Player::game_config.maniac_version.Get() == 250921
+			const int32_t element = id == 0
 				? Main_Data::game_variables->GetManiacRawSlot(0) : ReadVariable(id);
 			if (operand == 23) sum += static_cast<uint32_t>(element);
 			else if (operand == 24) extremum = std::min(extremum, element);
@@ -1489,8 +1479,7 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		case 12: {
 			// Sqrt (Maniac)
 			int arg = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);
-			int mul = Player::game_config.maniac_version.Get() == 250921
-				? ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]) : com.parameters[6];
+			int mul = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[6]);
 			value = ControlVariables::Sqrt(arg, mul);
 			break;
 		}
@@ -1498,8 +1487,7 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			// Sin (Maniac)
 			int arg1 = ValueOrVariableBitfield(com.parameters[7], 0, com.parameters[5]);
 			int arg2 = ValueOrVariableBitfield(com.parameters[7], 1, com.parameters[8]);
-			int mul = Player::game_config.maniac_version.Get() == 250921
-				? com.parameters[6] : static_cast<int>(static_cast<float>(com.parameters[6]));
+			int mul = com.parameters[6];
 			value = ControlVariables::Sin(arg1, arg2, mul);
 			break;
 		}
@@ -1598,20 +1586,11 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 	if (Player::IsPatchManiac() && start >= 0 && end >= 0 && end < start) std::swap(start, end);
 	if (Player::IsPatchManiac()) {
 		if ((start < 0) != (end < 0)) end = start;
-		if (Player::game_config.maniac_version.Get() == 241028 && target_mode == 0 && start < 0) {
-			// The fixed 241028 runtime ignores this direct negative target;
-			// 250921 writes the current event self bank instead.
-			return true;
-		}
 		const bool self_target = start < 0;
 		const int64_t first_slot = self_target ? -static_cast<int64_t>(start) : start;
 		const int64_t last_slot = self_target ? -static_cast<int64_t>(end) : end;
 		const int64_t low = std::min(first_slot, last_slot);
 		const int64_t high = std::max(first_slot, last_slot);
-		if (Player::game_config.maniac_version.Get() != 250921 && high > 1000000) {
-			Output::Warning("ControlVariables: Target exceeds safe storage limit");
-			return true;
-		}
 		Game_ManiacSelfVariables::Bank* bank = nullptr;
 		if (self_target) {
 			const auto* frame = GetFramePtr();
@@ -2451,8 +2430,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 			const bool numeric_receiver = receiver_type == 2 || receiver_type == 3;
 			const bool switch_receiver = receiver_type == 8 || receiver_type == 9;
 			const bool string_receiver = receiver_type == 5 || receiver_type == 6;
-			if (Player::game_config.maniac_version.Get() == 250921
-				&& frame->easyrpg_maniac_return_address < 0 && _state.stack.size() >= 2
+			if (frame->easyrpg_maniac_return_address < 0 && _state.stack.size() >= 2
 				&& (numeric_receiver || switch_receiver || string_receiver)) {
 				// Native resolves the caller environment before converting the source.
 				// A battle page has no map/common self bank and must fail here.
@@ -2491,7 +2469,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 					} else if (address < 0 && address != INT32_MIN) {
 						auto* bank = Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
 							frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
-						if (!bank && Player::game_config.maniac_version.Get() == 250921) {
+						if (!bank) {
 							Output::Error("Failed to create self-variables.");
 						}
 						if (bank) {
@@ -2562,7 +2540,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 					} else if (positive_address < 0 && positive_address != INT32_MIN) {
 						auto* bank = Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
 							frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
-						if (!bank && Player::game_config.maniac_version.Get() == 250921) {
+						if (!bank) {
 							Output::Error("Failed to create self-variables.");
 						}
 						if (bank) {
@@ -2592,8 +2570,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 			}
 			// Native return delivery refreshes map pages before callee cleanup.
 			// Unknown receiver kinds still take this branch.
-			if ((frame->easyrpg_maniac_return_address > 0 || _state.stack.size() >= 2)
-				&& (Player::game_config.maniac_version.Get() == 250921 || !Game_Battle::IsBattleRunning())) {
+			if (frame->easyrpg_maniac_return_address > 0 || _state.stack.size() >= 2) {
 				// The native refresh guard is not the battle-interpreter mode: fixed
 				// mode-2 captures still refresh before cleanup and both input polls.
 				Game_Map::Refresh();
@@ -2712,7 +2689,7 @@ bool Game_Interpreter::CommandChangeHeroName(lcf::rpg::EventCommand const& com) 
 
 	const auto name = CommandStringOrVariableBitfield(com, 1, 1, 2);
 	const int mode = com.parameters.size() > 2 ? (com.parameters[1] >> 4) & 15 : 0;
-	const bool present = !name.empty() || (mode != 0 && Player::game_config.maniac_version.Get() == 250921
+	const bool present = !name.empty() || (mode != 0 && Player::IsPatchManiac()
 		&& IsManiacStringPresent(mode == 1 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2])));
 	actor->SetName(ToString(name), present);
 	return true;
@@ -2729,7 +2706,7 @@ bool Game_Interpreter::CommandChangeHeroTitle(lcf::rpg::EventCommand const& com)
 
 	const auto title = CommandStringOrVariableBitfield(com, 1, 1, 2);
 	const int mode = com.parameters.size() > 2 ? (com.parameters[1] >> 4) & 15 : 0;
-	const bool present = !title.empty() || (mode != 0 && Player::game_config.maniac_version.Get() == 250921
+	const bool present = !title.empty() || (mode != 0 && Player::IsPatchManiac()
 		&& IsManiacStringPresent(mode == 1 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2])));
 	actor->SetTitle(ToString(title), present);
 	return true;
@@ -4076,7 +4053,7 @@ bool Game_Interpreter::CommandChangeMainMenuAccess(lcf::rpg::EventCommand const&
 
 bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& com) { // Code 12010
 	const auto& frame = GetFrame();
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 
 	bool result = false;
 	int value1, value2;
@@ -4087,12 +4064,12 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	switch (com.parameters[0]) {
 	case 0:
 		// Switch
-		result = (native_250921 ? ReadSwitch(com.parameters[1]) != 0 : Main_Data::game_switches->Get(com.parameters[1])) == (com.parameters[2] == 0);
+		result = (maniac ? ReadSwitch(com.parameters[1]) != 0 : Main_Data::game_switches->Get(com.parameters[1])) == (com.parameters[2] == 0);
 		break;
 	case 1:
 		// Variable
-		value1 = native_250921 ? ReadVariable(com.parameters[1]) : Main_Data::game_variables->Get(com.parameters[1]);
-		value2 = native_250921 ? (com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : ValueOrVariable(com.parameters[2], com.parameters[3]);
+		value1 = maniac ? ReadVariable(com.parameters[1]) : Main_Data::game_variables->Get(com.parameters[1]);
+		value2 = maniac ? (com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : ValueOrVariable(com.parameters[2], com.parameters[3]);
 		result = CheckOperator(value1, value2, com.parameters[4]);
 		break;
 	case 2:
@@ -4147,7 +4124,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 		actor = Main_Data::game_actors->GetActor(actor_id);
 
 		if (!actor) {
-			if (native_250921) Output::Error("ConditionalBranch: Actor {} was not found.", actor_id);
+			if (maniac) Output::Error("ConditionalBranch: Actor {} was not found.", actor_id);
 			Output::Warning("ConditionalBranch: Invalid actor ID {}", actor_id);
 			// Use Else Branch
 			SetSubcommandIndex(com.indent, 1);
@@ -4197,7 +4174,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	case 6: {
 		// Orientation of char
 		int chara_id = com.parameters[1];
-		if (native_250921) {
+		if (maniac) {
 			const int mode = com.parameters[3] & 15;
 			chara_id = mode == 0 ? chara_id : mode == 1 ? ReadVariable(chara_id) : ReadVariableIndirect(chara_id);
 			if (com.parameters[4] == 1) {
@@ -4292,10 +4269,10 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 		if (Player::IsPatchManiac()) {
 			switch (com.parameters[1]) {
 				case 0:
-					result = native_250921 ? Main_Data::game_system->IsManiacLoadPending() : Main_Data::game_system->IsLoadedThisFrame();
+					result = maniac ? Main_Data::game_system->IsManiacLoadPending() : Main_Data::game_system->IsLoadedThisFrame();
 					break;
 				case 1:
-					if (native_250921) {
+					if (maniac) {
 						result = DisplayUi && DisplayUi->IsJoystickAvailable();
 						break;
 					}
@@ -4306,74 +4283,61 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 #endif
 					break;
 				case 2:
-					result = !native_250921 || (DisplayUi && DisplayUi->HasInputFocus());
+					result = !maniac || (DisplayUi && DisplayUi->HasInputFocus());
 					break;
 				case 3:
-					result = native_250921 && Output::IsManiacFileOutputAvailable();
+					result = maniac && Output::IsManiacFileOutputAvailable();
 					break;
 			}
 		}
 		break;
 	case 13:
 		// Maniac: Switch through Variable
-		if (Player::IsPatchManiac()) {
-			result = (native_250921 ? ReadSwitch(ResolveVariableIndirectAddress(com.parameters[1])) != 0 : Main_Data::game_switches->Get(Main_Data::game_variables->Get(com.parameters[1]))) == (com.parameters[2] == 0);
+		if (maniac) {
+			result = (ReadSwitch(ResolveVariableIndirectAddress(com.parameters[1])) != 0) == (com.parameters[2] == 0);
 		}
 		break;
 	case 14:
 		// Maniac: Variable indirect
-		if (Player::IsPatchManiac()) {
-			value1 = native_250921 ? ReadVariableIndirect(com.parameters[1]) : Main_Data::game_variables->GetIndirect(com.parameters[1]);
-			value2 = native_250921 ? (com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : ValueOrVariable(com.parameters[2], com.parameters[3]);
+		if (maniac) {
+			value1 = ReadVariableIndirect(com.parameters[1]);
+			value2 = com.parameters[2] == 0 ? com.parameters[3] : com.parameters[2] == 1
+				? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3]);
 			result = CheckOperator(value1, value2, com.parameters[4]);
 		}
 		break;
 	case 15:
 		// Maniac: String comparison
-		if (Player::IsPatchManiac()) {
-			if (native_250921) {
-				const uint32_t modes = static_cast<uint32_t>(com.parameters[1]);
-				const int left_id = (modes & 15) == 0 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2]);
-				const int right_mode = (modes >> 4) & 15;
-				const int right_id = right_mode == 0 ? 0 : right_mode == 1 ? com.parameters[3] : ResolveVariableIndirectAddress(com.parameters[3]);
-				auto left = Utils::DecodeUTF16(ReadString(left_id), true);
-				auto right = Utils::DecodeUTF16(right_mode == 0 ? std::string_view(com.string) : ReadString(right_id), true);
-				bool left_present = IsManiacStringPresent(left_id);
-				bool right_present = right_mode == 0 ? !com.string.empty() : IsManiacStringPresent(right_id);
-				const uint32_t options = static_cast<uint32_t>(com.parameters[4]);
-				const bool fold = ((options >> 8) & 255) != 0;
-				if (fold) {
-					left_present = !left.empty(); right_present = !right.empty();
-					for (auto* text : {&left, &right}) for (auto& unit : *text) if (unit >= u'A' && unit <= u'Z') unit += u'a' - u'A';
-				}
-				const bool equal = left_present == right_present && left == right;
-				const auto contains = [&]() {
-					if (!right_present) return true;
-					if (!left_present || left.empty()) return false;
-					return std::u16string_view(left.data(), std::find(left.begin(), left.end(), u'\0') - left.begin()).find(
-						std::u16string_view(right.data(), std::find(right.begin(), right.end(), u'\0') - right.begin())) != std::u16string_view::npos;
-				};
-				switch (options & 255) {
-					case 0: result = equal; break;
-					case 1: result = !equal; break;
-					case 2: result = contains(); break;
-					case 3: result = !contains(); break;
-					default: result = fold && equal; break;
-				}
-				break;
+		if (maniac) {
+			const uint32_t modes = static_cast<uint32_t>(com.parameters[1]);
+			const int left_id = (modes & 15) == 0 ? com.parameters[2] : ResolveVariableIndirectAddress(com.parameters[2]);
+			const int right_mode = (modes >> 4) & 15;
+			const int right_id = right_mode == 0 ? 0 : right_mode == 1 ? com.parameters[3] : ResolveVariableIndirectAddress(com.parameters[3]);
+			auto left = Utils::DecodeUTF16(ReadString(left_id), true);
+			auto right = Utils::DecodeUTF16(right_mode == 0 ? std::string_view(com.string) : ReadString(right_id), true);
+			bool left_present = IsManiacStringPresent(left_id);
+			bool right_present = right_mode == 0 ? !com.string.empty() : IsManiacStringPresent(right_id);
+			const uint32_t options = static_cast<uint32_t>(com.parameters[4]);
+			const bool fold = ((options >> 8) & 255) != 0;
+			if (fold) {
+				left_present = !left.empty(); right_present = !right.empty();
+				for (auto* text : {&left, &right}) for (auto& unit : *text) if (unit >= u'A' && unit <= u'Z') unit += u'a' - u'A';
 			}
-			int modes[] = {
-				(com.parameters[1]     ) & 15, //str_l mode: 0 = direct, 1 = indirect
-				(com.parameters[1] >> 4) & 15, //str_r mode: 0 = literal, 1 = direct, 2 = indirect
+			const bool equal = left_present == right_present && left == right;
+			const auto contains = [&]() {
+				if (!right_present) return true;
+				if (!left_present || left.empty()) return false;
+				return std::u16string_view(left.data(), std::find(left.begin(), left.end(), u'\0') - left.begin()).find(
+					std::u16string_view(right.data(), std::find(right.begin(), right.end(), u'\0') - right.begin())) != std::u16string_view::npos;
 			};
-
-			int op = com.parameters[4] & 3;
-			int ignoreCase = com.parameters[4] >> 8 & 1;
-
-			std::string str_param = ToString(com.string);
-			std::string_view str_l = Main_Data::game_strings->GetWithMode(str_param, modes[0]+1, com.parameters[2], *Main_Data::game_variables);
-			std::string_view str_r = Main_Data::game_strings->GetWithMode(str_param, modes[1], com.parameters[3], *Main_Data::game_variables);
-			result = ManiacPatch::CheckString(str_l, str_r, op, ignoreCase);
+			switch (options & 255) {
+				case 0: result = equal; break;
+				case 1: result = !equal; break;
+				case 2: result = contains(); break;
+				case 3: result = !contains(); break;
+				default: result = fold && equal; break;
+			}
+			break;
 		}
 		break;
 	case 16:
@@ -4387,7 +4351,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	int sub_idx = subcommand_sentinel;
 	if (!result) {
 		sub_idx = eOptionBranchElse;
-		if (native_250921) {
+		if (maniac) {
 			auto& mutable_frame = GetFrame();
 			for (int i = mutable_frame.current_command + 1; i < static_cast<int>(mutable_frame.commands.size()); ++i) {
 				const auto& marker = mutable_frame.commands[i];
@@ -4409,7 +4373,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 
 
 bool Game_Interpreter::CommandElseBranch(lcf::rpg::EventCommand const& com) { //code 22010
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		auto& frame = GetFrame();
 		for (int i = frame.current_command + 1; i < static_cast<int>(frame.commands.size()); ++i) {
 			if (frame.commands[i].indent == com.indent) { frame.current_command = i; break; }
@@ -4428,13 +4392,13 @@ bool Game_Interpreter::CommandJumpToLabel(lcf::rpg::EventCommand const& com) { /
 	const auto& list = frame.commands;
 	auto& index = frame.current_command;
 
-	const bool native_250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	int label_id = com.parameters.empty() ? 0 : com.parameters[0];
 
 	for (int idx = 0; (size_t)idx < list.size(); idx++) {
 		if (static_cast<Cmd>(list[idx].code) != Cmd::Label)
 			continue;
-		if ((list[idx].parameters.empty() ? 0 : list[idx].parameters[0]) != label_id || (!native_250921 && list[idx].parameters.empty()))
+		if ((list[idx].parameters.empty() ? 0 : list[idx].parameters[0]) != label_id || (!maniac && list[idx].parameters.empty()))
 			continue;
 		// Re-fetching the label uses the immediate skip and consumes no budget.
 		// Keep the cursor different from this jump even for Label; Jump pairs,
@@ -4580,7 +4544,7 @@ bool Game_Interpreter::CommandManiacLoop(lcf::rpg::EventCommand const& com, bool
 }
 
 bool Game_Interpreter::CommandLoop(lcf::rpg::EventCommand const& com) { // code 12210
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		return CommandManiacLoop(com, false);
 	}
 	if (!Player::IsPatchManiac() || com.parameters.size() < 5 || com.parameters[0] == 0) {
@@ -4704,7 +4668,7 @@ bool Game_Interpreter::CommandBreakLoop(lcf::rpg::EventCommand const& com) { // 
 }
 
 bool Game_Interpreter::CommandEndLoop(lcf::rpg::EventCommand const& com) { // code 22210
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		return CommandManiacLoop(com, true);
 	}
 	auto& frame = GetFrame();
@@ -4941,11 +4905,9 @@ bool Game_Interpreter::CommandManiacSelfvar(lcf::rpg::EventCommand const& com) t
 			int id = select_map_for_clear_or_init(raw_id, id_mode);
 			if (id == 0 || id == 10005) {
 				id = 0;
-				const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
 				for (auto it = _state.stack.rbegin(); it != _state.stack.rend(); ++it) {
-					if (native_250921 ? it->event_id > 0
-						: it->easyrpg_self_scope == 2 && it->easyrpg_self_map_id == map_id) {
-						id = native_250921 ? it->event_id : it->easyrpg_self_event_id;
+					if (it->event_id > 0) {
+						id = it->event_id;
 						break;
 					}
 				}
@@ -5333,10 +5295,9 @@ bool Game_Interpreter::CommandManiacCallCommonEvent(lcf::rpg::EventCommand const
 }
 
 bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // code 12330
-	const bool native_250921 = Player::IsPatchManiac()
-		&& Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	// The native check precedes frame allocation, target lookup and arguments.
-	if (native_250921 && _state.stack.size() > 8192) {
+	if (maniac && _state.stack.size() > 8192) {
 		Output::Error("Call Event limit (8192) has been exceeded");
 	}
 	int evt_id;
@@ -5366,7 +5327,7 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 		if (!Player::IsPatchManiac() || !Main_Data::game_maniac_self_variables) return;
 		const int32_t count = param(6);
 		if (count <= 0) return;
-		if (native_250921 && count > (INT32_MAX - 7) / 2) {
+		if (count > (INT32_MAX - 7) / 2) {
 			Output::Error("CallEvent: Argument count {} overflows the native argument index", count);
 		}
 		if (!Main_Data::game_maniac_self_variables->Ensure(scope, map_id, target_id)) return;
@@ -5394,16 +5355,16 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 			auto* bank = Main_Data::game_maniac_self_variables->Ensure(scope, map_id, target_id);
 			if (!bank) return;
 			if (type >= 4 && type <= 6) {
-				if (++string_slot > 1000000 && !native_250921) return;
+				++string_slot;
 				bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(string_slot + 1)));
 				bank->strings[string_slot] = lcf::DBString(string_value);
 				Game_ManiacSelfVariables::SetStringPresence(bank, string_slot, string_present);
 			} else if (type >= 7 && type <= 9) {
-				if (++switch_slot > 1000000 && !native_250921) return;
+				++switch_slot;
 				bank->switches.resize(std::max(bank->switches.size(), static_cast<size_t>(switch_slot + 1)));
 				bank->switches[switch_slot] = static_cast<uint8_t>(numeric_value);
 			} else {
-				if (++number_slot > 1000000 && !native_250921) return;
+				++number_slot;
 				bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(number_slot + 1)));
 				bank->numbers[number_slot] = numeric_value;
 			}
@@ -5472,7 +5433,7 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 
 		Game_CommonEvent* common_event = lcf::ReaderUtil::GetElement(Game_Map::GetCommonEvents(), evt_id);
 		if (!common_event) {
-			if (native_250921) Output::Error("CallEvent: Can't call invalid common event {}", evt_id);
+			if (maniac) Output::Error("CallEvent: Can't call invalid common event {}", evt_id);
 			Output::Warning("CallEvent: Can't call invalid common event {}", evt_id);
 			return true;
 		}
@@ -5493,13 +5454,11 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 	}
 	case 1: // Map Event
 		evt_id = param(1);
-		if (native_250921 && evt_id == Game_Character::CharThisEvent) {
+		if (maniac && evt_id == Game_Character::CharThisEvent) {
 			evt_id = 0;
 			for (auto it = _state.stack.rbegin(); it != _state.stack.rend(); ++it) {
 				if (it->event_id > 0) { evt_id = it->event_id; break; }
 			}
-		} else if (Player::IsPatchManiac() && evt_id == Game_Character::CharThisEvent) {
-			evt_id = GetThisEventId();
 		}
 		event_page = param(2);
 		break;
@@ -5512,7 +5471,7 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 	}
 	evt_id = add_offset(evt_id);
 
-	if (native_250921) {
+	if (maniac) {
 		const auto& definitions = Game_Map::GetMap().events;
 		const auto find_definition = [&](int id) -> const lcf::rpg::Event* {
 			auto it = std::find_if(definitions.begin(), definitions.end(),
@@ -5542,8 +5501,7 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 		return true;
 	}
 
-	Game_Event* event = Player::IsPatchManiac() && selector == 2
-		? Game_Map::GetEvent(evt_id) : static_cast<Game_Event*>(GetCharacter(evt_id, "CallEvent"));
+	Game_Event* event = static_cast<Game_Event*>(GetCharacter(evt_id, "CallEvent"));
 	if (!event) {
 		Output::Warning("CallEvent: Can't call non-existent event {}", evt_id);
 		return true;
@@ -5555,12 +5513,7 @@ bool Game_Interpreter::CommandCallEvent(lcf::rpg::EventCommand const& com) { // 
 		return true;
 	}
 
-	assign_arguments(2, Main_Data::game_player->GetMapId(), event->GetId());
-	const size_t old_stack_size = _state.stack.size();
 	Push(event, page, false);
-	if (_state.stack.size() > old_stack_size) {
-		set_return_destination();
-	}
 
 	return true;
 }
@@ -5691,8 +5644,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 		return true;
 	}
 	const uint32_t modes = com.parameters[0];
-	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
-	const bool dynamic_graphic = native_250921 ? (com.parameters[6] & 1) != 0 : com.parameters[6] == 1;
+	const bool dynamic_graphic = (com.parameters[6] & 1) != 0;
 	const auto number = [&](int field, int shift) {
 		const int mode = (modes >> (shift * 4)) & 15;
 		return mode == 0 ? com.parameters[field] : mode == 1
@@ -5720,14 +5672,10 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 	};
 
 	const auto write_scalar = [&](int32_t destination, int32_t value) {
-		if (native_250921) {
-			if (destination != 0) write_numbers(destination, std::array<int32_t, 1>{value});
-		} else Main_Data::game_variables->Set(destination, value);
+		if (destination != 0) write_numbers(destination, std::array<int32_t, 1>{value});
 	};
 	const auto write_string = [&](int32_t destination, std::string_view value) {
-		if (!native_250921) {
-			Main_Data::game_strings->Asg(destination, value);
-		} else if (destination > 0) {
+		if (destination > 0) {
 			Main_Data::game_strings->SetManiacRawSlot(destination, value, !value.empty());
 		} else if (destination < 0) {
 			const auto* frame = GetFramePtr();
@@ -5745,12 +5693,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 	int event_id;
 	int var = com.parameters[2];
 	const auto write_pair = [&](int32_t first, int32_t second) {
-		if (Player::game_config.maniac_version.Get() == 250921) {
-			write_numbers(var, std::array<int32_t, 2>{first, second});
-		} else {
-			Main_Data::game_variables->Set(var, first);
-			Main_Data::game_variables->Set(var + 1, second);
-		}
+		write_numbers(var, std::array<int32_t, 2>{first, second});
 	};
 
 	switch (com.parameters[1]) {
@@ -5758,57 +5701,34 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			write_pair(Game_Map::GetTilesX(), Game_Map::GetTilesY());
 			break;
 		case 1: { // Get tile info
-			if (Player::game_config.maniac_version.Get() == 250921) {
-				const int x = number(3, 0), y = number(4, 1);
-				const int width = number(5, 2), height = number(6, 3);
-				const int64_t count = static_cast<int64_t>(width) * height;
-				const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
-				if (width <= 0 || height <= 0 || count > INT32_MAX || map_width <= 0 || map_height <= 0) return true;
-				const auto& layer = com.parameters[2] == 0 ? Game_Map::GetMapDataDown() : Game_Map::GetMapDataUp();
-				std::vector<int32_t> values(static_cast<size_t>(count), 0);
-				for (int row = 0; row < height; ++row) {
-					int64_t sy = static_cast<int64_t>(y) + row;
-					if (Game_Map::LoopVertical()) sy = (sy % map_height + map_height) % map_height;
-					for (int column = 0; column < width; ++column) {
-						int64_t sx = static_cast<int64_t>(x) + column;
-						if (Game_Map::LoopHorizontal()) sx = (sx % map_width + map_width) % map_width;
-						if (sx < 0 || sx >= map_width || sy < 0 || sy >= map_height) continue;
-						const int tile = static_cast<uint16_t>(layer[static_cast<size_t>(sy * map_width + sx)]);
-						const int index = tile < 3000 ? tile / 1000 : tile < 4000 ? 3 + (tile - 3000) / 50
-							: tile < 5000 ? 6 + (tile - 4000) / 50 : tile < 10000 ? tile - 4982 : std::min(tile - 10000, 143);
-						values[static_cast<size_t>(row) * width + column] = index;
-					}
+			const int x = number(3, 0), y = number(4, 1);
+			const int width = number(5, 2), height = number(6, 3);
+			const int64_t count = static_cast<int64_t>(width) * height;
+			const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
+			if (width <= 0 || height <= 0 || count > INT32_MAX || map_width <= 0 || map_height <= 0) return true;
+			const auto& layer = com.parameters[2] == 0 ? Game_Map::GetMapDataDown() : Game_Map::GetMapDataUp();
+			std::vector<int32_t> values(static_cast<size_t>(count), 0);
+			for (int row = 0; row < height; ++row) {
+				int64_t sy = static_cast<int64_t>(y) + row;
+				if (Game_Map::LoopVertical()) sy = (sy % map_height + map_height) % map_height;
+				for (int column = 0; column < width; ++column) {
+					int64_t sx = static_cast<int64_t>(x) + column;
+					if (Game_Map::LoopHorizontal()) sx = (sx % map_width + map_width) % map_width;
+					if (sx < 0 || sx >= map_width || sy < 0 || sy >= map_height) continue;
+					const int tile = static_cast<uint16_t>(layer[static_cast<size_t>(sy * map_width + sx)]);
+					const int index = tile < 3000 ? tile / 1000 : tile < 4000 ? 3 + (tile - 3000) / 50
+						: tile < 5000 ? 6 + (tile - 4000) / 50 : tile < 10000 ? tile - 4982 : std::min(tile - 10000, 143);
+					values[static_cast<size_t>(row) * width + column] = index;
 				}
-				write_numbers(com.parameters[7], values);
-				break;
 			}
-			var = com.parameters[7];
-
-			int32_t tile_layer = com.parameters[2]; // 0: Lower || 1: Upper
-			Rect tile_coords;
-
-			tile_coords.x = ValueOrVariableBitfield(com.parameters[0], 1, com.parameters[3]);
-			tile_coords.y = ValueOrVariableBitfield(com.parameters[0], 2, com.parameters[4]);
-			tile_coords.width = ValueOrVariableBitfield(com.parameters[0], 3, com.parameters[5]);
-			tile_coords.height = ValueOrVariableBitfield(com.parameters[0], 4, com.parameters[6]);
-
-			if (tile_coords.width <= 0 || tile_coords.height <= 0) return true;
-
-			auto tiles = Game_Map::GetTilesIdAt(tile_coords, tile_layer);
-
-			for (int i = 0; i < tile_coords.width * tile_coords.height; i++) {
-				Main_Data::game_variables->Set(var + i, tiles[i]);
-			}
+			write_numbers(com.parameters[7], values);
 			break;
 		}
 		case 2: // Get window size
 			write_pair(Player::screen_width, Player::screen_height);
 			break;
 		case 3: { // Get pixel info
-			if (Player::game_config.maniac_version.Get() != 250921) {
-				Output::Warning("GetGameInfo: Option 'Pixel Info' not implemented.");
-				break;
-			}
+
 			const int x = number(3, 0), y = number(4, 1);
 			const int width = number(5, 2), height = number(6, 3);
 			const int32_t destination = number(7, 4);
@@ -5833,10 +5753,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			break;
 		}
 		case 4: { // Get command interpreter state
-			if (Player::game_config.maniac_version.Get() != 250921) {
-				Output::Warning("GetGameInfo: Option 'Command Interpreter State' not implemented.");
-				break;
-			}
+
 			const int32_t destination = number(2, 0);
 			std::array<int32_t, 5> values{};
 			if (com.parameters[3] == 0) {
@@ -5858,13 +5775,11 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			write_scalar(var, Game_Map::GetChipset());
 			break;
 		case 6: // Get actor/message face graphic
-			if (native_250921) {
-				event_id = number(5, 0);
-				if (com.parameters[4] != 0 && com.parameters[4] != 1) {
-					write_string(var, "");
-					write_scalar(com.parameters[3], 0);
-					break;
-				}
+			event_id = number(5, 0);
+			if (com.parameters[4] != 0 && com.parameters[4] != 1) {
+				write_string(var, "");
+				write_scalar(com.parameters[3], 0);
+				break;
 			}
 			if (com.parameters[4] == 1) {
 				// Message
@@ -5872,11 +5787,10 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 				write_scalar(com.parameters[3], Main_Data::game_system->GetMessageFaceIndex());
 			} else {
 				// Actor
-				if (!native_250921) event_id = ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
 
 				auto* actor = Main_Data::game_actors->GetActor(event_id);
 				if (!actor) {
-					if (native_250921) Output::Error("GetGameInfo: Actor {} was not found.", event_id);
+					Output::Error("GetGameInfo: Actor {} was not found.", event_id);
 					Output::Warning("GetGameInfo: Invalid actor ID {}", event_id);
 					return true;
 				}
@@ -5893,15 +5807,15 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 			}
 			break;
 		case 7: { // Get actor/event body graphic
-			event_id = native_250921 ? number(5, 0) : ValueOrVariableBitfield(com.parameters[0], 0, com.parameters[5]);
-			if (native_250921 && com.parameters[4] != 0 && com.parameters[4] != 1) {
+			event_id = number(5, 0);
+			if (com.parameters[4] != 0 && com.parameters[4] != 1) {
 				write_string(var, "");
 				write_scalar(com.parameters[3], 0);
 				break;
 			}
-			auto* character = native_250921 && com.parameters[4] == 0 ? nullptr : GetCharacter(event_id, "GetGameInfo");
-			if (!character && (!native_250921 || com.parameters[4] == 1)) {
-				if (native_250921) Output::Error("GetGameInfo: Map Event {} was not found.", event_id);
+			auto* character = com.parameters[4] == 0 ? nullptr : GetCharacter(event_id, "GetGameInfo");
+			if (!character && (com.parameters[4] == 1)) {
+				Output::Error("GetGameInfo: Map Event {} was not found.", event_id);
 				return true;
 			}
 
@@ -5958,7 +5872,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 				// Get actor graphic
 				auto* actor = Main_Data::game_actors->GetActor(event_id);
 				if (!actor) {
-					if (native_250921) Output::Error("GetGameInfo: Actor {} was not found.", event_id);
+					Output::Error("GetGameInfo: Actor {} was not found.", event_id);
 					Output::Warning("GetGameInfo: Invalid actor ID {}", event_id);
 					return true;
 				}
@@ -5977,11 +5891,7 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 		}
 		case 8:
 			// Screen position
-			if (Player::game_config.maniac_version.Get() == 250921) {
-				write_pair(Game_Map::GetPositionX() / 16, Game_Map::GetPositionY() / 16);
-			} else {
-				write_pair(Game_Map::GetPositionX() >> 4, Game_Map::GetPositionY() >> 4);
-			}
+			write_pair(Game_Map::GetPositionX() / 16, Game_Map::GetPositionY() / 16);
 			break;
 		case 9:
 			// Screen shake
@@ -5990,18 +5900,10 @@ bool Game_Interpreter::CommandManiacGetGameInfo(lcf::rpg::EventCommand const& co
 		case 10: {
 			// Current BGM
 			const auto& bgm = Main_Data::game_system->GetCurrentBGM();
-			if (Player::game_config.maniac_version.Get() == 250921) {
-				write_string(var, bgm.name);
-				if (com.parameters[3] != 0) {
-					write_numbers(com.parameters[3], std::array<int32_t, 4>{bgm.fadein, bgm.volume, bgm.tempo, bgm.balance});
-				}
-				break;
+			write_string(var, bgm.name);
+			if (com.parameters[3] != 0) {
+				write_numbers(com.parameters[3], std::array<int32_t, 4>{bgm.fadein, bgm.volume, bgm.tempo, bgm.balance});
 			}
-			Main_Data::game_strings->Asg(var, bgm.name);
-			Main_Data::game_variables->Set(com.parameters[3], bgm.fadein);
-			Main_Data::game_variables->Set(com.parameters[3] + 1, bgm.volume);
-			Main_Data::game_variables->Set(com.parameters[3] + 2, bgm.tempo);
-			Main_Data::game_variables->Set(com.parameters[3] + 3, bgm.balance);
 			break;
 		}
 	}
@@ -6016,12 +5918,9 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 		return true;
 	}
 
-	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
 	const int mode = static_cast<uint32_t>(com.parameters[0]) & 15;
-	const int save_number = native_250921
-		? (mode == 0 ? com.parameters[1] : mode == 1
-			? ReadVariable(com.parameters[1]) : ReadVariableIndirect(com.parameters[1]))
-		: ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const int save_number = mode == 0 ? com.parameters[1] : mode == 1
+		? ReadVariable(com.parameters[1]) : ReadVariableIndirect(com.parameters[1]);
 	const auto self_bank = [&]() {
 		const auto* frame = GetFramePtr();
 		auto* state = Main_Data::game_maniac_self_variables.get();
@@ -6031,8 +5930,8 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 		return bank;
 	};
 	const auto write_number = [&](int id, int32_t value) {
-		if (native_250921 && id == 0) return;
-		if (!native_250921 || id > 0) {
+		if (id == 0) return;
+		if (id > 0) {
 			Main_Data::game_variables->Set(id, value);
 		} else {
 			auto* bank = self_bank();
@@ -6063,7 +5962,7 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 		return true;
 	}
 
-	auto save = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
+	auto save = lcf::LSD_Reader::Load(save_stream, Player::encoding, true);
 	if (!save) {
 		Output::Debug("ManiacGetSaveInfo: Save corrupted {}", save_number);
 		// Maniac Patch writes this for whatever reason
@@ -6074,14 +5973,12 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 	std::time_t t = lcf::LSD_Reader::ToUnixTimestamp(save->title.timestamp);
 	std::tm* tm = std::gmtime(&t);
 
-	const int date = native_250921
-		? ((tm->tm_year + 1900) % 1000 * 100 + tm->tm_mon + 1) * 100 + tm->tm_mday
-		: atoi(Utils::FormatDate(tm, Utils::DateFormat_YYMMDD).c_str());
+	const int date = ((tm->tm_year + 1900) % 1000 * 100 + tm->tm_mon + 1) * 100 + tm->tm_mday;
 	write_number(com.parameters[2], date);
 	write_number(com.parameters[3], atoi(Utils::FormatDate(tm, Utils::DateFormat_HHMMSS).c_str()));
 	write_number(com.parameters[4], save->title.hero_level);
 	write_number(com.parameters[5], save->title.hero_hp);
-	if (native_250921 && (com.parameters[0] & 0xf0) != 0) {
+	if ((com.parameters[0] & 0xf0) != 0) {
 		const int id = com.parameters[6];
 		const auto& name = save->title.hero_name;
 		if (id > 0) Main_Data::game_strings->SetManiacRawSlot(id, name, !name.empty());
@@ -6137,19 +6034,16 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 	}
 
 	// 250921 treats every nonzero A0 as the same indirect numeric lookup.
-	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
-	const int slot = native_250921
-		? (com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]))
-		: ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const int slot = com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]);
 	const int out_var = com.parameters[2] != 0 ? com.parameters[3] : 0;
 	const auto* frame = GetFramePtr();
 	if (slot <= 0) {
 		Output::Debug("ManiacSave: Invalid save slot {}", slot);
 		// The original still writes result 0 after skipping the save.
-		if (native_250921 && out_var > 0) {
+		if (out_var > 0) {
 			Main_Data::game_variables->Set(out_var, 0);
 			Game_Map::SetNeedRefresh(true);
-		} else if (native_250921 && out_var < 0 && ApplyManiacSaveResult(
+		} else if (out_var < 0 && ApplyManiacSaveResult(
 			AsyncOp::MakeSave(slot, out_var,
 				frame ? frame->easyrpg_self_scope : 0,
 				frame ? frame->easyrpg_self_map_id : 0,
@@ -6165,7 +6059,7 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		frame ? frame->easyrpg_self_map_id : 0,
 		frame ? frame->easyrpg_self_event_id : 0);
 	Output::BeginManiacFileOutput();
-	if (native_250921 && (maniac_message_hook || Game_Battle::IsManiacHookPumping())) {
+	if ((maniac_message_hook || Game_Battle::IsManiacHookPumping())) {
 		// Hook dispatch has no ordinary scene update between this command and
 		// its suffix. A subsequent Update would clear an unhandled async save.
 		// RPG_RT saves here, writes the result, then dispatches the next command.
@@ -6193,9 +6087,7 @@ bool Game_Interpreter::CommandManiacLoad(lcf::rpg::EventCommand const& com) {
 
 	// The 250921 load dispatcher uses the same single numeric lookup as Save:
 	// every nonzero A0 reads A1 once, including negative self addresses.
-	const int slot = Player::game_config.maniac_version.Get() == 250921
-		? (com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]))
-		: ValueOrVariable(com.parameters[0], com.parameters[1]);
+	const int slot = com.parameters[0] == 0 ? com.parameters[1] : ReadVariable(com.parameters[1]);
 	if (slot <= 0) {
 		Output::Debug("ManiacLoad: Invalid save slot {}", slot);
 		return true;
@@ -6207,7 +6099,7 @@ bool Game_Interpreter::CommandManiacLoad(lcf::rpg::EventCommand const& com) {
 	auto savefs = FileFinder::Save();
 	std::string save_name = Scene_Save::GetSaveFilename(savefs, slot);
 	auto save_stream = FileFinder::Save().OpenInputStream(save_name);
-	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
+	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, Player::encoding, true);
 
 	if (!save) {
 		Output::Debug("ManiacLoad: Save not found {}", slot);
@@ -6215,15 +6107,14 @@ bool Game_Interpreter::CommandManiacLoad(lcf::rpg::EventCommand const& com) {
 	}
 
 	// 250921 A3 skips the reset clear/F12-release/20-tick presentation only.
-	const int presentation = Player::game_config.maniac_version.Get() == 250921
-		? (com.parameters.size() > 3 && com.parameters[3] != 0 ? 2 : 1) : 0;
+	const int presentation = com.parameters.size() > 3 && com.parameters[3] != 0 ? 2 : 1;
 	_async_op = AsyncOp::MakeLoad(slot, presentation);
 
 	return true;
 }
 
 bool Game_Interpreter::CommandManiacEndLoadProcess(lcf::rpg::EventCommand const&) {
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921) {
+	if (Player::IsPatchManiac()) {
 		Main_Data::game_system->EndManiacLoadProcess();
 	}
 	// no-op
@@ -6246,8 +6137,7 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 #endif
 
 	Point mouse_pos = Input::GetMousePosition();
-	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
-	if (native_250921 && DisplayUi && DisplayUi->GetMouseClientPosition(mouse_pos)) {
+	if (DisplayUi && DisplayUi->GetMouseClientPosition(mouse_pos)) {
 		const bool raw = com.parameters.size() >= 4 && (com.parameters[3] & 1) != 0;
 		if (!raw) {
 			Point size = {};
@@ -6257,8 +6147,8 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 		}
 	}
 	const auto write_number = [&](int32_t id, int32_t value) {
-		if (native_250921 && id == 0) return;
-		if (!native_250921 || id > 0) {
+		if (id == 0) return;
+		if (id > 0) {
 			Main_Data::game_variables->Set(id, value);
 		} else {
 			const auto* frame = GetFramePtr();
@@ -6288,12 +6178,9 @@ bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand cons
 		return index < com.parameters.size() ? com.parameters[index] : 0;
 	};
 	const bool literal = arg(0) == 0;
-	const bool old_runtime = Player::game_config.maniac_version.Get() == 241028;
 	const auto read_coordinate = [&](int32_t operand) -> int32_t {
 		if (literal) return operand;
-		// 241028 has only positive global sources. 250921 also has current-self
-		// sources, and every nonzero A0 selects this single lookup.
-		if (old_runtime) return operand > 0 ? Main_Data::game_variables->Get(operand) : 0;
+		// Every nonzero A0 selects one global or current-self lookup.
 		return ReadVariable(operand);
 	};
 	const int32_t x = read_coordinate(arg(1));
@@ -6309,7 +6196,7 @@ bool Game_Interpreter::CommandManiacSetMousePosition(lcf::rpg::EventCommand cons
 		return true;
 	}
 	Point point = {};
-	if (!old_runtime && com.parameters.size() >= 4 && (arg(3) & 1) != 0) {
+	if (com.parameters.size() >= 4 && (arg(3) & 1) != 0) {
 		const int scale = std::clamp(DisplayUi->GetManiacWindowZoom(), 1, 4);
 		point.x = std::clamp(x, 0, scale * 320 - 1);
 		point.y = std::clamp(y, 0, scale * 240 - 1);
@@ -6484,7 +6371,6 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		return true;
 	}
 
-	const bool native_250921 = Player::game_config.maniac_version.Get() == 250921;
 	const auto parameter = [&](size_t index) -> int32_t {
 		return index < com.parameters.size() ? com.parameters[index] : 0;
 	};
@@ -6494,8 +6380,8 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 		return mode == 0 ? parameter(index) : mode == 1
 			? ReadVariable(parameter(index)) : ReadVariableIndirect(parameter(index));
 	};
-	int pic_id = native_250921 ? number(3) : ValueOrVariable(parameter(0), parameter(3));
-	if (native_250921 && (pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId()))
+	int pic_id = number(3);
+	if ((pic_id <= 0 || pic_id > Main_Data::game_pictures->GetMaxPictureId()))
 		Output::Error("GetPictureInfo: Invalid picture ID {}", pic_id);
 	auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 
@@ -6507,7 +6393,7 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	}
 
 	const auto& data = pic.data;
-	if (native_250921 && parameter(1) == 3) {
+	if (parameter(1) == 3) {
 		const int x = number(4), y = number(5), width = number(6), height = number(7);
 		const int32_t destination = number(8);
 		const int64_t count = static_cast<int64_t>(width) * height;
@@ -6556,13 +6442,13 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 
 	const int type = parameter(1);
 	const bool active = pic.sprite && pic.sprite->GetBitmap();
-	if (native_250921 && (type < 0 || type > 2) && !(type < 3 && !active)) return true;
+	if ((type < 0 || type > 2) && !(type < 3 && !active)) return true;
 	int x = 0;
 	int y = 0;
-	int width = native_250921 ? (active ? pic.sprite->GetFrameWidth() : 0) : (pic.sprite ? pic.sprite->GetWidth() : 0);
-	int height = native_250921 ? (active ? pic.sprite->GetFrameHeight() : 0) : (pic.sprite ? pic.sprite->GetHeight() : 0);
+	int width = active ? pic.sprite->GetFrameWidth() : 0;
+	int height = active ? pic.sprite->GetFrameHeight() : 0;
 
-	if (!native_250921 || active) switch (type) {
+	if (active) switch (type) {
 		case 0:
 			x = Utils::RoundTo<int>(data.current_x);
 			y = Utils::RoundTo<int>(data.current_y);
@@ -6598,8 +6484,8 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	}
 
 	const auto write_number = [&](int32_t id, int32_t value) {
-		if (native_250921 && id == 0) return;
-		if (!native_250921 || id > 0) {
+		if (id == 0) return;
+		if (id > 0) {
 			Main_Data::game_variables->Set(id, value);
 		} else {
 			const auto* frame = GetFramePtr();
@@ -7325,86 +7211,53 @@ bool Game_Interpreter::CommandManiacRewriteMap(lcf::rpg::EventCommand const& com
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
-	if (Player::game_config.maniac_version.Get() == 250921) {
-		const bool range = (com.parameters[1] & 1) != 0;
-		const uint32_t modes = com.parameters[0];
-		const auto operand = [&](int field, int shift) {
-			const int mode = (modes >> (shift * 4)) & 0xf;
-			return mode == 0 ? com.parameters[field] : mode == 1
-				? ReadVariable(com.parameters[field]) : ReadVariableIndirect(com.parameters[field]);
-		};
-		// Native resolves the rectangle, and rejects empty sizes, before the source.
-		const int x_start = operand(4, 1), y_start = operand(5, 2);
-		const int width = operand(6, 3), height = operand(7, 4);
-		if (width <= 0 || height <= 0) return true;
-		const int source_mode = modes & 0xf;
-		const int source = range ? (source_mode == 0 ? com.parameters[3] : source_mode == 1
-			? ResolveVariableIndirectAddress(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : operand(3, 0);
-		uint32_t source_index = static_cast<uint32_t>(std::abs(static_cast<int64_t>(source)));
-		const bool upper = (com.parameters[2] & 1) != 0;
-		const bool disable_autotile = com.parameters[8] != 0;
-		auto* scene = static_cast<Scene_Map*>(Scene::Find(Scene::Map).get());
-		const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
-		if (map_width <= 0 || map_height <= 0) return true;
-		for (int row = 0; row < height; ++row) {
-			for (int column = 0; column < width; ++column, ++source_index) {
-				// Consume each source immediately, even for a skipped destination.
-				const int id = static_cast<int32_t>(source < 0 ? 0u - source_index : source_index);
-				int tile = range ? ReadVariable(id) : source;
-				int x = static_cast<int32_t>(static_cast<uint32_t>(x_start) + column);
-				int y = static_cast<int32_t>(static_cast<uint32_t>(y_start) + row);
-				if (Game_Map::LoopHorizontal()) x = Utils::PositiveModulo(x, map_width);
-				if (Game_Map::LoopVertical()) y = Utils::PositiveModulo(y, map_height);
-				if (!Game_Map::IsValid(x, y)) continue;
-				if (upper) {
-					if (static_cast<uint32_t>(tile) >= NUM_UPPER_TILES) tile = 0;
-					if (scene && scene->spriteset) scene->spriteset->ReplaceUpAt(x, y, tile);
-					else Game_Map::ReplaceTileAt(x, y, IndexToChipId(tile + BLOCK_F_INDEX), 1);
-				} else if (!range && disable_autotile) {
-					// The fixed native single/lower/direct branch stores startY,
-					// not the converted source tile, in its uint16 map cell.
-					const auto raw_tile = static_cast<uint16_t>(y_start);
-					if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, true);
-					else Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
-				} else {
-					if (static_cast<uint32_t>(tile) >= NUM_LOWER_TILES) tile = NUM_LOWER_TILES - 1;
-					// The fixed 250921 lower table stores 3074 for animated index 4.
-					// Its renderer groups both IDs alike, but retain the native raw cell.
-					const int raw_tile = tile == 4 ? 3074 : IndexToChipId(tile);
-					if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, disable_autotile);
-					else if (disable_autotile) Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
-				}
-			}
-		}
-		return true;
-	}
-
-	int mode = com.parameters[0];
-	// Other patch versions retain their existing path.
-	bool is_upper_layer = com.parameters[2] != 0;
-
-	int tile_index = ValueOrVariableBitfield(mode, 0, com.parameters[3]);
-	int x_start = ValueOrVariableBitfield(mode, 1, com.parameters[4]);
-	int y_start = ValueOrVariableBitfield(mode, 2, com.parameters[5]);
-	int width = ValueOrVariableBitfield(mode, 3, com.parameters[6]);
-	int height = ValueOrVariableBitfield(mode, 4, com.parameters[7]);
-
-	bool disable_autotile = com.parameters[8] != 0;
-
-	Scene_Map* scene = (Scene_Map*)Scene::Find(Scene::Map).get();
-	if (!scene)
-		return true;
-
-	if (is_upper_layer) {
-		for (auto y = y_start; y < y_start + height; ++y) {
-			for (auto x = x_start; x < x_start + width; ++x) {
-				scene->spriteset->ReplaceUpAt(x, y, tile_index);
-			}
-		}
-	} else {
-		for (auto y = y_start; y < y_start + height; ++y) {
-			for (auto x = x_start; x < x_start + width; ++x) {
-				scene->spriteset->ReplaceDownAt(x, y, tile_index, disable_autotile);
+	const bool range = (com.parameters[1] & 1) != 0;
+	const uint32_t modes = com.parameters[0];
+	const auto operand = [&](int field, int shift) {
+		const int mode = (modes >> (shift * 4)) & 0xf;
+		return mode == 0 ? com.parameters[field] : mode == 1
+			? ReadVariable(com.parameters[field]) : ReadVariableIndirect(com.parameters[field]);
+	};
+	// Native resolves the rectangle, and rejects empty sizes, before the source.
+	const int x_start = operand(4, 1), y_start = operand(5, 2);
+	const int width = operand(6, 3), height = operand(7, 4);
+	if (width <= 0 || height <= 0) return true;
+	const int source_mode = modes & 0xf;
+	const int source = range ? (source_mode == 0 ? com.parameters[3] : source_mode == 1
+		? ResolveVariableIndirectAddress(com.parameters[3]) : ReadVariableIndirect(com.parameters[3])) : operand(3, 0);
+	uint32_t source_index = static_cast<uint32_t>(std::abs(static_cast<int64_t>(source)));
+	const bool upper = (com.parameters[2] & 1) != 0;
+	const bool disable_autotile = com.parameters[8] != 0;
+	auto* scene = static_cast<Scene_Map*>(Scene::Find(Scene::Map).get());
+	const int map_width = Game_Map::GetTilesX(), map_height = Game_Map::GetTilesY();
+	if (map_width <= 0 || map_height <= 0) return true;
+	for (int row = 0; row < height; ++row) {
+		for (int column = 0; column < width; ++column, ++source_index) {
+			// Consume each source immediately, even for a skipped destination.
+			const int id = static_cast<int32_t>(source < 0 ? 0u - source_index : source_index);
+			int tile = range ? ReadVariable(id) : source;
+			int x = static_cast<int32_t>(static_cast<uint32_t>(x_start) + column);
+			int y = static_cast<int32_t>(static_cast<uint32_t>(y_start) + row);
+			if (Game_Map::LoopHorizontal()) x = Utils::PositiveModulo(x, map_width);
+			if (Game_Map::LoopVertical()) y = Utils::PositiveModulo(y, map_height);
+			if (!Game_Map::IsValid(x, y)) continue;
+			if (upper) {
+				if (static_cast<uint32_t>(tile) >= NUM_UPPER_TILES) tile = 0;
+				if (scene && scene->spriteset) scene->spriteset->ReplaceUpAt(x, y, tile);
+				else Game_Map::ReplaceTileAt(x, y, IndexToChipId(tile + BLOCK_F_INDEX), 1);
+			} else if (!range && disable_autotile) {
+				// The fixed native single/lower/direct branch stores startY,
+				// not the converted source tile, in its uint16 map cell.
+				const auto raw_tile = static_cast<uint16_t>(y_start);
+				if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, true);
+				else Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
+			} else {
+				if (static_cast<uint32_t>(tile) >= NUM_LOWER_TILES) tile = NUM_LOWER_TILES - 1;
+				// The fixed 250921 lower table stores 3074 for animated index 4.
+				// Its renderer groups both IDs alike, but retain the native raw cell.
+				const int raw_tile = tile == 4 ? 3074 : IndexToChipId(tile);
+				if (scene && scene->spriteset) scene->spriteset->ReplaceDownTileAt(x, y, raw_tile, disable_autotile);
+				else if (disable_autotile) Game_Map::ReplaceTileAt(x, y, raw_tile, 0);
 			}
 		}
 	}
@@ -7433,7 +7286,7 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 
 		// Load
 		auto save_fs = FileFinder::Save();
-		auto lgs = Player::game_config.maniac_version.Get() == 250921 && save_fs.IsFile("SaveData/Save.lgs")
+		auto lgs = save_fs.IsFile("SaveData/Save.lgs")
 			? save_fs.OpenInputStream("SaveData/Save.lgs") : save_fs.OpenFile("Save.lgs");
 		if (!lgs) {
 			return;
@@ -7512,7 +7365,7 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 		}
 
 		auto save_fs = FileFinder::Save();
-		auto savelgs_name = Player::game_config.maniac_version.Get() == 250921 && save_fs.IsDirectory("SaveData", true)
+		auto savelgs_name = save_fs.IsDirectory("SaveData", true)
 			? std::string("SaveData/Save.lgs") : save_fs.FindFile("Save.lgs");
 		if (savelgs_name.empty()) {
 			savelgs_name = "Save.lgs";
@@ -7559,21 +7412,18 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 		}
 
 		int type = param(2);
-		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
 		const auto numeric = [&](int shift, int raw) {
 			const int mode = (param(1) >> (shift * 4)) & 15;
 			return mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
 		};
-		int length = native250921 ? numeric(2, param(5)) : ValueOrVariableBitfield(param(1), 2, param(5));
+		int length = numeric(2, param(5));
 		int game_state_idx;
-		if (native250921) {
+		{
 			const int mode = param(1) & 15;
 			game_state_idx = mode == 0 ? param(3) : mode == 1 ? ResolveVariableIndirectAddress(param(3))
 				: ResolveVariableIndirectAddress(ResolveVariableIndirectAddress(param(3)));
-		} else {
-			game_state_idx = ValueOrVariableBitfield(param(1), 0, param(3));
 		}
-		int global_save_idx = native250921 ? numeric(1, param(4)) : ValueOrVariableBitfield(param(1), 1, param(4));
+		int global_save_idx = numeric(1, param(4));
 		if (length <= 0 || game_state_idx == 0 || global_save_idx <= 0) return true;
 		if (type < 0 || type > 2) return true;
 		const uint32_t local_start = game_state_idx < 0 ? 0u - static_cast<uint32_t>(game_state_idx) : game_state_idx;
@@ -7627,7 +7477,7 @@ bool Game_Interpreter::CommandManiacControlGlobalSave(lcf::rpg::EventCommand con
 				bank ? Game_ManiacSelfVariables::IsStringPresent(bank, local) : Main_Data::game_strings->IsPresent(local));
 		}
 		// The fixed native copy does not request a map refresh.
-		if (Player::game_config.maniac_version.Get() != 250921 && operation == 4) Game_Map::SetNeedRefresh(true);
+
 	}
 
 	return true;
@@ -7643,7 +7493,7 @@ bool Game_Interpreter::CommandManiacChangePictureId(lcf::rpg::EventCommand const
 }
 
 bool Game_Interpreter::CommandManiacControlMediaOption(lcf::rpg::EventCommand const& com) {
-	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return true;
+	if (!Player::IsPatchManiac()) return true;
 	const auto parameter = [&](size_t index) -> int32_t {
 		return index < com.parameters.size() ? com.parameters[index] : 0;
 	};
@@ -7821,36 +7671,25 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 	//		Flags, such as: extract, hex... There is also an edge case where the last argument of exRep is here
 	//
 	//*parameters 4..n - arguments
-	const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-	const bool native_assignment = native250921 && (com.parameters[3] & 255) <= 1;
 	bool db_source_present = false;
-	bool is_range = com.parameters[0] & 1;
-	int string_id_0, string_id_1;
-	if (native250921) {
-		const int target_mode = com.parameters[0] & 15;
-		is_range = target_mode == 1 || target_mode >= 3;
-		string_id_0 = target_mode < 2 ? com.parameters[1] : ResolveVariableIndirectAddress(com.parameters[1]);
-		string_id_1 = target_mode == 1 ? com.parameters[2]
-			: target_mode >= 3 ? ResolveVariableIndirectAddress(com.parameters[2]) : string_id_0;
-	} else if (!DecodeTargetEvaluationMode<false, true, false, true, false>(com, string_id_0, string_id_1)) {
-		Output::Warning("ControlStrings: Unsupported target evaluation mode {}", com.parameters[0] & 15);
-		return true;
-	}
+	const int target_mode = com.parameters[0] & 15;
+	const bool is_range = target_mode == 1 || target_mode >= 3;
+	const int string_id_0 = target_mode < 2 ? com.parameters[1] : ResolveVariableIndirectAddress(com.parameters[1]);
+	const int string_id_1 = target_mode == 1 ? com.parameters[2]
+		: target_mode >= 3 ? ResolveVariableIndirectAddress(com.parameters[2]) : string_id_0;
 	const bool self_target = string_id_0 < 0;
 	int64_t first_slot = std::abs(static_cast<int64_t>(string_id_0));
 	int64_t last_slot = first_slot;
-	if (native250921) {
-		if (is_range && self_target == (string_id_1 < 0)) {
-			last_slot = std::abs(static_cast<int64_t>(string_id_1));
-			if (last_slot < first_slot) std::swap(first_slot, last_slot);
-		}
-		if (last_slot - first_slot + 1 > INT32_MAX) return true;
-		// Native 8ce30 reserves a global tail even for SELF and no-op targets,
-		// before reading the operation or computing an aliased source.
-		if (last_slot + 1 > INT32_MAX) Output::Error("Failed to create string-variables.");
-		Main_Data::game_strings->SetManiacVectorSize(static_cast<int32_t>(last_slot + 1));
-		if ((com.parameters[3] & 255) == 6 || (com.parameters[3] & 255) > 10) return true;
+	if (is_range && self_target == (string_id_1 < 0)) {
+		last_slot = std::abs(static_cast<int64_t>(string_id_1));
+		if (last_slot < first_slot) std::swap(first_slot, last_slot);
 	}
+	if (last_slot - first_slot + 1 > INT32_MAX) return true;
+	// Native 8ce30 reserves a global tail even for SELF and no-op targets,
+	// before reading the operation or computing an aliased source.
+	if (last_slot + 1 > INT32_MAX) Output::Error("Failed to create string-variables.");
+	Main_Data::game_strings->SetManiacVectorSize(static_cast<int32_t>(last_slot + 1));
+	if ((com.parameters[3] & 255) == 6 || (com.parameters[3] & 255) > 10) return true;
 
 	int op = (com.parameters[3] >>  0) & 255;
 	int fn = (com.parameters[3] >>  8) & 255;
@@ -7879,17 +7718,13 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 
 	std::string str_param = ToString(com.string);
 	std::string result;
-	const auto literal_units = native250921 ? Utils::DecodeUTF16(str_param, true) : std::u16string{};
+	const auto literal_units = Utils::DecodeUTF16(str_param, true);
 	const auto source_number = [&](int mode, int value) {
-		return native250921 ? (mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value))
-			: ValueOrVariable(mode, value);
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
 	};
 	const auto get_string_source = [&](int mode, int id) -> std::string_view {
-		if (native250921) return mode == 0 ? std::string_view(str_param)
+		return mode == 0 ? std::string_view(str_param)
 			: ReadString(mode == 1 ? id : ResolveVariableIndirectAddress(id));
-		if (mode == Game_Strings::eStringEval_Direct) return ReadString(id);
-		if (mode == Game_Strings::eStringEval_Indirect) return ReadString(ResolveVariableIndirectAddress(id));
-		return str_param;
 	};
 	const auto read_target = [&](int id) {
 		// Direct native arrays include physical global slot0. Whole S operands
@@ -7897,25 +7732,19 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		return id < 0 ? ReadString(id) : Main_Data::game_strings->GetManiacRawSlot(id);
 	};
 	const auto get_string_source_with_pos = [&](int mode, int id, int& pos) -> std::string {
-		if (native250921) {
-			if (mode != 0) return ToString(get_string_source(mode, id));
-			const size_t start = static_cast<size_t>(pos);
-			size_t accepted = 0;
-			int32_t budget = id;
-			while (start + accepted < literal_units.size()) {
-				const char16_t unit = literal_units[start + accepted];
-				if (unit > 0x00ff && !(unit >= 0xff61 && unit <= 0xff9f))
-					budget = static_cast<int32_t>(static_cast<uint32_t>(budget) - 1);
-				if (static_cast<int64_t>(budget) <= static_cast<int64_t>(accepted)) break;
-				++accepted;
-			}
-			pos += static_cast<int>(accepted);
-			return Utils::EncodeUTF(literal_units.substr(start, accepted), true);
+		if (mode != 0) return ToString(get_string_source(mode, id));
+		const size_t start = static_cast<size_t>(pos);
+		size_t accepted = 0;
+		int32_t budget = id;
+		while (start + accepted < literal_units.size()) {
+			const char16_t unit = literal_units[start + accepted];
+			if (unit > 0x00ff && !(unit >= 0xff61 && unit <= 0xff9f))
+				budget = static_cast<int32_t>(static_cast<uint32_t>(budget) - 1);
+			if (static_cast<int64_t>(budget) <= static_cast<int64_t>(accepted)) break;
+			++accepted;
 		}
-		if (mode == Game_Strings::eStringEval_Direct || mode == Game_Strings::eStringEval_Indirect) {
-			return ToString(get_string_source(mode, id));
-		}
-		return Main_Data::game_strings->GetWithModeAndPos(str_param, mode, id, pos, *Main_Data::game_variables);
+		pos += static_cast<int>(accepted);
+		return Utils::EncodeUTF(literal_units.substr(start, accepted), true);
 	};
 	const auto expand_source = [&](std::string text) {
 		if (extract_flag) {
@@ -7953,6 +7782,7 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 	{
 	case 0: //asg <fn(string text)>
 	case 1: //cat <fn(string text)>
+	{
 		switch (fn)
 		{
 		case 0: //String <fn(string text, int min_size)>
@@ -7960,49 +7790,38 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			args[1] = source_number(modes[1], args[1]);
 
 			// min_size
-			if (native250921) {
-				if (extract_flag) {
-					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
-					result = Game_Strings::Extract(result, hex_flag, this);
-					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
-				}
-				result = pad_native(result, args[1]);
-				str_params.extract = 0;
-			} else result = Game_Strings::PrependMin(result, args[1], ' ');
+			if (extract_flag) {
+				result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+				result = Game_Strings::Extract(result, hex_flag, this);
+				result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+			}
+			result = pad_native(result, args[1]);
+			str_params.extract = 0;
 			break;
 		case 1: //Number <fn(int number, int min_size)>
+		{
 			args[0] = source_number(modes[0], args[0]);
 			args[1] = source_number(modes[1], args[1]);
 
-			if (native250921) {
-				const int width = Utils::Clamp(args[1], 0, 12);
-				result = hex_flag ? fmt::format("{:0{}x}", static_cast<uint32_t>(args[0]), width)
-					: fmt::format("{:0{}d}", args[0], width);
-				str_params.extract = 0; // This source ignores bit18.
-			} else {
-				result = std::to_string(args[0]);
-				result = Game_Strings::PrependMin(result, args[1], '0');
-			}
+			const int width = Utils::Clamp(args[1], 0, 12);
+			result = hex_flag ? fmt::format("{:0{}x}", static_cast<uint32_t>(args[0]), width)
+				: fmt::format("{:0{}d}", args[0], width);
+			str_params.extract = 0; // This source ignores bit18.
 			break;
+		}
 		case 2: //Switch <fn(int number, int min_size)>
 		{
-			if (native250921) {
-				// Every nonzero mode resolves one address, including SELF references.
-				if (modes[0] != 0) args[0] = ResolveVariableIndirectAddress(args[0]);
-			} else if (modes[0] == 1) {
-				args[0] = Main_Data::game_variables->Get(args[0]);
-			}
+			// Every nonzero mode resolves one address, including SELF references.
+			if (modes[0] != 0) args[0] = ResolveVariableIndirectAddress(args[0]);
 			args[1] = source_number(modes[1], args[1]);
 
-			if (native250921 ? ReadSwitch(args[0]) != 0 : Main_Data::game_switches->Get(args[0])) {
+			if (ReadSwitch(args[0]) != 0) {
 				result = "ON";
 			} else {
 				result = "OFF";
 			}
-			if (native250921) {
-				result = pad_native(result, args[1]);
-				str_params.extract = 0; // This source ignores bit18.
-			} else result = Game_Strings::PrependMin(result, args[1], ' ');
+			result = pad_native(result, args[1]);
+			str_params.extract = 0; // This source ignores bit18.
 			break;
 		}
 		case 3: //Database Names <fn(int database_id, int entity_id, int flags)>
@@ -8011,15 +7830,13 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			args[1] = source_number(modes[1], args[1]);
 			result = ToString(fn == 3 ? ManiacPatch::GetLcfName(args[0], args[1], args[2] != 0, &db_source_present)
 				: ManiacPatch::GetLcfDescription(args[0], args[1], args[2] != 0, &db_source_present));
-			if (native250921) {
-				// These sources expand only for A6 bit4, independently of bit18.
-				if (args[2] & 4) {
-					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
-					result = Game_Strings::Extract(result, hex_flag, this);
-					result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
-				}
-				str_params.extract = 0;
+			// These sources expand only for A6 bit4, independently of bit18.
+			if (args[2] & 4) {
+				result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
+				result = Game_Strings::Extract(result, hex_flag, this);
+				result.resize(result.find('\0') == std::string::npos ? result.size() : result.find('\0'));
 			}
+			str_params.extract = 0;
 			break;
 		}
 		case 6: //Concatenate (cat) <fn(int id_or_length_a, int id_or_length_b, int id_or_length_c)>
@@ -8028,11 +7845,11 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			std::string op_string;
 			for (int i = 0; i < 3; i++) {
 				auto part = get_string_source_with_pos(modes[i], args[i], pos);
-				op_string += native250921 ? expand_source(std::move(part)) : std::move(part);
+				op_string += expand_source(std::move(part));
 			}
 			// Slices can leave adjacent surrogate halves in separate operands.
-			result = native250921 ? Utils::EncodeUTF(Utils::DecodeUTF16(op_string, true), true) : std::move(op_string);
-			if (native250921) str_params.extract = 0;
+			result = Utils::EncodeUTF(Utils::DecodeUTF16(op_string, true), true);
+			str_params.extract = 0;
 			break;
 		}
 		case 7: //Insert (ins) <fn(string base, int index, string insert)>
@@ -8044,12 +7861,10 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			base = get_string_source_with_pos(modes[0], args[0], pos);
 			insert = get_string_source_with_pos(modes[2], args[2], pos);
 
-			if (native250921) {
-				auto units = Utils::DecodeUTF16(expand_source(std::move(base)), true);
-				units.insert(unit_position(units.size(), args[1]), Utils::DecodeUTF16(expand_source(std::move(insert)), true));
-				result = Utils::EncodeUTF(units, true);
-				str_params.extract = 0;
-			} else result = Game_Strings::Insert(base, insert, args[1]);
+			auto units = Utils::DecodeUTF16(expand_source(std::move(base)), true);
+			units.insert(unit_position(units.size(), args[1]), Utils::DecodeUTF16(expand_source(std::move(insert)), true));
+			result = Utils::EncodeUTF(units, true);
+			str_params.extract = 0;
 			break;
 		}
 		case 8: //Replace (rep) <fn(string base, string search, string replacement)>
@@ -8060,36 +7875,34 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			base = get_string_source_with_pos(modes[0], args[0], pos);
 			search = get_string_source_with_pos(modes[1], args[1], pos);
 			replacement = get_string_source_with_pos(modes[2], args[2], pos);
-			if (native250921) {
-				base = expand_source(std::move(base));
-				search = expand_source(std::move(search));
-				replacement = expand_source(std::move(replacement));
-				const auto terminated_units = [](const std::string& text) {
-					return Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
-				};
-				auto units = terminated_units(base);
-				const auto needle = terminated_units(search), inserted = terminated_units(replacement);
-				if (!needle.empty()) {
-					for (size_t position = 0; (position = units.find(needle, position)) != std::u16string::npos; position += inserted.size())
-						units.replace(position, needle.size(), inserted);
-				}
-				result = Utils::EncodeUTF(units, true);
-				str_params.extract = 0;
-			} else result = Utils::ReplaceAll(base, search, replacement);
+			base = expand_source(std::move(base));
+			search = expand_source(std::move(search));
+			replacement = expand_source(std::move(replacement));
+			const auto terminated_units = [](const std::string& text) {
+				return Utils::DecodeUTF16(text.substr(0, text.find('\0')), true);
+			};
+			auto units = terminated_units(base);
+			const auto needle = terminated_units(search), inserted = terminated_units(replacement);
+			if (!needle.empty()) {
+				for (size_t position = 0; (position = units.find(needle, position)) != std::u16string::npos; position += inserted.size())
+					units.replace(position, needle.size(), inserted);
+			}
+			result = Utils::EncodeUTF(units, true);
+			str_params.extract = 0;
 
 			break;
 		}
 		case 9: //Substring (subs) <fn(string base, int index, int size)>
+		{
 			args[1] = source_number(modes[1], args[1]);
 			args[2] = source_number(modes[2], args[2]);
 
 			result = ToString(get_string_source(modes[0], args[0]));
-			if (native250921) {
-				const auto units = Utils::DecodeUTF16(expand_source(std::move(result)), true);
-				result = Utils::EncodeUTF(units.substr(unit_position(units.size(), args[1]), static_cast<size_t>(std::max(args[2], 0))), true);
-				str_params.extract = 0;
-			} else result = Game_Strings::Substring(result, args[1], args[2]);
+			const auto units = Utils::DecodeUTF16(expand_source(std::move(result)), true);
+			result = Utils::EncodeUTF(units.substr(unit_position(units.size(), args[1]), static_cast<size_t>(std::max(args[2], 0))), true);
+			str_params.extract = 0;
 			break;
+		}
 		case 10: //Join (join) <fn(string delimiter, int id, int size)>
 		{
 			std::string op_string;
@@ -8100,34 +7913,26 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 				return expanded;
 			};
 			const auto source_delimiter = get_string_source(modes[0], args[0]);
-			std::string delimiter = native250921 ? join_input(source_delimiter) : ToString(source_delimiter);
-			if (native250921) {
-				// Expansion happens once per input, before joining; inserted text
-				// must not be scanned again when assigning or appending the result.
-				str_params.extract = 0;
-			}
+			std::string delimiter = join_input(source_delimiter);
+			// Expansion happens once per input, before joining; inserted text
+			// must not be scanned again when assigning or appending the result.
+			str_params.extract = 0;
 
 			// args[1] & mode[1] relates to starting ID for strings to join
 			// mode 0 = id literal, 1 = direct var, 2 = var literal, 3 = direct var
 			args[1] = source_number(modes[1] % 2, args[1]);
 			args[2] = source_number(modes[2], args[2]);
-			if (native250921 && modes[1] >= 6) break;
+			if (modes[1] >= 6) break;
 
 			while (args[2] > 0) {
-				if (native250921) {
-					const int id = args[1];
-					args[1] = static_cast<int32_t>(static_cast<uint32_t>(id) + 1);
-					if (modes[1] < 2) op_string += join_input(ReadString(id));
-					else if (modes[1] < 4) {
-						const int32_t value = ReadVariable(id);
-						op_string += hex_flag ? fmt::format("{:x}", static_cast<uint32_t>(value)) : std::to_string(value);
-					}
-					else op_string += ReadSwitch(id) != 0 ? "ON" : "OFF";
-				} else if (modes[1] < 2) {
-					op_string += ToString(Main_Data::game_strings->Get(args[1]++));
-				} else {
-					op_string += std::to_string(Main_Data::game_variables->Get(args[1]++));
+				const int id = args[1];
+				args[1] = static_cast<int32_t>(static_cast<uint32_t>(id) + 1);
+				if (modes[1] < 2) op_string += join_input(ReadString(id));
+				else if (modes[1] < 4) {
+					const int32_t value = ReadVariable(id);
+					op_string += hex_flag ? fmt::format("{:x}", static_cast<uint32_t>(value)) : std::to_string(value);
 				}
+				else op_string += ReadSwitch(id) != 0 ? "ON" : "OFF";
 
 				if (--args[2] > 0) op_string += delimiter;
 			}
@@ -8139,7 +7944,7 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		{
 			// maniacs does not like a file extension
 			std::string filename = ToString(get_string_source(modes[0], args[0]));
-			if (native250921) {
+			{
 				args[1] = source_number(modes[1], args[1]);
 				const bool present = modes[0] == 0 ? !str_param.empty()
 					: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
@@ -8162,15 +7967,12 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 		case 13: //Remove (rem) <fn(string base, int index, int size)>
 			args[1] = source_number(modes[1], args[1]);
 			args[2] = source_number(modes[2], args[2]);
-			if (native250921) {
+			{
 				int pos = 0;
 				auto units = Utils::DecodeUTF16(expand_source(get_string_source_with_pos(modes[0], args[0], pos)), true);
 				units.erase(unit_position(units.size(), args[1]), static_cast<size_t>(std::max(args[2], 0)));
 				result = Utils::EncodeUTF(units, true);
 				str_params.extract = 0;
-			} else {
-				result = ToString(get_string_source(modes[0], args[0]));
-				result = Game_Strings::Erase(result, args[1], args[2]);
 			}
 			break;
 		case 14: //Replace Ex (exRep) <fn(string base, string search, string replacement, bool first)>, edge case: the arg "first" is at ((flags >> 19) & 1). Wtf BingShan
@@ -8188,61 +7990,54 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 				flags = std::regex_constants::format_first_only;
 			}
 
-			if (native250921) {
+			{
 				base = expand_source(std::move(base));
 				search = expand_source(std::move(search));
 				replacement = expand_source(std::move(replacement));
 				result = Game_Strings::ManiacRegExReplace(base, search, replacement, flags);
 				str_params.extract = 0;
-			} else result = Game_Strings::RegExReplace(base, search, replacement, flags);
-			break;
-		}
-		default:
-			if (!native250921) Output::Warning("Unknown or unimplemented string sub-operation {}", op);
-			break;
-		}
-		if (native_assignment) {
-			if (str_params.extract) result = Game_Strings::Extract(result, hex_flag, this);
-			const int source = modes[0] == 1 ? args[0]
-				: modes[0] >= 2 ? ResolveVariableIndirectAddress(args[0]) : 0;
-			const bool source_present = !result.empty() || ((fn == 3 || fn == 4) && !(args[2] & 4) && db_source_present)
-				|| (fn == 0 && !extract_flag
-				&& modes[0] != 0 && args[1] == 0 && IsManiacStringPresent(source));
-			// Compute the source once, before any aliased destination is changed.
-			for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
-				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
-				std::string value = result;
-				bool present = source_present;
-				if (op == 1) {
-					const auto destination = id >= 0 ? Main_Data::game_strings->GetManiacRawSlot(id) : ReadString(id);
-					const bool destination_present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
-					value = ToString(destination) + result;
-					present = source_present || destination_present;
-				}
-				if (id >= 0) {
-					Main_Data::game_strings->SetManiacRawSlot(id, value, present);
-				} else {
-					if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
-					const auto* frame = GetFramePtr();
-					auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
-						frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-					if (!bank) Output::Error("Failed to create self-variables.");
-					bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(slot + 1)));
-					bank->strings[slot] = lcf::DBString(value);
-					Game_ManiacSelfVariables::SetStringPresence(bank, static_cast<size_t>(slot), present);
-				}
 			}
 			break;
 		}
-		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, result, op, nullptr, *Main_Data::game_variables);
-		else {
-			if (op == 0) Main_Data::game_strings->Asg(str_params, result);
-			if (op == 1) Main_Data::game_strings->Cat(str_params, result);
+		default:
+
+			break;
+		}
+		if (str_params.extract) result = Game_Strings::Extract(result, hex_flag, this);
+		const int source = modes[0] == 1 ? args[0]
+			: modes[0] >= 2 ? ResolveVariableIndirectAddress(args[0]) : 0;
+		const bool source_present = !result.empty() || ((fn == 3 || fn == 4) && !(args[2] & 4) && db_source_present)
+			|| (fn == 0 && !extract_flag
+			&& modes[0] != 0 && args[1] == 0 && IsManiacStringPresent(source));
+		// Compute the source once, before any aliased destination is changed.
+		for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
+			const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
+			std::string value = result;
+			bool present = source_present;
+			if (op == 1) {
+				const auto destination = id >= 0 ? Main_Data::game_strings->GetManiacRawSlot(id) : ReadString(id);
+				const bool destination_present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
+				value = ToString(destination) + result;
+				present = source_present || destination_present;
+			}
+			if (id >= 0) {
+				Main_Data::game_strings->SetManiacRawSlot(id, value, present);
+			} else {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!bank) Output::Error("Failed to create self-variables.");
+				bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(slot + 1)));
+				bank->strings[slot] = lcf::DBString(value);
+				Game_ManiacSelfVariables::SetStringPresence(bank, static_cast<size_t>(slot), present);
+			}
 		}
 		break;
+	}
 	case 2: //toNum <fn(int var_id)> takes hex
 	case 3: //getLen <fn(int var_id)>
-		if (native250921) {
+		{
 			// A4 is a raw numeric-array address; nibble1 is ignored. Allocate
 			// before the first read, then advance magnitudes inside its bank.
 			const int64_t count = last_slot - first_slot + 1;
@@ -8279,186 +8074,152 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			}
 			break;
 		}
-		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, result, op, args, *Main_Data::game_variables);
-		else {
-			if (op == 2) {
-				int num = Main_Data::game_strings->ToNum(str_params, args[0], *Main_Data::game_variables);
-				Main_Data::game_variables->Set(args[0], num);
-			}
-			if (op == 3) Main_Data::game_strings->GetLen(str_params, args[0], *Main_Data::game_variables);
-		}
-		break;
 	case 4: //inStr <fn(string text, int var_id, int begin)> FIXME: takes hex?
 	{
-		if (native250921) {
-			// Unlike regex A5, Instr A5 is an ordinary numeric value operand.
-			const int output = source_number(modes[1], args[1]);
-			const int begin = source_number(modes[2], args[2]);
-			const int64_t output_first = std::abs(static_cast<int64_t>(output));
-			const int64_t count = last_slot - first_slot + 1;
-			if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
-			Game_ManiacSelfVariables::Bank* output_bank = nullptr;
-			if (output < 0) {
-				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
-				const auto* frame = GetFramePtr();
-				output_bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
-					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-				if (!output_bank) Output::Error("Failed to create self-variables.");
-				output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
-			} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
-			const auto raw_needle = get_string_source(modes[0], args[0]);
-			const bool needle_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
-				: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
-			const auto needle_text = expand_source(ToString(raw_needle));
-			const auto needle = Utils::DecodeUTF16(needle_text.substr(0, needle_text.find('\0')), true);
-			const bool null_needle = extract_flag ? needle_text.empty() : !needle_present;
-			for (int64_t index = 0; index < count; ++index) {
-				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
-				const auto source = read_target(id);
-				const auto stored = Utils::DecodeUTF16(source, true);
-				int value = null_needle ? 0 : -1;
-				if (!null_needle && begin >= 0 && static_cast<size_t>(begin) < stored.size()) {
-					// wcsstr consumes a terminated suffix, although start is bounded
-					// by the stored UTF16 length (which can include embedded NUL).
-					const auto suffix = stored.substr(static_cast<size_t>(begin));
-					const auto found = suffix.substr(0, suffix.find(u'\0')).find(needle);
-					if (found != std::u16string::npos) value = static_cast<int>(begin + found);
-				}
-				const int slot = static_cast<int>(output_first + index);
-				if (output_bank) output_bank->numbers[slot] = value;
-				else {
-					*Main_Data::game_variables->GetManiacWritable(slot) = value;
-					Game_Map::SetNeedRefreshForVarChange(slot);
-				}
+		// Unlike regex A5, Instr A5 is an ordinary numeric value operand.
+		const int output = source_number(modes[1], args[1]);
+		const int begin = source_number(modes[2], args[2]);
+		const int64_t output_first = std::abs(static_cast<int64_t>(output));
+		const int64_t count = last_slot - first_slot + 1;
+		if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+		Game_ManiacSelfVariables::Bank* output_bank = nullptr;
+		if (output < 0) {
+			if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+			const auto* frame = GetFramePtr();
+			output_bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!output_bank) Output::Error("Failed to create self-variables.");
+			output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
+		} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
+		const auto raw_needle = get_string_source(modes[0], args[0]);
+		const bool needle_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
+			: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
+		const auto needle_text = expand_source(ToString(raw_needle));
+		const auto needle = Utils::DecodeUTF16(needle_text.substr(0, needle_text.find('\0')), true);
+		const bool null_needle = extract_flag ? needle_text.empty() : !needle_present;
+		for (int64_t index = 0; index < count; ++index) {
+			const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+			const auto source = read_target(id);
+			const auto stored = Utils::DecodeUTF16(source, true);
+			int value = null_needle ? 0 : -1;
+			if (!null_needle && begin >= 0 && static_cast<size_t>(begin) < stored.size()) {
+				// wcsstr consumes a terminated suffix, although start is bounded
+				// by the stored UTF16 length (which can include embedded NUL).
+				const auto suffix = stored.substr(static_cast<size_t>(begin));
+				const auto found = suffix.substr(0, suffix.find(u'\0')).find(needle);
+				if (found != std::u16string::npos) value = static_cast<int>(begin + found);
 			}
-			break;
+			const int slot = static_cast<int>(output_first + index);
+			if (output_bank) output_bank->numbers[slot] = value;
+			else {
+				*Main_Data::game_variables->GetManiacWritable(slot) = value;
+				Game_Map::SetNeedRefreshForVarChange(slot);
+			}
 		}
-		std::string_view search = get_string_source(modes[0], args[0]);
-		args[1] = ValueOrVariable(modes[1], args[1]); // not sure this is necessary but better safe
-		args[2] = ValueOrVariable(modes[2], args[2]);
-
-		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, ToString(search), op, args, *Main_Data::game_variables);
-		else          Main_Data::game_strings->InStr(str_params, ToString(search), args[1], args[2], *Main_Data::game_variables);
 		break;
 	}
 	case 5: //split <fn(string text, int str_id, int var_id)> takes hex
 	{
-		if (native250921) {
-			const auto raw_delimiter = get_string_source(modes[0], args[0]);
-			const bool delimiter_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
-				: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
-			const auto delimiter_text = expand_source(ToString(raw_delimiter));
-			const auto delimiter = Utils::DecodeUTF16(delimiter_text.substr(0, delimiter_text.find('\0')), true);
-			const bool null_delimiter = extract_flag ? delimiter_text.empty() : !delimiter_present;
-			int32_t output = modes[1] == 0 ? args[1] : modes[1] == 1 ? ResolveVariableIndirectAddress(args[1]) : ReadVariableIndirect(args[1]);
-			const int64_t count = last_slot - first_slot + 1;
-			// A6 is a raw optional count array; zero disables it, regardless of n3.
-			const int64_t count_first = std::abs(static_cast<int64_t>(args[2]));
-			Game_ManiacSelfVariables::Bank* bank = nullptr;
-			const auto self_bank = [&]() {
-				if (!bank) {
-					if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
-					const auto* frame = GetFramePtr();
-					bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
-						frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-					if (!bank) Output::Error("Failed to create self-variables.");
-				}
-				return bank;
-			};
-			if (args[2] != 0) {
-				if (count_first + count > INT32_MAX) Output::Error("Failed to create variables.");
-				if (args[2] < 0) {
-					auto* counts = self_bank();
-					counts->numbers.resize(std::max(counts->numbers.size(), static_cast<size_t>(count_first + count + 1)));
-				} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(count_first + count));
+		const auto raw_delimiter = get_string_source(modes[0], args[0]);
+		const bool delimiter_present = extract_flag ? false : modes[0] == 0 ? !str_param.empty()
+			: IsManiacStringPresent(modes[0] == 1 ? args[0] : ResolveVariableIndirectAddress(args[0]));
+		const auto delimiter_text = expand_source(ToString(raw_delimiter));
+		const auto delimiter = Utils::DecodeUTF16(delimiter_text.substr(0, delimiter_text.find('\0')), true);
+		const bool null_delimiter = extract_flag ? delimiter_text.empty() : !delimiter_present;
+		int32_t output = modes[1] == 0 ? args[1] : modes[1] == 1 ? ResolveVariableIndirectAddress(args[1]) : ReadVariableIndirect(args[1]);
+		const int64_t count = last_slot - first_slot + 1;
+		// A6 is a raw optional count array; zero disables it, regardless of n3.
+		const int64_t count_first = std::abs(static_cast<int64_t>(args[2]));
+		Game_ManiacSelfVariables::Bank* bank = nullptr;
+		const auto self_bank = [&]() {
+			if (!bank) {
+				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+				const auto* frame = GetFramePtr();
+				bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+				if (!bank) Output::Error("Failed to create self-variables.");
 			}
-			for (int64_t index = 0; index < count; ++index) {
-				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
-				const bool present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
-				const auto source = Utils::DecodeUTF16(read_target(id), true);
-				std::vector<std::u16string> parts;
-				if (present) {
-					if (!null_delimiter && delimiter.empty()) {
-						// Only a present input enters native's nonprogressing find loop.
-						Output::Warning("ControlStrings: Split with a nonnull empty delimiter cannot advance");
-						break;
-					}
-					if (null_delimiter) {
-						for (const auto unit : source) parts.emplace_back(1, unit);
-					} else {
-						const auto terminated = source.substr(0, source.find(u'\0'));
-						size_t position = 0, found;
-						while ((found = terminated.find(delimiter, position)) != std::u16string::npos) {
-							parts.push_back(terminated.substr(position, found - position));
-							position = found + delimiter.size();
-						}
-						parts.push_back(terminated.substr(position));
-					}
-				} else if (!null_delimiter) {
-					// Native emits the trailing NULL part without entering find.
-					parts.emplace_back();
-				}
-				const int64_t output_first = std::abs(static_cast<int64_t>(output));
-				if (!parts.empty()) {
-					if (output_first + parts.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
-					auto* strings = output < 0 ? self_bank() : nullptr;
-					if (strings) {
-						strings->strings.resize(std::max(strings->strings.size(), static_cast<size_t>(output_first + parts.size() + 1)));
-						strings->string_vector_size = strings->strings.size();
-					} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(output_first + parts.size()));
-					for (size_t part = 0; part < parts.size(); ++part) {
-						const int slot = static_cast<int>(output_first + part);
-						const auto text = Utils::EncodeUTF(parts[part], true);
-						if (strings) {
-							strings->strings[slot] = lcf::DBString(text);
-							Game_ManiacSelfVariables::SetStringPresence(strings, slot, false);
-						} else Main_Data::game_strings->SetManiacRawSlot(slot, text, !text.empty());
-					}
-				}
-				const int32_t segments = static_cast<int32_t>(parts.size());
-				if (args[2] != 0) {
-					const int slot = static_cast<int>(count_first + index);
-					if (args[2] < 0) self_bank()->numbers[slot] = segments;
-					else {
-						*Main_Data::game_variables->GetManiacWritable(slot) = segments;
-						Game_Map::SetNeedRefreshForVarChange(slot);
-					}
-				}
-				// The helper advances magnitude; the caller adds its count to the
-				// signed base, so negative ranges can next move towards global0.
-				output = static_cast<int32_t>(static_cast<uint32_t>(output) + segments);
-			}
-			break;
+			return bank;
+		};
+		if (args[2] != 0) {
+			if (count_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+			if (args[2] < 0) {
+				auto* counts = self_bank();
+				counts->numbers.resize(std::max(counts->numbers.size(), static_cast<size_t>(count_first + count + 1)));
+			} else Main_Data::game_variables->EnsureSize(static_cast<size_t>(count_first + count));
 		}
-		std::string_view delimiter = get_string_source(modes[0], args[0]);
-		args[1] = ValueOrVariable(modes[1], args[1]);
-		args[2] = ValueOrVariable(modes[2], args[2]);
-
-		if (is_range) Main_Data::game_strings->RangeOp(str_params, string_id_1, ToString(delimiter), op, args, *Main_Data::game_variables);
-		else          Main_Data::game_strings->Split(str_params, ToString(delimiter), args[1], args[2], *Main_Data::game_variables);
+		for (int64_t index = 0; index < count; ++index) {
+			const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+			const bool present = id == 0 ? !Main_Data::game_strings->GetManiacZeroSaveData().empty() : IsManiacStringPresent(id);
+			const auto source = Utils::DecodeUTF16(read_target(id), true);
+			std::vector<std::u16string> parts;
+			if (present) {
+				if (!null_delimiter && delimiter.empty()) {
+					// Only a present input enters native's nonprogressing find loop.
+					Output::Warning("ControlStrings: Split with a nonnull empty delimiter cannot advance");
+					break;
+				}
+				if (null_delimiter) {
+					for (const auto unit : source) parts.emplace_back(1, unit);
+				} else {
+					const auto terminated = source.substr(0, source.find(u'\0'));
+					size_t position = 0, found;
+					while ((found = terminated.find(delimiter, position)) != std::u16string::npos) {
+						parts.push_back(terminated.substr(position, found - position));
+						position = found + delimiter.size();
+					}
+					parts.push_back(terminated.substr(position));
+				}
+			} else if (!null_delimiter) {
+				// Native emits the trailing NULL part without entering find.
+				parts.emplace_back();
+			}
+			const int64_t output_first = std::abs(static_cast<int64_t>(output));
+			if (!parts.empty()) {
+				if (output_first + parts.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
+				auto* strings = output < 0 ? self_bank() : nullptr;
+				if (strings) {
+					strings->strings.resize(std::max(strings->strings.size(), static_cast<size_t>(output_first + parts.size() + 1)));
+					strings->string_vector_size = strings->strings.size();
+				} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(output_first + parts.size()));
+				for (size_t part = 0; part < parts.size(); ++part) {
+					const int slot = static_cast<int>(output_first + part);
+					const auto text = Utils::EncodeUTF(parts[part], true);
+					if (strings) {
+						strings->strings[slot] = lcf::DBString(text);
+						Game_ManiacSelfVariables::SetStringPresence(strings, slot, false);
+					} else Main_Data::game_strings->SetManiacRawSlot(slot, text, !text.empty());
+				}
+			}
+			const int32_t segments = static_cast<int32_t>(parts.size());
+			if (args[2] != 0) {
+				const int slot = static_cast<int>(count_first + index);
+				if (args[2] < 0) self_bank()->numbers[slot] = segments;
+				else {
+					*Main_Data::game_variables->GetManiacWritable(slot) = segments;
+					Game_Map::SetNeedRefreshForVarChange(slot);
+				}
+			}
+			// The helper advances magnitude; the caller adds its count to the
+			// signed base, so negative ranges can next move towards global0.
+			output = static_cast<int32_t>(static_cast<uint32_t>(output) + segments);
+		}
 		break;
 	}
 	case 7: //toFile <fn(string filename, int encode)>  takes hex
 	{
-		if (native250921) {
-			std::string body;
-			for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
-				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
-				body += read_target(id);
-			}
-			const auto filename = expand_source(ToString(get_string_source(modes[0], args[0])));
-			const int encoding = source_number(modes[1], args[1]);
-			Game_Strings::ToFile(std::string_view(body), filename, encoding);
-			break;
+		std::string body;
+		for (int64_t slot = first_slot; slot <= last_slot; ++slot) {
+			const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(slot)) : static_cast<int>(slot);
+			body += read_target(id);
 		}
-		std::string_view filename = get_string_source(modes[0], args[0]);
-		args[1] = ValueOrVariable(modes[1], args[1]);
-
-		Main_Data::game_strings->ToFile(str_params, ToString(filename), args[1]);
+		const auto filename = expand_source(ToString(get_string_source(modes[0], args[0])));
+		const int encoding = source_number(modes[1], args[1]);
+		Game_Strings::ToFile(std::string_view(body), filename, encoding);
 		break;
 	}
 	case 8: //popLine <fn(int output_str_id)> takes hex
-		if (native250921) {
+		{
 			const int output = modes[0] == 0 ? args[0] : modes[0] == 1
 				? ResolveVariableIndirectAddress(args[0]) : ReadVariableIndirect(args[0]);
 			const int64_t output_first = std::abs(static_cast<int64_t>(output));
@@ -8498,91 +8259,57 @@ bool Game_Interpreter::CommandManiacControlStrings(lcf::rpg::EventCommand const&
 			}
 			break;
 		}
-		args[0] = ValueOrVariable(modes[0], args[0]);
-		if (is_range) {
-			// Each selected string loses its first line; destinations advance from A4.
-			// Negative self-bank strings need a separate context-aware implementation.
-			const int64_t first = std::min<int64_t>(string_id_0, string_id_1);
-			const int64_t last = std::max<int64_t>(string_id_0, string_id_1);
-			const int64_t destination_last = static_cast<int64_t>(args[0]) + last - first;
-			if (first <= 0 || args[0] <= 0 || last > 1000000 || destination_last > 1000000) {
-				Output::Warning("ControlStrings: PopLine range outside supported global strings");
-				break;
-			}
-			for (int64_t id = first; id <= last; ++id) {
-				str_params.string_id = static_cast<int>(id);
-				Main_Data::game_strings->PopLine(str_params, 0, static_cast<int>(args[0] + id - first));
-			}
-		} else {
-			Main_Data::game_strings->PopLine(str_params, 0, args[0]);
-		}
-		break;
 	case 9: //exInStr <fn(string text, int var_id, int begin)>
 	case 10: //exMatch <fn(string text, int var_id, int begin, int str_id)>, edge case: the only command that generates 8 parameters instead of 7
 	{
-		if (native250921) {
-			const auto address = [&](int mode, int raw) {
-				return mode == 0 ? raw : mode == 1 ? ResolveVariableIndirectAddress(raw) : ReadVariableIndirect(raw);
-			};
-			const int output = address(modes[1], args[1]);
-			const int begin = source_number(modes[2], args[2]);
-			// Resolve capture output before numeric writes can change its operand.
-			const int capture_output = op == 10 ? address(modes[3], args[3]) : 0;
-			const int64_t count = last_slot - first_slot + 1;
-			const int64_t output_first = std::abs(static_cast<int64_t>(output));
-			if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
-			const auto self_bank = [&]() {
-				if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
-				const auto* frame = GetFramePtr();
-				auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
-					frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
-				if (!bank) Output::Error("Failed to create self-variables.");
-				return bank;
-			};
-			Game_ManiacSelfVariables::Bank* output_bank = output < 0 ? self_bank() : nullptr;
-			if (output_bank) output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
-			else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
-			const std::string expr = expand_source(ToString(get_string_source(modes[0], args[0])));
-			std::vector<std::string> captures;
-			for (int64_t index = 0; index < count; ++index) {
-				const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
-				const int value = Game_Strings::ManiacRegExSearch(read_target(id), expr, begin, op == 10 ? &captures : nullptr);
-				const int slot = static_cast<int>(output_first + index);
-				if (output_bank) output_bank->numbers[slot] = value;
-				else {
-					*Main_Data::game_variables->GetManiacWritable(slot) = value;
-					Game_Map::SetNeedRefreshForVarChange(slot);
-				}
+		const auto address = [&](int mode, int raw) {
+			return mode == 0 ? raw : mode == 1 ? ResolveVariableIndirectAddress(raw) : ReadVariableIndirect(raw);
+		};
+		const int output = address(modes[1], args[1]);
+		const int begin = source_number(modes[2], args[2]);
+		// Resolve capture output before numeric writes can change its operand.
+		const int capture_output = op == 10 ? address(modes[3], args[3]) : 0;
+		const int64_t count = last_slot - first_slot + 1;
+		const int64_t output_first = std::abs(static_cast<int64_t>(output));
+		if (output_first + count > INT32_MAX) Output::Error("Failed to create variables.");
+		const auto self_bank = [&]() {
+			if (!Main_Data::game_maniac_self_variables) Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
+			const auto* frame = GetFramePtr();
+			auto* bank = frame ? Main_Data::game_maniac_self_variables->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) Output::Error("Failed to create self-variables.");
+			return bank;
+		};
+		Game_ManiacSelfVariables::Bank* output_bank = output < 0 ? self_bank() : nullptr;
+		if (output_bank) output_bank->numbers.resize(std::max(output_bank->numbers.size(), static_cast<size_t>(output_first + count + 1)));
+		else Main_Data::game_variables->EnsureSize(static_cast<size_t>(output_first + count));
+		const std::string expr = expand_source(ToString(get_string_source(modes[0], args[0])));
+		std::vector<std::string> captures;
+		for (int64_t index = 0; index < count; ++index) {
+			const int id = self_target ? static_cast<int32_t>(0u - static_cast<uint32_t>(first_slot + index)) : static_cast<int>(first_slot + index);
+			const int value = Game_Strings::ManiacRegExSearch(read_target(id), expr, begin, op == 10 ? &captures : nullptr);
+			const int slot = static_cast<int>(output_first + index);
+			if (output_bank) output_bank->numbers[slot] = value;
+			else {
+				*Main_Data::game_variables->GetManiacWritable(slot) = value;
+				Game_Map::SetNeedRefreshForVarChange(slot);
 			}
-			if (op == 10) {
-				const int64_t capture_first = std::abs(static_cast<int64_t>(capture_output));
-				if (capture_first + captures.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
-				auto* bank = capture_output < 0 ? self_bank() : nullptr;
+		}
+		if (op == 10) {
+			const int64_t capture_first = std::abs(static_cast<int64_t>(capture_output));
+			if (capture_first + captures.size() > INT32_MAX) Output::Error("Failed to create string-variables.");
+			auto* bank = capture_output < 0 ? self_bank() : nullptr;
+			if (bank) {
+				bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(capture_first + captures.size() + 1)));
+				bank->string_vector_size = bank->strings.size();
+			} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(capture_first + captures.size()));
+			for (size_t index = 0; index < captures.size(); ++index) {
+				const int slot = static_cast<int>(capture_first + index);
 				if (bank) {
-					bank->strings.resize(std::max(bank->strings.size(), static_cast<size_t>(capture_first + captures.size() + 1)));
-					bank->string_vector_size = bank->strings.size();
-				} else Main_Data::game_strings->SetManiacVectorSize(static_cast<int>(capture_first + captures.size()));
-				for (size_t index = 0; index < captures.size(); ++index) {
-					const int slot = static_cast<int>(capture_first + index);
-					if (bank) {
-						bank->strings[slot] = lcf::DBString(captures[index]);
-						Game_ManiacSelfVariables::SetStringPresence(bank, slot, false);
-					} else Main_Data::game_strings->SetManiacRawSlot(slot, captures[index], !captures[index].empty());
-				}
+					bank->strings[slot] = lcf::DBString(captures[index]);
+					Game_ManiacSelfVariables::SetStringPresence(bank, slot, false);
+				} else Main_Data::game_strings->SetManiacRawSlot(slot, captures[index], !captures[index].empty());
 			}
-			break;
-		}
-		// takes hex
-		std::string expr = ToString(get_string_source(modes[0], args[0]));
-		args[1] = ValueOrVariable(modes[1], args[1]); // output var
-		args[2] = ValueOrVariable(modes[2], args[2]); // beginning pos
-
-		if (is_range) {
-			Main_Data::game_strings->RangeOp(str_params, string_id_1, expr, op, args, *Main_Data::game_variables);
-		}
-		else {
-			if (op == 9) Main_Data::game_strings->ExMatch(str_params, expr, args[1], args[2], -1, *Main_Data::game_variables);
-			else         Main_Data::game_strings->ExMatch(str_params, expr, args[1], args[2], args[3], *Main_Data::game_variables);
 		}
 		break;
 	}
@@ -8640,14 +8367,10 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 		const int length = numeric_mode((modes >> 8) & 15, parameter(3));
 		if (start_index == 0 || length < 1) break;
 		const int64_t high = std::abs(static_cast<int64_t>(start_index)) + length;
-		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-		if (native250921 && high + 1 > UINT32_MAX) {
+		if (high + 1 > UINT32_MAX) {
 			Output::Error("Call Command: Vector length exceeds uint32 range.");
 		}
-		if (!native250921 && high > 1000000) {
-			Output::Warning("Call Command: Array source exceeds safe storage limit");
-			break;
-		}
+
 		if (start_index < 0) {
 			const auto* frame = GetFramePtr();
 			auto* state = Main_Data::game_maniac_self_variables.get();
@@ -8669,10 +8392,7 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 	case ProcessingMode::Inline: {
 		const int mode_index = parameter(2);
 		const int length = std::max(0, numeric_mode((modes >> 8) & 15, parameter(3)));
-		if (Player::game_config.maniac_version.Get() != 250921 && length > 1000000) {
-			Output::Warning("Call Command: Inline argument count exceeds safe storage limit");
-			break;
-		}
+
 		for (int i = 0; i < length; ++i) {
 			const int64_t word_index = static_cast<int64_t>(mode_index) + i / 4;
 			const uint32_t word = word_index >= 0 && word_index < com.parameters.size()

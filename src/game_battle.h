@@ -115,11 +115,6 @@ namespace Game_Battle {
 	 */
 	bool ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0, int* hook_result = nullptr);
 
-	/**
-	 * Convenience function to process all maniacs sub-events, and return whether they're currently running
-	 */
-	bool ManiacProcessSubEvents();
-
 	void ChangeBackground(const std::string& name);
 
 	const std::string& GetBackground();

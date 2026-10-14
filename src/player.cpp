@@ -451,7 +451,7 @@ int Player::GetFrames() {
 }
 
 void Player::Exit() {
-	if (DisplayUi && IsPatchManiac() && game_config.maniac_version.Get() == 250921)
+	if (DisplayUi && IsPatchManiac())
 		DisplayUi->SaveManiacVideoDefaults();
 	if (player_config.settings_autosave.Get()) {
 		Scene_Settings::SaveConfig(true);
@@ -888,15 +888,8 @@ void Player::CreateGameObjects() {
 		}
 	}
 
-	// All Maniac games use the backwards-compatible 250921 implementation.
-	// Normalize after auto-detection so legacy CLI/INI version hints cannot
-	// select an older path, and before defaults and game objects read it.
-	if (game_config.patch_maniac.Get() > 0) {
-		game_config.maniac_version.Set(250921);
-	}
-
 	game_config.PrintActivePatches();
-	if (IsPatchManiac() && game_config.maniac_version.Get() == 250921) {
+	if (IsPatchManiac()) {
 		int fullscreen_override = -1;
 		for (const auto& arg : arguments) {
 			if (arg == "--window" || arg == "Window") fullscreen_override = 0;
@@ -1224,7 +1217,7 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 		return;
 	}
 
-	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
+	std::unique_ptr<lcf::rpg::Save> save = lcf::LSD_Reader::Load(save_stream, encoding, Player::IsPatchManiac());
 
 	if (!save.get()) {
 		Output::ErrorStr(lcf::LcfReader::GetError());
@@ -1264,7 +1257,7 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 	}
 
 	if (Player::IsPatchManiac()) {
-		if (Player::game_config.maniac_version.Get() == 250921 && !ManiacOriginalSave::ImportObservedGlobalScalars(*save)) {
+		if (!ManiacOriginalSave::ImportObservedGlobalScalars(*save)) {
 			Output::Error("Invalid Player Maniac global numeric/switch state in {}", save_name);
 			return;
 		}
@@ -1283,7 +1276,7 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 	}
 
 	// Direct startup loads can skip Scene_Title::Start, which applies the INI size.
-	if (Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921
+	if (Player::IsPatchManiac()
 			&& Player::has_custom_resolution) {
 		Player::ChangeResolution(Player::screen_width, Player::screen_height);
 	}

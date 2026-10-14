@@ -40,10 +40,6 @@
 
 namespace {
 
-bool IsManiac250921() {
-	return Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
-}
-
 int SignedBits(uint32_t bits) {
 	return bits <= INT32_MAX ? static_cast<int>(bits) : static_cast<int>(static_cast<int64_t>(bits) - (int64_t{1} << 32));
 }
@@ -97,7 +93,7 @@ int ControlVariables::Actor(int op, int actor_id) {
 	auto actor = Main_Data::game_actors->GetActor(actor_id);
 
 	if (!actor) {
-		if (IsManiac250921()) Output::Error("ControlVariables::Actor: Actor {} was not found.", actor_id);
+		if (Player::IsPatchManiac()) Output::Error("ControlVariables::Actor: Actor {} was not found.", actor_id);
 		Output::Warning("ControlVariables::Actor: Bad actor_id {}", actor_id);
 		return 0;
 	}
@@ -172,12 +168,11 @@ int ControlVariables::Actor(int op, int actor_id) {
 		case 16:
 			// ATB
 			if (Player::IsPatchManiac()) {
-				if (IsManiac250921()) return std::min(actor->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
-				return actor->GetAtbGauge();
+				return std::min(actor->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
 			}
 			break;
 		case 17:
-			if (IsManiac250921()) return actor->GetManiacNextExp();
+			if (Player::IsPatchManiac()) return actor->GetManiacNextExp();
 			break;
 	}
 
@@ -189,7 +184,7 @@ int ControlVariables::Party(int op, int party_idx) {
 	auto actor = Main_Data::game_party->GetActor(party_idx);
 
 	if (!actor) {
-		if (IsManiac250921()) return ControlVariables::Actor(op, 0);
+		if (Player::IsPatchManiac()) return ControlVariables::Actor(op, 0);
 		Output::Warning("ControlVariables::Party: Bad party_idx {}", party_idx);
 		return 0;
 	}
@@ -199,7 +194,7 @@ int ControlVariables::Party(int op, int party_idx) {
 
 int ControlVariables::Event(int op, int event_id, const Game_BaseInterpreterContext& interpreter) {
 	auto character = interpreter.GetCharacter(event_id, "ControlVariables::Event");
-	if (!character && IsManiac250921()) Output::Error("ControlVariables::Event: Character {} was not found.", event_id);
+	if (!character && Player::IsPatchManiac()) Output::Error("ControlVariables::Event: Character {} was not found.", event_id);
 	if (character) {
 		switch (op) {
 			case 0:
@@ -251,7 +246,7 @@ int ControlVariables::Event(int op, int event_id, const Game_BaseInterpreterCont
 			}
 			case 6:
 				// Event ID
-				if (IsManiac250921()) {
+				if (Player::IsPatchManiac()) {
 					switch (character->GetType()) {
 						case Game_Character::Player: return Game_Character::CharPlayer;
 						case Game_Character::Vehicle: return Game_Character::CharPlayer + static_cast<Game_Vehicle*>(character)->GetVehicleType();
@@ -338,9 +333,7 @@ int ControlVariables::Other(int op) {
 		case 13:
 			// Patch version
 			if (Player::IsPatchManiac()) {
-				if (IsManiac250921()) return SignedBits(250921u | (Game_Battle::IsBattleRunning() ? 0x80000000u : 0u));
-				// Latest version before the engine rewrite
-				return 200128;
+				return SignedBits(250921u | (Game_Battle::IsBattleRunning() ? 0x80000000u : 0u));
 			}
 			break;
 	}
@@ -353,7 +346,7 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 	auto enemy = Main_Data::game_enemyparty->GetEnemy(enemy_idx);
 
 	if (!enemy) {
-		if (IsManiac250921()) Output::Error("ControlVariables::Enemy: Enemy index {} was not found.", enemy_idx);
+		if (Player::IsPatchManiac()) Output::Error("ControlVariables::Enemy: Enemy index {} was not found.", enemy_idx);
 		Output::Warning("ControlVariables::Enemy: Bad enemy_idx {}", enemy_idx);
 		return 0;
 	}
@@ -400,8 +393,7 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 		case 9:
 			// ATB
 			if (Player::IsPatchManiac()) {
-				if (IsManiac250921()) return std::min(enemy->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
-				return enemy->GetAtbGauge();
+				return std::min(enemy->GetAtbGauge(), Game_Battler::GetMaxAtbGauge()) / 3000;
 			}
 			break;
 	}
@@ -411,12 +403,12 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 }
 
 int ControlVariables::Pow(int arg1, int arg2) {
-	if (IsManiac250921()) return BoundNative(std::pow(arg1, arg2));
+	if (Player::IsPatchManiac()) return BoundNative(std::pow(arg1, arg2));
 	return static_cast<int>(std::pow(arg1, arg2));
 }
 
 int ControlVariables::Sqrt(int arg, int mul) {
-	if (IsManiac250921()) {
+	if (Player::IsPatchManiac()) {
 		const int magnitude = arg < 0 ? SignedBits(0u - static_cast<uint32_t>(arg)) : arg;
 		const int result = BoundNative(std::sqrt(static_cast<double>(magnitude)) * mul);
 		return arg < 0 ? SignedBits(0u - static_cast<uint32_t>(result)) : result;
@@ -430,7 +422,7 @@ int ControlVariables::Sqrt(int arg, int mul) {
 }
 
 int ControlVariables::Sin(int arg1, int arg2, int mul) {
-	if (IsManiac250921()) return TruncateNative(std::sin((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
+	if (Player::IsPatchManiac()) return TruncateNative(std::sin((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
 	float res = static_cast<float>(arg1);
 	if (arg2 != 0) {
 		res /= static_cast<float>(arg2);
@@ -439,7 +431,7 @@ int ControlVariables::Sin(int arg1, int arg2, int mul) {
 }
 
 int ControlVariables::Cos(int arg1, int arg2, int mul) {
-	if (IsManiac250921()) return TruncateNative(std::cos((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
+	if (Player::IsPatchManiac()) return TruncateNative(std::cos((static_cast<double>(arg1) / (arg2 == 0 ? 1 : arg2)) * M_PI / 180.0) * mul);
 	float res = static_cast<float>(arg1);
 	if (arg2 != 0) {
 		res /= static_cast<float>(arg2);
@@ -448,7 +440,7 @@ int ControlVariables::Cos(int arg1, int arg2, int mul) {
 }
 
 int ControlVariables::Atan2(int arg1, int arg2, int mul) {
-	if (IsManiac250921()) return TruncateNative(std::atan2(arg1, arg2) * 57.2957795131 * mul);
+	if (Player::IsPatchManiac()) return TruncateNative(std::atan2(arg1, arg2) * 57.2957795131 * mul);
 	return static_cast<int>(std::atan2(arg1, arg2) * 180.f / M_PI * mul);
 }
 
@@ -461,12 +453,12 @@ int ControlVariables::Max(int arg1, int arg2) {
 }
 
 int ControlVariables::Abs(int arg) {
-	if (IsManiac250921()) return arg < 0 ? SignedBits(0u - static_cast<uint32_t>(arg)) : arg;
+	if (Player::IsPatchManiac()) return arg < 0 ? SignedBits(0u - static_cast<uint32_t>(arg)) : arg;
 	return abs(arg);
 }
 
 int ControlVariables::Binary(int op, int arg1, int arg2) {
-	if (IsManiac250921()) {
+	if (Player::IsPatchManiac()) {
 		const int64_t a = arg1, b = arg2 == 0 ? 1 : arg2;
 		const uint32_t lhs = static_cast<uint32_t>(arg1), rhs = static_cast<uint32_t>(arg2);
 		switch (op) {
@@ -537,7 +529,7 @@ int ControlVariables::Binary(int op, int arg1, int arg2) {
 }
 
 int ControlVariables::Clamp(int arg1, int arg2, int arg3) {
-	if (IsManiac250921()) return std::min(std::max(arg1, arg2), arg3);
+	if (Player::IsPatchManiac()) return std::min(std::max(arg1, arg2), arg3);
 	return Utils::Clamp(arg1, arg2, arg3);
 }
 
@@ -551,7 +543,7 @@ int ControlVariables::Muldiv(int arg1, int arg2, int arg3) {
 	}
 
 	const int64_t result = arg1_64 * arg2_64 / arg3_64;
-	return IsManiac250921() ? BoundNative(result) : static_cast<int>(result);
+	return Player::IsPatchManiac() ? BoundNative(result) : static_cast<int>(result);
 }
 
 int ControlVariables::Divmul(int arg1, int arg2, int arg3) {
@@ -564,10 +556,10 @@ int ControlVariables::Divmul(int arg1, int arg2, int arg3) {
 	}
 
 	const double result = arg1_64 / arg2_d * arg3_64;
-	return IsManiac250921() ? BoundNative(result) : static_cast<int>(result);
+	return Player::IsPatchManiac() ? BoundNative(result) : static_cast<int>(result);
 }
 
 int ControlVariables::Between(int arg1, int arg2, int arg3) {
-	if (IsManiac250921()) return arg1 >= arg2 && arg1 <= arg3 ? 1 : 0;
+	if (Player::IsPatchManiac()) return arg1 >= arg2 && arg1 <= arg3 ? 1 : 0;
 	return (arg1 >= arg2 && arg2 <= arg3) ? 0 : 1;
 }

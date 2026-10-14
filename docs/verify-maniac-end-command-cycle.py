@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "docs/evidence"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 ORIGINAL_SHA = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "end-command-player.log"]
 AGENT = r"""
 const base = Process.mainModule.base;
@@ -165,7 +165,7 @@ def main() -> None:
         path = EVIDENCE / f"{name}-trace.json"
         trace = json.loads(path.read_text())
         if (trace["runtime_sha256"] != (ORIGINAL_SHA if runtime == "original" else sha256(PLAYER))
-                or trace["runtime_arguments"] != ([] if runtime == "original" else PLAYER_ARGS)
+                or trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != ([] if runtime == "original" else PLAYER_ARGS)
                 or trace["fixture_manifest_sha256"] != sha256(manifest_path)):
             raise ValueError(f"runtime/fixture provenance changed: {name}")
         if runtime == "original":

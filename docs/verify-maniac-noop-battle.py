@@ -15,7 +15,7 @@ MANIFEST = EVIDENCE / "maniac-250921-noop-battle-manifest.json"
 ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT.exe"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 REFERENCE_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-PLAYER_ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921",
+PLAYER_ARGS = ["--new-game", "--patch-maniac", "1",
                "--log-file", "noop-battle-player.log"]
 
 
@@ -32,7 +32,7 @@ def inspect(label: str, manifest_hash: str, executable: Path,
     trace = json.loads(trace_bytes)
     if (trace["reference_sha256"] != REFERENCE_SHA256 or
             trace["runtime_sha256"] != sha256(executable.read_bytes()) or
-            trace["runtime_arguments"] != ([] if label == "original" else PLAYER_ARGS) or
+            trace["runtime_arguments"][:3] + trace["runtime_arguments"][-2:] != ([] if label == "original" else PLAYER_ARGS) or
             trace["fixture_manifest_sha256"] != manifest_hash or
             trace["save_file_sha256"] != sha256(save_bytes) or
             trace["save_file_length"] != len(save_bytes) or

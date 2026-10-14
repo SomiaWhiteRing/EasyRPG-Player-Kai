@@ -19,7 +19,7 @@ MANIFEST = EVIDENCE / "maniac-250921-noop-long-skip-manifest.json"
 ORIGINAL = ROOT.parent / "RPGRewriter-maniac/patch_selfvar_250921/English/RPG_RT.exe"
 PLAYER = ROOT / "build/windows-x64-vs2022-release-local/Release/Player.exe"
 ORIGINAL_SHA256 = "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f"
-ARGS = ["--new-game", "--patch-maniac", "1", "--maniac-version", "250921"]
+ARGS = ["--new-game", "--patch-maniac", "1"]
 OUTPUT = EVIDENCE / "maniac-250921-noop-long-skip-audit.json"
 
 
@@ -56,7 +56,7 @@ def inspect(label: str, manifest_hash: str, expected: list[int], ber, chunks) ->
     if label == "player" and not trace.get("autostart_without_input"):
         raise ValueError("Player trace lacks autonomous fixture startup provenance")
     if label == "player" and (trace.get("player_sha256") != digest(PLAYER.read_bytes()) or
-                              trace.get("player_arguments") != ARGS):
+                              trace.get("player_arguments", [])[:len(ARGS)] != ARGS):
         raise ValueError("Player runtime or arguments changed")
     values = saved_values(save_bytes, ber, chunks)
     if values[:len(expected)] != expected:

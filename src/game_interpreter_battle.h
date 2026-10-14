@@ -79,11 +79,6 @@ public:
 	 * Calls a maniacs battle hook, which processes sub-events at any time.
 	 */
 	bool ManiacBattleHook(ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0, int* hook_result = nullptr);
-	/**
-	 * Processes all maniacs sub-events, and returns whether it's currently running
-	 */
-	bool ProcessManiacSubEvents();
-
 private:
 	bool OnFinishStackFrame() override;
 

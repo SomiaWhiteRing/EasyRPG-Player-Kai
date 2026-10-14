@@ -212,7 +212,7 @@ bool Output::IsManiacFileOutputAvailable() {
 }
 
 void Output::BeginManiacFileOutput() {
-	if (!Player::IsPatchManiac() || Player::game_config.maniac_version.Get() != 250921) return;
+	if (!Player::IsPatchManiac()) return;
 	const auto now = ManiacOutputTime();
 	++maniac_output_count;
 	if (now - maniac_output_time > 1000u) {

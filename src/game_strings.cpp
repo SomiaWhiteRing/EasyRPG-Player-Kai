@@ -193,9 +193,8 @@ int Game_Strings::Split(Str_Params params, const std::string& delimiter, int str
 
 std::string Game_Strings::FromFile(std::string_view filename, int encoding, bool& do_yield) {
 	do_yield = false;
-	const bool native250921 = Player::IsPatchManiac()
-		&& Player::game_config.maniac_version.Get() == 250921;
-	if (native250921 && (encoding < 0 || encoding > 2)) {
+	const bool maniac = Player::IsPatchManiac();
+	if (maniac && (encoding < 0 || encoding > 2)) {
 		return {};
 	}
 
@@ -212,15 +211,15 @@ std::string Game_Strings::FromFile(std::string_view filename, int encoding, bool
 
 	auto vec = Utils::ReadStream(is);
 	std::string file_content(vec.begin(), vec.end());
-	const bool native_utf8 = native250921 && encoding == 1;
-	if (native250921) {
+	const bool native_utf8 = maniac && encoding == 1;
+	if (maniac) {
 		// Native filesystem text mode handles CRLF and DOS EOF before the
 		// terminated ANSI/UTF8 conversion. Standalone CR and BOM are retained.
 		const size_t zero = std::min(file_content.find('\0'), file_content.find('\x1a'));
 		if (zero != std::string::npos) file_content.resize(zero);
 		file_content = Utils::ReplaceAll(file_content, "\r\n", "\n");
 	}
-	if (native250921 && encoding == 2) {
+	if (maniac && encoding == 2) {
 		// The fixed runtime's ordinary wide stream uses the C locale facet:
 		// each unsigned input byte becomes one wide unit after CRT text handling.
 		std::u16string units;
@@ -253,13 +252,13 @@ bool Game_Strings::ToFile(Str_Params params, std::string filename, int encoding)
 
 bool Game_Strings::ToFile(std::string_view text, std::string filename, int encoding) {
 	Output::BeginManiacFileOutput();
-	const bool native250921 = Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921;
+	const bool maniac = Player::IsPatchManiac();
 	std::string str = ToString(text);
-	if (native250921 && encoding == 1) {
+	if (maniac && encoding == 1) {
 		// WideCharToMultiByte UTF8 consumes a terminated UTF16 string. This
 		// also combines pairs formed across the collected input strings.
 		str = Utils::EncodeUTF(Utils::DecodeUTF16(text.substr(0, text.find('\0')), true));
-	} else if (native250921 && encoding == 2) {
+	} else if (maniac && encoding == 2) {
 		const auto units = Utils::DecodeUTF16(text, true);
 		str.resize(units.size() * 2);
 		for (size_t i = 0; i < units.size(); ++i) {
@@ -272,7 +271,7 @@ bool Game_Strings::ToFile(std::string_view text, std::string filename, int encod
 	filename = "Text/" + filename;
 
 	// EasyRPG Extension: When "*" is at the end of filename, ".txt" is not appended
-	if (!native250921 && Player::HasEasyRpgExtensions() && filename.back() == '*') {
+	if (!maniac && Player::HasEasyRpgExtensions() && filename.back() == '*') {
 		filename.pop_back();
 	} else {
 		filename += ".txt";
@@ -284,7 +283,7 @@ bool Game_Strings::ToFile(std::string_view text, std::string filename, int encod
 	if (!txt_out) {
 		// Android's app view can expose /data/user/0 as a directory link.
 		// Native text output must create its parent under the selected save root.
-		if (!FileFinder::Save().MakeDirectory(txt_dir, native250921)) {
+		if (!FileFinder::Save().MakeDirectory(txt_dir, maniac)) {
 			Output::Warning("Maniac String Op ToFile failed. Cannot create directory {}", txt_dir);
 			return false;
 		}
@@ -297,12 +296,12 @@ bool Game_Strings::ToFile(std::string_view text, std::string filename, int encod
 	}
 
 	if (encoding == 0) {
-		if (native250921) {
+		if (maniac) {
 			str.resize(str.find('\0') == std::string::npos ? str.size() : str.find('\0'));
 		}
 		lcf::Encoder enc(Player::encoding);
 		enc.Decode(str);
-		if (native250921) {
+		if (maniac) {
 			// Native writes twice the converted byte count, including its NUL.
 			// Zero-fill safely instead of reproducing its uninitialized overread.
 			str.resize((str.size() + 1) * 2, '\0');
@@ -443,8 +442,8 @@ std::string Game_Strings::Extract(std::string_view string, bool as_hex, const Ga
 			caller = {frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
 		}
 		auto fallback = Game_Message::MakeCommandCodeInserter(*context);
-		const bool native250921 = Player::game_config.maniac_version.Get() == 250921;
-		cmd_fn = [context, caller, as_hex, fallback, native250921](char ch, const char** iter, const char* end, uint32_t escape) {
+		const bool maniac = Player::IsPatchManiac();
+		cmd_fn = [context, caller, as_hex, fallback, maniac](char ch, const char** iter, const char* end, uint32_t escape) {
 			char type = std::toupper(static_cast<unsigned char>(ch));
 			bool self = false;
 			if (type == 'S' && end - *iter >= 4
@@ -454,9 +453,9 @@ std::string Game_Strings::Extract(std::string_view string, bool as_hex, const Ga
 				const char kind = std::toupper(static_cast<unsigned char>((*iter)[3]));
 				if (kind == 'V' || kind == 'T' || kind == 'S') {
 					type = kind;
-					self = kind != 'S' || !native250921;
+					self = kind != 'S' || !maniac;
 					*iter += 4;
-					if (kind == 'S' && native250921) {
+					if (kind == 'S' && maniac) {
 						// Native SELFS detection returns3, then the ordinary S branch
 						// still advances two UTF16 units and does not negate the ID.
 						for (int units = 2; units > 0 && *iter != end; ) {

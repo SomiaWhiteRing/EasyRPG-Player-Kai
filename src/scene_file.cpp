@@ -104,7 +104,7 @@ void Scene_File::PopulateSaveWindow(Window_SaveFile& win, int id) {
 			return;
 		}
 
-		std::unique_ptr<lcf::rpg::Save> savegame = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac() && Player::game_config.maniac_version.Get() == 250921);
+		std::unique_ptr<lcf::rpg::Save> savegame = lcf::LSD_Reader::Load(save_stream, Player::encoding, Player::IsPatchManiac());
 
 		if (savegame) {
 			PopulatePartyFaces(win, id, *savegame);
