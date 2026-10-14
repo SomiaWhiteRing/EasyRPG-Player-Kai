@@ -2934,14 +2934,20 @@ bool Game_Interpreter::CommandSetVehicleLocation(lcf::rpg::EventCommand const& c
 }
 
 bool Game_Interpreter::CommandChangeEventLocation(lcf::rpg::EventCommand const& com) { // Code 10860
-	int event_id = com.parameters[0];
+	const int raw_mode = com.parameters[1];
+	// Maniac packs the coordinate evaluation mode in the low byte and the
+	// event-id evaluation mode in the low nibble of the high byte. The
+	// receiver must be resolved before looking it up as a map event.
+	const int event_mode = Player::IsPatchManiac()
+		? (static_cast<uint32_t>(raw_mode) >> 8) & 0xF : 0;
+	const int coordinate_mode = Player::IsPatchManiac()
+		? static_cast<uint32_t>(raw_mode) & 0xFF : (raw_mode == 0x1000 ? 0 : raw_mode);
+	const int event_id = Player::IsPatchManiac()
+		? ValueOrVariable(event_mode, com.parameters[0]) : com.parameters[0];
 	Game_Character *event = GetCharacter(event_id, "ChangeEventLocation");
 	if (event != nullptr) {
-		// Some maps use 0x1000 for constant coordinates. Accept this exact
-		// mode here without changing how other commands evaluate values.
-		const auto mode = com.parameters[1] == 0x1000 ? 0 : com.parameters[1];
-		const auto x = ValueOrVariable(mode, com.parameters[2]);
-		const auto y = ValueOrVariable(mode, com.parameters[3]);
+		const auto x = ValueOrVariable(coordinate_mode, com.parameters[2]);
+		const auto y = ValueOrVariable(coordinate_mode, com.parameters[3]);
 		event->MoveTo(event->GetMapId(), x, y);
 
 		// RPG2k3 feature
@@ -2951,7 +2957,7 @@ bool Game_Interpreter::CommandChangeEventLocation(lcf::rpg::EventCommand const& 
 		}
 
 		// Only for the constant case, not for variables
-		if (mode == 0 && direction != -1) {
+		if (coordinate_mode == 0 && direction != -1) {
 			event->SetDirection(direction);
 			event->UpdateFacing();
 		}

@@ -369,12 +369,15 @@ void Game_Pictures::ChangeFile(int id, std::string name) {
 
 void Game_Pictures::Picture::Move(const MoveParams& params) {
 	const bool ignore_position = Player::IsLegacy() && data.fixed_to_map;
+	const bool relative_position = Player::IsPatchManiac() && (params.maniac_options & 2);
 	auto effective = params;
-	if (Player::IsPatchManiac()) {
-		if (params.maniac_options & 2) {
-			effective.position_x += data.current_x;
-			effective.position_y += data.current_y;
-		}
+	if (relative_position) {
+		// The native relative branch adds to the existing target position and
+		// skips the other non-effect target writes. In particular, scale(0)
+		// and scale(-20) do not replace or adjust the existing zoom.
+		effective.position_x += data.finish_x;
+		effective.position_y += data.finish_y;
+	} else if (Player::IsPatchManiac()) {
 		if (params.maniac_options & 4) {
 			effective.red = data.finish_red;
 			effective.green = data.finish_green;
@@ -382,7 +385,14 @@ void Game_Pictures::Picture::Move(const MoveParams& params) {
 			effective.saturation = data.finish_sat;
 		}
 	}
-	SetNonEffectParams(effective, !ignore_position);
+	if (relative_position) {
+		if (!ignore_position) {
+			data.finish_x = effective.position_x;
+			data.finish_y = effective.position_y;
+		}
+	} else {
+		SetNonEffectParams(effective, !ignore_position);
+	}
 	if (Player::IsPatchManiac() && params.maniac_style_mask) {
 		// Native chunk 35 is a style word for text pictures. Move 0x3c6f0
 		// preserves the font-size byte and the selected blend/flip nibbles.
@@ -676,8 +686,9 @@ void Game_Pictures::Picture::ApplyOrigin(bool is_move) {
 			return mode == 1 ? size / 2 : mode == 3 ? -size / 2 - (size & 1) : 0;
 		};
 		const auto offset = offsets[static_cast<unsigned>(origin) & 15];
-		x += half(static_cast<int>(width), offset & 3);
-		y += half(static_cast<int>(height), (offset >> 2) & 3);
+		// The low two bits describe Y and the high two bits describe X.
+		x += half(static_cast<int>(width), (offset >> 2) & 3);
+		y += half(static_cast<int>(height), offset & 3);
 	} else {
 
 	switch (origin) {
