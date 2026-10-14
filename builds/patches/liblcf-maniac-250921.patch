@@ -18,6 +18,14 @@ index 5ba56ac..83459db 100644
  	src/generated/rpg_saveeasyrpgtext.cpp
  	src/generated/rpg_saveeasyrpgwindow.cpp
  	src/generated/rpg_saveeventexecframe.cpp
+@@ -266,6 +268,7 @@ set(LCF_HEADERS
+ 	src/generated/lcf/rpg/saveactor.h
+ 	src/generated/lcf/rpg/savecommonevent.h
+ 	src/generated/lcf/rpg/saveeasyrpgdata.h
++	src/generated/lcf/rpg/saveeasyrpgselfvariablebank.h
+ 	src/generated/lcf/rpg/saveeasyrpgtext.h
+ 	src/generated/lcf/rpg/saveeasyrpgwindow.h
+ 	src/generated/lcf/rpg/saveeventexecframe.h
 diff --git a/generator/csv/enums_easyrpg.csv b/generator/csv/enums_easyrpg.csv
 index c3f269f..a7382a5 100644
 --- a/generator/csv/enums_easyrpg.csv
