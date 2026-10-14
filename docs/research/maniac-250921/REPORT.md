@@ -616,7 +616,7 @@ Normal的机器路径按位移与mask形成各通道；Multiply/Add/Overlay先�
 |D08|Normal停止旋转余波写回字段与原版机器指令不同|game_pictures.cpp:700；原版06db5b|P1|
 |D09|whole flip nibble、未知值及height2 vertical分支不能由两个bool完整表示|game_interpreter.cpp的flip解析与Sprite_Picture|P1|
 |D10|原版地图事件与变量随机共用LCG；Player的通用Rand与Maniac seed分流|main_data.cpp:68；rand.cpp:59；game_event.cpp|P0|
-|D11|MovePicture 的 relative 位只在位置上生效；缩放、透明度及目标基准没有按原版字段累加|game_pictures.cpp:370、SetNonEffectParams；原版03c6f0|P0|
+|D11|MovePicture 的 relative 位是位置专用分支；当前实现仍覆盖原版应保留的缩放、透明度和色调目标|game_pictures.cpp:370、SetNonEffectParams；原版03c6f0|P0|
 |D12|原点表已保留，但 X/Y 位组译反；右上、左下及边缘中点的锚点偏移错误|game_pictures.cpp:649；原版03c6f0与214de8|P0|
 |D13|10860 的高字节动态事件寻址没有进入现有 GetCharacter；变量编号被当作物理事件编号|game_interpreter.cpp:2936；原版02b640|P0|
 |A01|实时bounds、整数位模式、LCG、MAX尾项、表达式broadcast等已有大量对应实现|control_variables、main_data、maniac_patch|保留并复核消费者|
@@ -631,11 +631,11 @@ P0/P1表示补完顺序，不是对当前项目的通用安全漏洞评级。D04
 
 上一轮实现检查了图片状态、像素路径和运行模式的若干下游合同，但没有把三个直接消费者的字段转换完整闭合。将它们放回“原始参数 → 引用解析 → 目标状态 → 几何转换 → 绘制/事件消费者”链后，缺口可以精确收敛为以下规则：
 
-1. **MovePicture 的 relative 是目标状态运算，不是位置快捷方式。** `0x02` 设置后，位置以图片当前的目标坐标为基准；宽高缩放、透明度以及适用的色调字段也必须按原版的目标字段规则处理。`0` 表示保持原缩放，`-20` 表示从 `120` 回到 `100`，不能直接把参数覆盖到目标字段。`0x04` 的 keep-RGBs、`0x40` 的 keep-transition 和文字 style word 是不同的保留位，不能互相替代。实现和验证必须同时检查 X/Y、两轴缩放、透明度和色调，不能只检查最终截图。
+1. **MovePicture 的 relative 是位置专用分支，不是把所有字段做增量。** `0x02` 设置后，位置以图片既有的目标坐标为基准；原版跳过本次宽高缩放、透明度和色调目标的写入，保留这些字段的既有目标值。因此 `scale(0)` 在该分支表示不改现有缩放，`scale(-20)` 也不会把 `120` 改成 `100`；当前 Player 将它们直接覆盖，才会产生零尺寸和负缩放。`0x04` 的 keep-RGBs、`0x40` 的 keep-transition 和文字 style word 是不同的保留位，不能互相替代。实现和验证必须同时检查 X/Y、两轴缩放、透明度和色调的“写入或保留”分支，不能只检查最终截图。
 2. **原点表的表值和轴向是两件事。** `214de8 = [0,5,7,13,15,1,3,4,12,...]` 的低两位描述 Y，高两位描述 X；每轴再使用正半尺寸或带奇数像素的负半尺寸。把表复制正确但将两组位送入相反轴，仍会产生完整帧宽/高的双倍偏移。应使用 64×48 这类非正方形图片，并覆盖 origin 1–8，才能避免对称锚点掩盖错误。
 3. **10860 的参数一同时包含坐标模式和事件接收者模式。** 低字节选择常量/变量/间接变量坐标，高字节的低四位独立选择事件 ID 的求值方式。`[454,257,257,258]` 的 `0x0101` 不是物理事件 454，而是 `V[454]` 指定的事件，坐标为 `V[257], V[258]`。事件接收者必须先解析，再进入 `GetCharacter`；坐标和方向仍按低字节模式解释。只把高位留在参数中而继续直接使用 A0，等价于没有实现该字段。
 
-这三条合同说明了先前报告为什么没有阻止现象出现：D03/D06 已覆盖图片状态和几何下游，A01/A02 已覆盖变量银行，但 11120 的 relative 目标加法、原点表的轴向解释和 10860 的具体消费者仍未形成逐字段闭环。完整兼容的审计单位应包含入口参数的存在性、每个模式位的求值、目标字段写入和下游消费者；“handler 可分派”“字段可保存”或“通用变量读取可用”都不能替代它。
+这三条合同说明了先前报告为什么没有阻止现象出现：D03/D06 已覆盖图片状态和几何下游，A01/A02 已覆盖变量银行，但 11120 的 relative 保留分支、原点表的轴向解释和 10860 的具体消费者仍未形成逐字段闭环。完整兼容的审计单位应包含入口参数的存在性、每个模式位的求值、目标字段写入或保留和下游消费者；“handler 可分派”“字段可保存”或“通用变量读取可用”都不能替代它。
 
 ### 10.2 Player 未提交更改可复用的部分
 
@@ -662,7 +662,7 @@ P0/P1表示补完顺序，不是对当前项目的通用安全漏洞评级。D04
 |阶段|修改面|交付条件|
 |---|---|---|
 |S1 原始语义入口|逐消费者的raw count、signed ID、NULL/present、UTF-16 cursor|短/显式0、SELF及配置读取可区分，未知位/尾项不丢失|
-|S2 图片与文字状态|Show/Move/3007、Game_Pictures、Game_Windows、必要liblcf字段|double/current/target/raw分开；relative 的各目标字段、origin 轴向和创建 snapshot/restore 入口闭合；文字word不走普通透明度路径|
+|S2 图片与文字状态|Show/Move/3007、Game_Pictures、Game_Windows、必要liblcf字段|double/current/target/raw分开；relative 的位置/保留分支、origin 轴向和创建 snapshot/restore 入口闭合；文字word不走普通透明度路径|
 |S3 图片精确像素|Maniac专用tone、flash、4×4blend与native/zoom/rotate/wave取样；复用Bitmap表面|给定相同源像素、字形掩码和状态，输出像素按合同一致；普通EasyRPG路径保持现有行为|
 |S4 其余消费者与持久化|随机消费者统一、表达式/数组/strings入口、消息/事件/battle、save/load；10860 的接收者求值|共享helper被所有需要的消费者使用，进行中状态恢复后继续执行一致|
 
