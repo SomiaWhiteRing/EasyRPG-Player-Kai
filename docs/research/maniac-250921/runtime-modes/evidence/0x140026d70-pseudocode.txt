@@ -1,0 +1,173 @@
+void FUN_140026d70(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint *puVar2;
+  uint uVar3;
+  uint uVar4;
+  uint uVar5;
+  longlong lVar6;
+  uint uVar7;
+  longlong lVar8;
+  uint uVar9;
+  longlong lVar10;
+  bool bVar11;
+
+  FUN_140067990();
+  if (DAT_14026944a == '\0') {
+    lVar10 = (longlong)*(int *)*DAT_1402696a0;
+    lVar8 = *(longlong *)((int *)*DAT_1402696a0 + 2);
+    if (0 < lVar10) {
+      lVar6 = 0;
+      do {
+        FUN_140061b20(*(undefined8 *)(lVar8 + lVar6 * 8));
+        lVar6 = lVar6 + 1;
+      } while (lVar6 < lVar10);
+    }
+  }
+  if (DAT_14027a654 == '\0') {
+    FUN_140193e60();
+  }
+  if (DAT_14027a654 != '\x02') {
+    return;
+  }
+  if (param_1 == (int *)0x0) goto LAB_140026f9d;
+  uVar4 = 0;
+  uVar9 = 0xffffffff;
+  uVar7 = 0;
+  uVar3 = DAT_140269910;
+  if ((int)DAT_140269910 < 1) {
+LAB_140026e41:
+    DAT_140279090 = 0xffffffff;
+  }
+  else {
+    lVar8 = 0;
+    bVar11 = DAT_140269910 != 0;
+    do {
+      if (bVar11) {
+        lVar10 = FUN_1400796b0(*(undefined2 *)(lVar8 + DAT_140269918));
+        uVar3 = DAT_140269910;
+      }
+      else {
+        lVar10 = 0;
+      }
+      if (*(int *)(lVar10 + 8) == *param_1) {
+        uVar9 = uVar4;
+      }
+      uVar4 = uVar4 + 1;
+      lVar8 = lVar8 + 2;
+      bVar11 = uVar4 < uVar3;
+    } while ((int)uVar4 < (int)uVar3);
+    if ((int)uVar9 < 0) goto LAB_140026e41;
+    uVar7 = 1;
+    DAT_140279090 = uVar9;
+  }
+  uVar4 = 0;
+  uVar9 = 0xffffffff;
+  if ((int)uVar3 < 1) {
+    puVar2 = &DAT_140279090 + uVar7;
+LAB_140026ebe:
+    uVar9 = 0xffffffff;
+  }
+  else {
+    lVar8 = 0;
+    bVar11 = uVar3 != 0;
+    do {
+      if (bVar11) {
+        lVar10 = FUN_1400796b0(*(undefined2 *)(lVar8 + DAT_140269918));
+        uVar3 = DAT_140269910;
+      }
+      else {
+        lVar10 = 0;
+      }
+      if (*(int *)(lVar10 + 8) == param_1[uVar7]) {
+        uVar9 = uVar4;
+      }
+      uVar4 = uVar4 + 1;
+      lVar8 = lVar8 + 2;
+      bVar11 = uVar4 < uVar3;
+    } while ((int)uVar4 < (int)uVar3);
+    puVar2 = &DAT_140279090 + uVar7;
+    if ((int)uVar9 < 0) goto LAB_140026ebe;
+    uVar7 = uVar7 + 1;
+  }
+  uVar4 = 0;
+  *puVar2 = uVar9;
+  uVar9 = 0xffffffff;
+  if ((int)uVar3 < 1) {
+LAB_140026f12:
+    uVar9 = 0xffffffff;
+    uVar4 = uVar7;
+  }
+  else {
+    lVar8 = 0;
+    bVar11 = uVar3 != 0;
+    do {
+      if (bVar11) {
+        lVar10 = FUN_1400796b0(*(undefined2 *)(lVar8 + DAT_140269918));
+        uVar3 = DAT_140269910;
+      }
+      else {
+        lVar10 = 0;
+      }
+      if (*(int *)(lVar10 + 8) == param_1[uVar7]) {
+        uVar9 = uVar4;
+      }
+      uVar4 = uVar4 + 1;
+      lVar8 = lVar8 + 2;
+      bVar11 = uVar4 < uVar3;
+    } while ((int)uVar4 < (int)uVar3);
+    if ((int)uVar9 < 0) goto LAB_140026f12;
+    uVar4 = uVar7 + 1;
+  }
+  uVar5 = 0;
+  (&DAT_140279090)[uVar7] = uVar9;
+  uVar9 = 0xffffffff;
+  if (0 < (int)uVar3) {
+    lVar8 = 0;
+    bVar11 = uVar3 != 0;
+    do {
+      if (bVar11) {
+        lVar10 = FUN_1400796b0(*(undefined2 *)(lVar8 + DAT_140269918));
+        uVar3 = DAT_140269910;
+      }
+      else {
+        lVar10 = 0;
+      }
+      if (*(int *)(lVar10 + 8) == param_1[uVar4]) {
+        uVar9 = uVar5;
+      }
+      uVar5 = uVar5 + 1;
+      lVar8 = lVar8 + 2;
+      bVar11 = uVar5 < uVar3;
+    } while ((int)uVar5 < (int)uVar3);
+    if (-1 < (int)uVar9) {
+      if (uVar4 < 4) {
+        (&DAT_140279090)[uVar4] = uVar9;
+      }
+      goto LAB_140026f9d;
+    }
+  }
+  if (uVar4 < 4) {
+    (&DAT_140279090)[uVar4] = 0xffffffff;
+  }
+LAB_140026f9d:
+  FUN_1401b55d0(DAT_140279020);
+  FUN_14000ac30(DAT_140279020);
+  lVar8 = DAT_140279030;
+  if (DAT_1402613bc == 0) {
+    if (DAT_140279134 != '\x04') {
+      DAT_140279134 = '\x01';
+    }
+    uVar1 = *(undefined4 *)(DAT_140279030 + 100);
+    *(undefined2 *)(DAT_140279030 + 0x91) = 0;
+    *(undefined4 *)(lVar8 + 0x70) = 0;
+    FUN_1401b5800(lVar8,uVar1,1);
+    FUN_1401b55d0(DAT_140279030);
+  }
+  else if ((DAT_1402613bc == 1) || (DAT_1402613bc == 2)) {
+    *(undefined4 *)(DAT_140279020 + 0x34) = 0;
+    return;
+  }
+  return;
+}

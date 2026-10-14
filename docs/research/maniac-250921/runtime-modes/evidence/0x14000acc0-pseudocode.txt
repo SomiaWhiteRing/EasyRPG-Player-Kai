@@ -1,0 +1,81 @@
+void FUN_14000acc0(longlong param_1,uint param_2,int param_3)
+
+{
+  byte bVar1;
+  uint uVar2;
+  int iVar3;
+  char cVar4;
+  int *piVar5;
+  undefined8 uVar6;
+  uint *puVar7;
+  longlong lVar8;
+  uint uVar9;
+  int iVar10;
+  double dVar11;
+  double dVar12;
+
+  iVar10 = 300000;
+  if (*(int *)(param_1 + 0x5c) < 0x493e1) {
+    iVar10 = *(int *)(param_1 + 0x5c);
+  }
+  *(int *)(param_1 + 0x5c) = iVar10;
+  dVar12 = (double)(0x43238 - iVar10) / 55000.0;
+  dVar11 = 1.0;
+  if (1.0 <= dVar12) {
+    dVar11 = dVar12;
+  }
+  dVar11 = (double)nearbyint(dVar11 * (double)param_3);
+  uVar9 = (uint)dVar11;
+  if (DAT_140279108 != 0) {
+    iVar10 = 0;
+    if (DAT_1402790f0 == (int *)0x0) {
+      piVar5 = (int *)FUN_1400ca620(0x40);
+      piVar5[4] = 100;
+      uVar6 = FUN_1400ca620(800);
+      *(undefined8 *)(piVar5 + 2) = uVar6;
+      *piVar5 = 0;
+      DAT_1402790f0 = piVar5;
+    }
+    if (*DAT_14027a980 <= DAT_140279108 - 1U) {
+                    /* WARNING: Subroutine does not return */
+      FUN_1400c8f60(L"Common Event",DAT_140279108);
+    }
+    FUN_1400888b0(DAT_1402790f0,0,
+                  *(undefined8 *)
+                   (*(longlong *)
+                     (*(longlong *)(DAT_14027a980 + 2) + (longlong)(int)(DAT_140279108 - 1U) * 8) +
+                   0x10));
+    puVar7 = (uint *)FUN_14008c800(DAT_14027910c,4);
+    bVar1 = *(byte *)(param_1 + 0xe9);
+    puVar7[1] = param_2;
+    uVar6 = DAT_14026d2d8;
+    *puVar7 = (uint)bVar1;
+    uVar2 = *(uint *)(param_1 + 0x5c);
+    puVar7[3] = uVar9;
+    iVar3 = DAT_14026cd44;
+    puVar7[2] = uVar2;
+    piVar5 = DAT_1402790f0;
+    DAT_14026d2d8 = DAT_1402790f0;
+    if (0 < iVar3) {
+      while( true ) {
+        if ((*piVar5 < 1) || (DAT_140269449 != '\0')) goto LAB_14000ae59;
+        if (0 < piVar5[7]) break;
+        if (((char)piVar5[10] != '\0') && (0 < *(int *)(DAT_14025d760 + 0x10))) goto LAB_14000ae59;
+        *(undefined1 *)(piVar5 + 10) = 0;
+        if ((char)piVar5[0xc] != '\0') {
+          piVar5[9] = piVar5[9] + -1;
+        }
+        if ((((DAT_1402790a0 == 3) || (cVar4 = FUN_140045660(piVar5), cVar4 == '\0')) ||
+            ((*piVar5 == 1 && (*(int *)(**(longlong **)(piVar5 + 2) + 0x24) == 0)))) ||
+           (iVar10 = iVar10 + 1, iVar3 <= iVar10)) goto LAB_14000ae59;
+      }
+      piVar5[7] = piVar5[7] + -1;
+    }
+LAB_14000ae59:
+    DAT_14026d2d8 = (int *)uVar6;
+    lVar8 = FUN_14008c800(DAT_14027910c,4);
+    uVar9 = *(uint *)(lVar8 + 0xc);
+  }
+  *(int *)(param_1 + 0x5c) = *(int *)(param_1 + 0x5c) + uVar9;
+  return;
+}

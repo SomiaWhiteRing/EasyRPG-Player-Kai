@@ -1,0 +1,31 @@
+undefined8 * FUN_140062220(undefined4 param_1)
+
+{
+  undefined8 *puVar1;
+  undefined4 *puVar2;
+  undefined8 uVar3;
+  longlong lVar4;
+
+  puVar1 = (undefined8 *)FUN_1400ca620(0xb0);
+  *puVar1 = &PTR_FUN_140258160;
+  puVar2 = (undefined4 *)FUN_1400ca620(0x40);
+  puVar2[4] = 100;
+  uVar3 = FUN_1400ca620(800);
+  *(undefined8 *)(puVar2 + 2) = uVar3;
+  *puVar2 = 0;
+  puVar1[0x14] = puVar2;
+  *(undefined4 *)(puVar1 + 4) = param_1;
+  uVar3 = FUN_1400cb2c0();
+  puVar1[1] = uVar3;
+  FUN_14005b280(puVar1);
+  lVar4 = FUN_140056670(DAT_14026d190,*(undefined4 *)(puVar1 + 4));
+  puVar1[0x12] = lVar4;
+  *(undefined4 *)((longlong)puVar1 + 0x24) = DAT_14026d140;
+  *(undefined4 *)(puVar1 + 5) = *(undefined4 *)(lVar4 + 0x10);
+  *(undefined4 *)((longlong)puVar1 + 0x2c) = *(undefined4 *)(lVar4 + 0x14);
+  *(undefined1 *)((longlong)puVar1 + 0xac) = 0;
+  *(undefined4 *)(puVar1 + 0x15) = 0;
+  *(undefined1 *)((longlong)puVar1 + 0xae) = 0;
+  FUN_140061b20(puVar1);
+  return puVar1;
+}
