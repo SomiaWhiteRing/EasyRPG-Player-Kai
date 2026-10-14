@@ -369,38 +369,43 @@ void Game_Pictures::ChangeFile(int id, std::string name) {
 
 void Game_Pictures::Picture::Move(const MoveParams& params) {
 	const bool ignore_position = Player::IsLegacy() && data.fixed_to_map;
-	const bool relative_position = Player::IsPatchManiac() && (params.maniac_options & 2);
 	auto effective = params;
-	if (relative_position) {
-		// The native relative branch adds to the existing target position and
-		// skips the other non-effect target writes. In particular, scale(0)
-		// and scale(-20) do not replace or adjust the existing zoom.
+	if (Player::IsPatchManiac() && (params.maniac_options & 2)) {
+		// Native relative moves add to targets, not to interpolated values.
+		const auto add_target = [](int32_t target, int32_t delta) {
+			return static_cast<int32_t>(static_cast<uint32_t>(target) + static_cast<uint32_t>(delta));
+		};
 		effective.position_x += data.finish_x;
 		effective.position_y += data.finish_y;
-	} else if (Player::IsPatchManiac()) {
-		if (params.maniac_options & 4) {
-			effective.red = data.finish_red;
-			effective.green = data.finish_green;
-			effective.blue = data.finish_blue;
-			effective.saturation = data.finish_sat;
-		}
+		effective.magnify_width = add_target(data.finish_magnify, params.magnify_width);
+		effective.magnify_height = add_target(data.maniac_finish_magnify_height, params.magnify_height);
+		effective.top_trans = add_target(data.finish_top_trans, params.top_trans);
 	}
-	if (relative_position) {
-		if (!ignore_position) {
-			data.finish_x = effective.position_x;
-			data.finish_y = effective.position_y;
-		}
-	} else {
-		SetNonEffectParams(effective, !ignore_position);
+	// RGB targets are absolute even for relative moves; keep-RGBs is separate.
+	if (Player::IsPatchManiac() && (params.maniac_options & 4)) {
+		effective.red = data.finish_red;
+		effective.green = data.finish_green;
+		effective.blue = data.finish_blue;
+		effective.saturation = data.finish_sat;
 	}
+	SetNonEffectParams(effective, !ignore_position);
 	if (Player::IsPatchManiac() && params.maniac_style_mask) {
 		// Native chunk 35 is a style word for text pictures. Move 0x3c6f0
 		// preserves the font-size byte and the selected blend/flip nibbles.
 		const uint32_t previous = static_cast<uint32_t>(data.finish_bot_trans);
 		data.finish_bot_trans = (previous & ~params.maniac_style_mask) | (params.maniac_style & params.maniac_style_mask);
 	}
-	if (Player::IsPatchManiac() && (params.maniac_options & 64)) {
-		// Keep the running transition, including its remaining frame count.
+	if (Player::IsPatchManiac()) {
+		if (params.maniac_options & 64) {
+			data.time_left = std::max(1, data.time_left);
+		} else if (params.duration < 0) {
+			const int32_t frames = static_cast<int32_t>(0u - static_cast<uint32_t>(params.duration));
+			data.time_left = frames < 0 ? params.duration : frames;
+		} else {
+			const int32_t frames = static_cast<int32_t>(static_cast<uint32_t>(params.duration) * (DEFAULT_FPS / 10u));
+			// 06d8c0 only interpolates ordinary attributes when remaining > 0.
+			data.time_left = std::max(1, frames);
+		}
 	} else if (params.duration < 0) {
 		data.time_left = -params.duration;
 	} else {

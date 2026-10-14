@@ -3720,8 +3720,15 @@ bool Game_Interpreter::CommandMovePicture(lcf::rpg::EventCommand const& com) { /
 		}
 	}
 
-	if (wait)
-		SetupWait(params.duration);
+	if (wait) {
+		if (Player::IsPatchManiac()) {
+			// The native command waits for the same normalized/retained frame
+			// count used by the picture, including negative-duration frame units.
+			SetupWaitFrames(Main_Data::game_pictures->GetPicture(pic_id).data.time_left);
+		} else {
+			SetupWait(params.duration);
+		}
+	}
 
 	return true;
 }
