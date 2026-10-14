@@ -230,6 +230,8 @@ libeasyrpg_player_a_SOURCES = \
 	src/main_data.h \
 	src/maniac_patch.cpp \
 	src/maniac_patch.h \
+	src/maniac_picture_renderer.cpp \
+	src/maniac_picture_renderer.h \
 	src/map_data.h \
 	src/memory_management.h \
 	src/message_overlay.cpp \
@@ -614,6 +616,7 @@ EXTRA_DIST += \
 
 libeasyrpg_player_a_CXXFLAGS = \
 	-fno-math-errno \
+	-ffp-contract=off \
 	-I$(srcdir)/src \
 	$(LCF_CFLAGS) \
 	$(PIXMAN_CFLAGS) \

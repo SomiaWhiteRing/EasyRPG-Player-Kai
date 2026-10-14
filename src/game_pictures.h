@@ -21,6 +21,7 @@
 // Headers
 #include <string>
 #include <deque>
+#include <optional>
 #include "async_handler.h"
 #include <lcf/rpg/savepicture.h>
 #include "sprite_picture.h"
@@ -46,8 +47,8 @@ public:
 	void SetManiacPictureLimit(int32_t limit);
 
 	struct Params {
-		int position_x = 0;
-		int position_y = 0;
+		double position_x = 0;
+		double position_y = 0;
 		int top_trans = 0;
 		int bottom_trans = 0;
 		int red = 100;
@@ -56,6 +57,10 @@ public:
 		int saturation = 100;
 		int effect_mode = 0;
 		int effect_power = 0;
+		// Native fixed-angle pictures retain the integer numerator separately
+		// from the double target angle (LSD chunks 46 and 16/52).
+		double fixed_angle = 0.0;
+		uint32_t maniac_style = 0;
 		// Extensions
 		bool flip_x = false;
 		bool flip_y = false;
@@ -76,12 +81,20 @@ public:
 		// erase_on_map_change | affected_by_flash | affected_by_shake
 		int flags = 1 | 32 | 64;
 		bool spritesheet_play_once = false;
+		int maniac_spritesheet_start = 0;
+		int maniac_spritesheet_end = 0;
+		int maniac_spritesheet_finish = 0;
+		uint32_t maniac_image_flags = 0;
+		uint32_t maniac_transparency_flags = 0;
+		bool position_scaled = false;
 		bool use_transparent_color = false;
 		bool fixed_to_map = false;
 	};
 
 	struct MoveParams : Params {
 		int duration = 0;
+		uint32_t maniac_style_mask = 0;
+		uint32_t maniac_options = 0;
 	};
 
 	bool Show(int id, const ShowParams& params);
@@ -106,8 +119,13 @@ public:
 		bool needs_update = false;
 		bool bitmap_modified = false;
 		int origin = 0;
+		bool position_scaled = false;
 
 		void Update(bool is_battle);
+		// Filename reuse retains the backing image's key even if the command
+		// replaces the saved transparency byte.
+		std::optional<bool> maniac_image_chromakey;
+		bool GetManiacImageChromakey() const { return maniac_image_chromakey.value_or(data.use_transparent_color); }
 
 		bool IsOnMap() const;
 		bool IsOnBattle() const;

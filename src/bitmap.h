@@ -152,6 +152,8 @@ public:
 		// Special handling for chipset graphic.
 		// Generates a tile opacity list.
 		Flag_Chipset = 1 << 2,
+		// Maniac uses straight RGB, even below zero/partial alpha.
+		Flag_ManiacPicture = 1 << 3,
 		// Bitmap will not be written to. This allows blit optimisations because the
 		// opacity information will not change.
 		Flag_ReadOnly = 1 << 16
@@ -255,6 +257,11 @@ public:
 	Color GetColorAt(int x, int y) const;
 	/** Writes one pixel without blending; out-of-bounds coordinates are ignored. */
 	void SetColorAt(int x, int y, const Color& color);
+	Color GetManiacColorAt(int x, int y) const;
+	void SetManiacColorAt(int x, int y, Color color, bool presentation = false);
+	void EnableManiacPixels();
+	void ResetManiacPresentation();
+	uint64_t GetManiacRevision() const { return pixel_owner ? pixel_owner->GetManiacRevision() : maniac_revision; }
 
 	/**
 	 * Draws text to bitmap using the configured Font or the Font::Default() font.
@@ -627,6 +634,10 @@ protected:
 	Color bg_color, sh_color;
 	FontRef font;
 	BitmapRef pixel_owner;
+	std::vector<Color> maniac_pixels;
+	Point maniac_view_origin;
+	bool maniac_presentation = false;
+	uint64_t maniac_revision = 0;
 
 	std::string id;
 

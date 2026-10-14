@@ -32,6 +32,7 @@
 #include "scene.h"
 #include "drawable_mgr.h"
 #include "sprite_picture.h"
+#include "maniac_picture_renderer.h"
 
 static bool IsEmpty(const lcf::rpg::SavePicture& data, int frames) {
 	lcf::rpg::SavePicture empty;
@@ -56,7 +57,7 @@ void SyncCurrentToFinish(lcf::rpg::SavePicture& data) {
 	data.current_magnify = data.finish_magnify;
 	data.maniac_current_magnify_height = data.maniac_finish_magnify_height;
 	data.current_top_trans = data.finish_top_trans;
-	data.current_bot_trans = data.finish_bot_trans;
+	if (data.maniac_image_flags >> 24 != 1) data.current_bot_trans = data.finish_bot_trans;
 	if (do_effect) {
 		data.current_effect_power = data.finish_effect_power;
 	}
@@ -98,6 +99,7 @@ void Game_Pictures::SetSaveData(std::vector<lcf::rpg::SavePicture> save)
 	pictures.reserve(num_pictures);
 	for (int i = 0; i < num_pictures; ++i) {
 		pictures.emplace_back(std::move(save[i]));
+		pictures.back().data.maniac_picture_active = Player::IsPatchManiac();
 	}
 }
 
@@ -109,6 +111,10 @@ std::vector<lcf::rpg::SavePicture> Game_Pictures::GetSaveData() const {
 
 	for (auto& pic: pictures) {
 		auto data = pic.data;
+		if (Player::IsPatchManiac()) {
+			data.time_left = std::max(0, data.time_left);
+			data.maniac_picture_active = true;
+		}
 		if (Player::IsPatchManiac() && pic.bitmap_modified && pic.sprite && pic.sprite->GetBitmap()) {
 			const auto& bitmap = *pic.sprite->GetBitmap();
 			const int64_t bytes = static_cast<int64_t>(bitmap.GetWidth()) * bitmap.GetHeight() * 4;
@@ -118,7 +124,7 @@ std::vector<lcf::rpg::SavePicture> Game_Pictures::GetSaveData() const {
 			size_t offset = 0;
 			for (int y = 0; y < bitmap.GetHeight(); ++y) {
 				for (int x = 0; x < bitmap.GetWidth(); ++x) {
-					const auto color = bitmap.GetColorAt(x, y);
+					const auto color = bitmap.GetManiacColorAt(x, y);
 					pixels[offset++] = color.blue;
 					pixels[offset++] = color.green;
 					pixels[offset++] = color.red;
@@ -233,6 +239,13 @@ void Game_Pictures::OnBattleEnd() {
 
 bool Game_Pictures::Picture::Show(const ShowParams& params) {
 	needs_update = true;
+	data.maniac_picture_active = Player::IsPatchManiac();
+	if (Player::IsPatchManiac()) { request_id = {}; bitmap_modified = false; }
+	position_scaled = params.position_scaled;
+	data.maniac_image_flags = params.maniac_image_flags;
+	data.maniac_transparency_flags = params.maniac_transparency_flags;
+	data.maniac_image_dimensions.clear();
+	data.maniac_image_data.clear();
 
 	data.name = params.name;
 	data.use_transparent_color = params.use_transparent_color;
@@ -251,12 +264,14 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 	data.start_x = data.current_x;
 	data.start_y = data.current_y;
 	if (data.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-		data.current_rotation = data.finish_effect_power;
+		data.current_effect_power = params.fixed_angle;
+		data.current_rotation = params.fixed_angle;
 	} else {
 		data.current_rotation = 0.0;
 	}
 	data.current_waver = 0;
 	data.time_left = 0;
+	if (Player::IsPatchManiac()) data.finish_bot_trans = params.maniac_style;
 
 	// RPG Maker 2k3 1.12
 	data.frames = 0;
@@ -265,6 +280,9 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 	data.spritesheet_play_once = params.spritesheet_play_once;
 	data.spritesheet_frame = params.spritesheet_frame;
 	data.spritesheet_speed = params.spritesheet_speed;
+	data.maniac_spritesheet_start = params.maniac_spritesheet_start;
+	data.maniac_spritesheet_end = params.maniac_spritesheet_end;
+	data.maniac_spritesheet_finish = params.maniac_spritesheet_finish;
 	data.map_layer = params.map_layer;
 	data.battle_layer = params.battle_layer;
 
@@ -277,6 +295,7 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 	data.flags.affected_by_tint = (params.flags & 16) == 16;
 	data.flags.affected_by_flash = (params.flags & 32) == 32;
 	data.flags.affected_by_shake = (params.flags & 64) == 64;
+	data.maniac_lifecycle_flags = static_cast<uint32_t>(params.flags);
 
 	const auto num_frames = NumSpriteSheetFrames();
 
@@ -307,7 +326,17 @@ bool Game_Pictures::Picture::Show(const ShowParams& params) {
 
 bool Game_Pictures::Show(int id, const ShowParams& params) {
 	auto& pic = GetPicture(id);
+	const bool reuse = Player::IsPatchManiac() && !params.name.empty() && pic.data.name == params.name
+		&& pic.sprite && pic.sprite->GetBitmap() && !pic.IsRequestPending()
+		&& pic.data.spritesheet_cols == params.spritesheet_cols && pic.data.spritesheet_rows == params.spritesheet_rows
+		&& pic.data.spritesheet_frame == params.spritesheet_frame && pic.data.spritesheet_speed == params.spritesheet_speed;
 	if (pic.Show(params)) {
+		if (reuse) {
+			pic.sprite->OnPictureShow();
+			pic.sprite->SetVisible(true);
+			pic.ApplyOrigin(false);
+			return true;
+		}
 		if (pic.sprite && !pic.data.name.empty()) {
 			// When the name is empty the current image buffer is reused by ShowPicture command (Used by Yume2kki)
 			// In all other cases hide the current image until replaced while doing an Async load
@@ -340,9 +369,29 @@ void Game_Pictures::ChangeFile(int id, std::string name) {
 
 void Game_Pictures::Picture::Move(const MoveParams& params) {
 	const bool ignore_position = Player::IsLegacy() && data.fixed_to_map;
-
-	SetNonEffectParams(params, !ignore_position);
-	if (params.duration < 0) {
+	auto effective = params;
+	if (Player::IsPatchManiac()) {
+		if (params.maniac_options & 2) {
+			effective.position_x += data.current_x;
+			effective.position_y += data.current_y;
+		}
+		if (params.maniac_options & 4) {
+			effective.red = data.finish_red;
+			effective.green = data.finish_green;
+			effective.blue = data.finish_blue;
+			effective.saturation = data.finish_sat;
+		}
+	}
+	SetNonEffectParams(effective, !ignore_position);
+	if (Player::IsPatchManiac() && params.maniac_style_mask) {
+		// Native chunk 35 is a style word for text pictures. Move 0x3c6f0
+		// preserves the font-size byte and the selected blend/flip nibbles.
+		const uint32_t previous = static_cast<uint32_t>(data.finish_bot_trans);
+		data.finish_bot_trans = (previous & ~params.maniac_style_mask) | (params.maniac_style & params.maniac_style_mask);
+	}
+	if (Player::IsPatchManiac() && (params.maniac_options & 64)) {
+		// Keep the running transition, including its remaining frame count.
+	} else if (params.duration < 0) {
 		data.time_left = -params.duration;
 	} else {
 		data.time_left = params.duration * DEFAULT_FPS / 10;
@@ -350,7 +399,34 @@ void Game_Pictures::Picture::Move(const MoveParams& params) {
 
 	// Not saved as the coordinate system is directly transformed to "center"
 	origin = params.origin;
+	position_scaled = Player::IsPatchManiac() && (params.maniac_options & 256);
 	ApplyOrigin(true);
+	if (Player::IsPatchManiac()) {
+		// 06c230 dispatches on the two low mode bits, but update uses the
+		// complete mode. Angle writes the double target, leaving chunk46 alone.
+		if (!(params.maniac_options & 8)) {
+			const int previous = data.effect_mode & 3;
+			const int next = params.effect_mode & 3;
+			if (next == 3) {
+				data.effect_mode = params.effect_mode;
+				const double difference = std::abs(params.fixed_angle - data.current_rotation);
+				if (difference > 180.0) data.current_rotation += data.current_rotation < difference ? 360.0 : -360.0;
+				data.current_effect_power = params.fixed_angle;
+			} else if (next == 0) {
+				if (previous == 1) data.effect_mode = 0;
+				else if (previous == 2) data.finish_effect_power = 0;
+				else if (previous == 3) data.current_effect_power = 0;
+			} else if (next == previous) {
+				data.finish_effect_power = params.effect_power;
+			} else {
+				data.effect_mode = params.effect_mode;
+				data.current_effect_power = params.effect_power;
+				data.finish_effect_power = params.effect_power;
+			}
+		}
+		needs_update = true;
+		return;
+	}
 
 	// Note that data.effect_mode doesn't necessarily reflect the
 	// last effect set. Possible states are:
@@ -387,10 +463,27 @@ void Game_Pictures::Picture::Move(const MoveParams& params) {
 		data.current_effect_power = params.effect_power;
 		data.finish_effect_power = params.effect_power;
 	}
+	if (params.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
+		data.current_effect_power = params.fixed_angle;
+		if (Player::IsPatchManiac()) {
+			// The fixed-angle Move branch writes only the double target; chunk46
+			// retains its previous raw integer even when the effect mode changes.
+			const double difference = std::abs(params.fixed_angle - data.current_rotation);
+			if (difference > 180.0) data.current_rotation += data.current_rotation < difference ? 360.0 : -360.0;
+		}
+	}
 
 	data.easyrpg_flip = params.flip_x ? lcf::rpg::SavePicture::EasyRpgFlip_x : 0;
 	data.easyrpg_flip |= params.flip_y ? lcf::rpg::SavePicture::EasyRpgFlip_y : 0;
 	data.easyrpg_blend_mode = params.blend_mode;
+	if (data.maniac_image_flags >> 24 == 1) {
+		const uint32_t style = static_cast<uint32_t>(data.finish_bot_trans);
+		data.easyrpg_flip = ((style & 0x1000) ? lcf::rpg::SavePicture::EasyRpgFlip_x : 0)
+			| ((style & 0x2000) ? lcf::rpg::SavePicture::EasyRpgFlip_y : 0);
+		data.easyrpg_blend_mode = (style & 0xf00) == 0x100 ? static_cast<int>(Bitmap::BlendMode::Multiply)
+			: (style & 0xf00) == 0x200 ? static_cast<int>(Bitmap::BlendMode::Additive)
+			: (style & 0xf00) == 0x300 ? static_cast<int>(Bitmap::BlendMode::Overlay) : 0;
+	}
 }
 
 void Game_Pictures::Move(int id, const MoveParams& params) {
@@ -448,6 +541,7 @@ void Game_Pictures::Picture::MakeRequestImportant() const {
 }
 
 void Game_Pictures::RequestPictureSprite(Picture& pic, bool apply_origin) {
+	if (Player::IsPatchManiac() && pic.data.maniac_image_flags >> 24 == 1) return;
 	const auto& name = pic.data.name;
 	if (name.empty()) {
 		if (Player::IsPatchManiac() && pic.data.maniac_image_flags >> 24 == 2 && !pic.bitmap_modified)
@@ -467,6 +561,8 @@ void Game_Pictures::Picture::OnPictureSpriteReady(bool apply_origin) {
 	data.maniac_image_dimensions.clear();
 	data.maniac_image_data.clear();
 	auto bitmap = Cache::Picture(data.name, data.use_transparent_color);
+	maniac_image_chromakey = data.use_transparent_color;
+	if (Player::IsPatchManiac()) data.maniac_image_dimensions = {bitmap->GetWidth(), bitmap->GetHeight()};
 
 	sprite->SetBitmap(bitmap);
 	sprite->OnPictureShow();
@@ -498,6 +594,7 @@ BitmapRef Game_Pictures::Picture::GetMutableBitmap(bool flatten_spritesheet) {
 		data.spritesheet_cols = data.spritesheet_rows = 1;
 		data.spritesheet_frame = data.spritesheet_speed = data.frames = 0;
 		data.spritesheet_play_once = false;
+		data.maniac_spritesheet_start = data.maniac_spritesheet_end = data.maniac_spritesheet_finish = 0;
 	}
 	data.name.clear();
 	data.maniac_image_flags = (data.maniac_image_flags & 0x00ffffff) | 0x02000000;
@@ -525,10 +622,13 @@ void Game_Pictures::Picture::RestoreModifiedBitmap() {
 		Output::Warning("Mutable picture {} has invalid compressed pixels", data.ID);
 		return;
 	}
-	const DynamicFormat bgra(32, 8, 16, 8, 8, 8, 0, 8, 24, PF::Alpha);
-	auto source = Bitmap::Create(pixels.data(), dimensions[0], dimensions[1], dimensions[0] * 4, bgra);
+	auto bitmap = Bitmap::Create(dimensions[0], dimensions[1], true);
+	for (int y = 0; y < dimensions[1]; ++y) for (int x = 0; x < dimensions[0]; ++x) {
+		const size_t offset = (static_cast<size_t>(y) * dimensions[0] + x) * 4;
+		bitmap->SetManiacColorAt(x, y, Color(pixels[offset + 2], pixels[offset + 1], pixels[offset], pixels[offset + 3]));
+	}
 	CreateSprite();
-	sprite->SetBitmap(Bitmap::Create(*source, source->GetRect()));
+	sprite->SetBitmap(bitmap);
 	sprite->OnPictureShow();
 	sprite->SetVisible(true);
 	bitmap_modified = true;
@@ -564,6 +664,21 @@ void Game_Pictures::Picture::ApplyOrigin(bool is_move) {
 
 	double width = sprite->GetFrameWidth();
 	double height = sprite->GetFrameHeight();
+	if (Player::IsPatchManiac()) {
+		// 214de8: positive half truncates; the negative half includes the
+		// odd pixel. These asymmetric offsets also apply to text pictures.
+		static constexpr uint8_t offsets[16] = {0, 5, 7, 13, 15, 1, 3, 4, 12, 0, 0, 0, 0, 0, 0, 0};
+		if (position_scaled) {
+			width = static_cast<int32_t>(static_cast<uint32_t>(width) * static_cast<uint32_t>(data.finish_magnify)) / 100;
+			height = static_cast<int32_t>(static_cast<uint32_t>(height) * static_cast<uint32_t>(data.maniac_finish_magnify_height)) / 100;
+		}
+		const auto half = [](int size, int mode) {
+			return mode == 1 ? size / 2 : mode == 3 ? -size / 2 - (size & 1) : 0;
+		};
+		const auto offset = offsets[static_cast<unsigned>(origin) & 15];
+		x += half(static_cast<int>(width), offset & 3);
+		y += half(static_cast<int>(height), (offset >> 2) & 3);
+	} else {
 
 	switch (origin) {
 		case 1:
@@ -603,6 +718,7 @@ void Game_Pictures::Picture::ApplyOrigin(bool is_move) {
 			x -= (width / 2);
 			break;
 	}
+	}
 
 	if (!is_move) {
 		data.current_x = x;
@@ -641,6 +757,9 @@ void Game_Pictures::OnMapScrolled(int dx, int dy) {
 
 void Game_Pictures::Picture::AttachWindow(const Window_Base& window) {
 	data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_window;
+	if (Player::IsPatchManiac() && data.maniac_image_flags >> 24 == 1) {
+		data.maniac_image_dimensions = {window.GetWidth(), window.GetHeight()};
+	}
 
 	CreateSprite();
 
@@ -648,6 +767,7 @@ void Game_Pictures::Picture::AttachWindow(const Window_Base& window) {
 	bmp->SetId(fmt::format("Window:addr={},w={},h={}", (void*)&window, window.GetWidth(), window.GetHeight()));
 
 	sprite->SetBitmap(bmp);
+	maniac_image_chromakey = data.use_transparent_color;
 	sprite->OnPictureShow();
 	sprite->SetVisible(true);
 
@@ -660,6 +780,54 @@ bool Game_Pictures::Picture::IsWindowAttached() const {
 
 void Game_Pictures::Picture::Update(bool is_battle) {
 	if ((is_battle && !IsOnBattle()) || (!is_battle && !IsOnMap())) {
+		return;
+	}
+	if (Player::IsPatchManiac()) {
+		if (!needs_update) return;
+		if (data.spritesheet_speed != 0 && static_cast<uint32_t>(data.spritesheet_speed) <= static_cast<uint32_t>(data.frames)) {
+			data.spritesheet_frame = static_cast<int32_t>(static_cast<uint32_t>(data.spritesheet_frame) + 1u);
+			data.frames = 0;
+			if (static_cast<uint32_t>(data.spritesheet_frame) > static_cast<uint32_t>(data.maniac_spritesheet_end)) {
+				data.spritesheet_frame = data.maniac_spritesheet_start;
+				if (data.maniac_spritesheet_finish == 1) Erase();
+			}
+		}
+		const int remaining = data.time_left;
+		const double weight = remaining > 0 ? 1.0 / remaining : 1.0;
+		const auto interpolate = [weight](double value, double target) { return value + (target - value) * weight; };
+		if (remaining >= 0) {
+			if (remaining > 0) {
+				data.current_x = interpolate(data.current_x, data.finish_x);
+				data.current_y = interpolate(data.current_y, data.finish_y);
+				data.current_magnify = interpolate(data.current_magnify, data.finish_magnify);
+				data.maniac_current_magnify_height = interpolate(data.maniac_current_magnify_height, data.maniac_finish_magnify_height);
+				data.current_top_trans = interpolate(data.current_top_trans, data.finish_top_trans);
+				data.current_red = interpolate(data.current_red, data.finish_red);
+				data.current_green = interpolate(data.current_green, data.finish_green);
+				data.current_blue = interpolate(data.current_blue, data.finish_blue);
+				data.current_sat = interpolate(data.current_sat, data.finish_sat);
+			}
+			--data.time_left;
+		}
+		const int power = ManiacPicture::Truncate(data.current_effect_power);
+		if (data.effect_mode == 0 && power > 0) {
+			const int revolution = 256 / power;
+			const double angle = data.current_rotation;
+			if (revolution < data.time_left || angle > 0.0) {
+				// The native store at 06db5b targets power, not angle.
+				data.current_effect_power = angle - std::trunc(angle / 256.0) * 256.0 + data.current_effect_power;
+				if (revolution >= data.time_left && angle >= 256.0) data.current_rotation = 0;
+			}
+		} else if (data.effect_mode == 1) {
+			data.current_effect_power = interpolate(data.current_effect_power, data.finish_effect_power);
+			data.current_rotation += data.current_effect_power;
+		} else if (data.effect_mode == 2) {
+			data.current_waver = static_cast<int32_t>(static_cast<uint32_t>(data.current_waver) + 8u);
+			data.current_effect_power = interpolate(data.current_effect_power, data.finish_effect_power);
+		} else if (data.effect_mode == 3) {
+			data.current_rotation = interpolate(data.current_rotation, data.current_effect_power);
+		}
+		data.frames = static_cast<int32_t>(static_cast<uint32_t>(data.frames) + 1u);
 		return;
 	}
 
@@ -691,7 +859,7 @@ void Game_Pictures::Picture::Update(bool is_battle) {
 		data.current_magnify = interpolate(data.current_magnify, data.finish_magnify);
 		data.maniac_current_magnify_height = interpolate(data.maniac_current_magnify_height, data.maniac_finish_magnify_height);
 		data.current_top_trans = interpolate(data.current_top_trans, data.finish_top_trans);
-		data.current_bot_trans = interpolate(data.current_bot_trans, data.finish_bot_trans);
+		if (data.maniac_image_flags >> 24 != 1) data.current_bot_trans = interpolate(data.current_bot_trans, data.finish_bot_trans);
 	}
 
 	// When a move picture disables rotation effect, we continue rotating
@@ -710,7 +878,8 @@ void Game_Pictures::Picture::Update(bool is_battle) {
 		}
 	}
 
-	if (data.effect_mode != lcf::rpg::SavePicture::Effect_none) {
+	if (data.effect_mode != lcf::rpg::SavePicture::Effect_none
+			&& data.effect_mode != lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
 		data.current_effect_power = interpolate(data.current_effect_power, data.finish_effect_power);
 	}
 
@@ -726,7 +895,7 @@ void Game_Pictures::Picture::Update(bool is_battle) {
 
 	// Update fixed angle
 	if (data.effect_mode == lcf::rpg::SavePicture::Effect_maniac_fixed_angle) {
-		data.current_rotation = data.current_effect_power;
+		data.current_rotation = interpolate(data.current_rotation, data.current_effect_power);
 	}
 
 	// RPG Maker 2k3 1.12: Animated spritesheets
@@ -755,8 +924,8 @@ void Game_Pictures::Update(bool is_battle) {
 
 Game_Pictures::ShowParams Game_Pictures::Picture::GetShowParams() const {
 	Game_Pictures::ShowParams params;
-	params.position_x = static_cast<int>(data.finish_x);
-	params.position_y = static_cast<int>(data.finish_y);
+	params.position_x = data.finish_x;
+	params.position_y = data.finish_y;
 	params.magnify_width = data.finish_magnify;
 	params.magnify_height = data.maniac_finish_magnify_height;
 	params.top_trans = data.finish_top_trans;
@@ -767,13 +936,21 @@ Game_Pictures::ShowParams Game_Pictures::Picture::GetShowParams() const {
 	params.saturation = data.finish_sat;
 	params.effect_mode = data.effect_mode;
 	params.effect_power = data.finish_effect_power;
+	params.fixed_angle = data.current_effect_power;
+	params.maniac_style = static_cast<uint32_t>(data.finish_bot_trans);
 	params.name = data.name;
 	params.spritesheet_cols = data.spritesheet_cols;
 	params.spritesheet_rows = data.spritesheet_rows;
 	params.spritesheet_frame = data.spritesheet_frame;
 	params.spritesheet_speed = data.spritesheet_speed;
+	params.maniac_spritesheet_start = data.maniac_spritesheet_start;
+	params.maniac_spritesheet_end = data.maniac_spritesheet_end;
+	params.maniac_spritesheet_finish = data.maniac_spritesheet_finish;
+	params.maniac_image_flags = data.maniac_image_flags;
+	params.maniac_transparency_flags = data.maniac_transparency_flags;
 	params.map_layer = data.map_layer;
 	params.battle_layer = data.battle_layer;
+	params.flags = static_cast<int32_t>(data.maniac_lifecycle_flags & ~127u);
 	for (size_t i = 0; i < data.flags.flags.size(); ++i) {
 		params.flags |= data.flags.flags[i] << i;
 	}
@@ -791,7 +968,7 @@ void Game_Pictures::Picture::SetNonEffectParams(const Params& params, bool set_p
 	data.finish_magnify = params.magnify_width;
 	data.maniac_finish_magnify_height = params.magnify_height;
 	data.finish_top_trans = params.top_trans;
-	data.finish_bot_trans = params.bottom_trans;
+	if (!Player::IsPatchManiac()) data.finish_bot_trans = params.bottom_trans;
 	data.finish_red = params.red;
 	data.finish_green = params.green;
 	data.finish_blue = params.blue;
@@ -800,5 +977,5 @@ void Game_Pictures::Picture::SetNonEffectParams(const Params& params, bool set_p
 
 
 int Game_Pictures::Picture::NumSpriteSheetFrames() const {
-	return data.spritesheet_cols * data.spritesheet_rows;
+	return static_cast<int32_t>(static_cast<uint32_t>(data.spritesheet_cols) * static_cast<uint32_t>(data.spritesheet_rows));
 }

@@ -15,6 +15,7 @@
  * along with EasyRPG Player. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cmath>
+#include <algorithm>
 
 #include "sprite_picture.h"
 #include "main_data.h"
@@ -24,12 +25,13 @@
 #include "game_windows.h"
 #include "player.h"
 #include "bitmap.h"
+#include "maniac_picture_renderer.h"
 
 Sprite_Picture::Sprite_Picture(int pic_id, Drawable::Flags flags)
 	: Sprite(flags),
 	pic_id(pic_id),
 	feature_spritesheet(Player::IsRPG2k3ECommands()),
-	feature_priority_layers(Player::IsMajorUpdatedVersion()),
+feature_priority_layers(Player::IsPatchManiac() || Player::IsMajorUpdatedVersion()),
 	feature_bottom_trans(Player::IsRPG2k3() && !Player::IsRPG2k3E())
 {
 	// Initialize Z value for legacy pictures. Will be overriden in OnPictureShow if
@@ -71,7 +73,7 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 		return;
 	}
 
-	if (data.easyrpg_type == lcf::rpg::SavePicture::EasyRpgType_window) {
+	if (data.easyrpg_type == lcf::rpg::SavePicture::EasyRpgType_window && !Player::IsPatchManiac()) {
 		// Paint the Window on the Picture
 		const auto& window = Main_Data::game_windows->GetWindow(pic_id);
 		window.window->Draw(*bitmap.get());
@@ -80,6 +82,23 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 	const bool is_battle = Game_Battle::IsBattleRunning();
 
 	if (is_battle ? !pic.IsOnBattle() : !pic.IsOnMap()) {
+		return;
+	}
+	if (Player::IsPatchManiac()) {
+		// Native passes match the entire layer value. An unknown positive
+		// layer still updates its picture state, but belongs to no draw pass.
+		if ((is_battle ? GetPriorityForBattleLayer(data.battle_layer) : GetPriorityForMapLayer(data.map_layer)) == 0) return;
+		if (data.current_top_trans == 100.0 || static_cast<uint32_t>(data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())) return;
+		Rect frame = bitmap->GetRect();
+		auto prepared = GetPreparedBitmap(frame);
+		if (!prepared) return;
+		int x = ManiacPicture::Nearest(data.current_x), y = ManiacPicture::Nearest(data.current_y);
+		if (data.flags.affected_by_shake) {
+			x += Main_Data::game_screen->GetShakeOffsetX();
+			y += Main_Data::game_screen->GetShakeOffsetY();
+		}
+		if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
+		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey());
 		return;
 	}
 
@@ -174,6 +193,41 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 	Sprite::Draw(dst);
 }
 
+BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {
+	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
+	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
+	const auto& bitmap = GetBitmap();
+	if (!bitmap || pic.data.spritesheet_cols <= 0 || pic.data.spritesheet_rows <= 0) return {};
+	const int width = bitmap->GetWidth() / pic.data.spritesheet_cols;
+	const int height = bitmap->GetHeight() / pic.data.spritesheet_rows;
+	Rect frame(width * (pic.data.spritesheet_frame % pic.data.spritesheet_cols), height * (pic.data.spritesheet_frame / pic.data.spritesheet_cols), width, height);
+	if (static_cast<uint32_t>(pic.data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())) return {};
+	const auto& data = pic.data;
+	const auto& screen = Main_Data::game_screen->GetSaveData();
+	const auto component = [&](double picture, double screen) {
+		return static_cast<int>(std::clamp(static_cast<int64_t>(ManiacPicture::Nearest(picture))
+			+ (data.flags.affected_by_tint ? ManiacPicture::Truncate(std::round(screen)) : 100) - 100, int64_t{0}, int64_t{200}));
+	};
+	const std::array<int, 14> state = {frame.x, frame.y, frame.width, frame.height,
+		component(data.current_red, screen.tint_current_red), component(data.current_green, screen.tint_current_green),
+		component(data.current_blue, screen.tint_current_blue), component(data.current_sat, screen.tint_current_sat),
+		data.flags.affected_by_flash ? screen.flash_red : 0, data.flags.affected_by_flash ? screen.flash_green : 0,
+		data.flags.affected_by_flash ? screen.flash_blue : 0,
+		data.flags.affected_by_flash ? ManiacPicture::Truncate(std::round(screen.flash_current_level)) : 0,
+		static_cast<int>((static_cast<uint32_t>(data.finish_bot_trans) >> 12) & 15), pic.GetManiacImageChromakey()};
+	if (!maniac_prepared || maniac_source != bitmap || maniac_prepare_state != state || maniac_source_revision != bitmap->GetManiacRevision()) {
+		maniac_source = bitmap;
+		maniac_prepare_state = state;
+		maniac_source_revision = bitmap->GetManiacRevision();
+		const bool no_flip = state[12] == 0 || state[12] > 3;
+		if (no_flip && state[4] == 100 && state[5] == 100 && state[6] == 100 && state[7] == 100 && state[11] <= 0)
+			maniac_prepared = Bitmap::CreateReadOnlyView(bitmap, frame);
+		else maniac_prepared = ManiacPicture::Prepare(*bitmap, frame, data, screen, pic.GetManiacImageChromakey());
+	}
+	if (maniac_prepared) rect = maniac_prepared->GetRect();
+	return maniac_prepared;
+}
+
 int Sprite_Picture::GetFrameWidth() const {
 	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 	const auto& data = pic.data;
@@ -181,7 +235,7 @@ int Sprite_Picture::GetFrameWidth() const {
 	auto& bitmap = GetBitmap();
 	assert(bitmap);
 
-	if (feature_spritesheet && pic.NumSpriteSheetFrames() > 1) {
+	if ((feature_spritesheet || Player::IsPatchManiac()) && pic.NumSpriteSheetFrames() > 1 && data.spritesheet_cols > 0) {
 		return bitmap->GetWidth() / data.spritesheet_cols;
 	} else {
 		return bitmap->GetWidth();
@@ -195,7 +249,7 @@ int Sprite_Picture::GetFrameHeight() const {
 	auto& bitmap = GetBitmap();
 	assert(bitmap);
 
-	if (feature_spritesheet && pic.NumSpriteSheetFrames() > 1) {
+	if ((feature_spritesheet || Player::IsPatchManiac()) && pic.NumSpriteSheetFrames() > 1 && data.spritesheet_rows > 0) {
 		return bitmap->GetHeight() / data.spritesheet_rows;
 	} else {
 		return bitmap->GetHeight();

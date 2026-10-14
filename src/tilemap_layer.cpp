@@ -775,6 +775,12 @@ void UpdateManiacAutotile(std::vector<T>& tiles, int width, int height, int x, i
 
 void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int tile, int time, int animation_type, int animation_speed) {
 	if (tile < 0) return;
+	const auto blit = [&](int dx, int dy, Rect source) {
+		for (int iy = 0; iy < source.height; ++iy) for (int ix = 0; ix < source.width; ++ix) {
+			const auto pixel = chipset.GetManiacColorAt(source.x + ix, source.y + iy);
+			if (pixel.alpha) dst.SetManiacColorAt(dx + ix, dy + iy, pixel);
+		}
+	};
 	if (tile < 3000) {
 		const int block = tile / 1000;
 		const int corners = (tile % 1000) / 50;
@@ -798,12 +804,12 @@ void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int
 				}
 				cx = static_cast<uint8_t>(cx + 2 * phase + col);
 				cy = cy * 2 + row;
-				dst.Blit(x + 8 * col, y + 8 * row, chipset, Rect(cx * 8, cy * 8, 8, 8), 255);
+				blit(x + 8 * col, y + 8 * row, Rect(cx * 8, cy * 8, 8, 8));
 			}
 		}
 	} else if (tile < 4000) {
 		const int phase = (time / 6) & 3;
-		dst.Blit(x, y, chipset, Rect((3 + (tile - 3000) / 50) * 16, (4 + phase) * 16, 16, 16), 255);
+		blit(x, y, Rect((3 + (tile - 3000) / 50) * 16, (4 + phase) * 16, 16, 16));
 	} else if (tile < 5000) {
 		const int block = (tile - 4000) / 50;
 		const int shape = tile % 50;
@@ -813,7 +819,7 @@ void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int
 			for (int col = 0; col < 2; ++col) {
 				const auto& q = BlockD_Subtiles_IDS[shape][row][col];
 				const Rect src((bx + q[0]) * 16 + col * 8, (by + q[1]) * 16 + row * 8, 8, 8);
-				dst.Blit(x + col * 8, y + row * 8, chipset, src, 255);
+				blit(x + col * 8, y + row * 8, src);
 			}
 		}
 	} else {
@@ -828,7 +834,7 @@ void DrawManiacChipsetTile(Bitmap& dst, const Bitmap& chipset, int x, int y, int
 			col = index < 96 ? 12 + index % 6 : 18 + (index - 96) % 6;
 			row = index < 96 ? index / 6 : (index - 96) / 6;
 		}
-		dst.Blit(x, y, chipset, Rect(col * 16, row * 16, 16, 16), 255);
+		blit(x, y, Rect(col * 16, row * 16, 16, 16));
 	}
 }
 } // namespace

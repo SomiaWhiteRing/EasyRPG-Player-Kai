@@ -26,6 +26,9 @@
 #include "filefinder.h"
 #include "output.h"
 #include "player.h"
+#include "game_battle.h"
+#include "game_map.h"
+#include "game_interpreter_map.h"
 
 static std::optional<std::string> CommandCodeInserter(char ch, const char **iter, const char *end, uint32_t escape_char) {
 	if ((ch == 'T' || ch == 't') && Player::IsPatchManiac()) {
@@ -38,6 +41,108 @@ static std::optional<std::string> CommandCodeInserter(char ch, const char **iter
 	}
 
 	return PendingMessage::DefaultCommandInserter(ch, iter, end, escape_char);
+}
+
+static Rect ProcessManiacText(std::string_view text, const Font& font, int line_spacing, std::optional<std::array<int, 3>> context, const Bitmap* system = nullptr, Bitmap* dest = nullptr, int origin_x = 0, int origin_y = 0) {
+	const auto style = font.GetCurrentStyle();
+	const auto units = Utils::DecodeUTF16(text, true);
+	size_t cursor = 0;
+	int x = 0, y = 0, width = 0, count = 0;
+	Point color_cell{2, 50};
+	Game_Message::ManiacHookCaller caller;
+	const auto& interpreter = Game_Battle::IsBattleRunning() ? Game_Battle::GetInterpreter() : Game_Map::GetInterpreter();
+	const auto& stack = interpreter.GetState().stack;
+	if (!stack.empty()) {
+		const auto& frame = stack.back();
+		caller = {frame.easyrpg_self_scope, frame.easyrpg_self_map_id, frame.easyrpg_self_event_id};
+	}
+	if (context) caller = {(*context)[0], (*context)[1], (*context)[2]};
+	const auto numbers = [&]() {
+		const auto tail = Utils::EncodeUTF(units.substr(cursor), true);
+		std::array<int32_t, 2> values;
+		const auto* next = Game_Message::ParseManiacNumbers(tail.data(), tail.data() + tail.size(), caller, values);
+		cursor += Utils::DecodeUTF16(std::string_view(tail.data(), next - tail.data()), true).size();
+		return values;
+	};
+	const auto end_line = [&]() {
+		width = std::max(width, x - (count ? style.letter_spacing : 0));
+		x = count = 0;
+	};
+	while (cursor < units.size()) {
+		char16_t ch = units[cursor++];
+		std::optional<Rect> icon;
+		if (ch == '\n') { end_line(); y += style.size + line_spacing; continue; }
+		if (ch == '\\' && cursor < units.size()) {
+			ch = units[cursor++];
+			if (ch == 'C' || ch == 'c') {
+				const auto values = numbers();
+				if (system) {
+					const int columns = system->GetWidth() / 16;
+					const int index = std::max(0, values[0]);
+					const int cx = values[1] < 0 ? index % columns : index;
+					const int cy = values[1] < 0 ? index / columns : values[1];
+					if (cx >= 0 && cy >= 0 && static_cast<int64_t>(cx) * 16 + 16 <= system->GetWidth() && static_cast<int64_t>(cy) * 16 + 64 <= system->GetHeight()) color_cell = {cx * 16 + 2, cy * 16 + 50};
+				}
+				continue;
+			}
+		} else if (ch == '$' && cursor < units.size()) {
+			const auto next = units[cursor];
+			if (next == '$') { ++cursor; }
+			else {
+				std::array<int32_t, 2> cell;
+				if ((next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z')) {
+					++cursor;
+					const int index = next >= 'a' ? next - 'a' + 26 : next - 'A';
+					cell = {index % 13, index / 13};
+				} else cell = numbers();
+				int cx = std::max(0, cell[0]), cy = cell[1];
+				if (cy < 0) {
+					const int columns = Cache::Exfont()->GetWidth() / 12;
+					cy = cx / columns; cx %= columns;
+				}
+				icon = Rect(cx <= INT32_MAX / 12 ? cx * 12 : INT32_MAX,
+					cy <= INT32_MAX / 12 ? cy * 12 : INT32_MAX, 12, 12);
+			}
+		}
+		if (Utils::IsControlCharacter(ch)) continue;
+		const int advance = icon ? style.size + style.letter_spacing : font.GetSize(ch).width;
+		if (dest && system) font.RenderManiacTextGlyph(*dest, origin_x + x, origin_y + y, *system, color_cell, ch, icon ? &*icon : nullptr);
+		x += advance;
+		++count;
+	}
+	end_line();
+	return {0, 0, width, y + style.size};
+}
+
+static BitmapRef CreateManiacWindow(int width, int height, const Bitmap& system, int background, bool frame) {
+	auto bitmap = Bitmap::Create(width, height, true);
+	bitmap->EnableManiacPixels();
+	const auto copy = [&](int x, int y, int sx, int sy) {
+		const auto color = system.GetColorAt(sx, sy);
+		if (color.alpha) bitmap->SetManiacColorAt(x, y, color);
+	};
+	if (background == lcf::rpg::System::Stretch_stretch || background == lcf::rpg::System::Stretch_tiled) {
+		for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x)
+			copy(x, y, background == lcf::rpg::System::Stretch_stretch ? x * 32 / width : x % 32,
+				background == lcf::rpg::System::Stretch_stretch ? y * 32 / height : y % 32);
+	}
+	if (frame && width >= 8 && height >= 8) {
+		// Draw complete corners in order; 8..15 pixel windows overlap them.
+		for (int corner = 0; corner < 4; ++corner) {
+			for (int y = 0; y < 8; ++y) for (int x = 0; x < 8; ++x)
+				copy((corner & 1 ? width - 8 : 0) + x, (corner & 2 ? height - 8 : 0) + y,
+					(corner & 1 ? 56 : 32) + x, (corner & 2 ? 24 : 0) + y);
+		}
+		if (width > 16) for (int x = 8; x < width - 8; ++x) for (int y = 0; y < 8; ++y) {
+			copy(x, y, 40 + (x - 8) % 16, y);
+			copy(x, height - 8 + y, 40 + (x - 8) % 16, 24 + y);
+		}
+		if (height > 16) for (int y = 8; y < height - 8; ++y) for (int x = 0; x < 8; ++x) {
+			copy(x, y, 32 + x, 8 + (y - 8) % 16);
+			copy(width - 8 + x, y, 56 + x, 8 + (y - 8) % 16);
+		}
+	}
+	return bitmap;
 }
 
 Game_Windows::Window_User::Window_User(lcf::rpg::SaveEasyRpgWindow save)
@@ -57,11 +162,64 @@ void Game_Windows::SetSaveData(std::vector<lcf::rpg::SaveEasyRpgWindow> save) {
 		int id = win.data.ID;
 		if (id > 0) {
 			auto pic = Main_Data::game_pictures->GetPicturePtr(id);
-			if (pic && pic->IsWindowAttached()) {
+			if (pic && pic->IsWindowAttached() && (!Player::IsPatchManiac() || pic->data.maniac_image_flags >> 24 != 1)) {
 				// no special async handling needed, loading will already yield
 				bool async_wait;
 				win.Refresh(async_wait);
 			}
+		}
+	}
+	if (Player::IsPatchManiac()) {
+		// RPG_RT 0x6b370 restores type-1 pictures from chunk 1. Private windows
+		// are retained for old EasyRPG saves, but native records are authoritative.
+		for (int id = 1; id <= Main_Data::game_pictures->GetMaxPictureId(); ++id) {
+			auto* pic = Main_Data::game_pictures->GetPicturePtr(id);
+			if (!pic || pic->data.maniac_image_flags >> 24 != 1) continue;
+			const auto& picture = pic->data;
+			auto serialized = Utils::DecodeUTF16(picture.name, true);
+			serialized.resize(std::find(serialized.begin(), serialized.end(), 0) - serialized.begin());
+			size_t cursor = serialized.empty() ? 0 : 1;
+			const auto field = [&]() {
+				const auto first = cursor;
+				while (cursor < serialized.size() && serialized[cursor] >= 3) ++cursor;
+				auto result = Utils::EncodeUTF(serialized.substr(first, cursor - first), true);
+				if (cursor < serialized.size()) ++cursor;
+				return result;
+			};
+			WindowParams params;
+			WindowText text;
+			text.text = field();
+			params.system_name = field();
+			text.font_name = field();
+			const auto flags = picture.maniac_image_flags;
+			const uint32_t style = static_cast<uint32_t>(picture.finish_bot_trans);
+			text.font_size = style & 255;
+			text.letter_spacing = (picture.maniac_transparency_flags >> 8) & 255;
+			text.line_spacing = (picture.maniac_transparency_flags >> 16) & 255;
+			text.draw_gradient = !(flags & (1 << 13));
+			text.draw_shadow = !(flags & (1 << 14));
+			text.bold = (flags & (1 << 15)) != 0;
+			params.draw_frame = !(flags & (1 << 12));
+			params.border_margin = !(flags & (1 << 16));
+			const auto stretch = (flags >> 8) & 15;
+			params.message_stretch = stretch == 1 ? lcf::rpg::System::Stretch_stretch
+				: stretch == 2 ? lcf::rpg::System::Stretch_tiled : lcf::rpg::System::Stretch_easyrpg_none;
+			if (picture.maniac_image_dimensions.size() == 2) {
+				params.width = picture.maniac_image_dimensions[0];
+				params.height = picture.maniac_image_dimensions[1];
+			}
+			params.texts = {std::move(text)};
+			auto& win = GetWindow(id);
+			win.Create(params);
+			pic->data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_window;
+			pic->data.current_bot_trans = 0.0;
+			pic->data.easyrpg_flip = ((style & (16 << 8)) ? lcf::rpg::SavePicture::EasyRpgFlip_x : 0)
+				| ((style & (32 << 8)) ? lcf::rpg::SavePicture::EasyRpgFlip_y : 0);
+			pic->data.easyrpg_blend_mode = (style & 0xf00) == 0x100 ? static_cast<int>(Bitmap::BlendMode::Multiply)
+				: (style & 0xf00) == 0x200 ? static_cast<int>(Bitmap::BlendMode::Additive)
+				: (style & 0xf00) == 0x300 ? static_cast<int>(Bitmap::BlendMode::Overlay) : 0;
+			bool async_wait;
+			win.Refresh(async_wait);
 		}
 	}
 }
@@ -105,6 +263,7 @@ Game_Windows::Window_User* Game_Windows::GetWindowPtr(int id) {
 
 bool Game_Windows::Window_User::Create(const WindowParams& params) {
 	Erase();
+	maniac_caller = params.maniac_caller;
 
 	data.width = params.width;
 	data.height = params.height;
@@ -139,6 +298,15 @@ bool Game_Windows::Create(int id, const WindowParams& params, bool& async_wait) 
 
 	if (window.Create(params)) {
 		if (Main_Data::game_pictures->Show(id, params)) {
+			if (Player::IsPatchManiac() && !params.texts.empty()) {
+				auto& picture = Main_Data::game_pictures->GetPicture(id).data;
+				const auto& text = params.texts.front();
+				picture.name = "\x01" + text.text + "\x01" + params.system_name + "\x01" + text.font_name;
+				picture.maniac_image_flags = params.maniac_text_flags | 0x01000000;
+				picture.maniac_transparency_flags = params.maniac_transparency_flags;
+				picture.finish_bot_trans = params.maniac_text_style;
+				picture.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_window;
+			}
 			window.Refresh(async_wait);
 			return true;
 		} else {
@@ -154,6 +322,8 @@ void Game_Windows::Window_User::Erase() {
 	int id = data.ID;
 	data = {};
 	data.ID = id;
+	maniac_caller.reset();
+	maniac_bitmap.reset();
 
 	request_ids.clear();
 }
@@ -171,6 +341,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 	std::vector<FontRef> fonts;
 	std::vector<PendingMessage> messages;
+	const char32_t escape = Player::IsPatchManiac() ? U'\\' : Player::escape_char;
 
 	// Preprocessing
 	for (const auto& text: data.texts) {
@@ -222,7 +393,11 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 		std::stringstream ss(ToString(text.text));
 		std::string out;
-		PendingMessage pm(CommandCodeInserter);
+		// 250921 resolves V/T/N when 3007 creates the picture. The saved text
+		// must not be resolved again against later variables or a load's caller.
+		PendingMessage pm(Player::IsPatchManiac()
+			? PendingMessage::CommandInserter([](char, const char**, const char*, uint32_t) -> std::optional<std::string> { return std::nullopt; })
+			: PendingMessage::CommandInserter(CommandCodeInserter));
 		while (Utils::ReadLine(ss, out)) {
 			pm.PushLine(out);
 		}
@@ -255,13 +430,19 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 			int x = text.position_x;
 			int y = text.position_y;
+			if (Player::IsPatchManiac()) {
+				const auto size = ProcessManiacText(text.text, *font, text.line_spacing, maniac_caller);
+				x_max = std::max(x_max, x + size.width);
+				y_max = std::max(y_max, y + size.height);
+				continue;
+			}
 			for (const auto& line: pm.GetLines()) {
 				std::u32string line32;
 				auto* text_index = line.data();
 				const auto* end = line.data() + line.size();
 
 				while (text_index != end) {
-					auto tret = Utils::TextNext(text_index, end, Player::escape_char);
+					auto tret = Utils::TextNext(text_index, end, escape);
 					text_index = tret.next;
 
 					if (EP_UNLIKELY(!tret)) {
@@ -293,7 +474,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 						line32 += '$';
 					}
 
-					if (tret.is_escape && ch != Player::escape_char) {
+					if (tret.is_escape && ch != escape) {
 						if (!line32.empty()) {
 							x += Text::GetSize(*font, Utils::EncodeUTF(line32)).width;
 							line32.clear();
@@ -305,7 +486,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 							case 'C':
 							{
 								// Color
-								text_index = Game_Message::ParseColor(text_index, end, Player::escape_char, true).next;
+								text_index = Game_Message::ParseColor(text_index, end, escape, true).next;
 							}
 							break;
 						}
@@ -335,8 +516,10 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 			x_max += 16;
 			y_max += 20; // 16 looks better but this matches better with Maniac Patch
 		} else {
-			x_max += 1;
-			y_max += 1;
+			const bool shadow = !Player::IsPatchManiac()
+				|| (!data.texts.empty() && !data.texts.front().text.empty() && data.texts.front().flags.draw_shadow);
+			x_max += shadow;
+			y_max += shadow;
 		}
 
 		if (data.width == 0) {
@@ -349,7 +532,12 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 	}
 
 	window = std::make_unique<Window_Selectable>(0, 0, data.width, data.height);
-	if (!data.flags.border_margin) {
+	const bool native_text = Player::IsPatchManiac();
+	if (native_text) {
+		// Native clipping is against the full picture, including its margins.
+		window->SetBorderX(0);
+		window->SetBorderY(0);
+	} else if (!data.flags.border_margin) {
 		window->SetBorderX(0);
 		// FIXME: Figure out why 0 does not work here (bug in Window class)
 		window->SetBorderY(-3);
@@ -358,7 +546,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 	window->SetVisible(false);
 
 	BitmapRef system;
-	if (!data.system_name.empty()) {
+	if (native_text || !data.system_name.empty()) {
 		system = Cache::System(data.system_name);
 	} else {
 		system = Cache::SystemOrBlack();
@@ -376,6 +564,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 	if (!data.flags.draw_frame) {
 		window->SetFrameOpacity(0);
 	}
+	if (native_text) maniac_bitmap = CreateManiacWindow(data.width, data.height, *system, data.message_stretch, data.flags.draw_frame);
 
 	// Draw text
 	for (size_t i = 0; i < data.texts.size(); ++i) {
@@ -386,6 +575,11 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 		int x = text.position_x;
 		int y = text.position_y + 2; // +2 to match the offset RPG_RT uses
+		if (Player::IsPatchManiac()) {
+			ProcessManiacText(text.text, *font, text.line_spacing, maniac_caller, system.get(), maniac_bitmap.get(),
+				x + (data.flags.border_margin ? 8 : 0), text.position_y + (data.flags.border_margin ? 10 : 0));
+			continue;
+		}
 		int text_color = 0;
 		for (const auto& line: pm.GetLines()) {
 			std::u32string line32;
@@ -393,7 +587,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 			const auto* end = line.data() + line.size();
 
 			while (text_index != end) {
-				auto tret = Utils::TextNext(text_index, end, Player::escape_char);
+				auto tret = Utils::TextNext(text_index, end, escape);
 				text_index = tret.next;
 
 				if (EP_UNLIKELY(!tret)) {
@@ -423,7 +617,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 					line32 += '$';
 				}
 
-				if (tret.is_escape && ch != Player::escape_char) {
+				if (tret.is_escape && ch != escape) {
 					if (!line32.empty()) {
 						x += Text::Draw(*window->GetContents(), x, y, *font, *system, text_color, Utils::EncodeUTF(line32)).x;
 						line32.clear();
@@ -435,7 +629,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 						case 'C':
 						{
 							// Color
-							auto pres = Game_Message::ParseColor(text_index, end, Player::escape_char, true);
+							auto pres = Game_Message::ParseColor(text_index, end, escape, true);
 							auto value = pres.value;
 							text_index = pres.next;
 							text_color = value > 19 ? 0 : value;
@@ -459,6 +653,7 @@ void Game_Windows::Window_User::Refresh(bool& async_wait) {
 
 	// Add to picture
 	pic.AttachWindow(*window);
+	if (native_text) pic.sprite->SetBitmap(maniac_bitmap);
 }
 
 bool Game_Windows::Window_User::Request() {

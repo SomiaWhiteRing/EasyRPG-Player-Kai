@@ -81,6 +81,7 @@ BitmapRef Bitmap::CreateReadOnlyView(const BitmapRef& source, Rect const& src_re
 		+ static_cast<size_t>(rect.x) * source->format.bytes;
 	auto view = Create(pixels, rect.width, rect.height, source->pitch(), source->format);
 	view->pixel_owner = source;
+	view->maniac_view_origin = {rect.x, rect.y};
 	view->read_only = true;
 	view->image_opacity = source->GetImageOpacity();
 	view->original_bpp = source->original_bpp;
@@ -141,6 +142,14 @@ Bitmap::Bitmap(Filesystem_Stream::InputStream stream, bool transparent, uint32_t
 	}
 
 	Init(image_out.width, image_out.height, nullptr);
+	if (flags & Flag_ManiacPicture) {
+		const auto* rgba = static_cast<const uint8_t*>(image_out.pixels);
+		maniac_pixels.resize(static_cast<size_t>(image_out.width) * image_out.height);
+		for (auto& pixel : maniac_pixels) {
+			pixel = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+			rgba += 4;
+		}
+	}
 
 	ConvertImage(image_out.width, image_out.height, image_out.pixels, transparent);
 
@@ -174,6 +183,14 @@ Bitmap::Bitmap(const uint8_t* data, unsigned bytes, bool transparent, uint32_t f
 	}
 
 	Init(image_out.width, image_out.height, nullptr);
+	if (flags & Flag_ManiacPicture) {
+		const auto* rgba = static_cast<const uint8_t*>(image_out.pixels);
+		maniac_pixels.resize(static_cast<size_t>(image_out.width) * image_out.height);
+		for (auto& pixel : maniac_pixels) {
+			pixel = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+			rgba += 4;
+		}
+	}
 
 	ConvertImage(image_out.width, image_out.height, image_out.pixels, transparent);
 
@@ -193,6 +210,13 @@ Bitmap::Bitmap(Bitmap const& source, Rect const& src_rect, bool transparent) {
 	} else {
 		Blit(0, 0, source, src_rect, Opacity::Opaque());
 	}
+	const Bitmap* raw_source = &source;
+	while (raw_source->maniac_pixels.empty() && raw_source->pixel_owner) raw_source = raw_source->pixel_owner.get();
+	if (!raw_source->maniac_pixels.empty()) {
+		EnableManiacPixels();
+		for (int y = 0; y < height(); ++y) for (int x = 0; x < width(); ++x)
+			SetManiacColorAt(x, y, source.GetManiacColorAt(src_rect.x + x, src_rect.y + y));
+	}
 }
 
 bool Bitmap::WritePNG(std::ostream& os, bool include_alpha, bool force_opaque) const {
@@ -206,7 +230,7 @@ bool Bitmap::WritePNG(std::ostream& os, bool include_alpha, bool force_opaque) c
 		auto* bytes = reinterpret_cast<uint8_t*>(data.data());
 		for (size_t y = 0; y < height; ++y) {
 			for (size_t x = 0; x < width; ++x) {
-				const Color color = GetColorAt(x, y);
+				const Color color = GetManiacColorAt(x, y);
 				*bytes++ = color.red;
 				*bytes++ = color.green;
 				*bytes++ = color.blue;
@@ -234,7 +258,7 @@ size_t Bitmap::GetSize() const {
 		return 0;
 	}
 
-	return pitch() * height();
+	return pitch() * height() + maniac_pixels.size() * sizeof(Color);
 }
 
 ImageOpacity Bitmap::ComputeImageOpacity() const {
@@ -245,7 +269,7 @@ ImageOpacity Bitmap::ComputeImageOpacity() const {
 	auto* p = reinterpret_cast<const uint32_t*>(pixels());
 	const auto mask = pixel_format.rgba_to_uint32_t(0, 0, 0, 0xFF);
 
-	int n = GetSize() / sizeof(uint32_t);
+	int n = static_cast<size_t>(pitch()) * height() / sizeof(uint32_t);
 	for (int i = 0; i < n; ++i ) {
 		auto px = p[i] & mask;
 		bool transp = (px == 0);
@@ -347,6 +371,49 @@ void Bitmap::SetColorAt(int x, int y, const Color& color) {
 	const uint32_t pixel = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
 	uint8_t* pos = static_cast<uint8_t*>(pixels()) + static_cast<size_t>(y) * pitch() + x * format.bytes;
 	std::memcpy(pos, &pixel, format.bytes);
+	if (!maniac_pixels.empty()) {
+		maniac_pixels[static_cast<size_t>(y) * width() + x] = color;
+		++maniac_revision;
+	}
+}
+
+Color Bitmap::GetManiacColorAt(int x, int y) const {
+	if (x < 0 || y < 0 || x >= width() || y >= height()) return {};
+	if (!maniac_pixels.empty()) {
+		auto color = maniac_pixels[static_cast<size_t>(y) * width() + x];
+		if (maniac_presentation) {
+			const auto visible = GetColorAt(x, y);
+			color.red = visible.red; color.green = visible.green; color.blue = visible.blue;
+		}
+		return color;
+	}
+	if (pixel_owner) return pixel_owner->GetManiacColorAt(x + maniac_view_origin.x, y + maniac_view_origin.y);
+	return GetColorAt(x, y);
+}
+
+void Bitmap::EnableManiacPixels() {
+	if (!maniac_pixels.empty()) return;
+	maniac_pixels.resize(static_cast<size_t>(width()) * height());
+	for (int y = 0; y < height(); ++y) for (int x = 0; x < width(); ++x)
+		maniac_pixels[static_cast<size_t>(y) * width() + x] = pixel_owner
+			? pixel_owner->GetManiacColorAt(x + maniac_view_origin.x, y + maniac_view_origin.y) : GetColorAt(x, y);
+}
+
+void Bitmap::SetManiacColorAt(int x, int y, Color color, bool presentation) {
+	if (x < 0 || y < 0 || x >= width() || y >= height()) return;
+	EnableManiacPixels();
+	const Color straight = color;
+	if (presentation) { color.alpha = 255; maniac_presentation = true; }
+	MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
+	SetColorAt(x, y, color);
+	maniac_pixels[static_cast<size_t>(y) * width() + x] = straight;
+}
+
+void Bitmap::ResetManiacPresentation() {
+	if (maniac_presentation) {
+		maniac_pixels.clear();
+		maniac_presentation = false;
+	}
 }
 
 void Bitmap::HueChangeBlit(int x, int y, Bitmap const& src, Rect const& src_rect_, double hue_) {
@@ -596,7 +663,9 @@ void Bitmap::ConvertImage(int& width, int& height, void*& pixels, bool transpare
 	}
 
 	Bitmap src(pixels, width, height, 0, img_format);
-	Clear();
+	// The straight Maniac pixels were captured before premultiplication.
+	// Clear only the presentation buffer while decoding this source image.
+	std::memset(this->pixels(), 0, this->height() * pitch());
 	if (width > max_composite_dimension || height > max_composite_dimension) {
 		CopyLargeBitmap(0, 0, src, src.GetRect());
 	} else {
@@ -851,6 +920,10 @@ void Bitmap::Clear() {
 	}
 
 	memset(pixels(), '\0', height() * pitch());
+	if (!maniac_pixels.empty()) {
+		std::fill(maniac_pixels.begin(), maniac_pixels.end(), Color{});
+		++maniac_revision;
+	}
 }
 
 void Bitmap::ClearRect(Rect const& dst_rect) {
@@ -866,6 +939,12 @@ void Bitmap::ClearRect(Rect const& dst_rect) {
 	box.y2 = Utils::Clamp<int32_t>(box.y2, 0, height());
 
 	pixman_image_fill_boxes(PIXMAN_OP_CLEAR, bitmap.get(), &pcolor, 1, &box);
+	if (!maniac_pixels.empty()) {
+		for (int y = std::max(0, box.y1); y < box.y2; ++y)
+			for (int x = std::max(0, box.x1); x < box.x2; ++x)
+				maniac_pixels[static_cast<size_t>(y) * width() + x] = {};
+		++maniac_revision;
+	}
 }
 
 // Hard light lookup table mapping source color to destination color

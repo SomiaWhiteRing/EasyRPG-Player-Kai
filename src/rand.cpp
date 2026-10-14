@@ -20,6 +20,8 @@
 #include "utils.h"
 #include "output.h"
 #include "compiler.h"
+#include "main_data.h"
+#include "player.h"
 #include <cassert>
 #include <cstdint>
 #include <cinttypes>
@@ -62,6 +64,7 @@ int32_t Rand::GetRandomNumber(int32_t from, int32_t to) {
 	if (rng_locked) {
 		return Utils::Clamp(rng_lock_value, from, to);
 	}
+	if (Player::IsPatchManiac()) return Main_Data::ManiacRandomInclusive(from, to);
 	// Don't use uniform_int_distribution--the algorithm used isn't
 	// portable between stdlibs.
 	// We do from + (rand int in [0, to-from]). The miracle of two's
@@ -72,6 +75,12 @@ int32_t Rand::GetRandomNumber(int32_t from, int32_t to) {
 	uint32_t urange = uto - ufrom;
 	uint32_t ures = ufrom + GetRandomUnsigned(urange);
 	return int32_t(ures);
+}
+
+int32_t Rand::GetVisualRandomNumber(int32_t from, int32_t to) {
+	assert(from <= to);
+	if (rng_locked) return Utils::Clamp(rng_lock_value, from, to);
+	return static_cast<int32_t>(static_cast<uint32_t>(from) + GetRandomUnsigned(static_cast<uint32_t>(to) - from));
 }
 
 Rand::RNG& Rand::GetRNG() {

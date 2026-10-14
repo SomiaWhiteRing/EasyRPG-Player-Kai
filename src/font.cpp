@@ -826,6 +826,35 @@ Point Font::RenderExfontCell(Bitmap& dest, int x, int y, const Bitmap& sys, cons
 	return advance;
 }
 
+void Font::RenderManiacTextGlyph(Bitmap& dest, int x, int y, const Bitmap& sys, Point cell,
+	char32_t glyph, const Rect* icon) const {
+	const auto rendered = icon ? GlyphRet{} : vRender(glyph);
+	const auto mask = icon ? Cache::Exfont() : rendered.bitmap;
+	if (!mask) return;
+	const int width = icon ? current_style.size : GetSize(glyph).width - current_style.letter_spacing;
+	const int height = current_style.size;
+	const int shadow = current_style.draw_shadow ? 1 : 0;
+	if (width <= 0 || height <= 0 || x < 0 || y < 0
+		|| static_cast<int64_t>(x) + width + shadow > dest.GetWidth()
+		|| static_cast<int64_t>(y) + height + shadow > dest.GetHeight()) return;
+	if (icon && (icon->x < 0 || icon->y < 0 || static_cast<int64_t>(icon->x) + 12 > mask->GetWidth()
+		|| static_cast<int64_t>(icon->y) + 12 > mask->GetHeight())) return;
+	const auto shade = sys.GetColorAt(16, 32);
+	// 035a30 glyphs and 035730 icons use different vertical sample offsets.
+	const auto flat = sys.GetColorAt(cell.x - 2, cell.y - (icon ? 2 : 0));
+	for (int iy = 0; iy < height; ++iy) {
+		for (int ix = 0; ix < width; ++ix) {
+			const auto coverage = icon ? mask->GetColorAt(icon->x + 12 * ix / width, icon->y + 12 * iy / height)
+				: mask->GetColorAt(ix - rendered.offset.x, iy + rendered.offset.y);
+			if (!coverage.alpha) continue;
+			if (shadow && shade.alpha) dest.SetManiacColorAt(x + ix + 1, y + iy + 1, shade);
+			const auto color = current_style.draw_gradient
+				? sys.GetColorAt(cell.x + 12 * ix / width, cell.y + (icon ? 0 : 2) + 12 * iy / height) : flat;
+			if (color.alpha) dest.SetManiacColorAt(x + ix, y + iy, color);
+		}
+	}
+}
+
 Point Font::Render(Bitmap& dest, int const x, int const y, const Bitmap& sys, int color, const Font::ShapeRet& shape) const {
 	if (shape.not_found) {
 		return Render(dest, x, y, sys, color, shape.code);

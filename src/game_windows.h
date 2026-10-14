@@ -21,6 +21,8 @@
 // Headers
 #include <string>
 #include <deque>
+#include <array>
+#include <optional>
 #include <lcf/rpg/saveeasyrpgwindow.h>
 #include <lcf/rpg/system.h>
 #include "game_pictures.h"
@@ -66,6 +68,9 @@ public:
 		std::vector<WindowText> texts;
 		bool draw_frame = true;
 		bool border_margin = true;
+		uint32_t maniac_text_flags = 0;
+		uint32_t maniac_text_style = 0;
+		std::optional<std::array<int, 3>> maniac_caller;
 	};
 
 	bool Create(int id, const WindowParams& params, bool& async_wait);
@@ -76,6 +81,7 @@ public:
 		explicit Window_User(lcf::rpg::SaveEasyRpgWindow data);
 
 		lcf::rpg::SaveEasyRpgWindow data;
+		std::optional<std::array<int, 3>> maniac_caller;
 
 		bool Create(const WindowParams& params);
 		void Erase();
@@ -90,6 +96,7 @@ public:
 		void OnRequestReady(FileRequestResult* result);
 
 		std::unique_ptr<Window_Selectable> window;
+		BitmapRef maniac_bitmap;
 		std::vector<FileRequestBinding> request_ids;
 	};
 

@@ -403,7 +403,7 @@ int ControlVariables::Enemy(int op, int enemy_idx) {
 }
 
 int ControlVariables::Pow(int arg1, int arg2) {
-	if (Player::IsPatchManiac()) return BoundNative(std::pow(arg1, arg2));
+	if (Player::IsPatchManiac()) return BoundNative(std::trunc(std::pow(arg1, arg2)));
 	return static_cast<int>(std::pow(arg1, arg2));
 }
 

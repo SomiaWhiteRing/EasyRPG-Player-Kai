@@ -379,9 +379,9 @@ void Game_Screen::InitParticles(int num_particles) {
 		// RPG_RT always initializes all particles to these values on startup.
 		// This can cause minor visual glitches for the first few frames the
 		// first time you start the sandstorm effect. We're bug compatible with RPG_RT.
-		p.t = Rand::GetRandomNumber(0, 39);
-		p.x = Rand::GetRandomNumber(0, GetPanLimitX() / 16 - 1);
-		p.y = Rand::GetRandomNumber(0, GetPanLimitY() / 16 - 1);
+		p.t = Rand::GetVisualRandomNumber(0, 39);
+		p.x = Rand::GetVisualRandomNumber(0, GetPanLimitX() / 16 - 1);
+		p.y = Rand::GetVisualRandomNumber(0, GetPanLimitY() / 16 - 1);
 	}
 }
 
@@ -393,8 +393,8 @@ void Game_Screen::UpdateRain() {
 			p.x -= 1;
 		} else if (Rand::PercentChance(10)) {
 			p.t = 12;
-			p.x = Rand::GetRandomNumber(0, GetPanLimitX() / 16 - 1);
-			p.y = Rand::GetRandomNumber(0, GetPanLimitY() / 16 - 1);
+			p.x = Rand::GetVisualRandomNumber(0, GetPanLimitX() / 16 - 1);
+			p.y = Rand::GetVisualRandomNumber(0, GetPanLimitY() / 16 - 1);
 		}
 	}
 }
@@ -403,12 +403,12 @@ void Game_Screen::UpdateSnow() {
 	for (auto& p: particles) {
 		if (p.t > 0) {
 			--p.t;
-			p.x -= Rand::GetRandomNumber(0, 1);
-			p.y += Rand::GetRandomNumber(2, 3);
+			p.x -= Rand::GetVisualRandomNumber(0, 1);
+			p.y += Rand::GetVisualRandomNumber(2, 3);
 		} else if (Rand::PercentChance(5)) {
 			p.t = 30;
-			p.x = Rand::GetRandomNumber(0, GetPanLimitX() / 16 - 1);
-			p.y = Rand::GetRandomNumber(0, GetPanLimitY() / 16 - 1);
+			p.x = Rand::GetVisualRandomNumber(0, GetPanLimitX() / 16 - 1);
+			p.y = Rand::GetVisualRandomNumber(0, GetPanLimitY() / 16 - 1);
 		}
 	}
 }
@@ -443,7 +443,7 @@ void Game_Screen::UpdateSandstorm() {
 
 			auto c = std::cos(dist(rng));
 			auto s = std::sin(dist(rng));
-			auto d = Rand::GetRandomNumber(16, 95);
+			auto d = Rand::GetVisualRandomNumber(16, 95);
 
 			p.x = static_cast<int>(d * c * 2.0f) * Player::screen_width / 320 + Player::screen_width / 2;
 			p.y = static_cast<int>(d * s) * Player::screen_height / 240;
