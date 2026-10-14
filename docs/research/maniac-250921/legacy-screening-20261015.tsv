@@ -1,0 +1,203 @@
+old_source	old_added_from_common_base	old_deleted_from_common_base	disposition	scope_and_reason
+src/algo.cpp	5	0	K	当前数值基础保留；不为旧分支增量重复引入辅助函数
+src/async_op.h	19	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/audio.cpp	86	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/audio.h	13	1	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/audio_generic.cpp	24	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/audio_generic.h	2	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/autobattle.cpp	266	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/autobattle.h	2	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/background.cpp	76	4	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/background.h	9	3	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/baseui.cpp	213	0	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/baseui.h	44	13	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/battle_animation.cpp	46	3	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/battle_animation.h	12	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/bitmap.cpp	36	3	K	当前 straight RGBA、revision 和完整 Maniac 像素算法已具备；旧 Prepare/Draw 较弱不迁
+src/bitmap.h	7	2	K	当前 Maniac 像素接口已具备；旧接口不重复加入
+src/cache.cpp	4	2	K	当前 Maniac 图片直通像素缓存已具备；本轮仅将同一能力接到 chipset，旧缓存键逻辑不迁
+src/cache.h	2	1	K	当前缓存接口足够；不复制旧新增接口
+src/drawable.h	3	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/feature.cpp	7	0	X	X-version：旧 ManiacVersion/选版配置排除；保留现有 Maniac 与 im/pf
+src/filesystem_native.cpp	11	2	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/font.cpp	66	0	X	X-font：不迁 GDI 字族提取、31 单位截断或字体趋同；使用现有 EasyRPG 字体
+src/font.h	1	0	X	X-font：不迁 GDI 字族提取、31 单位截断或字体趋同；使用现有 EasyRPG 字体
+src/game_actor.cpp	243	14	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_actor.h	54	2	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_actors.cpp	4	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_actors.h	2	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battle.cpp	155	4	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battle.h	29	1	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battlealgorithm.cpp	236	2	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battlealgorithm.h	46	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battler.cpp	371	4	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_battler.h	194	9	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_character.cpp	11	4	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_clock.cpp	121	1	X	X-clock：不迁 Sleep、补帧、native pace phase 和绘制资格；逻辑帧/等待保留当前实现
+src/game_clock.h	38	7	X	X-clock：不迁 Sleep、补帧、native pace phase 和绘制资格；逻辑帧/等待保留当前实现
+src/game_commonevent.cpp	12	2	K	当前 Maniac 公共事件身份与 im/pf 调度已有
+src/game_commonevent.h	1	0	K	当前事件声明已有
+src/game_config_game.cpp	11	0	X	X-version：旧 ManiacVersion/选版配置排除；保留现有 Maniac 与 im/pf
+src/game_config_game.h	1	0	X	X-version：旧 ManiacVersion/选版配置排除；保留现有 Maniac 与 im/pf
+src/game_enemy.cpp	282	5	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_enemy.h	21	5	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_enemyparty.cpp	87	18	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_enemyparty.h	18	1	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_event.cpp	18	5	K	当前 Maniac 页条件与 im/pf 刷新已接；旧代码无本轮确认增益
+src/game_interpreter.cpp	1190	86	M	P1/P2 的既有入口及 P3 续行/取消；其他旧 handler、battle pump、选版不迁
+src/game_interpreter.h	121	0	M	P3 的 pending Operation 声明；旧通用 native worker 状态不迁
+src/game_interpreter_battle.cpp	420	4	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_interpreter_battle.h	39	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_interpreter_control_variables.cpp	2	0	K	当前数值/随机/表达式入口保留；无本轮确认增益
+src/game_interpreter_maniac.cpp	669	0	K	表达式与基础入口在当前 maniac_patch/解释器中已有；不按旧文件拆分重复实现
+src/game_interpreter_maniac_array.cpp	175	0	K	当前数组结果/别名/SELF 已有；旧物理扩容边界差异留作具名证据，不覆盖现有回归合同
+src/game_interpreter_maniac_console.cpp	101	0	X	X-console：不复制原版控制台窗口、字体和线程；逻辑 hook/返回结果按有限合同另立包
+src/game_interpreter_maniac_enemy_members.cpp	106	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_interpreter_maniac_input.cpp	81	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/game_interpreter_maniac_js.cpp	42	0	K	当前 JS 入口与返回转换已有；P1 只修改宿主图片对象归属
+src/game_interpreter_maniac_map_commands.cpp	273	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_interpreter_maniac_map_info.cpp	219	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_interpreter_maniac_media.cpp	23	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_interpreter_maniac_message.cpp	44	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_interpreter_maniac_move_route.cpp	307	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_interpreter_maniac_move_route.h	17	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_interpreter_maniac_pictures.cpp	428	0	M	P1 3017 与 P2 3008/3028/3030 的消费者差异嵌入现有入口；不整体复制旧文件
+src/game_interpreter_maniac_save_info.cpp	251	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_interpreter_maniac_screen.cpp	30	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/game_interpreter_maniac_self.cpp	321	0	K	当前 SELF 指令与生命周期基础已有；不复制另一套银行
+src/game_interpreter_maniac_shared_save.cpp	125	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_interpreter_maniac_strings.cpp	757	0	K	当前字符串存在性、运算和基础展开已有；旧 CRT/regex/文件全组合不作为本轮迁移门槛
+src/game_interpreter_maniac_text_picture.cpp	129	0	M	P3 参数捕获、延迟 XY、kind 与固定角模式分离；适配当前 YieldRepeat
+src/game_interpreter_map.cpp	34	10	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_interpreter_shared.cpp	154	15	K	当前上下文/求值接口保留；不按旧原生布局再建抽象层
+src/game_interpreter_shared.h	28	2	K	当前上下文/求值接口保留；P3 游标直接接入
+src/game_maniac_battle_animation.cpp	237	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_maniac_battle_animation.h	63	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_maniac_battle_pump_services.cpp	3585	0	X	X-pump：不迁原版 battle worker/phase 服务图；必要逻辑状态另列 N-battle，不能因此忽略效果
+src/game_maniac_battle_pump_services.h	352	0	X	X-pump：不迁原版 battle worker/phase 服务图；必要逻辑状态另列 N-battle，不能因此忽略效果
+src/game_maniac_battle_terminal.h	22	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_maniac_battler_animation_record.h	24	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_maniac_console.cpp	313	0	X	X-console：不复制原版控制台窗口、字体和线程；逻辑 hook/返回结果按有限合同另立包
+src/game_maniac_console.h	40	0	X	X-console：不复制原版控制台窗口、字体和线程；逻辑 hook/返回结果按有限合同另立包
+src/game_maniac_input.cpp	187	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/game_maniac_input.h	99	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/game_maniac_js.cpp	694	0	M	P1 JS 对象跟随 holder；移除旧槽号绑定；其余当前 API 保留
+src/game_maniac_js.h	20	0	K	当前共享运行时接口已有；P1 不扩展 API
+src/game_maniac_map.cpp	250	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_maniac_map.h	40	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_maniac_media_options.cpp	148	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_maniac_media_options.h	37	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_maniac_message_hooks.cpp	412	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_maniac_message_hooks.h	34	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_maniac_numeric_popup.cpp	221	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/game_maniac_self_variables.cpp	374	0	K	当前按事件身份存储和私有保存能力已有；旧 native 格式细节不整包覆盖
+src/game_maniac_self_variables.h	76	0	K	当前银行与身份声明已有
+src/game_maniac_shared_save.cpp	168	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_maniac_shared_save.h	23	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/game_map.cpp	8	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/game_message.cpp	85	1	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_message.h	19	1	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_party.cpp	155	8	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_party.h	16	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/game_pictures.cpp	570	31	M	P1 稳定 holder、重叠换号、图片请求归属；P2 独立像素快照/布局；P3 挂接/取消；保留当前 Move
+src/game_pictures.h	47	5	M	P1 holder 和 P2 像素布局的必要字段；不迁 native 全池初始化与版本字段
+src/game_quit.h	2	1	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/game_screen.cpp	421	29	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/game_screen.h	50	12	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/game_strings.cpp	65	0	K	当前存在性与 UTF-16 存储实现保留
+src/game_strings.h	24	6	K	当前原始槽位/存在性接口保留
+src/game_switches.cpp	27	0	K	当前 GLOBAL/SELF 及物理槽位能力保留
+src/game_switches.h	32	0	K	当前银行访问接口保留
+src/game_system.cpp	208	14	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_system.h	61	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/game_variables.cpp	39	0	K	当前数值读写/原始槽位接口保留；物理容量差异未迁
+src/game_variables.h	9	0	K	当前数值访问接口足够
+src/game_windows.cpp	82	9	M	P1 稳定 window 与交换；P3 Operation 归属和取消；沿用当前背景/文字掩码，补 Player 私有 token 存档
+src/game_windows.h	7	1	M	P1 window holder 与 P3 操作归属；移除被替代的重复文本状态
+src/graphics.cpp	232	1	X	X-clock：不迁 Sleep、补帧、native pace phase 和绘制资格；逻辑帧/等待保留当前实现
+src/graphics.h	22	0	X	X-clock：不迁 Sleep、补帧、native pace phase 和绘制资格；逻辑帧/等待保留当前实现
+src/image_png.cpp	12	4	K	当前 Maniac PNG 像素读写能力已有；P2 补其调用者
+src/image_png.h	1	1	K	当前 PNG 接口足够
+src/input.cpp	33	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/input.h	8	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/input_source.cpp	8	1	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/input_source.h	4	0	X	X-input：输入设备/接收模型保留 EasyRPG；指令值与等待仍按现有接口，不迁 native host 体系
+src/main_data.cpp	10	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/main_data.h	4	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/maniac_file.cpp	379	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/maniac_file.h	40	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/maniac_pack.cpp	385	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/maniac_pack.h	46	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/maniac_patch.cpp	369	327	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/maniac_patch.h	4	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/maniac_save_info.h	36	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/maniac_text_cursor.h	234	0	M	P3 UTF-16 数字/列表消费；接当前 GLOBAL/SELF 读取，不转而迁整个字符串库
+src/maniac_text_picture.cpp	441	0	M	P3 typed token 与快照、取消、异步资源；保留 EasyRPG 字体与当前像素公式，排除 GDI/原版字族截断
+src/maniac_text_picture.h	62	0	M	P3 数据/操作接口；去掉重复 backing 和诊断状态
+src/output.cpp	46	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/output.h	12	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/pending_message.cpp	8	3	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/pending_message.h	7	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/platform.cpp	38	3	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform.h	6	0	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/emscripten/audio.cpp	11	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/platform/emscripten/audio.h	2	0	N	N-feature：媒体/打包/文件/额外共享保存功能不在本轮三个包的消费链；保留可提取合同，平台复制与全格式等价排除
+src/platform/emscripten/ui.cpp	62	7	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/emscripten/ui.h	6	0	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/sdl/sdl2_ui.cpp	191	4	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/sdl/sdl2_ui.h	7	0	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/sdl/sdl3_ui.cpp	204	4	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/platform/sdl/sdl3_ui.h	7	0	X	X-host：旧窗口/控制台/宿主事件实现不复制；现有 EasyRPG 平台接口保留
+src/player.cpp	336	12	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/player.h	42	2	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/rand.cpp	23	0	K	当前共用 Maniac 随机状态与推进规则已有；不覆盖新修复
+src/rand.h	9	0	K	当前随机接口已有
+src/scene.cpp	87	17	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/scene.h	5	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/scene_battle.cpp	205	25	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_battle.h	36	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_battle_rpg2k.cpp	17	11	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_battle_rpg2k.h	1	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_battle_rpg2k3.cpp	2683	100	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_battle_rpg2k3.h	169	1	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/scene_gamebrowser.cpp	2	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/scene_gameover.cpp	125	9	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/scene_gameover.h	11	1	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/scene_map.cpp	88	4	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/scene_map.h	18	1	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/scene_save.cpp	75	3	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/scene_save.h	10	0	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/sprite.cpp	63	1	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/sprite.h	13	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/sprite_actor.cpp	867	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/sprite_actor.h	56	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/sprite_picture.cpp	99	29	M	P1 换号后 Z；P2 正常更新/绘制准备、独立缓存；保留当前色调/合成/几何算法
+src/sprite_picture.h	9	1	M	P1 SetPictureId 和 P2 更新接口；旧绘制算法不迁
+src/sprite_weapon.cpp	134	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/sprite_weapon.h	21	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/spriteset_battle.cpp	13	4	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/spriteset_battle.h	5	1	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/spriteset_map.cpp	13	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/spriteset_map.h	5	0	N	N-map：移动路线/地图信息及状态为独立行为包；当前有限图片/文字包无需复制，未宣称全部语义已等价
+src/tilemap_layer.cpp	59	0	K	当前 autotile/图块索引规则已有；P2 仅适配写入消费者和透明像素分支
+src/tilemap_layer.h	7	0	K	当前 tile 解码接口保留；P2 增加 picture 写入上下文
+src/transition.cpp	215	6	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/transition.h	31	2	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/utils.cpp	9	3	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/utils.h	4	2	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window.cpp	107	13	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window.h	27	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_base.cpp	11	6	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_base.h	1	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_battlestatus.cpp	9	1	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/window_battlestatus.h	8	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/window_help.cpp	83	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/window_help.h	19	0	N	N-battle：typed action/target/SP、动画与战斗状态含合法逻辑和 native pump 混合职责；旧失效链未闭合，保留定位，不整包迁入
+src/window_item.cpp	6	3	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_message.cpp	397	55	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/window_message.h	40	1	N	N-lifecycle：hook/等待/载入/场景的合法状态与原版阶段复制混合；当前普通路径保留，候选按有限续行合同再核实
+src/window_selectable.cpp	14	8	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_selectable.h	2	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_shop.cpp	38	5	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_shop.h	3	0	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
+src/window_skill.cpp	8	2	N	N-mixed：旧选版/宿主/其他功能混合改动；无本轮已确认增益，不为收齐旧文件覆盖当前实现；保留为后续定位
