@@ -99,6 +99,7 @@ void SetupCommon();
 
 void Game_Map::OnContinueFromBattle() {
 	Main_Data::game_system->BgmPlay(Main_Data::game_system->GetBeforeBattleMusic());
+	if (Player::IsPatchManiac()) Refresh();
 }
 
 static Game_Map::Parallax::Params GetParallaxParams();
@@ -1251,7 +1252,7 @@ int Game_Map::CheckEvent(int x, int y) {
 }
 
 void Game_Map::Update(MapUpdateAsyncContext& actx, bool is_preupdate) {
-	if (GetNeedRefresh()) {
+	if (!Player::IsPatchManiac() && GetNeedRefresh()) {
 		Refresh();
 	}
 
@@ -1300,6 +1301,13 @@ void Game_Map::Update(MapUpdateAsyncContext& actx, bool is_preupdate) {
 		Main_Data::game_party->UpdateTimers();
 		Main_Data::game_screen->Update();
 		Main_Data::game_pictures->Update(false);
+		if (Player::IsManiacPf()) {
+			// The pf page pass follows parallel events, movement and timers,
+			// and precedes the main interpreter. Foreground async resumes
+			// skip this block through the existing update context.
+			SetNeedRefresh(true);
+			if (GetNeedRefresh()) Refresh();
+		}
 	}
 
 	if (!actx.IsActive() || actx.IsForegroundEvent()) {
@@ -1743,6 +1751,10 @@ bool Game_Map::GetNeedRefresh() {
 
 void Game_Map::SetNeedRefresh(bool refresh) {
 	need_refresh = refresh;
+}
+
+void Game_Map::RefreshAfterManiacChange() {
+	if (!Player::IsManiacPf()) Refresh();
 }
 
 void Game_Map::SetNeedRefreshForSwitchChange(int switch_id) {

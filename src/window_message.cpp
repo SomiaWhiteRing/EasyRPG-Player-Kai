@@ -1227,7 +1227,8 @@ void Window_Message::InputNumber() {
 	    (!Player::IsPatchManiac() && Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		Main_Data::game_variables->Set(pending_message.GetNumberInputVariable(), number_input_window->GetNumber());
-		Game_Map::SetNeedRefresh(true);
+		if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+		else Game_Map::SetNeedRefresh(true);
 		number_input_window->SetNumber(0);
 		number_input_window->SetActive(false);
 	}

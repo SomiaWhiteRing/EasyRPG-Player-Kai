@@ -114,6 +114,7 @@ void Game_Interpreter::Clear() {
 	_state = {};
 	_keyinput = {};
 	_async_op = {};
+	maniac_dispatch = ManiacDispatch::Return;
 }
 
 // Is interpreter running.
@@ -399,8 +400,18 @@ int Game_Interpreter::GetSubcommandIndex(int indent) const {
 
 // Update
 void Game_Interpreter::Update(bool reset_loop_count) {
+#ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
+	auto* previous_flags = Player::active_interpreter_flags;
+	Player::active_interpreter_flags = &_state.easyrpg_runtime_flags;
+	auto flags_guard = lcf::makeScopeGuard([previous_flags]() {
+		Player::active_interpreter_flags = previous_flags;
+	});
+#endif
+
 	if (reset_loop_count) {
 		loop_count = 0;
+		loop_limit = Player::IsPatchManiac() ? Player::game_config.GetManiacExecutionLimit() : 10000;
+		maniac_dispatch = ManiacDispatch::Return;
 	}
 
 	// Always reset async status when we enter interpreter loop.
@@ -420,93 +431,83 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		return;
 	}
 
-#ifdef ENABLE_DYNAMIC_INTERPRETER_CONFIG
-	auto* previous_flags = Player::active_interpreter_flags;
-	Player::active_interpreter_flags = &_state.easyrpg_runtime_flags;
-	auto flags_guard = lcf::makeScopeGuard([previous_flags]() {
-		Player::active_interpreter_flags = previous_flags;
-	});
-#endif
-
-	for (; loop_count < loop_limit; ++loop_count) {
+	while (loop_count < loop_limit) {
 		// If something is calling a menu, we're allowed to execute only 1 command per interpreter. So we pass through if loop_count == 0, and stop at 1 or greater.
 		// RPG_RT compatible behavior.
-		if (loop_count > 0 && Scene::instance->HasRequestedScene()) {
+		if (maniac_dispatch != ManiacDispatch::Continue && loop_count > 0 && Scene::instance->HasRequestedScene()) {
 			break;
 		}
 
 		// Previous command triggered an async operation.
 		if (IsAsyncPending()) {
-			if (_async_op.GetType() == AsyncOp::Type::eYieldRepeat) {
-				// This will cause an incorrect execution when the yielding
-				// command changed the index.
-				// Only use YieldRepeat for commands that do not do this!
-				auto& frame = GetFrame();
-				--frame.current_command;
-			}
 			break;
 		}
 
-		if (main_flag) {
-			if (Main_Data::game_player->IsBoardingOrUnboarding())
-				break;
+		// A pf mode tail re-enters the native dispatcher after its wait
+		// prelude. Async yields retain this position until Update(false).
+		if (maniac_dispatch != ManiacDispatch::Continue) {
+			if (main_flag) {
+				if (Main_Data::game_player->IsBoardingOrUnboarding())
+					break;
 
-			if (Main_Data::game_player->InVehicle() && Main_Data::game_player->GetVehicle()->IsAscendingOrDescending())
-				break;
+				if (Main_Data::game_player->InVehicle() && Main_Data::game_player->GetVehicle()->IsAscendingOrDescending())
+					break;
 
-			if (Game_Message::IsMessagePending())
-				break;
-		} else {
-			if (Game_Message::IsMessageActive() && _state.show_message) {
-				break;
+				if (Game_Message::IsMessagePending())
+					break;
+			} else {
+				if (Game_Message::IsMessageActive() && _state.show_message) {
+					break;
+				}
 			}
-		}
 
-		_state.show_message = false;
-		_state.abort_on_escape = false;
+			_state.show_message = false;
+			_state.abort_on_escape = false;
 
-		if (_state.wait_time > 0) {
-			_state.wait_time--;
-			break;
-		}
-
-		if (_state.wait_key_enter) {
-			if (Game_Message::IsMessageActive()) {
+			if (_state.wait_time > 0) {
+				_state.wait_time--;
 				break;
 			}
 
-			if (!Input::IsTriggered(Input::DECISION)) {
-				break;
-			}
-			_state.wait_key_enter = false;
-		}
+			if (_state.wait_key_enter) {
+				if (Game_Message::IsMessageActive()) {
+					break;
+				}
 
-		if (_state.wait_movement) {
-			if (Game_Map::IsAnyMovePending()) {
-				break;
-			}
-			_state.wait_movement = false;
-		}
-
-		if (_keyinput.wait) {
-			if (Game_Message::IsMessageActive()) {
-				break;
+				if (!Input::IsTriggered(Input::DECISION)) {
+					break;
+				}
+				_state.wait_key_enter = false;
 			}
 
-			const int key = _keyinput.CheckInput();
-			Main_Data::game_variables->Set(_keyinput.variable, key);
-			Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
-			if (key == 0) {
-				++_keyinput.wait_frames;
-				break;
+			if (_state.wait_movement) {
+				if (Game_Map::IsAnyMovePending()) {
+					break;
+				}
+				_state.wait_movement = false;
 			}
-			if (_keyinput.timed) {
-				// 10 per second
-				Main_Data::game_variables->Set(_keyinput.time_variable,
-						(_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps());
-				Game_Map::SetNeedRefreshForVarChange(_keyinput.time_variable);
+
+			if (_keyinput.wait) {
+				if (Game_Message::IsMessageActive()) {
+					break;
+				}
+
+				const int key = _keyinput.CheckInput();
+				Main_Data::game_variables->Set(_keyinput.variable, key);
+				Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
+				if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+				if (key == 0) {
+					++_keyinput.wait_frames;
+					break;
+				}
+				if (_keyinput.timed) {
+					// 10 per second
+					Main_Data::game_variables->Set(_keyinput.time_variable,
+							(_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps());
+					Game_Map::SetNeedRefreshForVarChange(_keyinput.time_variable);
+				}
+				_keyinput.wait = false;
 			}
-			_keyinput.wait = false;
 		}
 
 		auto* frame = GetFramePtr();
@@ -514,7 +515,7 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 			break;
 		}
 
-		if (Game_Map::GetNeedRefresh()) {
+		if (!Player::IsPatchManiac() && Game_Map::GetNeedRefresh()) {
 			Game_Map::Refresh();
 		}
 
@@ -527,21 +528,12 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 
 		// Pop any completed stack frames
 		if (frame->current_command >= (int)frame->commands.size()) {
-			if (!OnFinishStackFrame()) {
+			const bool more = OnFinishStackFrame();
+			maniac_dispatch = ManiacDispatch::Return;
+			if (more || Player::IsPatchManiac()) ++loop_count;
+			if (!more) {
 				break;
 			}
-			continue;
-		}
-
-		// The 250921 dispatcher handles these standalone records by fetching
-		// the next command inside the same dispatch call. They have no payload
-		// effect and must not consume an outer interpreter command slot.
-		const auto opcode = frame->commands[frame->current_command].code;
-		if (Player::IsPatchManiac()
-			&& (opcode == static_cast<int32_t>(lcf::rpg::EventCommand::Code::END)
-				|| opcode == 40 || opcode == 12110 || opcode == 3024 || opcode == 3035)) {
-			++frame->current_command;
-			--loop_count;
 			continue;
 		}
 
@@ -550,11 +542,25 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 
 		const int index_before_exec = frame->current_command;
 		if (!ExecuteCommand()) {
+			maniac_dispatch = ManiacDispatch::Return;
+			break;
+		}
+		if (Player::IsPatchManiac() && _async_op.GetType() == AsyncOp::eYieldRepeat) {
+			// Resource acquisition suspends the current native dispatch;
+			// it has not returned and consumed its budget yet.
+			maniac_dispatch = ManiacDispatch::Continue;
+		}
+
+		if (maniac_dispatch != ManiacDispatch::Continue
+			&& Game_Battle::IsBattleRunning() && Player::IsRPG2k3() && Game_Battle::CheckWin()) {
+			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
+			if (Player::IsPatchManiac() && maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
 			break;
 		}
 
-		if (Game_Battle::IsBattleRunning() && Player::IsRPG2k3() && Game_Battle::CheckWin()) {
-			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
+		if (maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
+		if (maniac_dispatch == ManiacDispatch::Finish) {
+			maniac_dispatch = ManiacDispatch::Return;
 			break;
 		}
 
@@ -572,16 +578,21 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		if (index_before_exec == frame->current_command) {
 			frame->current_command++;
 		}
-	} // for
+	}
+
+	if (_async_op.GetType() == AsyncOp::eYieldRepeat) {
+		// Also rewind when a yielding command reaches the configured limit.
+		// YieldRepeat commands must not change the command cursor themselves.
+		if (auto* frame = GetFramePtr()) --frame->current_command;
+	}
 
 	if (loop_count > loop_limit - 1) {
 		auto* frame = GetFramePtr();
 		int event_id = frame ? frame->event_id : 0;
-		// Executed Events Count exceeded (10000)
 		Output::Debug("Event {} exceeded execution limit", event_id);
 	}
 
-	if (Game_Map::GetNeedRefresh()) {
+	if (!Player::IsPatchManiac() && Game_Map::GetNeedRefresh()) {
 		Game_Map::Refresh();
 	}
 }
@@ -703,6 +714,49 @@ void Game_Interpreter::SkipToNextConditional(std::initializer_list<Cmd> codes, i
 bool Game_Interpreter::ExecuteCommand() {
 	auto& frame = GetFrame();
 	const auto& com = frame.commands[frame.current_command];
+	return DispatchCommand(com);
+}
+
+bool Game_Interpreter::DispatchCommand(lcf::rpg::EventCommand const& com) {
+	maniac_dispatch = ManiacDispatch::Return;
+	if (Player::IsPatchManiac()) {
+		if (com.code == 0) {
+			// Native END returns once after popping a called frame or
+			// resetting/finishing the base frame (045660:1804-1819).
+			maniac_dispatch = OnFinishStackFrame() ? ManiacDispatch::Return : ManiacDispatch::Finish;
+			return true;
+		}
+		switch (com.code) {
+			case 10: case 40: case 3024: case 3035: case 12110:
+			case 20110: case 20141: case 20713: case 20722: case 20732:
+			case 22011: case 22410: case 23311:
+				maniac_dispatch = ManiacDispatch::Continue;
+				return true;
+		}
+		if (Player::IsManiacPf()) {
+			// The shared native mode tails fetch the next command before
+			// returning to the budget loop. 3019 redispatches through here
+			// so the generated command supplies its own return behaviour.
+			switch (com.code) {
+				case 3001: case 3005: case 3006: case 3007: case 3008:
+				case 3013: case 3016: case 3017: case 3018:
+				case 3020: case 3021: case 3022:
+				case 10120: case 10130: case 10210: case 10220:
+				case 10670: case 10680:
+				case 10820: case 10860: case 10870: case 10910: case 10920:
+				case 11110: case 11130:
+				case 11510: case 11520: case 11530: case 11540: case 11550:
+				case 11710: case 12010: case 12120: case 12220:
+				case 12410: case 22010:
+					maniac_dispatch = ManiacDispatch::Continue;
+					break;
+			}
+		}
+		// These native reserved/marker routes have no payload, but return.
+		if (com.code == 3022 || com.code == 3023 || com.code == 3027 || com.code == 3034) {
+			return true;
+		}
+	}
 	return ExecuteCommand(com);
 }
 
@@ -955,6 +1009,7 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::EasyRpg_DestroyMapEvent:
 			return CmdSetup<&Game_Interpreter::CommandEasyRpgDestroyMapEvent, 2>(com);
 		default:
+			if (Player::IsPatchManiac()) maniac_dispatch = ManiacDispatch::Continue;
 			return true;
 	}
 }
@@ -1257,7 +1312,7 @@ bool Game_Interpreter::CommandControlSwitches(lcf::rpg::EventCommand const& com)
 			else if (operation == 1) Main_Data::game_switches->SetRange(static_cast<int>(low), static_cast<int>(high), false);
 			else Main_Data::game_switches->FlipRange(static_cast<int>(low), static_cast<int>(high));
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 		return true;
 	}
 	{
@@ -1638,7 +1693,7 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 			}
 			destination = static_cast<int32_t>(std::clamp(result, min_value, max_value));
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 		return true;
 	}
 
@@ -1940,6 +1995,7 @@ bool Game_Interpreter::CommandTimerOperation(lcf::rpg::EventCommand const& com) 
 	default:
 		return false;
 	}
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
 	return true;
 }
 
@@ -1989,7 +2045,8 @@ bool Game_Interpreter::CommandChangeItems(lcf::rpg::EventCommand const& com) { /
 			value
 		);
 	}
-	Game_Map::SetNeedRefresh(true);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+	else Game_Map::SetNeedRefresh(true);
 	// Continue
 	return true;
 }
@@ -2021,7 +2078,8 @@ bool Game_Interpreter::CommandChangePartyMember(lcf::rpg::EventCommand const& co
 	}
 
 	CheckGameOver();
-	Game_Map::SetNeedRefresh(true);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+	else Game_Map::SetNeedRefresh(true);
 
 	// Continue
 	return true;
@@ -2575,9 +2633,7 @@ bool Game_Interpreter::CommandEndEventProcessing(lcf::rpg::EventCommand const& c
 			// Native return delivery refreshes map pages before callee cleanup.
 			// Unknown receiver kinds still take this branch.
 			if (frame->easyrpg_maniac_return_address > 0 || _state.stack.size() >= 2) {
-				// The native refresh guard is not the battle-interpreter mode: fixed
-				// mode-2 captures still refresh before cleanup and both input polls.
-				Game_Map::Refresh();
+				Game_Map::RefreshAfterManiacChange();
 			}
 		}
 	}
@@ -3983,6 +4039,7 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 	int key = _keyinput.CheckInput();
 	Main_Data::game_variables->Set(_keyinput.variable, key);
 	Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -4512,7 +4569,7 @@ bool Game_Interpreter::CommandManiacLoop(lcf::rpg::EventCommand const& com, bool
 			*Main_Data::game_variables->GetManiacWritable(destination) = value;
 			if (pair) *Main_Data::game_variables->GetManiacWritable(destination + 1) = current;
 		}
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 	};
 	const auto advance = [&](int change) {
 		current = static_cast<int32_t>(static_cast<uint32_t>(current) + static_cast<uint32_t>(change));
@@ -4839,7 +4896,7 @@ bool Game_Interpreter::CommandManiacSelfvar(lcf::rpg::EventCommand const& com) t
 	// The native dispatcher refreshes map pages after every 3036 helper path,
 	// including unknown operations and branches that did not write a value.
 	auto refresh_guard = lcf::makeScopeGuard([]() {
-		if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+		Game_Map::RefreshAfterManiacChange();
 	});
 	const auto param = [&](size_t index) -> int32_t {
 		return index < com.parameters.size() ? com.parameters[index] : 0;
@@ -5963,6 +6020,9 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 	if (!Player::IsPatchManiac()) {
 		return true;
 	}
+	auto refresh_guard = lcf::makeScopeGuard([]() {
+		Game_Map::RefreshAfterManiacChange();
+	});
 
 	const int mode = static_cast<uint32_t>(com.parameters[0]) & 15;
 	const int save_number = mode == 0 ? com.parameters[1] : mode == 1
@@ -6088,14 +6148,14 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		// The original still writes result 0 after skipping the save.
 		if (out_var > 0) {
 			Main_Data::game_variables->Set(out_var, 0);
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		} else if (out_var < 0 && ApplyManiacSaveResult(
 			AsyncOp::MakeSave(slot, out_var,
 				frame ? frame->easyrpg_self_scope : 0,
 				frame ? frame->easyrpg_self_map_id : 0,
 				frame ? frame->easyrpg_self_event_id : 0),
 			false, Main_Data::game_maniac_self_variables.get())) {
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
 	}
@@ -6112,10 +6172,10 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		const bool success = Scene_Save::Save(FileFinder::Save(), slot);
 		if (out_var > 0) {
 			Main_Data::game_variables->Set(out_var, success ? 1 : 0);
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		} else if (ApplyManiacSaveResult(operation, success,
 			Main_Data::game_maniac_self_variables.get())) {
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		}
 		return true;
 	}
@@ -6210,7 +6270,7 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 	write_number(com.parameters[0], mouse_pos.x);
 	write_number(com.parameters[1], mouse_pos.y);
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -6657,7 +6717,7 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	write_number(parameter(6), width);
 	write_number(parameter(7), height);
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -6843,7 +6903,7 @@ bool Game_Interpreter::CommandManiacControlVarArray(lcf::rpg::EventCommand const
 			std::memmove(a, b, static_cast<size_t>(count) * sizeof(int32_t));
 			break;
 	}
-	if (!Game_Battle::IsBattleRunning()) Game_Map::Refresh();
+	Game_Map::RefreshAfterManiacChange();
 	return true;
 }
 
@@ -6876,7 +6936,7 @@ bool Game_Interpreter::CommandManiacKeyInputProcEx(lcf::rpg::EventCommand const&
 		Output::Warning("Maniac KeyInputProcEx: Joypad not supported");
 	}
 
-	Game_Map::SetNeedRefresh(true);
+	Game_Map::RefreshAfterManiacChange();
 
 	return true;
 }
@@ -8581,7 +8641,7 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 
 	// Native redispatches the generated command in this interpreter invocation.
 	// A busy command returns false against the original 3019 cursor and is regenerated on retry.
-	const bool result = ExecuteCommand(cmd);
+	const bool result = DispatchCommand(cmd);
 	ManiacPatch::SetGeneratedCommonNameCache(cmd.easyrpg_maniac_common_name_cache);
 	return result;
 }

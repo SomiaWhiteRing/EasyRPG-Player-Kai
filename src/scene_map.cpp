@@ -145,6 +145,9 @@ void Scene_Map::Continue(SceneType prev_scene) {
 
 	if (prev_scene == Scene::Battle) {
 		Game_Map::OnContinueFromBattle();
+	} else if (Player::IsPatchManiac() && Game_Map::GetNeedRefresh()) {
+		// Keep EasyRPG's scene commits independent of the event mode tails.
+		Game_Map::Refresh();
 	}
 
 	// Player cast Escape / Teleport from menu
@@ -456,10 +459,10 @@ void Scene_Map::OnAsyncSuspend(F&& f, AsyncOp aop, bool is_preupdate) {
 		bool success = Scene_Save::Save(savefs, aop.GetSaveSlot());
 		if (aop.GetSaveResultVar() > 0) {
 			Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		} else if (ApplyManiacSaveResult(aop, success,
 			Main_Data::game_maniac_self_variables.get())) {
-			Game_Map::SetNeedRefresh(true);
+			Game_Map::RefreshAfterManiacChange();
 		}
 	}
 

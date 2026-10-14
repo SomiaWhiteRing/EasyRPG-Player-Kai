@@ -127,7 +127,6 @@ public:
 	bool IsWaitingForWaitCommand() const;
 
 protected:
-	static constexpr int loop_limit = 10000;
 	static constexpr int call_stack_limit = 1000;
 	static constexpr int subcommand_sentinel = 255;
 	static void NormalizeSerializedManiacText(std::vector<lcf::rpg::EventCommand>& commands);
@@ -140,7 +139,12 @@ protected:
 	bool main_flag;
 	bool maniac_message_hook = false;
 
+	enum class ManiacDispatch { Return, Continue, Finish };
+	ManiacDispatch maniac_dispatch = ManiacDispatch::Return;
+	bool DispatchCommand(lcf::rpg::EventCommand const& com);
+
 	int loop_count = 0;
+	int loop_limit = 10000;
 
 	/**
 	 * Gets strings for choice selection.

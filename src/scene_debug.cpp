@@ -1010,7 +1010,8 @@ void Scene_Debug::DoSwitch() {
 	const auto sw_id = GetFrame().value;
 	if (Main_Data::game_switches->IsValid(sw_id)) {
 		Main_Data::game_switches->Flip(sw_id);
-		Game_Map::SetNeedRefresh(true);
+		if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+		else Game_Map::SetNeedRefresh(true);
 
 		RefreshDetailWindow();
 	}
@@ -1020,7 +1021,8 @@ void Scene_Debug::DoVariable() {
 	const auto var_id = GetFrame(1).value;
 	const auto value = GetFrame(0).value;
 	Main_Data::game_variables->Set(var_id, value);
-	Game_Map::SetNeedRefresh(true);
+	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
+	else Game_Map::SetNeedRefresh(true);
 
 	Pop();
 }

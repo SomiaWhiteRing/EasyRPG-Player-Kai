@@ -583,6 +583,9 @@ void Game_Party::UpdateTimers() {
 		const int seconds = data.timer1_frames / DEFAULT_FPS;
 		const int mod_frames = data.timer1_frames % DEFAULT_FPS;
 		seconds_changed |= (mod_frames == (DEFAULT_FPS - 1));
+		if (Player::IsPatchManiac() && mod_frames == DEFAULT_FPS - 1) {
+			Game_Map::RefreshAfterManiacChange();
+		}
 
 		if (seconds == 0) {
 			StopTimer(Timer1);
@@ -595,13 +598,16 @@ void Game_Party::UpdateTimers() {
 		const int seconds = data.timer2_frames / DEFAULT_FPS;
 		const int mod_frames = data.timer2_frames % DEFAULT_FPS;
 		seconds_changed |= (mod_frames == (DEFAULT_FPS - 1));
+		if (Player::IsPatchManiac() && mod_frames == DEFAULT_FPS - 1) {
+			Game_Map::RefreshAfterManiacChange();
+		}
 
 		if (seconds == 0) {
 			StopTimer(Timer2);
 		}
 	}
 
-	if (seconds_changed) {
+	if (seconds_changed && !Player::IsPatchManiac()) {
 		Game_Map::SetNeedRefresh(true);
 	}
 }

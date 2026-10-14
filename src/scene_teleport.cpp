@@ -17,6 +17,7 @@
 
 // Headers
 #include "scene_teleport.h"
+#include "game_map.h"
 #include "game_party.h"
 #include "game_player.h"
 #include "game_system.h"
@@ -57,6 +58,7 @@ void Scene_Teleport::vUpdate() {
 
 		Main_Data::game_player->ForceGetOffVehicle();
 		Main_Data::game_player->ReserveTeleport(target);
+		if (Player::IsPatchManiac()) Game_Map::Refresh();
 
 		Scene::PopUntil(Scene::Map);
 	} else if (Input::IsTriggered(Input::CANCEL)) {

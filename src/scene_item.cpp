@@ -70,7 +70,8 @@ void Scene_Item::vUpdate() {
 				Main_Data::game_party->ConsumeItemUse(item_id);
 				Main_Data::game_switches->Set(item.switch_id, true);
 				Scene::PopUntil(Scene::Map);
-				Game_Map::SetNeedRefresh(true);
+				if (Player::IsPatchManiac()) Game_Map::Refresh();
+				else Game_Map::SetNeedRefresh(true);
 			} else if (item.type == lcf::rpg::Item::Type_special && item.skill_id > 0) {
 				const lcf::rpg::Skill* skill = lcf::ReaderUtil::GetElement(lcf::Data::skills, item.skill_id);
 				if (!skill) {
@@ -87,6 +88,7 @@ void Scene_Item::vUpdate() {
 
 					Main_Data::game_player->ForceGetOffVehicle();
 					Main_Data::game_player->ReserveTeleport(Main_Data::game_targets->GetEscapeTarget());
+					if (Player::IsPatchManiac()) Game_Map::Refresh();
 
 					Scene::PopUntil(Scene::Map);
 				} else if (skill->type == lcf::rpg::Skill::Type_switch) {
@@ -94,7 +96,8 @@ void Scene_Item::vUpdate() {
 					Main_Data::game_system->SePlay(skill->sound_effect);
 					Main_Data::game_switches->Set(skill->switch_id, true);
 					Scene::PopUntil(Scene::Map);
-					Game_Map::SetNeedRefresh(true);
+					if (Player::IsPatchManiac()) Game_Map::Refresh();
+					else Game_Map::SetNeedRefresh(true);
 				} else {
 					Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 					Scene::Push(std::make_shared<Scene_ActorTarget>(item_id));

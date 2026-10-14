@@ -346,10 +346,10 @@ bool Scene_Battle::UpdateEvents() {
 			const bool success = Scene_Save::Save(FileFinder::Save(), aop.GetSaveSlot());
 			if (aop.GetSaveResultVar() > 0) {
 				Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
-				Game_Map::SetNeedRefresh(true);
+				Game_Map::RefreshAfterManiacChange();
 			} else if (ApplyManiacSaveResult(aop, success,
 				Main_Data::game_maniac_self_variables.get())) {
-				Game_Map::SetNeedRefresh(true);
+				Game_Map::RefreshAfterManiacChange();
 			}
 		}
 

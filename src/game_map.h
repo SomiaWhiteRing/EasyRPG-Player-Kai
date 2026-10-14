@@ -546,6 +546,9 @@ namespace Game_Map {
 	 */
 	void SetNeedRefresh(bool refresh);
 
+	/** Refresh map pages at a Maniac command's commit point in im mode. */
+	void RefreshAfterManiacChange();
+
 	/**
 	 * Gets lower passages list.
 	 *
