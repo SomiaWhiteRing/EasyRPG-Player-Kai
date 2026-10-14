@@ -1,0 +1,42 @@
+{
+  "target_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "native_records": [
+    {
+      "address": "0x14003c6f0",
+      "facet": "pseudocode",
+      "evidence_id": "ev_15d6876d264420156f75fae85ec1223c279d7f2aff3f8515e7a0cd394f7ec3b3",
+      "canonical_record": "C:\\Users\\旻\\Documents\\GitHub\\Player\\build\\rea-bottom-up-20261012\\baseline\\runtime\\functions\\0x14003c6f0\\procedure_pseudo_code.evidence.json",
+      "canonical_record_sha256": "4d1b51598fa9fafd68f1d360e16a219a166a62470613974bb2fde551bbb04ec9",
+      "text": "0x14003c6f0-pseudocode.txt",
+      "text_sha256": "c91fcc791defb2734b87c7b25ccfda757cf53e0842856d255e3890ed890c8345",
+      "review_scope": "duration normalization, RGB gate, relative scale/opacity branches, position base and adjacent control flow; not a full-handler acceptance claim",
+      "text_normalization": "LF line endings; trailing whitespace and final empty lines removed; canonical record remains unchanged."
+    },
+    {
+      "address": "0x14003c6f0",
+      "facet": "assembly",
+      "evidence_id": "ev_50c38e23d55440cda1720b37a54aa18a6e6b5e8075311b3a3aa4ec73770e7351",
+      "canonical_record": "C:\\Users\\旻\\Documents\\GitHub\\Player\\build\\rea-bottom-up-20261012\\baseline\\runtime\\functions\\0x14003c6f0\\procedure_assembly.evidence.json",
+      "canonical_record_sha256": "976d28a9994c7b5ada3b9a730555f1cf4a9c4c5fd05fd510ff2cf4ec5fb973e9",
+      "text": "0x14003c6f0-assembly.txt",
+      "text_sha256": "67819b65c519f8f81b4e8edb62b0999ae0de98bbd0d63406a2fb786a788ad2c3",
+      "review_scope": "duration normalization, RGB gate, relative scale/opacity branches, position base and adjacent control flow; not a full-handler acceptance claim",
+      "text_normalization": "LF line endings; trailing whitespace and final empty lines removed; canonical record remains unchanged."
+    }
+  ],
+  "runtime_acceptance": "Original-program and game UI acceptance not performed; limited Player consumer checks are recorded in repair-validation.json.",
+  "artifacts": [
+    {
+      "file": "game-command-excerpts.json",
+      "sha256": "a0d144d52dbf70eea0de641794f122cfdb682587101039819ad805d27ab8b4bd"
+    },
+    {
+      "file": "scope-census.json",
+      "sha256": "294eeea5d9d20b6c9700d3d5dd69b6790801825f4e36766861e4a5b60d8b17b0"
+    },
+    {
+      "file": "repair-validation.json",
+      "sha256": "a67566b8993fe52b9cf672c6c18713951d7af198cabf031efdad64b38048eaf8"
+    }
+  ]
+}
