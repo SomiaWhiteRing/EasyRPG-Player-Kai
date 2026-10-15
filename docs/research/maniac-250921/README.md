@@ -15,3 +15,5 @@
 证据目录保存53份规范facet的文本摘出，另附读取范围、168条路由导航、绘制分支汇编及摘要。未收录原版二进制、17MB规范记录封装、本地绝对路径和机器构建产物。source-integrity.json描述的是审计期间的历史只读检查。
 
 [im/pf 运行模式补充报告](runtime-modes/REPORT.md)沿用上述原版，分析配置、版本查询标志、地图事件页刷新、指令分派及执行预算，并列出 Player 的接入范围。报告保留分析时的源码状态；后续接入及实际完成的检查见[运行模式实现记录](runtime-modes/IMPLEMENTATION.md)，不代表原版对照或平台/UI验收已完成。
+
+[显示设置的宿主回退](host-display-defaults-20261015.md)记录Web嵌入布局及Windows/Android无显式VideoSettings时保留EasyRPG配置的修正，以及显式显示指令的适配和检查边界。

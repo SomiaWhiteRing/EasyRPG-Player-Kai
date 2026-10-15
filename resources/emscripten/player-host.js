@@ -26,17 +26,20 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   let windowInterpolation = false;
   let windowFit = true, windowZoom = 0, windowFitRequested = false;
   let screenMode, screenModeButton, screenModeRoot;
+  const embeddedCanvasStyle = Object.fromEntries(['width', 'height', 'position', 'left', 'top']
+    .map(property => [property, canvas.style[property]]));
   const applyWindowZoom = () => {
+    Object.assign(canvas.style, embeddedCanvasStyle);
     if (!windowZoom) return;
     const factor = windowFit ? 1 : 1.5;
     const zoom = Math.max(1, Math.min(windowZoom,
-      Math.floor(page.innerWidth * factor / width), Math.floor(page.innerHeight * factor / height)));
+      Math.floor(window.innerWidth * factor / width), Math.floor(window.innerHeight * factor / height)));
     canvas.style.width = `${width * zoom}px`;
     canvas.style.height = `${height * zoom}px`;
     if (windowFitRequested) {
       canvas.style.position = 'fixed';
-      canvas.style.left = `${Math.trunc((page.innerWidth - width * zoom) / 2)}px`;
-      canvas.style.top = `${Math.trunc((page.innerHeight - height * zoom) / 2)}px`;
+      canvas.style.left = `${Math.trunc((window.innerWidth - width * zoom) / 2)}px`;
+      canvas.style.top = `${Math.trunc((window.innerHeight - height * zoom) / 2)}px`;
     }
   };
   const applyWindowInterpolation = () => {
@@ -44,7 +47,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   const applyScreenMode = () => {
     if (!screenMode || !page.document.fullscreenElement) return;
-    let w = page.innerWidth, h = page.innerHeight;
+    let w = window.innerWidth, h = window.innerHeight;
     if (!screenMode.layout) {
       const zoom = Math.max(1, Math.min(Math.floor(w / width), Math.floor(h / height)));
       w = width * zoom; h = height * zoom;
@@ -54,9 +57,16 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     }
     canvas.style.position = 'fixed';
     canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
-    canvas.style.left = `${Math.trunc((page.innerWidth - w) / 2)}px`;
-    canvas.style.top = `${Math.trunc((page.innerHeight - h) / 2)}px`;
+    canvas.style.left = `${Math.trunc((window.innerWidth - w) / 2)}px`;
+    canvas.style.top = `${Math.trunc((window.innerHeight - h) / 2)}px`;
     applyWindowInterpolation();
+  };
+  const applyVideoLayout = () => {
+    if (screenMode && page.document.fullscreenElement) applyScreenMode();
+    else {
+      if (screenModeRoot) screenModeRoot.style.display = 'contents';
+      applyWindowZoom();
+    }
   };
   const requestScreenMode = async data => {
     if (closed || stopping) return;
@@ -429,7 +439,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       started = true;
       node.port.postMessage({type: 'start'});
       readyResolve();
-    } else if (data.type === 'size') { width = data.width; height = data.height; }
+    } else if (data.type === 'size') {
+      width = data.width; height = data.height;
+      applyVideoLayout();
+    }
     else if (data.type === 'window-zoom') {
       width = data.width; height = data.height; windowZoom = data.zoom;
       applyWindowZoom();
@@ -541,8 +554,9 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   listen(page.document, 'visibilitychange', focus);
   listen(page.document, 'fullscreenchange', focus);
   listen(page.document, 'fullscreenchange', applyWindowInterpolation);
-  listen(page.document, 'fullscreenchange', applyScreenMode);
-  listen(page, 'resize', applyScreenMode);
+  listen(page.document, 'fullscreenchange', applyVideoLayout);
+  listen(document, 'fullscreenchange', applyVideoLayout);
+  for (const target of new Set([page, window])) listen(target, 'resize', applyVideoLayout);
   listen(document, 'focusin', focus);
   listen(canvas, 'pointerleave', () => send({type: 'mouse', x: -1, y: -1, focus: false}));
   listen(canvas, 'wheel', event => {

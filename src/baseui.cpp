@@ -132,28 +132,33 @@ BaseUi::BaseUi(const Game_Config& cfg)
 
 void BaseUi::LoadManiacVideoDefaults(int fullscreen_override) {
 	if (maniac_video_defaults_loaded) return;
-	maniac_video_defaults_loaded = true;
-	maniac_video_defaults[4] = 2;
+#if defined(PLAYER_WEB)
+	// The embedding page owns its layout and startup video preferences.
+	(void)fullscreen_override;
+	return;
+#else
+	std::array<uint8_t, 16> saved{};
+	bool has_settings = false;
 #ifdef _WIN32
 	HKEY key;
 	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\KADOKAWA\\rpg2003", 0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
-		std::array<uint8_t, 16> saved{};
 		DWORD size = saved.size(), type = 0;
-		if (RegQueryValueExW(key, L"VideoSettings", nullptr, &type, saved.data(), &size) == ERROR_SUCCESS
-			&& type == REG_BINARY && size == saved.size())
-			maniac_video_defaults = saved;
+		has_settings = RegQueryValueExW(key, L"VideoSettings", nullptr, &type, saved.data(), &size) == ERROR_SUCCESS
+			&& type == REG_BINARY && size == saved.size();
 		RegCloseKey(key);
 	}
 #else
 	const auto fs = Game_Config::GetGlobalConfigFilesystem();
 	if (fs) {
 		auto input = fs.OpenInputStream("ManiacVideoSettings.bin", std::ios_base::in | std::ios_base::binary);
-		std::array<uint8_t, 16> saved{};
-		if (input && input.read(reinterpret_cast<char*>(saved.data()), saved.size()))
-			maniac_video_defaults = saved;
+		has_settings = input && input.read(reinterpret_cast<char*>(saved.data()), saved.size());
 	}
 #endif
-	const auto& saved = maniac_video_defaults;
+	// Absent or invalid native settings must not replace EasyRPG preferences,
+	// nor enable writing a synthetic profile when the game exits.
+	if (!has_settings) return;
+	maniac_video_defaults = saved;
+	maniac_video_defaults_loaded = true;
 	const uint32_t zoom = uint32_t(saved[4]) | (uint32_t(saved[5]) << 8)
 		| (uint32_t(saved[6]) << 16) | (uint32_t(saved[7]) << 24);
 	SetManiacWindowZoom(std::clamp(static_cast<int32_t>(zoom), 1, 4));
@@ -173,6 +178,7 @@ void BaseUi::LoadManiacVideoDefaults(int fullscreen_override) {
 	const auto shown = ConfigEnum::ShowFps::Overlay;
 #endif
 	SetShowFps(saved[13] != 0 ? shown : ConfigEnum::ShowFps::OFF);
+#endif
 }
 
 void BaseUi::SaveManiacVideoDefaults() {
