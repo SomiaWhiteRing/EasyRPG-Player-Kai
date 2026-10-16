@@ -47,7 +47,7 @@ namespace Version {
  * Version written to the easyrpg_data.version field in savegames.
  * Increment the last digit (0) only when having a good reason.
  */
-// Revision 1 separates the Maniac feature mask (0x87) from Player's FPS field.
-#define PLAYER_SAVEGAME_VERSION (Version::MAJOR * 1000 + Version::MINOR * 100 + Version::PATCH * 10 + 1)
+// Revision 2 preserves Maniac key-input variable IDs using their native BER format.
+#define PLAYER_SAVEGAME_VERSION (Version::MAJOR * 1000 + Version::MINOR * 100 + Version::PATCH * 10 + 2)
 
 #endif

@@ -1,0 +1,152 @@
+{
+  "date": "2026-10-17",
+  "baseline_commit": "0382d28fc2fa4acbd60ac0c8c8ee8ab02b286acf",
+  "save_version": 812,
+  "encoding_difference_fields_fixed": 10,
+  "consumer_check": {
+    "cases": 1,
+    "assertions": 211,
+    "failed": 0,
+    "temporary_source_sha256": "71133d2083774e2deb4fabad6bfb5b43d39b4d615837e6ef0db5e5a14c17a456",
+    "temporary_source_removed_before_commit": true
+  },
+  "existing_checks": {
+    "total": 504,
+    "passed": 504,
+    "assertions": 3677971
+  },
+  "existing_check_method": "Run cases separately to avoid cumulative file-output rate guard; MoveRoute group retains its existing MockGame prerequisite.",
+  "player_runtime": {
+    "exe_sha256": "73dd9e9410a261df71e744c44bbac92c5e84fa49accce701f339a91fdcf3a101",
+    "source_save03_sha256": "c16f772ec66112e1853a73d07448668cde1b1ed57e45998385ec297b0cb5f6d7",
+    "original_save03_unchanged": true,
+    "seconds": 5.344,
+    "exit_code": 0,
+    "save06_exists": true,
+    "mode": "SDL dummy/no audio/no input; temporary foreground loads original state then saves through command3002"
+  },
+  "new_save06": {
+    "sha256": "d2addd70f2922df43884fc6032cf550b982f5c4671fd6755b3007131f3fcb622",
+    "version": 812,
+    "common596_keyinput_payload": "9119"
+  },
+  "native_reader": {
+    "binary_sha256": "fff214a52aeb250e9dc0ff5f031d3c616320c0ed4b86106b32dba50a4b816816",
+    "method": "Fresh owned process, run actual native CommonEvent reader 0x5ad20 and ID checks before WinMain; synthetic database supplies 1000 valid ID slots and non-parallel trigger type; no game UI or input.",
+    "accepted_cases": [
+      {
+        "file": "Save03.lsd",
+        "input_sha256": "c16f772ec66112e1853a73d07448668cde1b1ed57e45998385ec297b0cb5f6d7",
+        "result": {
+          "stage": "native-reader-return",
+          "count": 1000,
+          "wrong_count": 0,
+          "wrong_first": [],
+          "key596": 2201
+        }
+      },
+      {
+        "file": "native-high-flags-reference.lsd",
+        "input_sha256": "28ba8b105c589731585fbdc3fb9e8674b07886b467bdce7b0a2add6e7ecf0e1b",
+        "result": {
+          "stage": "native-reader-return",
+          "count": 1000,
+          "wrong_count": 0,
+          "wrong_first": [],
+          "key596": 2201,
+          "flags596": [
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153
+          ]
+        }
+      },
+      {
+        "file": "native-roundtrip.lsd",
+        "input_sha256": "77515c77d3857096a009531a5da9617e8a291c324e81d1cba92dbf7448db0799",
+        "result": {
+          "stage": "native-reader-return",
+          "count": 1000,
+          "wrong_count": 0,
+          "wrong_first": [],
+          "key596": 2201,
+          "flags596": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "file": "native-high-flags.lsd",
+        "input_sha256": "10e53d18ab8e773cd29c02034cff3c9ccb28a7b198e12f493733977a7140ade3",
+        "result": {
+          "stage": "native-reader-return",
+          "count": 1000,
+          "wrong_count": 0,
+          "wrong_first": [],
+          "key596": 2201,
+          "flags596": [
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153,
+            153
+          ]
+        }
+      },
+      {
+        "file": "Save06.lsd",
+        "input_sha256": "d2addd70f2922df43884fc6032cf550b982f5c4671fd6755b3007131f3fcb622",
+        "result": {
+          "stage": "native-reader-return",
+          "count": 1000,
+          "wrong_count": 0,
+          "wrong_first": [],
+          "key596": 2201,
+          "flags596": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    ],
+    "limitations": [
+      "This is native reader consumption, not full gameplay/UI acceptance.",
+      "Old malformed Save05 did not return in the memory-stream microprobe; the prior file-backed actual error capture remains the negative evidence."
+    ]
+  },
+  "patch_reconstruction": {
+    "files": 43,
+    "byte_identical_except_text_line_endings": true
+  },
+  "other_platforms": "Android and Web builds/runtime not run",
+  "original_saves_unchanged": {
+    "Save03.lsd": "c16f772ec66112e1853a73d07448668cde1b1ed57e45998385ec297b0cb5f6d7",
+    "Save04.lsd": "c309a6e46114f77fd8fb35ceadfa388df790e92fcf3ae0e801d6c503cf5b6f51",
+    "Save05.lsd": "18d46381ee982cc1395d858c7d493f1e5d7e26f53c0729bc27e593cdbd528b49"
+  }
+}

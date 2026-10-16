@@ -55,7 +55,7 @@ index c3f269f..a7382a5 100644
  EventPage,ManiacEventInfo,touched,1
  EventPage,ManiacEventInfo,collision,2
 diff --git a/generator/csv/fields.csv b/generator/csv/fields.csv
-index 2e82eaf..de0d27d 100644
+index 2e82eaf..0e1388b 100644
 --- a/generator/csv/fields.csv
 +++ b/generator/csv/fields.csv
 @@ -725,7 +725,16 @@ SaveSystem,face_id,f,Int32,0x34,0,0,0,
@@ -98,6 +98,15 @@ index 2e82eaf..de0d27d 100644
  SavePicture,name,f,String,0x01,,0,0,string
  SavePicture,start_x,f,Double,0x02,0.0,0,0,X position where picture was originally shown
  SavePicture,start_y,f,Double,0x03,0.0,0,0,Y position where picture was originally shown
+@@ -922,7 +940,7 @@ SaveEventExecState,show_message,f,Boolean,0x04,False,0,0,Show Message command ha
+ SaveEventExecState,abort_on_escape,f,Boolean,0x0B,False,0,0,Flag which is set before a fight if the EnemyEncounter event command had battle_escape_mode set to 1 (abort event on escape). After the fight; the interpreter checks if the battle result was an escape and this flag was set and abort the event in that case.
+ SaveEventExecState,wait_movement,f,Boolean,0x0D,False,0,0,Whether Wait for all movement is in effect
+ SaveEventExecState,keyinput_wait,f,Boolean,0x15,False,0,0,
+-SaveEventExecState,keyinput_variable,f,UInt8,0x16,0,0,0,
++SaveEventExecState,keyinput_variable,f,Int32,0x16,0,0,0,Legacy byte or Maniac BER variable ID selected by the field adapter
+ SaveEventExecState,keyinput_all_directions,f,Boolean,0x17,False,0,0,
+ SaveEventExecState,keyinput_decision,f,Int32,0x18,0,0,0,Maniac: Mouse Left (Bit 1)
+ SaveEventExecState,keyinput_cancel,f,Int32,0x19,0,0,0,Maniac: Mouse Right (Bit 1)
 diff --git a/generator/csv/fields_easyrpg.csv b/generator/csv/fields_easyrpg.csv
 index e59140f..633b574 100644
 --- a/generator/csv/fields_easyrpg.csv
@@ -209,15 +218,19 @@ index 4afad37..0f7d4b0 100755
              with openToRender(filepath) as f:
                  f.write(rpg_header_tmpl.render(
 diff --git a/generator/templates/reader.tmpl b/generator/templates/reader.tmpl
-index af590de..1066eaa 100644
+index af590de..e9e3fa3 100644
 --- a/generator/templates/reader.tmpl
 +++ b/generator/templates/reader.tmpl
-@@ -19,7 +19,23 @@ char const* const Struct<rpg::{{ LCF_CURRENT_STRUCT }}>::name = "{{ LCF_CURRENT_
+@@ -19,7 +19,27 @@ char const* const Struct<rpg::{{ LCF_CURRENT_STRUCT }}>::name = "{{ LCF_CURRENT_
  
  {%- for field in fields[struct_base]|field_is_written|list + fields[struct_name]|field_is_written|list %}
  {%- if field|lcf_type in ["Typed", "DatabaseVersion"] %}
 -{%- if field.type.endswith("_Flags") %}
-+{%- if struct_name == "SaveSystem" and field.name == "maniac_strings" %}
++{%- if struct_name == "SaveEventExecState" and field.name == "keyinput_variable" %}
++static ManiacKeyInputVariableField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
++{%- elif struct_name == "SaveEventExecState" and field.name in ['keyinput_decision', 'keyinput_cancel', 'keyinput_2kshift_2k3numbers', 'keyinput_2kdown_2k3operators', 'keyinput_2kleft_2k3shift', 'keyinput_2k3down', 'keyinput_2k3left', 'keyinput_2k3right', 'keyinput_2k3up'] %}
++static ManiacKeyInputFlagField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
++{%- elif struct_name == "SaveSystem" and field.name == "maniac_strings" %}
 +static ManiacGlobalStringsField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
 +{%- elif struct_name == "SaveSystem" and field.name == "switches" %}
 +static ManiacGlobalSwitchesField<rpg::{{ LCF_CURRENT_STRUCT }}> static_{{ field.name }}(
@@ -237,7 +250,7 @@ index af590de..1066eaa 100644
  static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, rpg::{{ LCF_CURRENT_STRUCT }}::{{ field|flag_type(struct_name) }}> static_{{ field.name }}(
  {%- else %}
  static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cpp_type }}> static_{{ field.name }}(
-@@ -27,7 +43,7 @@ static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cp
+@@ -27,7 +47,7 @@ static {{ field|lcf_type }}Field<rpg::{{ LCF_CURRENT_STRUCT }}, {{ field.type|cp
  	&rpg::{{ LCF_CURRENT_STRUCT }}::{{ field.name }},
  	{{ LCF_CHUNK_SUFFIX }}::Chunk{{ LCF_CURRENT_STRUCT }}::{{ field.name }},
  	"{{ field.name }}",
@@ -247,13 +260,17 @@ index af590de..1066eaa 100644
  );
  {%- elif field|lcf_type in ["Empty"] %}
 diff --git a/generator/templates/rpg_header.tmpl b/generator/templates/rpg_header.tmpl
-index 3f0a353..9df44bc 100644
+index 3f0a353..ba6c21b 100644
 --- a/generator/templates/rpg_header.tmpl
 +++ b/generator/templates/rpg_header.tmpl
-@@ -98,6 +98,28 @@ namespace rpg {
+@@ -98,6 +98,32 @@ namespace rpg {
  		{%- endif %}
  	{%- endif %}
  	{%- endfor %}
++	{%- if struct_name == "SaveEventExecState" %}
++		// Runtime-only selection for native Maniac key-input field encodings.
++		bool maniac_keyinput_encoding = false;
++	{%- endif %}
 +	{%- if struct_name == "EventCommand" %}
 +		// Runtime-only Maniac common-event name cache; never serialized.
 +		mutable int32_t easyrpg_maniac_common_name_cache = 0;
@@ -301,53 +318,54 @@ delta 14
 WcmZ3umTAWtrVXb$HXC>5@d5xfbOxgU
 
 diff --git a/src/generated/lcf/lsd/chunks.h b/src/generated/lcf/lsd/chunks.h
-index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..33442df30f1dc9a8ca2cbf77cfce018824150b02 100644
+index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..c7fe142cc40798b4d179fcf5040da86950cfe633 100644
 GIT binary patch
-delta 4997
-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
-Y|Ia|?S=1-cyIIn6>Dkig<u8~117OTrivR!s
+delta 5070
+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
+OB|R6PEDoRleEC0<@N_Z&
 
-delta 314
-zcmZoX#I$8D(}sB*leM@uZ`R>4VV!(Muz2%gA!!x^x5Sdf9N)|e1-GKa+|=Ui%mM`s
-z16#lRyi^?pLt8_AQym2(AZ4thU<{;;G$%VqsEffh1!N|dloq8b_+;j0mQ3C#p<N%A
-zSd^JxTC4z9l3!4gnV(mzpb-(F5aFm0;iM4Ztf{BqXr<s=oE{9a&)>~WKPWgOGpz(@
-zwZ4g_f|Hd(NNRCOKu%(%f_G|afxf?=K2Q-z)(9xCqu^|%5Rh0}oT`wPpA57sC%?Ev
-zAv`g&L_bKjG!LZAP*XumpNo@|GdD3WGch?H>WIxQl5FgoH!CgY*_>!#Y&Q9Ct@P&D
-c3}2nejLOoJ1E#))((IePW<Ow>{A7VF088a%Q~&?~
+delta 331
+zcmX?dh-u4QrVaBrCTnqR-mJr8!aDhiVDaX~LeeY-Ziyv{Ilh?{3T{P-xv9n3nFR_O
+z2DX0rd8s-IhPH<KraB5nK+0H0!5ByxX-;;KP#1%13dl?@DJ@D>@X5^0ESbDfLc2aJ
+zu_!aYv{(VIB)^~}Ge56bK_enUA;M81!bu^*SyNBJ(MrL$I6W9-pTC=%eo$~mW?Bi*
+zYJC$;1t%+okksOmfSkli1@F|<0)2l!eV`(ctPxONN5R=jAt14|I8`AnKN)COPJVHT
+zLU>|kiGGl5X&y+Kp{9bCJ{Kn^XKrF%W@2(Y)DfFqB-z+EZ&q5)vpLbg*le;xo%H6|
+t3}>dv>-*Rz`{r_P{+#tob26i{^yC9`*eB1L`UJ+_+&lXL(`5C9vH+vtZ9V`1
 
 diff --git a/src/generated/lcf/rpg/eventcommand.h b/src/generated/lcf/rpg/eventcommand.h
 index 0e5ed36e4b8fc1918b826a6add1dfdf49fe77802..4aa19499a9d74a1dba31f30c8c810bbf72c59a87 100644
@@ -455,6 +473,17 @@ QM9Jh|tmd2NaK<qK0GwI0JOBUy
 
 delta 17
 YcmaDX{Y!j95bI`PHW8N1{@hcT06abgo&W#<
+
+diff --git a/src/generated/lcf/rpg/saveeventexecstate.h b/src/generated/lcf/rpg/saveeventexecstate.h
+index f93e5f56d9a76e68504f035a2c418772ab7f2f78..7d994b6726e80be1934bc4e875f87919277a43a5 100644
+GIT binary patch
+delta 157
+zcmeCy{;R#=H1lLr7QxMTm`}6UbL#6W1eNBMWag&o=I7;9Dio*Yq$ZbS=I1G-<rgXB
+zC6;8Cr7HL)=4B=(D`clu>SpE@l$I!@Wv1q&D5T~k=ci=mr5EdQadIZ*=jSNof)&OC
+w6@t~p!&E5PDx@Xm6sKBqan@RMadBqm<z(iiDkM$L<W--%k4JX%5AMmF0K}X)Jpcdz
+
+delta 33
+pcmeyX-L1XhG&5^yW?qTK<_pZ%*%@mmpXW86Y``nKIg4j9CjjZs43Gc-
 
 diff --git a/src/generated/lcf/rpg/savepicture.h b/src/generated/lcf/rpg/savepicture.h
 index bb8e09e8b28de642e3d03418fdcaaef59d64d256..85325fcfe43ea87e1fcf4ee0ce7f25b25decc96a 100644
@@ -614,6 +643,18 @@ h0@ROH5*};VWG7$X6LEx@h3R=LW}+&BdOwIi005B<4}1Us
 
 delta 16
 YcmaE?xk!FPAMa*$p%aXgr;GRi06Q%PSO5S3
+
+diff --git a/src/generated/lsd_saveeventexecstate.cpp b/src/generated/lsd_saveeventexecstate.cpp
+index fb9f7b3f6c75f878ea7338c6e7aa972e67572d85..71bf25422b912bb4a0550f67be2854827ece8018 100644
+GIT binary patch
+delta 323
+zcmZ2)e%pLQ2Ah~~VqRuqvUh5wXI?>RNmyc0W@1uK>f}UbStdJ$$vl!0o7b{cF$$q7
+zbIVCg2Pv5x#IXvOlse}kTv8voL?&}^?ZYj74Y!oY<olAmn}vC9GUHRDEieh6^dJ1v
+T3#8a4UlyEz$Ary`gm^gtyUTTH
+
+delta 106
+zcmca@zTSL82HRwLeiio8%)And_>#@D*`_c81#Bl5aLfSHo}3fF^d3o}$vRx?z-(#m
+kBOrRS0?!L(h$4Y0V0yh2`(#zYUNHN!AlQJ-XN34U0eSQz1^@s6
 
 diff --git a/src/generated/lsd_savepicture.cpp b/src/generated/lsd_savepicture.cpp
 index caa8d12f618ca6bc46f03deafbc44b7b4a81acc2..31ee23c19a4256f71499fb7ab6187bdcb75f46a2 100644
@@ -786,17 +827,17 @@ delta 16
 Ycmdm?{$FiF8}H<~{2ZH)^L}In06&rk3;+NC
 
 diff --git a/src/lcf/lsd/reader.h b/src/lcf/lsd/reader.h
-index be7a8a1..448098f 100644
+index be7a8a1..68aafbb 100644
 --- a/src/lcf/lsd/reader.h
 +++ b/src/lcf/lsd/reader.h
 @@ -46,8 +46,9 @@ namespace LSD_Reader {
  
  	/**
  	 * Loads Savegame.
-+	 * maniac_utf16 selects original250921 global strings for saves without Player metadata.
++	 * maniac selects native global strings and key-input wire formats.
  	 */
 -	std::unique_ptr<rpg::Save> Load(std::string_view filename, std::string_view encoding = "");
-+	std::unique_ptr<rpg::Save> Load(std::string_view filename, std::string_view encoding = "", bool maniac_utf16 = false);
++	std::unique_ptr<rpg::Save> Load(std::string_view filename, std::string_view encoding = "", bool maniac = false);
  
  	/**
  	 * Saves Savegame.
@@ -804,15 +845,15 @@ index be7a8a1..448098f 100644
  
  	/**
  	 * Loads Savegame.
-+	 * maniac_utf16 selects original250921 global strings for saves without Player metadata.
++	 * maniac selects native global strings and key-input wire formats.
  	 */
 -	std::unique_ptr<rpg::Save> Load(std::istream& filestream, std::string_view encoding = "");
-+	std::unique_ptr<rpg::Save> Load(std::istream& filestream, std::string_view encoding = "", bool maniac_utf16 = false);
++	std::unique_ptr<rpg::Save> Load(std::istream& filestream, std::string_view encoding = "", bool maniac = false);
  
  	/**
  	 * Saves Savegame.
 diff --git a/src/lsd_reader.cpp b/src/lsd_reader.cpp
-index e26d3cc..c771105 100644
+index e26d3cc..b3c124c 100644
 --- a/src/lsd_reader.cpp
 +++ b/src/lsd_reader.cpp
 @@ -11,6 +11,7 @@
@@ -828,14 +869,14 @@ index e26d3cc..c771105 100644
  }
  
 -std::unique_ptr<rpg::Save> LSD_Reader::Load(std::string_view filename, std::string_view encoding) {
-+std::unique_ptr<rpg::Save> LSD_Reader::Load(std::string_view filename, std::string_view encoding, bool maniac_utf16) {
++std::unique_ptr<rpg::Save> LSD_Reader::Load(std::string_view filename, std::string_view encoding, bool maniac) {
  	std::ifstream stream(ToString(filename), std::ios::binary);
  	if (!stream.is_open()) {
  		Log::Error("Failed to open LSD file '%s' for reading: %s", ToString(filename).c_str(), strerror(errno));
  		return nullptr;
  	}
 -	return LSD_Reader::Load(stream, encoding);
-+	return LSD_Reader::Load(stream, encoding, maniac_utf16);
++	return LSD_Reader::Load(stream, encoding, maniac);
  }
  
  bool LSD_Reader::Save(std::string_view filename, const rpg::Save& save, EngineVersion engine, std::string_view encoding) {
@@ -844,16 +885,16 @@ index e26d3cc..c771105 100644
  }
  
 -std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::string_view encoding) {
-+std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::string_view encoding, bool maniac_utf16) {
++std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::string_view encoding, bool maniac) {
  	LcfReader reader(filestream, ToString(encoding));
  
  	if (!reader.IsOk()) {
-@@ -111,6 +112,19 @@ std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::strin
+@@ -111,6 +112,28 @@ std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::strin
  		Struct<rpg::Save>::ReadLcf(*save, reader2);
  	}
  
 +	// Original250921 UTF16 storage is selected by the caller, independently of mouse flags0x86.
-+	if (maniac_utf16 && save->easyrpg_data.version == 0 && save->easyrpg_data.codepage == 0) {
++	if (maniac && save->easyrpg_data.version == 0 && save->easyrpg_data.codepage == 0) {
 +		save->system.maniac_strings_utf16 = save->system.maniac_string_payload_present;
 +	}
 +	if (save->system.maniac_string_payload_present && !save->system.maniac_strings_utf16) {
@@ -865,17 +906,76 @@ index e26d3cc..c771105 100644
 +		TypeReader<std::vector<DBString>>::ReadLcf(save->system.maniac_strings,
 +			strings_reader, static_cast<uint32_t>(bytes.size()));
 +	}
++	// The caller selects Maniac wire formats independently of metadata/version.
++	// Decoding stays bounded by each field, so old Player byte IDs remain readable.
++	if (maniac) {
++		save->foreground_event_execstate.maniac_keyinput_encoding = true;
++		for (auto& event : save->map_info.events)
++			event.parallel_event_execstate.maniac_keyinput_encoding = true;
++		for (auto& event : save->common_events)
++			event.parallel_event_execstate.maniac_keyinput_encoding = true;
++	}
  	return save;
  }
  
 diff --git a/src/reader_struct.h b/src/reader_struct.h
-index a3f9158..830fc79 100644
+index a3f9158..9e03ff9 100644
 --- a/src/reader_struct.h
 +++ b/src/reader_struct.h
-@@ -428,6 +428,196 @@ struct TypedField : public Field<S> {
+@@ -428,6 +428,246 @@ struct TypedField : public Field<S> {
  		Field<S>(id, name, present_if_default, is2k3), ref(ref) {}
  };
  
++// Maniac stores the complete variable ID as BER, unlike the legacy raw byte.
++// Single-byte values are also valid legacy saves, including bytes >= 0x80.
++// A multi-byte payload unambiguously identifies the extended integer format.
++template <class S>
++struct ManiacKeyInputVariableField : public TypedField<S, int32_t> {
++	using Base = TypedField<S, int32_t>;
++	using Base::Base;
++	void ReadLcf(S& obj, LcfReader& stream, uint32_t length) const override {
++		obj.maniac_keyinput_encoding = length > 1;
++		if (length == 1) {
++			uint8_t value = 0;
++			stream.Read(value);
++			obj.keyinput_variable = value;
++		} else {
++			Base::ReadLcf(obj, stream, length);
++		}
++	}
++	void WriteLcf(const S& obj, LcfWriter& stream) const override {
++		if (obj.maniac_keyinput_encoding) Base::WriteLcf(obj, stream);
++		else stream.Write(static_cast<uint8_t>(obj.keyinput_variable));
++	}
++	int LcfSize(const S& obj, LcfWriter& stream) const override {
++		return obj.maniac_keyinput_encoding ? Base::LcfSize(obj, stream) : 1;
++	}
++};
++
++// The nine Maniac key/mouse selectors use raw low bytes, not BER integers.
++// Accept the existing Player BER representation too, without reading past a field.
++template <class S>
++struct ManiacKeyInputFlagField : public TypedField<S, int32_t> {
++	using Base = TypedField<S, int32_t>;
++	using Base::Base;
++	void ReadLcf(S& obj, LcfReader& stream, uint32_t length) const override {
++		if (length == 1) {
++			uint8_t value = 0;
++			stream.Read(value);
++			obj.*this->ref = value;
++		} else {
++			Base::ReadLcf(obj, stream, length);
++		}
++	}
++	void WriteLcf(const S& obj, LcfWriter& stream) const override {
++		if (obj.maniac_keyinput_encoding) stream.Write(static_cast<uint8_t>(obj.*this->ref));
++		else Base::WriteLcf(obj, stream);
++	}
++	int LcfSize(const S& obj, LcfWriter& stream) const override {
++		return obj.maniac_keyinput_encoding ? 1 : Base::LcfSize(obj, stream);
++	}
++};
++
 +// Original Maniac SavePicture chunk 6 includes the image kind in its high byte.
 +// Keep the standard boolean view for other engines and retain the complete word.
 +template <class S>

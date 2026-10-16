@@ -1,0 +1,275 @@
+{
+  "date": "2026-10-17",
+  "source_commit": "0382d28fc2fa4acbd60ac0c8c8ee8ab02b286acf",
+  "runtime": {
+    "rpg_rt_sha256": "fff214a52aeb250e9dc0ff5f031d3c616320c0ed4b86106b32dba50a4b816816",
+    "player2_sha256": "d2076e3bb10368ede3d59a76f732f6f4e9e3d599d7aa7a0f36c64e5e55a381d9",
+    "player3_sha256": "b75a53facc0d0e5e90a892d00c530f7273e03b9dc721f215cb5e60e35ec5db6f"
+  },
+  "saves": [
+    {
+      "slot": "03",
+      "sha256": "c16f772ec66112e1853a73d07448668cde1b1ed57e45998385ec297b0cb5f6d7",
+      "player_save_version": 0,
+      "common_record_count": 1000,
+      "common596_keyinput_variable_payload_hex": "9119",
+      "common596_keyinput_variable_payload_size": 2,
+      "zero_native_id_frames": []
+    },
+    {
+      "slot": "04",
+      "sha256": "c309a6e46114f77fd8fb35ceadfa388df790e92fcf3ae0e801d6c503cf5b6f51",
+      "player_save_version": 810,
+      "common_record_count": 1000,
+      "common596_keyinput_variable_payload_hex": "99",
+      "common596_keyinput_variable_payload_size": 1,
+      "zero_native_id_frames": [
+        5,
+        10,
+        36,
+        61,
+        73,
+        265,
+        267,
+        446,
+        528,
+        582,
+        623
+      ]
+    },
+    {
+      "slot": "05",
+      "sha256": "18d46381ee982cc1395d858c7d493f1e5d7e26f53c0729bc27e593cdbd528b49",
+      "player_save_version": 811,
+      "common_record_count": 1000,
+      "common596_keyinput_variable_payload_hex": "99",
+      "common596_keyinput_variable_payload_size": 1,
+      "zero_native_id_frames": []
+    }
+  ],
+  "fault": {
+    "structure": "SaveEventExecState",
+    "chunk": "0x16",
+    "field": "keyinput_variable",
+    "affected_common_event": 596,
+    "game_key_input_destination": 2201,
+    "native_encoding": "BER integer",
+    "player_encoding": "raw uint8",
+    "truncated_value": 153,
+    "bad_raw_hex": "99",
+    "correct_raw_hex": "9119"
+  },
+  "live_read_only_observation": {
+    "pid": 14392,
+    "error_thread_id": 28380,
+    "rpg_rt_stack": [
+      "RPG_RT.exe+0x201b9",
+      "RPG_RT.exe+0xc5a57",
+      "RPG_RT.exe+0x5aabd",
+      "RPG_RT.exe+0x5af3f",
+      "RPG_RT.exe+0x7e9dd",
+      "RPG_RT.exe+0x7f536",
+      "RPG_RT.exe+0x7fb21",
+      "RPG_RT.exe+0x199a26",
+      "RPG_RT.exe+0x19a403",
+      "RPG_RT.exe+0x58066"
+    ],
+    "common_record_count": 1000,
+    "first_zero_record_ordinal": 597,
+    "zero_id_count": 403
+  },
+  "stream_model": {
+    "authority": "analyst implementation of inspected native reader stream advancement; not execution of a corrected save in RPG_RT",
+    "save03_ids_all_correct": true,
+    "save04_first_wrong_record": 597,
+    "save05_first_wrong_record": 597,
+    "save05_zero_id_count": 403,
+    "save05_memory_only_replace_chunk_0x16_in_common596_with_9119_ids_all_correct": true
+  },
+  "native_windows": [
+    {
+      "start_rva": "0x85125",
+      "end_exclusive_rva": "0x85136",
+      "bytes": "488bcee85314040041894618e93fffffff",
+      "instructions": [
+        {
+          "rva": "0x85125",
+          "asm": "mov rcx, rsi"
+        },
+        {
+          "rva": "0x85128",
+          "asm": "call 0x1400c6580"
+        },
+        {
+          "rva": "0x8512d",
+          "asm": "mov dword ptr [r14 + 0x18], eax"
+        },
+        {
+          "rva": "0x85131",
+          "asm": "jmp 0x140085075"
+        }
+      ]
+    },
+    {
+      "start_rva": "0x5aa40",
+      "end_exclusive_rva": "0x5aa64",
+      "bytes": "4c8b034c8b0d86bf21004963088d41ff413b01735a498b4108488b4cc8f880792804752f",
+      "instructions": [
+        {
+          "rva": "0x5aa40",
+          "asm": "mov r8, qword ptr [rbx]"
+        },
+        {
+          "rva": "0x5aa43",
+          "asm": "mov r9, qword ptr [rip + 0x21bf86]"
+        },
+        {
+          "rva": "0x5aa4a",
+          "asm": "movsxd rcx, dword ptr [r8]"
+        },
+        {
+          "rva": "0x5aa4d",
+          "asm": "lea eax, [rcx - 1]"
+        },
+        {
+          "rva": "0x5aa50",
+          "asm": "cmp eax, dword ptr [r9]"
+        },
+        {
+          "rva": "0x5aa53",
+          "asm": "jae 0x14005aaaf"
+        },
+        {
+          "rva": "0x5aa55",
+          "asm": "mov rax, qword ptr [r9 + 8]"
+        },
+        {
+          "rva": "0x5aa59",
+          "asm": "mov rcx, qword ptr [rax + rcx*8 - 8]"
+        },
+        {
+          "rva": "0x5aa5e",
+          "asm": "cmp byte ptr [rcx + 0x28], 4"
+        },
+        {
+          "rva": "0x5aa62",
+          "asm": "jne 0x14005aa93"
+        }
+      ]
+    },
+    {
+      "start_rva": "0x5aaaf",
+      "end_exclusive_rva": "0x5aabe",
+      "bytes": "8bd1488d0d70971c00e843af0600cc",
+      "instructions": [
+        {
+          "rva": "0x5aaaf",
+          "asm": "mov edx, ecx"
+        },
+        {
+          "rva": "0x5aab1",
+          "asm": "lea rcx, [rip + 0x1c9770]"
+        },
+        {
+          "rva": "0x5aab8",
+          "asm": "call 0x1400c5a00"
+        },
+        {
+          "rva": "0x5aabd",
+          "asm": "int3 "
+        }
+      ]
+    },
+    {
+      "start_rva": "0x5ae4b",
+      "end_exclusive_rva": "0x5ae6f",
+      "bytes": "83fb0174134863d741b801000000488bcee83f65fbffeb0c498b4e10488bd6e8419f0200",
+      "instructions": [
+        {
+          "rva": "0x5ae4b",
+          "asm": "cmp ebx, 1"
+        },
+        {
+          "rva": "0x5ae4e",
+          "asm": "je 0x14005ae63"
+        },
+        {
+          "rva": "0x5ae50",
+          "asm": "movsxd rdx, edi"
+        },
+        {
+          "rva": "0x5ae53",
+          "asm": "mov r8d, 1"
+        },
+        {
+          "rva": "0x5ae59",
+          "asm": "mov rcx, rsi"
+        },
+        {
+          "rva": "0x5ae5c",
+          "asm": "call 0x1400113a0"
+        },
+        {
+          "rva": "0x5ae61",
+          "asm": "jmp 0x14005ae6f"
+        },
+        {
+          "rva": "0x5ae63",
+          "asm": "mov rcx, qword ptr [r14 + 0x10]"
+        },
+        {
+          "rva": "0x5ae67",
+          "asm": "mov rdx, rsi"
+        },
+        {
+          "rva": "0x5ae6a",
+          "asm": "call 0x140084db0"
+        }
+      ]
+    },
+    {
+      "start_rva": "0xc5a36",
+      "end_exclusive_rva": "0xc5a57",
+      "bytes": "448bcf488d15c0f915004c8bc3488d4c2420e8b3aaf5ff488d4c2420e859a7f5ff",
+      "instructions": [
+        {
+          "rva": "0xc5a36",
+          "asm": "mov r9d, edi"
+        },
+        {
+          "rva": "0xc5a39",
+          "asm": "lea rdx, [rip + 0x15f9c0]"
+        },
+        {
+          "rva": "0xc5a40",
+          "asm": "mov r8, rbx"
+        },
+        {
+          "rva": "0xc5a43",
+          "asm": "lea rcx, [rsp + 0x20]"
+        },
+        {
+          "rva": "0xc5a48",
+          "asm": "call 0x140020500"
+        },
+        {
+          "rva": "0xc5a4d",
+          "asm": "lea rcx, [rsp + 0x20]"
+        },
+        {
+          "rva": "0xc5a52",
+          "asm": "call 0x1400201b0"
+        }
+      ]
+    }
+  ],
+  "secondary_observations": [
+    "Save04 contains 11 missing common-event identity frames; these are corrected in Save05 and are not sufficient to explain the remaining error.",
+    "Map23 event128 empty placeholder frame loses native identity in both Save04 and Save05; this is a separate static finding, not the live error path captured here."
+  ],
+  "limitations": [
+    "Hidden automatic-load probes did not reach the load consumer; excluded from proof.",
+    "User retained Save05 error dialog; live attach only read thread stacks and common-event records.",
+    "No game or original save changed; no source fix applied; no corrected native roundtrip acceptance claimed."
+  ]
+}

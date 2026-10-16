@@ -197,9 +197,8 @@ void Game_Interpreter::KeyInputState::fromSave(const lcf::rpg::SaveEventExecStat
 	};
 
 	wait = save.keyinput_wait;
-	// FIXME: There is an RPG_RT bug where keyinput_variable is uint8_t
-	// which we currently have to emulate. So the value from the save could be wrong.
-	variable = save.keyinput_variable;
+	// Maniac uses a full BER integer; only ordinary RPG_RT truncates to a byte.
+	variable = is_maniac ? save.keyinput_variable : static_cast<uint8_t>(save.keyinput_variable);
 
 	if (save.keyinput_all_directions) {
 		keys[Keys::eDown] = true;
@@ -264,9 +263,8 @@ void Game_Interpreter::KeyInputState::toSave(lcf::rpg::SaveEventExecState& save)
 	save.keyinput_timed = 0;
 
 	save.keyinput_wait = wait;
-	// FIXME: There is an RPG_RT bug where keyinput_variable is uint8_t
-	// which we currently have to emulate. So this assignment truncates.
-	save.keyinput_variable = variable;
+	save.maniac_keyinput_encoding = Player::IsPatchManiac();
+	save.keyinput_variable = save.maniac_keyinput_encoding ? variable : static_cast<uint8_t>(variable);
 
 	if (keys[Keys::eDown]
 			&& keys[Keys::eLeft]

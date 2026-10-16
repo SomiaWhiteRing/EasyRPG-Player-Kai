@@ -1,0 +1,2829 @@
+{
+  "scope": "General native-namespace save definitions excluding Maniac/EasyRPG named extensions and private types; recursive raw length/BER checks on original Save03, plus native handler checks of narrow integer fields and execution-state flags. Not a claim of full runtime coverage.",
+  "declared_general_fields": 319,
+  "observed_definitions": 198,
+  "observations": 6917,
+  "unobserved_definitions": [
+    "SaveTitle.face1_id",
+    "SaveSystem.graphics_name",
+    "SaveSystem.message_stretch",
+    "SaveSystem.font_id",
+    "SaveSystem.message_position",
+    "SaveSystem.message_continue_events",
+    "SaveSystem.face_name",
+    "SaveSystem.face_right",
+    "SaveSystem.face_flip",
+    "SaveSystem.music_stopping",
+    "SaveSystem.transition_out",
+    "SaveSystem.transition_in",
+    "SaveSystem.battle_start_fadeout",
+    "SaveSystem.battle_start_fadein",
+    "SaveSystem.battle_end_fadeout",
+    "SaveSystem.battle_end_fadein",
+    "SaveSystem.save_allowed",
+    "SaveSystem.menu_allowed",
+    "SaveSystem.background",
+    "SaveSystem.atb_mode",
+    "SaveScreen.tint_finish_red",
+    "SaveScreen.tint_finish_green",
+    "SaveScreen.tint_finish_blue",
+    "SaveScreen.tint_finish_sat",
+    "SaveScreen.tint_current_red",
+    "SaveScreen.tint_current_green",
+    "SaveScreen.tint_current_blue",
+    "SaveScreen.tint_current_sat",
+    "SaveScreen.tint_time_left",
+    "SaveScreen.flash_continuous",
+    "SaveScreen.flash_red",
+    "SaveScreen.flash_green",
+    "SaveScreen.flash_blue",
+    "SaveScreen.flash_current_level",
+    "SaveScreen.flash_time_left",
+    "SaveScreen.shake_continuous",
+    "SaveScreen.shake_position",
+    "SaveScreen.shake_position_y",
+    "SaveScreen.shake_time_left",
+    "SaveScreen.battleanim_id",
+    "SaveScreen.battleanim_target",
+    "SaveScreen.battleanim_frame",
+    "SaveScreen.battleanim_active",
+    "SaveScreen.battleanim_global",
+    "SaveScreen.weather",
+    "SavePicture.name",
+    "SavePicture.current_bot_trans",
+    "SavePicture.map_layer",
+    "SavePicture.battle_layer",
+    "SavePartyLocation.boarding",
+    "SavePartyLocation.aboard",
+    "SavePartyLocation.vehicle",
+    "SavePartyLocation.unboarding",
+    "SavePartyLocation.menu_calling",
+    "SavePartyLocation.pan_state",
+    "SavePartyLocation.pan_current_x",
+    "SavePartyLocation.pan_current_y",
+    "SavePartyLocation.pan_finish_x",
+    "SavePartyLocation.pan_finish_y",
+    "SavePartyLocation.pan_speed",
+    "SavePartyLocation.encounter_calling",
+    "SavePartyLocation.map_save_count",
+    "SaveVehicleLocation.remaining_ascent",
+    "SaveVehicleLocation.remaining_descent",
+    "SaveActor.sprite_id",
+    "SaveActor.transparency",
+    "SaveInventory.timer1_active",
+    "SaveInventory.timer1_visible",
+    "SaveInventory.timer1_battle",
+    "SaveInventory.timer2_frames",
+    "SaveInventory.timer2_active",
+    "SaveInventory.timer2_visible",
+    "SaveInventory.timer2_battle",
+    "SaveTarget.map_id",
+    "SaveTarget.map_x",
+    "SaveTarget.map_y",
+    "SaveTarget.switch_on",
+    "SaveTarget.switch_id",
+    "SaveEventExecFrame.triggered_by_decision_key",
+    "SaveEventExecFrame.subcommand_path",
+    "SaveEventExecFrame.subcommand_path",
+    "SaveEventExecState.show_message",
+    "SaveEventExecState.abort_on_escape",
+    "SaveEventExecState.wait_movement",
+    "SaveEventExecState.keyinput_all_directions",
+    "SaveEventExecState.keyinput_2kdown_2k3operators",
+    "SaveEventExecState.keyinput_2kright",
+    "SaveEventExecState.keyinput_2kup",
+    "SaveEventExecState.keyinput_2k3down",
+    "SaveEventExecState.keyinput_2k3left",
+    "SaveEventExecState.keyinput_2k3right",
+    "SaveEventExecState.keyinput_2k3up",
+    "SaveEventExecState.keyinput_timed",
+    "SaveMapEventBase.overlap_forbidden",
+    "SaveMapEventBase.move_route_finished",
+    "SaveMapEventBase.sprite_hidden",
+    "SaveMapEventBase.anim_paused",
+    "SaveMapEventBase.jumping",
+    "SaveMapEventBase.pause",
+    "SaveMapEventBase.flying",
+    "SaveMapEventBase.flash_current_level",
+    "SaveMapEventBase.flash_time_left",
+    "SaveMapEvent.waiting_execution",
+    "SaveMapEvent.triggered_by_decision_key",
+    "SaveMapInfo.encounter_steps",
+    "SaveMapInfo.parallax_name",
+    "SaveMapInfo.parallax_horz",
+    "SaveMapInfo.parallax_vert",
+    "SaveMapInfo.parallax_horz_auto",
+    "SaveMapInfo.parallax_horz_speed",
+    "SaveMapInfo.parallax_vert_auto",
+    "SaveMapInfo.parallax_vert_speed",
+    "SavePanorama.pan_x",
+    "SavePanorama.pan_y"
+  ],
+  "pre_fix_payload_mismatches": [
+    {
+      "path": "Save03/foreground_event_execstate/keyinput_variable",
+      "structure": "SaveEventExecState",
+      "field": "keyinput_variable",
+      "chunk": "0x16",
+      "declared_type": "UInt8",
+      "length": 2,
+      "problem": "raw-byte length differs",
+      "hex": "9f75"
+    },
+    {
+      "path": "Save03/common_events/596/parallel_event_execstate/keyinput_variable",
+      "structure": "SaveEventExecState",
+      "field": "keyinput_variable",
+      "chunk": "0x16",
+      "declared_type": "UInt8",
+      "length": 2,
+      "problem": "raw-byte length differs",
+      "hex": "9119"
+    }
+  ],
+  "known_picture_overloads_excluded_from_naive_type_check": [
+    "0x06",
+    "0x09",
+    "0x12",
+    "0x18",
+    "0x1b"
+  ],
+  "native_execution_state_handlers": [
+    {
+      "field": "stack",
+      "tag": "0x01",
+      "declared_type": "Array<SaveEventExecFrame>",
+      "native_wire": "BER",
+      "handler_rva": "0x84f64",
+      "asm": [
+        "mov rcx, rsi",
+        "call 0x1400c6580",
+        "mov r12d, eax",
+        "test eax, eax",
+        "jle 0x140085071",
+        "nop word ptr [rax + rax]",
+        "dec r12d",
+        "xor ebx, ebx",
+        "nop word ptr [rax + rax]",
+        "mov r8d, 1",
+        "mov byte ptr [rsp + 0x20], 0",
+        "lea rdx, [rsp + 0x20]",
+        "mov rcx, rsi",
+        ".byte 0xe8"
+      ]
+    },
+    {
+      "field": "show_message",
+      "tag": "0x04",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x850e2",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x28]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "abort_on_escape",
+      "tag": "0x0B",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x850f9",
+      "asm": [
+        "mov r8d, 1",
+        "mov rdx, r15",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "wait_movement",
+      "tag": "0x0D",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x8510f",
+      "asm": [
+        "mov r8d, 1",
+        "mov rdx, rbp",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_wait",
+      "tag": "0x15",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85255",
+      "asm": [
+        "mov r8d, 1",
+        "mov rdx, r12",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_variable",
+      "tag": "0x16",
+      "declared_type": "UInt8",
+      "native_wire": "BER",
+      "handler_rva": "0x85125",
+      "asm": [
+        "mov rcx, rsi",
+        "call 0x1400c6580",
+        "mov dword ptr [r14 + 0x18], eax",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_all_directions",
+      "tag": "0x17",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85136",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x2c]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_decision",
+      "tag": "0x18",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x8514d",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x2d]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_cancel",
+      "tag": "0x19",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85164",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x2e]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2kshift_2k3numbers",
+      "tag": "0x1A",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x8517b",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x31]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2kdown_2k3operators",
+      "tag": "0x1B",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85192",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x32]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2kleft_2k3shift",
+      "tag": "0x1C",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x851a9",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x33]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2kright",
+      "tag": "0x1D",
+      "declared_type": "Int32",
+      "native_wire": "compound/ignored",
+      "handler_rva": "0x8526b",
+      "asm": [
+        "movsxd rdx, edi",
+        "mov r8d, 1",
+        "mov rcx, rsi",
+        "call 0x1400113a0",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2kup",
+      "tag": "0x1E",
+      "declared_type": "Int32",
+      "native_wire": "compound/ignored",
+      "handler_rva": "0x8526b",
+      "asm": [
+        "movsxd rdx, edi",
+        "mov r8d, 1",
+        "mov rcx, rsi",
+        "call 0x1400113a0",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "wait_time",
+      "tag": "0x1F",
+      "declared_type": "Int32",
+      "native_wire": "BER",
+      "handler_rva": "0x851c0",
+      "asm": [
+        "mov rcx, rsi",
+        "call 0x1400c6580",
+        "mov dword ptr [r14 + 0x1c], eax",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_time_variable",
+      "tag": "0x20",
+      "declared_type": "Int32",
+      "native_wire": "BER",
+      "handler_rva": "0x851d1",
+      "asm": [
+        "mov rcx, rsi",
+        "call 0x1400c6580",
+        "mov dword ptr [r14 + 0x20], eax",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2k3down",
+      "tag": "0x23",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x851e2",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x34]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2k3left",
+      "tag": "0x24",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x851f9",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x35]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2k3right",
+      "tag": "0x25",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85210",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x36]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_2k3up",
+      "tag": "0x26",
+      "declared_type": "Int32",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85227",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x37]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "keyinput_timed",
+      "tag": "0x29",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x8523e",
+      "asm": [
+        "mov r8d, 1",
+        "lea rdx, [r14 + 0x30]",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    },
+    {
+      "field": "wait_key_enter",
+      "tag": "0x2a",
+      "declared_type": "Boolean",
+      "native_wire": "raw byte",
+      "handler_rva": "0x85255",
+      "asm": [
+        "mov r8d, 1",
+        "mov rdx, r12",
+        "mov rcx, rsi",
+        "call 0x140007b30",
+        "jmp 0x140085075"
+      ]
+    }
+  ],
+  "native_transition_writers": [
+    {
+      "tag": "0x6f",
+      "rva": "0x8b5d7",
+      "asm": [
+        "mov edx, 0x6f",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eb0ad]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eb09f], 0xff",
+        "je 0x14008b63e"
+      ]
+    },
+    {
+      "tag": "0x70",
+      "rva": "0x8b60f",
+      "asm": [
+        "mov edx, 0x70",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eb076]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eb068], 0xff",
+        "je 0x14008b676"
+      ]
+    },
+    {
+      "tag": "0x71",
+      "rva": "0x8b647",
+      "asm": [
+        "mov edx, 0x71",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eb03f]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eb031], 0xff",
+        "je 0x14008b6ae"
+      ]
+    },
+    {
+      "tag": "0x72",
+      "rva": "0x8b67f",
+      "asm": [
+        "mov edx, 0x72",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eb008]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eaffa], 0xff",
+        "je 0x14008b6e6"
+      ]
+    },
+    {
+      "tag": "0x73",
+      "rva": "0x8b6b7",
+      "asm": [
+        "mov edx, 0x73",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eafd1]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eafc3], 0xff",
+        "je 0x14008b71e"
+      ]
+    },
+    {
+      "tag": "0x74",
+      "rva": "0x8b6ef",
+      "asm": [
+        "mov edx, 0x74",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov edx, 1",
+        "mov rcx, rdi",
+        "call 0x1400c6c70",
+        "mov r8d, 1",
+        "lea rdx, [rip + 0x1eaf9a]",
+        "mov rcx, rdi",
+        "call 0x140046610",
+        "cmp byte ptr [rip + 0x1eaf8c], 1",
+        "je 0x14008b756"
+      ]
+    }
+  ],
+  "findings": [
+    "keyinput_variable: legacy raw uint8 vs Maniac full BER; fixed",
+    "nine key selector fields: native raw low byte vs generic BER; fixed with legacy format retained"
+  ],
+  "definition_inventory": [
+    {
+      "structure": "SaveTitle",
+      "field": "timestamp",
+      "tag": "0x01",
+      "type": "Double",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "hero_name",
+      "tag": "0x0B",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "hero_level",
+      "tag": "0x0C",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "hero_hp",
+      "tag": "0x0D",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face1_name",
+      "tag": "0x15",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face1_id",
+      "tag": "0x16",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face2_name",
+      "tag": "0x17",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face2_id",
+      "tag": "0x18",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face3_name",
+      "tag": "0x19",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face3_id",
+      "tag": "0x1A",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face4_name",
+      "tag": "0x1B",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTitle",
+      "field": "face4_id",
+      "tag": "0x1C",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "scene",
+      "tag": "0x01",
+      "type": "Enum<SaveSystem_Scene>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "frame_count",
+      "tag": "0x0B",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "graphics_name",
+      "tag": "0x15",
+      "type": "String",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "message_stretch",
+      "tag": "0x16",
+      "type": "Enum<System_Stretch>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "font_id",
+      "tag": "0x17",
+      "type": "Enum<System_Font>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "switches",
+      "tag": "0x1F",
+      "type": "Count<Vector<Boolean>>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "switches",
+      "tag": "0x20",
+      "type": "Vector<Boolean>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "variables",
+      "tag": "0x21",
+      "type": "Count<Vector<Int32>>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "variables",
+      "tag": "0x22",
+      "type": "Vector<Int32>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "message_transparent",
+      "tag": "0x29",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "message_position",
+      "tag": "0x2A",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "message_prevent_overlap",
+      "tag": "0x2B",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "message_continue_events",
+      "tag": "0x2C",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "face_name",
+      "tag": "0x33",
+      "type": "String",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "face_id",
+      "tag": "0x34",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "face_right",
+      "tag": "0x35",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "face_flip",
+      "tag": "0x36",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "event_message_active",
+      "tag": "0x37",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "music_stopping",
+      "tag": "0x3D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "title_music",
+      "tag": "0x47",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_music",
+      "tag": "0x48",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_end_music",
+      "tag": "0x49",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "inn_music",
+      "tag": "0x4A",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "current_music",
+      "tag": "0x4B",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "before_vehicle_music",
+      "tag": "0x4C",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "before_battle_music",
+      "tag": "0x4D",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "stored_music",
+      "tag": "0x4E",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "boat_music",
+      "tag": "0x4F",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "ship_music",
+      "tag": "0x50",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "airship_music",
+      "tag": "0x51",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "gameover_music",
+      "tag": "0x52",
+      "type": "Music",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "cursor_se",
+      "tag": "0x5B",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "decision_se",
+      "tag": "0x5C",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "cancel_se",
+      "tag": "0x5D",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "buzzer_se",
+      "tag": "0x5E",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_se",
+      "tag": "0x5F",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "escape_se",
+      "tag": "0x60",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "enemy_attack_se",
+      "tag": "0x61",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "enemy_damaged_se",
+      "tag": "0x62",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "actor_damaged_se",
+      "tag": "0x63",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "dodge_se",
+      "tag": "0x64",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "enemy_death_se",
+      "tag": "0x65",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "item_se",
+      "tag": "0x66",
+      "type": "Sound",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "transition_out",
+      "tag": "0x6F",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "transition_in",
+      "tag": "0x70",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_start_fadeout",
+      "tag": "0x71",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_start_fadein",
+      "tag": "0x72",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_end_fadeout",
+      "tag": "0x73",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "battle_end_fadein",
+      "tag": "0x74",
+      "type": "Int8",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "teleport_allowed",
+      "tag": "0x79",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "escape_allowed",
+      "tag": "0x7A",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "save_allowed",
+      "tag": "0x7B",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "menu_allowed",
+      "tag": "0x7C",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "background",
+      "tag": "0x7D",
+      "type": "String",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "save_count",
+      "tag": "0x83",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "save_slot",
+      "tag": "0x84",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "atb_mode",
+      "tag": "0x8C",
+      "type": "Enum<SaveSystem_AtbMode>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_finish_red",
+      "tag": "0x01",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_finish_green",
+      "tag": "0x02",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_finish_blue",
+      "tag": "0x03",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_finish_sat",
+      "tag": "0x04",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_current_red",
+      "tag": "0x0B",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_current_green",
+      "tag": "0x0C",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_current_blue",
+      "tag": "0x0D",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_current_sat",
+      "tag": "0x0E",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "tint_time_left",
+      "tag": "0x0F",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_continuous",
+      "tag": "0x14",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_red",
+      "tag": "0x15",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_green",
+      "tag": "0x16",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_blue",
+      "tag": "0x17",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_current_level",
+      "tag": "0x18",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "flash_time_left",
+      "tag": "0x19",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_continuous",
+      "tag": "0x1E",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_strength",
+      "tag": "0x1F",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_speed",
+      "tag": "0x20",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_position",
+      "tag": "0x21",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_position_y",
+      "tag": "0x22",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "shake_time_left",
+      "tag": "0x23",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "pan_x",
+      "tag": "0x29",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "pan_y",
+      "tag": "0x2A",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "battleanim_id",
+      "tag": "0x2B",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "battleanim_target",
+      "tag": "0x2C",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "battleanim_frame",
+      "tag": "0x2D",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "battleanim_active",
+      "tag": "0x2E",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "battleanim_global",
+      "tag": "0x2F",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "weather",
+      "tag": "0x30",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "weather_strength",
+      "tag": "0x31",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SavePicture",
+      "field": "name",
+      "tag": "0x01",
+      "type": "String",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePicture",
+      "field": "start_x",
+      "tag": "0x02",
+      "type": "Double",
+      "occurrences": 269
+    },
+    {
+      "structure": "SavePicture",
+      "field": "start_y",
+      "tag": "0x03",
+      "type": "Double",
+      "occurrences": 270
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_x",
+      "tag": "0x04",
+      "type": "Double",
+      "occurrences": 270
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_y",
+      "tag": "0x05",
+      "type": "Double",
+      "occurrences": 270
+    },
+    {
+      "structure": "SavePicture",
+      "field": "fixed_to_map",
+      "tag": "0x06",
+      "type": "Boolean",
+      "occurrences": 83
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_magnify",
+      "tag": "0x07",
+      "type": "Double",
+      "occurrences": 83
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_top_trans",
+      "tag": "0x08",
+      "type": "Double",
+      "occurrences": 154
+    },
+    {
+      "structure": "SavePicture",
+      "field": "use_transparent_color",
+      "tag": "0x09",
+      "type": "Boolean",
+      "occurrences": 191
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_red",
+      "tag": "0x0B",
+      "type": "Double",
+      "occurrences": 45
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_green",
+      "tag": "0x0C",
+      "type": "Double",
+      "occurrences": 44
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_blue",
+      "tag": "0x0D",
+      "type": "Double",
+      "occurrences": 47
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_sat",
+      "tag": "0x0E",
+      "type": "Double",
+      "occurrences": 45
+    },
+    {
+      "structure": "SavePicture",
+      "field": "effect_mode",
+      "tag": "0x0F",
+      "type": "Enum<SavePicture_Effect>",
+      "occurrences": 38
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_effect_power",
+      "tag": "0x10",
+      "type": "Double",
+      "occurrences": 37
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_bot_trans",
+      "tag": "0x12",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_cols",
+      "tag": "0x13",
+      "type": "Int32",
+      "occurrences": 65
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_rows",
+      "tag": "0x14",
+      "type": "Int32",
+      "occurrences": 77
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_frame",
+      "tag": "0x15",
+      "type": "Int32",
+      "occurrences": 79
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_speed",
+      "tag": "0x16",
+      "type": "Int32",
+      "occurrences": 63
+    },
+    {
+      "structure": "SavePicture",
+      "field": "frames",
+      "tag": "0x17",
+      "type": "Int32",
+      "occurrences": 267
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_play_once",
+      "tag": "0x18",
+      "type": "Boolean",
+      "occurrences": 3
+    },
+    {
+      "structure": "SavePicture",
+      "field": "map_layer",
+      "tag": "0x19",
+      "type": "Enum<MapLayer>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePicture",
+      "field": "battle_layer",
+      "tag": "0x1A",
+      "type": "Enum<BattleLayer>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePicture",
+      "field": "flags",
+      "tag": "0x1B",
+      "type": "SavePicture_Flags",
+      "occurrences": 215
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_x",
+      "tag": "0x1F",
+      "type": "Double",
+      "occurrences": 261
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_y",
+      "tag": "0x20",
+      "type": "Double",
+      "occurrences": 261
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_magnify",
+      "tag": "0x21",
+      "type": "Int32",
+      "occurrences": 90
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_top_trans",
+      "tag": "0x22",
+      "type": "Int32",
+      "occurrences": 172
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_bot_trans",
+      "tag": "0x23",
+      "type": "Int32",
+      "occurrences": 192
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_red",
+      "tag": "0x29",
+      "type": "Int32",
+      "occurrences": 45
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_green",
+      "tag": "0x2A",
+      "type": "Int32",
+      "occurrences": 44
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_blue",
+      "tag": "0x2B",
+      "type": "Int32",
+      "occurrences": 47
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_sat",
+      "tag": "0x2C",
+      "type": "Int32",
+      "occurrences": 45
+    },
+    {
+      "structure": "SavePicture",
+      "field": "finish_effect_power",
+      "tag": "0x2E",
+      "type": "Int32",
+      "occurrences": 37
+    },
+    {
+      "structure": "SavePicture",
+      "field": "time_left",
+      "tag": "0x33",
+      "type": "Int32",
+      "occurrences": 39
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_rotation",
+      "tag": "0x34",
+      "type": "Double",
+      "occurrences": 36
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_waver",
+      "tag": "0x35",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "boarding",
+      "tag": "0x65",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "aboard",
+      "tag": "0x66",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "vehicle",
+      "tag": "0x67",
+      "type": "Enum<SavePartyLocation_VehicleType>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "unboarding",
+      "tag": "0x68",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "preboard_move_speed",
+      "tag": "0x69",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "menu_calling",
+      "tag": "0x6C",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_state",
+      "tag": "0x6f",
+      "type": "Enum<SavePartyLoction_PanState>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_current_x",
+      "tag": "0x70",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_current_y",
+      "tag": "0x71",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_finish_x",
+      "tag": "0x72",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_finish_y",
+      "tag": "0x73",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "pan_speed",
+      "tag": "0x79",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "total_encounter_rate",
+      "tag": "0x7C",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "encounter_calling",
+      "tag": "0x7D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "map_save_count",
+      "tag": "0x83",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "database_save_count",
+      "tag": "0x84",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveVehicleLocation",
+      "field": "vehicle",
+      "tag": "0x65",
+      "type": "Enum<SaveVehicleLocation_VehicleType>",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveVehicleLocation",
+      "field": "remaining_ascent",
+      "tag": "0x6A",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveVehicleLocation",
+      "field": "remaining_descent",
+      "tag": "0x6B",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveVehicleLocation",
+      "field": "orig_sprite_name",
+      "tag": "0x6F",
+      "type": "String",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveVehicleLocation",
+      "field": "orig_sprite_id",
+      "tag": "0x70",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveActor",
+      "field": "name",
+      "tag": "0x01",
+      "type": "String",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "title",
+      "tag": "0x02",
+      "type": "String",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "sprite_name",
+      "tag": "0x0B",
+      "type": "String",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "sprite_id",
+      "tag": "0x0C",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveActor",
+      "field": "transparency",
+      "tag": "0x0D",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveActor",
+      "field": "face_name",
+      "tag": "0x15",
+      "type": "String",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "face_id",
+      "tag": "0x16",
+      "type": "Int32",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveActor",
+      "field": "level",
+      "tag": "0x1F",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "exp",
+      "tag": "0x20",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "hp_mod",
+      "tag": "0x21",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "sp_mod",
+      "tag": "0x22",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "attack_mod",
+      "tag": "0x29",
+      "type": "Int32",
+      "occurrences": 4
+    },
+    {
+      "structure": "SaveActor",
+      "field": "defense_mod",
+      "tag": "0x2A",
+      "type": "Int32",
+      "occurrences": 5
+    },
+    {
+      "structure": "SaveActor",
+      "field": "spirit_mod",
+      "tag": "0x2B",
+      "type": "Int32",
+      "occurrences": 7
+    },
+    {
+      "structure": "SaveActor",
+      "field": "agility_mod",
+      "tag": "0x2C",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveActor",
+      "field": "skills",
+      "tag": "0x33",
+      "type": "Count<Vector<Int16>>",
+      "occurrences": 120
+    },
+    {
+      "structure": "SaveActor",
+      "field": "skills",
+      "tag": "0x34",
+      "type": "Vector<Int16>",
+      "occurrences": 120
+    },
+    {
+      "structure": "SaveActor",
+      "field": "equipped",
+      "tag": "0x3D",
+      "type": "Vector<Int16>",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "current_hp",
+      "tag": "0x47",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "current_sp",
+      "tag": "0x48",
+      "type": "Int32",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "battle_commands",
+      "tag": "0x50",
+      "type": "Vector<Ref<BattleCommand:Int32>>",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveActor",
+      "field": "status",
+      "tag": "0x51",
+      "type": "Count<Vector<Int16>>",
+      "occurrences": 120
+    },
+    {
+      "structure": "SaveActor",
+      "field": "status",
+      "tag": "0x52",
+      "type": "Vector<Int16>",
+      "occurrences": 120
+    },
+    {
+      "structure": "SaveActor",
+      "field": "changed_battle_commands",
+      "tag": "0x53",
+      "type": "Boolean",
+      "occurrences": 10
+    },
+    {
+      "structure": "SaveActor",
+      "field": "class_id",
+      "tag": "0x5A",
+      "type": "Ref<Class>",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveActor",
+      "field": "row",
+      "tag": "0x5B",
+      "type": "Enum<SaveActor_RowType>",
+      "occurrences": 4
+    },
+    {
+      "structure": "SaveActor",
+      "field": "two_weapon",
+      "tag": "0x5C",
+      "type": "Boolean",
+      "occurrences": 6
+    },
+    {
+      "structure": "SaveActor",
+      "field": "lock_equipment",
+      "tag": "0x5D",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveActor",
+      "field": "auto_battle",
+      "tag": "0x5E",
+      "type": "Boolean",
+      "occurrences": 4
+    },
+    {
+      "structure": "SaveActor",
+      "field": "super_guard",
+      "tag": "0x5F",
+      "type": "Boolean",
+      "occurrences": 6
+    },
+    {
+      "structure": "SaveActor",
+      "field": "battler_animation",
+      "tag": "0x60",
+      "type": "Ref<BattlerAnimation>",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "party",
+      "tag": "0x01",
+      "type": "Count<Vector<Int16>>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "party",
+      "tag": "0x02",
+      "type": "Vector<Int16>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "item_ids",
+      "tag": "0x0B",
+      "type": "Count<Vector<Int16>>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "item_ids",
+      "tag": "0x0C",
+      "type": "Vector<Int16>",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "item_counts",
+      "tag": "0x0D",
+      "type": "Vector<UInt8>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "item_usage",
+      "tag": "0x0E",
+      "type": "Vector<UInt8>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "gold",
+      "tag": "0x15",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer1_frames",
+      "tag": "0x17",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer1_active",
+      "tag": "0x18",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer1_visible",
+      "tag": "0x19",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer1_battle",
+      "tag": "0x1A",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer2_frames",
+      "tag": "0x1B",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer2_active",
+      "tag": "0x1C",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer2_visible",
+      "tag": "0x1D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "timer2_battle",
+      "tag": "0x1E",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "battles",
+      "tag": "0x20",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "defeats",
+      "tag": "0x21",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "escapes",
+      "tag": "0x22",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "victories",
+      "tag": "0x23",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "turns",
+      "tag": "0x29",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveInventory",
+      "field": "steps",
+      "tag": "0x2A",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveTarget",
+      "field": "map_id",
+      "tag": "0x01",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveTarget",
+      "field": "map_x",
+      "tag": "0x02",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveTarget",
+      "field": "map_y",
+      "tag": "0x03",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveTarget",
+      "field": "switch_on",
+      "tag": "0x04",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveTarget",
+      "field": "switch_id",
+      "tag": "0x05",
+      "type": "Ref<Switch>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "commands",
+      "tag": "0x01",
+      "type": "Vector<EventCommand>",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "commands",
+      "tag": "0x02",
+      "type": "Vector<EventCommand>",
+      "occurrences": 60
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "current_command",
+      "tag": "0x0B",
+      "type": "Int32",
+      "occurrences": 15
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "event_id",
+      "tag": "0x0C",
+      "type": "Int32",
+      "occurrences": 10
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "triggered_by_decision_key",
+      "tag": "0x0D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "subcommand_path",
+      "tag": "0x15",
+      "type": "Vector<UInt8>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "subcommand_path",
+      "tag": "0x16",
+      "type": "Vector<UInt8>",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "stack",
+      "tag": "0x01",
+      "type": "Array<SaveEventExecFrame>",
+      "occurrences": 30
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "show_message",
+      "tag": "0x04",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "abort_on_escape",
+      "tag": "0x0B",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "wait_movement",
+      "tag": "0x0D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_wait",
+      "tag": "0x15",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_variable",
+      "tag": "0x16",
+      "type": "UInt8",
+      "occurrences": 4
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_all_directions",
+      "tag": "0x17",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_decision",
+      "tag": "0x18",
+      "type": "Int32",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_cancel",
+      "tag": "0x19",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2kshift_2k3numbers",
+      "tag": "0x1A",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2kdown_2k3operators",
+      "tag": "0x1B",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2kleft_2k3shift",
+      "tag": "0x1C",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2kright",
+      "tag": "0x1D",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2kup",
+      "tag": "0x1E",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "wait_time",
+      "tag": "0x1F",
+      "type": "Int32",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_time_variable",
+      "tag": "0x20",
+      "type": "Int32",
+      "occurrences": 2
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2k3down",
+      "tag": "0x23",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2k3left",
+      "tag": "0x24",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2k3right",
+      "tag": "0x25",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_2k3up",
+      "tag": "0x26",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "keyinput_timed",
+      "tag": "0x29",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveEventExecState",
+      "field": "wait_key_enter",
+      "tag": "0x2a",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "active",
+      "tag": "0x01",
+      "type": "Boolean",
+      "occurrences": 5
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "map_id",
+      "tag": "0x0B",
+      "type": "Int32",
+      "occurrences": 159
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "position_x",
+      "tag": "0x0C",
+      "type": "Int32",
+      "occurrences": 159
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "position_y",
+      "tag": "0x0D",
+      "type": "Int32",
+      "occurrences": 159
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "direction",
+      "tag": "0x15",
+      "type": "Int32",
+      "occurrences": 21
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "facing",
+      "tag": "0x16",
+      "type": "Int32",
+      "occurrences": 21
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "anim_frame",
+      "tag": "0x17",
+      "type": "Int32",
+      "occurrences": 20
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "transparency",
+      "tag": "0x18",
+      "type": "Int32",
+      "occurrences": 5
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "remaining_step",
+      "tag": "0x1F",
+      "type": "Int32",
+      "occurrences": 8
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_frequency",
+      "tag": "0x20",
+      "type": "Int32",
+      "occurrences": 124
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "layer",
+      "tag": "0x21",
+      "type": "Int32",
+      "occurrences": 111
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "overlap_forbidden",
+      "tag": "0x22",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "animation_type",
+      "tag": "0x23",
+      "type": "Enum<EventPage_AnimType>",
+      "occurrences": 14
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "lock_facing",
+      "tag": "0x24",
+      "type": "Boolean",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_speed",
+      "tag": "0x25",
+      "type": "Int32",
+      "occurrences": 159
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_route",
+      "tag": "0x29",
+      "type": "MoveRoute",
+      "occurrences": 159
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_route_overwrite",
+      "tag": "0x2A",
+      "type": "Boolean",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_route_index",
+      "tag": "0x2B",
+      "type": "Int32",
+      "occurrences": 3
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_route_finished",
+      "tag": "0x2C",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "sprite_hidden",
+      "tag": "0x2E",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "move_route_through",
+      "tag": "0x2F",
+      "type": "Boolean",
+      "occurrences": 6
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "anim_paused",
+      "tag": "0x30",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "through",
+      "tag": "0x33",
+      "type": "Boolean",
+      "occurrences": 37
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "stop_count",
+      "tag": "0x34",
+      "type": "Int32",
+      "occurrences": 118
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "anim_count",
+      "tag": "0x35",
+      "type": "Int32",
+      "occurrences": 122
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "max_stop_count",
+      "tag": "0x36",
+      "type": "Int32",
+      "occurrences": 117
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "jumping",
+      "tag": "0x3D",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "begin_jump_x",
+      "tag": "0x3E",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "begin_jump_y",
+      "tag": "0x3F",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "pause",
+      "tag": "0x47",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flying",
+      "tag": "0x48",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "sprite_name",
+      "tag": "0x49",
+      "type": "String",
+      "occurrences": 24
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "sprite_id",
+      "tag": "0x4A",
+      "type": "Int32",
+      "occurrences": 71
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "processed",
+      "tag": "0x4B",
+      "type": "Boolean",
+      "occurrences": 121
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flash_red",
+      "tag": "0x51",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flash_green",
+      "tag": "0x52",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flash_blue",
+      "tag": "0x53",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flash_current_level",
+      "tag": "0x54",
+      "type": "Double",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEventBase",
+      "field": "flash_time_left",
+      "tag": "0x55",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEvent",
+      "field": "waiting_execution",
+      "tag": "0x65",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEvent",
+      "field": "original_move_route_index",
+      "tag": "0x66",
+      "type": "Int32",
+      "occurrences": 6
+    },
+    {
+      "structure": "SaveMapEvent",
+      "field": "triggered_by_decision_key",
+      "tag": "0x67",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapEvent",
+      "field": "parallel_event_execstate",
+      "tag": "0x6C",
+      "type": "SaveEventExecState",
+      "occurrences": 10
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "position_x",
+      "tag": "0x01",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "position_y",
+      "tag": "0x02",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "encounter_steps",
+      "tag": "0x03",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "chipset_id",
+      "tag": "0x05",
+      "type": "Int32",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "events",
+      "tag": "0x0B",
+      "type": "Array<SaveMapEvent>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "lower_tiles",
+      "tag": "0x15",
+      "type": "Vector<UInt8>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "upper_tiles",
+      "tag": "0x16",
+      "type": "Vector<UInt8>",
+      "occurrences": 1
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_name",
+      "tag": "0x20",
+      "type": "String",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_horz",
+      "tag": "0x21",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_vert",
+      "tag": "0x22",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_horz_auto",
+      "tag": "0x23",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_horz_speed",
+      "tag": "0x24",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_vert_auto",
+      "tag": "0x25",
+      "type": "Boolean",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveMapInfo",
+      "field": "parallax_vert_speed",
+      "tag": "0x26",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SaveCommonEvent",
+      "field": "parallel_event_execstate",
+      "tag": "0x01",
+      "type": "SaveEventExecState",
+      "occurrences": 20
+    },
+    {
+      "structure": "SavePanorama",
+      "field": "pan_x",
+      "tag": "0x01",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "SavePanorama",
+      "field": "pan_y",
+      "tag": "0x02",
+      "type": "Int32",
+      "occurrences": 0
+    },
+    {
+      "structure": "Save",
+      "field": "title",
+      "tag": "0x64",
+      "type": "SaveTitle",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "system",
+      "tag": "0x65",
+      "type": "SaveSystem",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "screen",
+      "tag": "0x66",
+      "type": "SaveScreen",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "pictures",
+      "tag": "0x67",
+      "type": "Array<SavePicture>",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "party_location",
+      "tag": "0x68",
+      "type": "SavePartyLocation",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "boat_location",
+      "tag": "0x69",
+      "type": "SaveVehicleLocation",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "ship_location",
+      "tag": "0x6A",
+      "type": "SaveVehicleLocation",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "airship_location",
+      "tag": "0x6B",
+      "type": "SaveVehicleLocation",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "actors",
+      "tag": "0x6C",
+      "type": "Array<SaveActor>",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "inventory",
+      "tag": "0x6D",
+      "type": "SaveInventory",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "targets",
+      "tag": "0x6E",
+      "type": "Array<SaveTarget>",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "map_info",
+      "tag": "0x6F",
+      "type": "SaveMapInfo",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "panorama",
+      "tag": "0x70",
+      "type": "SavePanorama",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "foreground_event_execstate",
+      "tag": "0x71",
+      "type": "SaveEventExecState",
+      "occurrences": 1
+    },
+    {
+      "structure": "Save",
+      "field": "common_events",
+      "tag": "0x72",
+      "type": "Array<SaveCommonEvent>",
+      "occurrences": 1
+    }
+  ],
+  "native_state_note": "0x1d/0x1e are ignored by the inspected RPG2003 runtime. Matching wire format does not establish every state-flag semantic; no complete protocol-compatibility claim.",
+  "encoding_difference_fields": [
+    "keyinput_variable",
+    "keyinput_decision",
+    "keyinput_cancel",
+    "keyinput_2kshift_2k3numbers",
+    "keyinput_2kdown_2k3operators",
+    "keyinput_2kleft_2k3shift",
+    "keyinput_2k3down",
+    "keyinput_2k3left",
+    "keyinput_2k3right",
+    "keyinput_2k3up"
+  ]
+}
