@@ -35,6 +35,7 @@
 #include "input.h"
 #include "spriteset_battle.h"
 #include <cassert>
+#include <cstring>
 #include "scene_battle.h"
 #include "utils.h"
 #include "game_clock.h"
@@ -73,6 +74,32 @@ static const char* target_text[] = { "actor", "party member", "enemy" };
 
 static void MissingTargetWarning(const char* command_name, TargetType target_type, int target_id) {
 	Output::Warning("{}: Invalid {} ID: {}", command_name, target_text[target_type], target_id);
+}
+
+namespace {
+int BattleOperand(const Game_Interpreter_Battle& interpreter, const lcf::rpg::EventCommand& command,
+		size_t value_index, size_t flags_index, int shift = 0) {
+	const int value = value_index < command.parameters.size() ? command.parameters[value_index] : 0;
+	const uint32_t flags = Player::IsPatchManiac() && flags_index < command.parameters.size()
+		? command.parameters[flags_index] : 0;
+	const int mode = (flags >> shift) & 15;
+	return mode == 0 ? value : mode == 1 ? interpreter.ReadVariable(value) : interpreter.ReadVariableIndirect(value);
+}
+
+int BattlePercentage(int value, int percent, int minimum) {
+	// Native percentage arithmetic multiplies in signed 32-bit before division.
+	const uint32_t bits = static_cast<uint32_t>(value) * static_cast<uint32_t>(percent);
+	int32_t product;
+	std::memcpy(&product, &bits, sizeof(product));
+	return std::max(minimum, product / 100);
+}
+
+std::vector<Game_Enemy*> BattleEnemies(int index, const char* command_name) {
+	if (Player::IsPatchManiac() && index < 0) return Main_Data::game_enemyparty->GetEnemies();
+	if (auto* enemy = Main_Data::game_enemyparty->GetEnemy(index)) return {enemy};
+	MissingTargetWarning(command_name, Enemy, index);
+	return {};
+}
 }
 
 // Provides a facility for battle sub-events to be run immediately
@@ -356,9 +383,10 @@ bool Game_Interpreter_Battle::CommandForceFlee(lcf::rpg::EventCommand const& com
 		break;
 	case 2:
 		if (!check || Game_Battle::GetBattleCondition() != lcf::rpg::System::BattleCondition_surround) {
-			auto* enemy = Main_Data::game_enemyparty->GetEnemy(com.parameters[1]);
+			const int target = BattleOperand(*this, com, 1, 3);
+			auto* enemy = Main_Data::game_enemyparty->GetEnemy(target);
 			if (!enemy) {
-				Output::Warning("ForceFlee: Invalid enemy ID {}", com.parameters[1]);
+				Output::Warning("ForceFlee: Invalid enemy ID {}", target);
 				return true;
 			}
 
@@ -407,118 +435,119 @@ bool Game_Interpreter_Battle::CommandEnableCombo(lcf::rpg::EventCommand const& c
 }
 
 bool Game_Interpreter_Battle::CommandChangeMonsterHP(lcf::rpg::EventCommand const& com) {
-	auto* enemy = Main_Data::game_enemyparty->GetEnemy(com.parameters[0]);
-	if (!enemy) {
-		Output::Warning("ChangeMonsterHP: Invalid enemy ID {}", com.parameters[0]);
-		return true;
+	const int target = BattleOperand(*this, com, 0, 5);
+	for (auto* enemy : BattleEnemies(target, "ChangeMonsterHP")) {
+		bool lose = com.parameters[1] > 0;
+		bool lethal = com.parameters[4] > 0;
+		int hp = enemy->GetHp();
+
+		if (enemy->IsDead())
+			continue;
+
+		int change = 0;
+		switch (com.parameters[2]) {
+		case 0:
+			change = com.parameters[3];
+			break;
+		case 1:
+			change = ReadVariable(com.parameters[3]);
+			break;
+		case 2:
+			change = Player::IsPatchManiac() ? BattlePercentage(hp, com.parameters[3], 1)
+				: com.parameters[3] * hp / 100;
+			break;
+		case 3:
+			if (Player::IsPatchManiac()) change = BattlePercentage(hp, ReadVariable(com.parameters[3]), 1);
+			break;
+		}
+
+		if (lose) {
+			change = -change;
+		}
+
+		enemy->ChangeHp(change, lethal);
+
+		auto& scene = Scene::instance;
+		if (scene) {
+			scene->OnEventHpChanged(enemy, change);
+		}
+
+		if (enemy->IsDead()) {
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_EnemyKill));
+			enemy->SetDeathTimer();
+		}
 	}
-
-	bool lose = com.parameters[1] > 0;
-	bool lethal = com.parameters[4] > 0;
-	int hp = enemy->GetHp();
-
-	if (enemy->IsDead())
-		return true;
-
-	int change = 0;
-	switch (com.parameters[2]) {
-	case 0:
-		change = com.parameters[3];
-		break;
-	case 1:
-		change = Main_Data::game_variables->Get(com.parameters[3]);
-		break;
-	case 2:
-		change = com.parameters[3] * hp / 100;
-		break;
-	}
-
-	if (lose) {
-		change = -change;
-	}
-
-	enemy->ChangeHp(change, lethal);
-
-	auto& scene = Scene::instance;
-	if (scene) {
-		scene->OnEventHpChanged(enemy, change);
-	}
-
-	if (enemy->IsDead()) {
-		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_EnemyKill));
-		enemy->SetDeathTimer();
-	}
-
 	return true;
 }
 
 bool Game_Interpreter_Battle::CommandChangeMonsterMP(lcf::rpg::EventCommand const& com) {
-	auto* enemy = Main_Data::game_enemyparty->GetEnemy(com.parameters[0]);
-	if (!enemy) {
-		Output::Warning("ChangeMonsterMP: Invalid enemy ID {}", com.parameters[0]);
-		return true;
+	const int target = BattleOperand(*this, com, 0, 5);
+	for (auto* enemy : BattleEnemies(target, "ChangeMonsterMP")) {
+		bool lose = com.parameters[1] > 0;
+		int sp = enemy->GetSp();
+
+		int change = 0;
+		switch (com.parameters[2]) {
+		case 0:
+			change = com.parameters[3];
+			break;
+		case 1:
+			change = ReadVariable(com.parameters[3]);
+			break;
+		case 2:
+			if (Player::IsPatchManiac()) change = BattlePercentage(sp, com.parameters[3], 0);
+			break;
+		case 3:
+			if (Player::IsPatchManiac()) change = BattlePercentage(sp, ReadVariable(com.parameters[3]), 0);
+			break;
+		}
+
+		if (lose)
+			change = -change;
+
+		sp += change;
+
+		enemy->SetSp(sp);
 	}
-
-	bool lose = com.parameters[1] > 0;
-	int sp = enemy->GetSp();
-
-	int change = 0;
-	switch (com.parameters[2]) {
-	case 0:
-		change = com.parameters[3];
-		break;
-	case 1:
-		change = Main_Data::game_variables->Get(com.parameters[3]);
-		break;
-	}
-
-	if (lose)
-		change = -change;
-
-	sp += change;
-
-	enemy->SetSp(sp);
-
 	return true;
 }
 
 bool Game_Interpreter_Battle::CommandChangeMonsterCondition(lcf::rpg::EventCommand const& com) {
-	auto* enemy = Main_Data::game_enemyparty->GetEnemy(com.parameters[0]);
-	if (!enemy) {
-		Output::Warning("ChangeMonsterCondition: Invalid enemy ID {}", com.parameters[0]);
-		return true;
-	}
-
-	bool remove = com.parameters[1] > 0;
-	int state_id = com.parameters[2];
-	if (remove) {
-		// RPG_RT BUG: Monster dissapears immediately and doesn't animate death
-		enemy->RemoveState(state_id, false);
-	} else {
-		enemy->AddState(state_id, true);
+	const int state_id = BattleOperand(*this, com, 2, 3, 4);
+	const int target = BattleOperand(*this, com, 0, 3);
+	for (auto* enemy : BattleEnemies(target, "ChangeMonsterCondition")) {
+		bool remove = com.parameters[1] > 0;
+		if (remove) {
+			// RPG_RT BUG: Monster dissapears immediately and doesn't animate death
+			enemy->RemoveState(state_id, false);
+		} else {
+			enemy->AddState(state_id, true);
+		}
 	}
 	return true;
 }
 
 bool Game_Interpreter_Battle::CommandShowHiddenMonster(lcf::rpg::EventCommand const& com) {
-	auto* enemy = Main_Data::game_enemyparty->GetEnemy(com.parameters[0]);
-	if (!enemy) {
-		Output::Warning("ShowHiddenMonster: Invalid enemy ID {}", com.parameters[0]);
-		return true;
+	const int target = BattleOperand(*this, com, 0, 1);
+	const int visibility = Player::IsPatchManiac() && com.parameters.size() > 2 ? com.parameters[2] : 0;
+	for (auto* enemy : BattleEnemies(target, "ShowHiddenMonster")) {
+		if (visibility != 2) enemy->SetHidden(visibility != 0);
 	}
-
-	enemy->SetHidden(false);
 	return true;
 }
 
 bool Game_Interpreter_Battle::CommandChangeBattleBG(lcf::rpg::EventCommand const& com) {
-	Game_Battle::ChangeBackground(ToString(com.string));
+	const int mode = Player::IsPatchManiac() && !com.parameters.empty() ? com.parameters[0] & 15 : 0;
+	const int id = com.parameters.size() > 1 ? com.parameters[1] : 0;
+	Game_Battle::ChangeBackground(mode == 0 ? ToString(com.string)
+		: ToString(ReadString(mode == 1 ? id : ResolveVariableIndirectAddress(id))));
 	return true;
 }
 
 bool Game_Interpreter_Battle::CommandShowBattleAnimation(lcf::rpg::EventCommand const& com) {
-	int animation_id = com.parameters[0];
-	int target = com.parameters[1];
+	int animation_id = BattleOperand(*this, com, 0, 5);
+	int target = BattleOperand(*this, com, 1, 5, 4);
+	const bool invert = Player::IsPatchManiac() && BattleOperand(*this, com, 6, 5, 8) != 0;
 	bool waiting_battle_anim = com.parameters[2] != 0;
 	bool allies = false;
 
@@ -540,7 +569,7 @@ bool Game_Interpreter_Battle::CommandShowBattleAnimation(lcf::rpg::EventCommand 
 				[](auto* target) { return !(target->Exists() || (target->GetType() == Game_Battler::Type_Ally && target->IsDead())); });
 		v.erase(iter, v.end());
 
-		frames = Game_Battle::ShowBattleAnimation(animation_id, v, false);
+		frames = Game_Battle::ShowBattleAnimation(animation_id, v, false, -1, invert);
 	}
 	else {
 		Game_Battler* battler_target = nullptr;
@@ -566,7 +595,7 @@ bool Game_Interpreter_Battle::CommandShowBattleAnimation(lcf::rpg::EventCommand 
 		}
 
 		if (battler_target) {
-			frames = Game_Battle::ShowBattleAnimation(animation_id, { battler_target });
+			frames = Game_Battle::ShowBattleAnimation(animation_id, { battler_target }, false, -1, invert);
 		}
 	}
 

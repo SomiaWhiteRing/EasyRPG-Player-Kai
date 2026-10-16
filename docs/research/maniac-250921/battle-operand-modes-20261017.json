@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-17",
+  "baseline": "c113d235e",
+  "source": "src/game_interpreter_battle.cpp",
+  "scope": [
+    1006,
+    13110,
+    13120,
+    13130,
+    13150,
+    13210,
+    13260
+  ],
+  "already_fixed": [
+    1007
+  ],
+  "database_counts": {
+    "13260": 2149,
+    "1007": 16,
+    "1006": 59,
+    "13110": 834,
+    "13130": 2012,
+    "13150": 663,
+    "13210": 47,
+    "13120": 60
+  },
+  "nonzero_mode_counts": {
+    "13260": 43,
+    "1007": 3,
+    "13110": 8,
+    "13130": 6,
+    "1006": 1
+  },
+  "actual_command": {
+    "common_event": 789,
+    "command_1based": 30,
+    "code": 13110,
+    "parameters": [
+      4112,
+      1,
+      1,
+      5507,
+      1,
+      1
+    ]
+  },
+  "controlled_consumer_result": {
+    "variable_4112": 1,
+    "variable_5507": 37,
+    "initial_hp": [
+      500,
+      500
+    ],
+    "result_hp": [
+      500,
+      463
+    ]
+  },
+  "temporary_probe_sha256": "b09661abe534cc76663b42f42dfa3bd4252715de9af7d7fefad0efbbf42588a6",
+  "checks": [
+    {
+      "name": "Task battle operand consumers",
+      "cases": 1,
+      "assertions": 98,
+      "failed": 0
+    },
+    {
+      "name": "existing battle algorithms",
+      "cases": 56,
+      "assertions": 3290,
+      "failed": 0
+    },
+    {
+      "name": "existing battle dispatch",
+      "cases": 3,
+      "assertions": 26,
+      "failed": 0
+    }
+  ],
+  "build_log": "C:/buildscripts/battle-operands-build-4.log",
+  "logs": [
+    "C:/buildscripts/battle-operands-consumers.log",
+    "C:/buildscripts/battle-operands-battle-algorithms.log",
+    "C:/buildscripts/battle-operands-battle-dispatch.log"
+  ],
+  "limitations": [
+    "No manual gameplay, Android or Web validation",
+    "13150 position, reverse and hue effects remain outside this operand-selection package",
+    "Database occurrence counts are not runtime acceptance counts"
+  ],
+  "final_build": {
+    "status": "passed",
+    "test_count": 504,
+    "temporary_probe_removed": true,
+    "log": "C:/buildscripts/battle-operands-final-build.log",
+    "player_path": "C:/buildscripts/mr14/player-build/Release/Player.exe",
+    "player_sha256": "bdeda9f298330441c77d935bbf71b3a47632320a1583e3288ee21a7e2df6c8f3"
+  }
+}
