@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-17",
+  "baseline": "4c1e0c4a3",
+  "save10_sha256": "7ccbe2983b76489f31106e814f4a94c9aa53497ed5a7dbbf104bf7cda65e57ac",
+  "temporary_probe_sha256": "e18f102f488352dcfb36951abe4378e2cf3b5767ea41ee0531455d4ed4a3fa62",
+  "checks": [
+    {
+      "name": "Task Save10 real battle consumers",
+      "cases": 1,
+      "assertions": 30,
+      "failed": 0
+    },
+    {
+      "name": "Task battle common scheduling and combo modes",
+      "cases": 1,
+      "assertions": 24,
+      "failed": 0
+    },
+    {
+      "name": "game_battlealgorithm.cpp existing regression",
+      "cases": 56,
+      "assertions": 3290,
+      "failed": 0
+    },
+    {
+      "name": "Maniac 250921 battle existing dispatch regression",
+      "cases": 3,
+      "assertions": 26,
+      "failed": 0
+    }
+  ],
+  "validation": "Headless Scene_Battle_Rpg2k3 with real Save10 and database, default input mappings and in-memory FI/RI activation states. Original game and save files unchanged.",
+  "limitations": [
+    "No manual gameplay or pixel acceptance",
+    "No Android or Web build/run",
+    "No complete 13260 extended-mode claim"
+  ],
+  "build_log": "C:/buildscripts/sdw-resume-build-2.log",
+  "logs": [
+    "C:/buildscripts/sdw-save10-resumed.log",
+    "C:/buildscripts/sdw-scheduler-resumed.log",
+    "C:/buildscripts/sdw-battle-regression.log",
+    "C:/buildscripts/sdw-dispatch-regression.log"
+  ],
+  "final_build": {
+    "log": "C:/buildscripts/sdw-final-build.log",
+    "targets": [
+      "EasyRPG_Player_exe",
+      "test_runner_player"
+    ],
+    "status": "passed",
+    "player_sha256": "7a1a78fb85949f707261036e5511c61d11a5836fd3af7e3ef047036217d43374",
+    "temporary_probe_removed": true
+  }
+}

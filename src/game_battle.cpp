@@ -27,6 +27,7 @@
 #include "game_system.h"
 #include "game_variables.h"
 #include "game_interpreter_battle.h"
+#include "game_commonevent.h"
 #include "game_screen.h"
 #include "game_pictures.h"
 #include "battle_animation.h"
@@ -36,6 +37,7 @@
 #include "output.h"
 #include "utils.h"
 #include "rand.h"
+#include <lcf/scope_guard.h>
 
 namespace Game_Battle {
 	const lcf::rpg::Troop* troop = nullptr;
@@ -56,6 +58,16 @@ namespace Game_Battle {
 }
 
 namespace {
+	struct BattleCommonEvent {
+		int id;
+		std::shared_ptr<Game_Interpreter_Battle> interpreter;
+	};
+	std::vector<BattleCommonEvent> start_events;
+	std::vector<BattleCommonEvent> parallel_events;
+	size_t start_event_index = 0;
+	size_t parallel_event_index = 0;
+	bool resuming_parallel_events = false;
+
 	int terrain_id;
 	lcf::rpg::System::BattleCondition battle_cond = lcf::rpg::System::BattleCondition_none;
 	lcf::rpg::System::BattleFormation battle_form = lcf::rpg::System::BattleFormation_terrain;
@@ -71,7 +83,18 @@ void Game_Battle::Init(int troop_id) {
 	Main_Data::game_enemyparty->ResetBattle(troop_id);
 	Main_Data::game_actors->ResetBattle();
 
-	interpreter.reset(new Game_Interpreter_Battle(troop->pages));
+	interpreter.reset(new Game_Interpreter_Battle(troop->pages, troop->ID));
+	start_events.clear();
+	parallel_events.clear();
+	start_event_index = parallel_event_index = 0;
+	resuming_parallel_events = false;
+	maniac_active_interpreter = nullptr;
+	if (Player::IsPatchManiac()) {
+		for (const auto& event : lcf::Data::commonevents) {
+			if (event.trigger == 6) start_events.push_back({event.ID, {}});
+			if (event.trigger == 7) parallel_events.push_back({event.ID, {}});
+		}
+	}
 	spriteset.reset(new Spriteset_Battle(background_name, terrain_id));
 	spriteset->Update();
 	animation_actors.reset();
@@ -89,6 +112,11 @@ void Game_Battle::Quit() {
 	}
 
 	interpreter.reset();
+	start_events.clear();
+	parallel_events.clear();
+	start_event_index = parallel_event_index = 0;
+	resuming_parallel_events = false;
+	maniac_active_interpreter = nullptr;
 	spriteset.reset();
 	animation_actors.reset();
 	animation_enemies.reset();
@@ -108,6 +136,57 @@ void Game_Battle::Quit() {
 	Main_Data::game_actors->ResetBattle();
 	Main_Data::game_enemyparty->ResetBattle(0);
 	Main_Data::game_pictures->OnBattleEnd();
+}
+
+bool Game_Battle::IsManiacBattleStarting() {
+	return start_event_index < start_events.size();
+}
+
+AsyncOp Game_Battle::UpdateManiacCommonEvents() {
+	if (!Player::IsPatchManiac() || !IsBattleRunning() || IsManiacHookPumping()) return {};
+	const auto enabled = [](int id) {
+		const auto* event = lcf::ReaderUtil::GetElement(lcf::Data::commonevents, id);
+		return event && (!event->switch_flag || Main_Data::game_switches->Get(event->switch_id));
+	};
+	const auto update = [](BattleCommonEvent& entry, bool once) {
+		if (!entry.interpreter) {
+			entry.interpreter = std::make_shared<Game_Interpreter_Battle>(once);
+			Game_CommonEvent event(entry.id);
+			entry.interpreter->Push(&event);
+		}
+		// A nested hook can retire the scene; keep this invocation alive until it returns.
+		auto current = entry.interpreter;
+		auto* previous = SetManiacActiveInterpreter(current.get());
+		auto restore = lcf::makeScopeGuard([previous]() { SetManiacActiveInterpreter(previous); });
+		current->Update(!current->IsAsyncPending());
+		return current->GetAsyncOp();
+	};
+	if (!resuming_parallel_events) {
+		while (IsManiacBattleStarting()) {
+			auto& event = start_events[start_event_index];
+			if (event.interpreter || enabled(event.id)) {
+				auto operation = update(event, true);
+				if (!IsBattleRunning() || operation.IsActive()) return operation;
+				if (event.interpreter->IsRunning()) break;
+			}
+			++start_event_index;
+		}
+	}
+	while (parallel_event_index < parallel_events.size()) {
+		auto& event = parallel_events[parallel_event_index];
+		if (resuming_parallel_events || enabled(event.id)) {
+			auto operation = update(event, false);
+			if (!IsBattleRunning()) return operation;
+			if (operation.IsActive()) {
+				resuming_parallel_events = true;
+				return operation;
+			}
+		}
+		resuming_parallel_events = false;
+		++parallel_event_index;
+	}
+	parallel_event_index = 0;
+	return {};
 }
 
 void Game_Battle::UpdateAnimation() {

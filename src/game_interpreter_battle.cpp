@@ -87,8 +87,8 @@ bool maniac_damage_hook_running = false;
 std::unique_ptr<Game_Interpreter_Battle> maniac_atb_interpreter;
 std::unique_ptr<Game_Interpreter_Battle> maniac_target_interpreter;
 
-Game_Interpreter_Battle::Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages)
-	: Game_Interpreter(true), pages(pages), executed(pages.size(), false)
+Game_Interpreter_Battle::Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages, int troop_id)
+	: Game_Interpreter(true), pages(pages), executed(pages.size(), false), troop_id(troop_id)
 {
 	maniac_interpreter.reset(new Game_Interpreter_Battle());
 	maniac_state_interpreter.reset(new Game_Interpreter_Battle());
@@ -101,8 +101,8 @@ Game_Interpreter_Battle::Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage>
 	maniac_target_interpreter.reset(new Game_Interpreter_Battle());
 }
 
-Game_Interpreter_Battle::Game_Interpreter_Battle()
-	: Game_Interpreter(true)
+Game_Interpreter_Battle::Game_Interpreter_Battle(bool main_flag)
+	: Game_Interpreter(main_flag)
 {
 }
 
@@ -249,7 +249,12 @@ int Game_Interpreter_Battle::ScheduleNextPage(lcf::rpg::TroopPageCondition::Flag
 			continue;
 		}
 		Clear();
-		Push(page.event_commands, 0);
+		Push(page.event_commands, 0, false, Player::IsPatchManiac() ? page.ID : 0);
+		if (Player::IsPatchManiac()) {
+			auto& frame = GetFrame();
+			frame.maniac_event_info = 0x40;
+			frame.maniac_event_id = troop_id;
+		}
 		executed[i] = true;
 		return i + 1;
 	}
@@ -374,14 +379,20 @@ bool Game_Interpreter_Battle::CommandEnableCombo(lcf::rpg::EventCommand const& c
 		return true;
 	}
 
-	int actor_id = com.parameters[0];
+	const bool maniac = Player::IsPatchManiac();
+	const uint32_t modes = maniac && com.parameters.size() > 3 ? com.parameters[3] : 0;
+	const auto operand = [&](int index) {
+		const int mode = (modes >> (index * 4)) & 15;
+		const int value = com.parameters[index];
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
+	const int actor_id = operand(0);
+	const int command_id = operand(1);
+	const int multiple = operand(2);
 
-	if (!Main_Data::game_party->IsActorInParty(actor_id)) {
+	if (!maniac && !Main_Data::game_party->IsActorInParty(actor_id)) {
 		return true;
 	}
-
-	int command_id = com.parameters[1];
-	int multiple = com.parameters[2];
 
 	Game_Actor* actor = Main_Data::game_actors->GetActor(actor_id);
 
@@ -390,7 +401,7 @@ bool Game_Interpreter_Battle::CommandEnableCombo(lcf::rpg::EventCommand const& c
 		return true;
 	}
 
-	actor->SetBattleCombo(command_id, multiple);
+	actor->SetBattleCombo(command_id, maniac ? std::max(1, multiple) : multiple);
 
 	return true;
 }
@@ -535,10 +546,17 @@ bool Game_Interpreter_Battle::CommandShowBattleAnimation(lcf::rpg::EventCommand 
 		Game_Battler* battler_target = nullptr;
 
 		if (allies) {
-			// Allies counted from 1
-			target -= 1;
-			if (target >= 0 && target < Main_Data::game_party->GetBattlerCount()) {
-				battler_target = &(*Main_Data::game_party)[target];
+			if (Player::IsPatchManiac()) {
+				// Maniac selects a party member by actor ID, not party position.
+				if (Main_Data::game_party->IsActorInParty(target)) {
+					battler_target = Main_Data::game_actors->GetActor(target);
+				}
+			} else {
+				// Ordinary 2k3 allies are counted from 1.
+				target -= 1;
+				if (target >= 0 && target < Main_Data::game_party->GetBattlerCount()) {
+					battler_target = &(*Main_Data::game_party)[target];
+				}
 			}
 		}
 		else {

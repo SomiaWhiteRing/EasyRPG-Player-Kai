@@ -39,8 +39,8 @@ class Game_CommonEvent;
 class Game_Interpreter_Battle : public Game_Interpreter
 {
 public:
-	explicit Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages);
-	explicit Game_Interpreter_Battle();
+	explicit Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages, int troop_id);
+	explicit Game_Interpreter_Battle(bool main_flag = true);
 
 	int GetNumPages() const;
 
@@ -104,6 +104,7 @@ private:
 private:
 	Span<const lcf::rpg::TroopPage> pages;
 	std::vector<bool> executed;
+	int troop_id = 0;
 	int target_enemy_index = -1;
 	int current_actor_id = 0;
 	int current_maniac_target_type = 0;

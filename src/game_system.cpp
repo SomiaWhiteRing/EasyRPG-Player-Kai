@@ -855,7 +855,7 @@ void Game_System::OnSeInelukiReady(FileRequestResult* result, lcf::rpg::Sound se
 }
 
 bool Game_System::IsMessageTransparent() {
-	if (Feature::HasRpg2kBattleSystem() && Game_Battle::IsBattleRunning()) {
+	if (Game_Battle::IsBattleRunning() && (Feature::HasRpg2kBattleSystem() || Player::IsPatchManiac())) {
 		return false;
 	}
 

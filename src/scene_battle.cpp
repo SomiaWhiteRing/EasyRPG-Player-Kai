@@ -340,23 +340,33 @@ bool Scene_Battle::UpdateEvents() {
 	}
 
 	if (interp.IsAsyncPending()) {
-		auto aop = interp.GetAsyncOp();
-		if (aop.GetType() == AsyncOp::eSave) {
-			// Maniac event saves are also valid while a troop page is running.
-			const bool success = Scene_Save::Save(FileFinder::Save(), aop.GetSaveSlot(), true, aop.GetSaveSlot() <= 15);
-			if (aop.IsSaveResultEnabled()) {
-				if (aop.GetSaveResultVar() > 0) Main_Data::game_variables->Set(aop.GetSaveResultVar(), success ? 1 : 0);
-				else ApplyManiacSaveResult(aop, success, Main_Data::game_maniac_self_variables.get());
-				Game_Map::RefreshAfterManiacChange();
-			}
-		}
-
-		if (HandleManiacHookOperation(aop)) {
-			return false;
-		}
+		return HandleEventOperation(interp.GetAsyncOp());
 	}
 
 	return true;
+}
+
+bool Scene_Battle::HandleEventOperation(AsyncOp operation) {
+	if (operation.GetType() == AsyncOp::eSave) {
+		const bool success = Scene_Save::Save(FileFinder::Save(), operation.GetSaveSlot(), true, operation.GetSaveSlot() <= 15);
+		if (operation.IsSaveResultEnabled()) {
+			if (operation.GetSaveResultVar() > 0) Main_Data::game_variables->Set(operation.GetSaveResultVar(), success ? 1 : 0);
+			else ApplyManiacSaveResult(operation, success, Main_Data::game_maniac_self_variables.get());
+			Game_Map::RefreshAfterManiacChange();
+		}
+	}
+	return !HandleManiacHookOperation(operation);
+}
+
+bool Scene_Battle::UpdateManiacCommonEvents() {
+	const auto operation = Game_Battle::UpdateManiacCommonEvents();
+	if (Scene::instance.get() != this || !HandleEventOperation(operation)) return false;
+	auto call = TakeRequestedScene();
+	if (call && (call->type == Scene::Gameover || call->type == Scene::Settings)) {
+		Scene::Push(std::move(call));
+		return false;
+	}
+	return !operation.IsActive() && !Game_Battle::IsManiacBattleStarting();
 }
 
 bool Scene_Battle::UpdateTimers() {

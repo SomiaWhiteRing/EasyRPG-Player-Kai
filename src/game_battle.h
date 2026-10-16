@@ -56,6 +56,10 @@ namespace Game_Battle {
 	 */
 	void Quit();
 
+	/** Run Maniac battle-start and parallel common events, preserving async continuations. */
+	AsyncOp UpdateManiacCommonEvents();
+	bool IsManiacBattleStarting();
+
 	/**
 	 * Updates the battle animation
 	 */

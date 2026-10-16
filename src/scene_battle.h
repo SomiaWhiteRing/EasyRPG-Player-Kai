@@ -88,6 +88,8 @@ public:
 	void UpdateBattlers();
 	void UpdateUi();
 	bool UpdateEvents();
+	bool UpdateManiacCommonEvents();
+	bool HandleEventOperation(AsyncOp operation);
 	bool UpdateTimers();
 	void UpdateGraphics() override;
 

@@ -942,12 +942,15 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 	}
 
 	UpdateScreen();
-	// FIXME: RPG_RT updates actors first, and this goes into doing CBA actor battle actions initiated last frame
+	// FIXME: RPG_RT updates actors first, including actions initiated last frame.
 	UpdateBattlers();
-
 	UpdateUi();
 
 	const auto battle_ending = (state == State_Victory || state == State_Defeat);
+	// Common events also run while battle animations or messages are waiting.
+	if (!battle_ending && Player::IsPatchManiac() && !UpdateManiacCommonEvents()) {
+		return false;
+	}
 
 	if (!battle_ending) {
 		// FIXME: Interpreter also blocked by an RPG_RT continueBattle flag. What is this flag?
