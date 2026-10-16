@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-17",
+  "baseline_commit": "6d81e923189d15e0eaaf2d17228f3efdb1da397e",
+  "scope": "Game_Event::GetSaveData empty parallel frame, Maniac mode only",
+  "expected_frame": {
+    "ID": 1,
+    "event_id": 128,
+    "maniac_event_info": 20,
+    "maniac_event_id": 128,
+    "maniac_event_page_id": 3,
+    "easyrpg_self_scope": 2,
+    "easyrpg_self_map_id": 23,
+    "easyrpg_self_event_id": 128,
+    "command_count": 0
+  },
+  "temporary_checks": {
+    "cases": 2,
+    "assertions": 163,
+    "before_failed_assertions": 84,
+    "after_failed_assertions": 0,
+    "source_sha256": "535498f293e614a65a950af78a7ee9112c228a960c87c3721927fb00c826f6c7",
+    "source_removed": true,
+    "coverage": [
+      "ordinary placeholder unchanged",
+      "Maniac placeholder identity",
+      "event own map ID differs from player map",
+      "page changes from 3 to 7",
+      "non-parallel event has no placeholder",
+      "existing nonempty interpreter stack preserved",
+      "actual map23 event128 restored using save switches and variables",
+      "Save03/04/05 SetSaveData/GetSaveData, in-memory LSD serialize/reload, second SetSaveData/GetSaveData"
+    ]
+  },
+  "existing_checks": {
+    "cases_with_assertions": 7,
+    "assertions": 264,
+    "results": [
+      {
+        "case": "IdName",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases: 1 | 1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 4 | 4 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac 250921 interpreter tuple reads current and negative nest into zero and SELF ranges",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases: 1 | 1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 9 | 9 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac 250921 parallel list boundary rewinds one retained frame",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases:  1 |  1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 12 | 12 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac self banks retain identity and survive an LSD round trip",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases:  1 |  1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 25 | 25 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac 250921 calls create fresh fields and retain empty frames",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases:  1 |  1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 24 | 24 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac called map event frame uses the called-event context",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases: 1 | 1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 7 | 7 passed | 0 failed |"
+        ]
+      },
+      {
+        "case": "Maniac return destinations survive native and private scene saves",
+        "exit": 0,
+        "statistics": [
+          "[doctest] test cases:   1 |   1 passed | 0 failed | 505 skipped",
+          "[doctest] assertions: 183 | 183 passed | 0 failed |"
+        ]
+      }
+    ],
+    "excluded_without_input": "Maniac original save fixture exposes serialized state"
+  },
+  "source_saves_sha256": {
+    "Save03.lsd": "c16f772ec66112e1853a73d07448668cde1b1ed57e45998385ec297b0cb5f6d7",
+    "Save04.lsd": "783b3ef7cac6e216fa2abf35cc53a2895cedc7971ce9aff2a014d611c723f218",
+    "Save05.lsd": "d8c28d3d144b35f90fc9fa969340b526e58f3ae3e0c188ca635b6d53132de531"
+  },
+  "source_saves_unchanged": true,
+  "limitations": [
+    "No RPG_RT UI roundtrip or full gameplay verification",
+    "No Android or Web build/runtime verification",
+    "Current Save04/05 hashes differ from the historical key-input audit; these are the files present for this check"
+  ],
+  "final_build": {
+    "configuration": "Windows Release",
+    "wrapper": "builds/cmake/build-windows.ps1",
+    "build_directory": "C:/buildscripts/mr14/player-build",
+    "targets": [
+      "EasyRPG_Player_exe",
+      "test_runner_player"
+    ],
+    "passed": true,
+    "temporary_test_removed_before_final_build": true,
+    "player_sha256": "712ff76cdcff72a2bdfe72b6a461dd42109b79e4bfbf5417e6e115e260d75c64"
+  }
+}

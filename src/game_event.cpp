@@ -107,6 +107,16 @@ lcf::rpg::SaveMapEvent Game_Event::GetSaveData() const {
 			// RPG_RT always stores an empty stack frame for empty parallel events.
 			lcf::rpg::SaveEventExecFrame frame;
 			frame.event_id = GetId();
+			if (Player::IsPatchManiac()) {
+				// This placeholder bypasses Push(), so supply its frame identity here.
+				frame.ID = 1;
+				frame.maniac_event_info = 0x10 | static_cast<int>(page->trigger);
+				frame.maniac_event_id = GetId();
+				frame.maniac_event_page_id = page->ID;
+				frame.easyrpg_self_scope = 2;
+				frame.easyrpg_self_map_id = GetMapId();
+				frame.easyrpg_self_event_id = GetId();
+			}
 			state.stack.push_back(std::move(frame));
 		}
 	}
