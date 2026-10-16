@@ -140,8 +140,8 @@ public:
 	static int GetDefaultPanY();
 
 	// Maniac uses these coordinates for smooth panning
-	double maniac_pan_current_x;
-	double maniac_pan_current_y;
+	double maniac_pan_current_x = 0.0;
+	double maniac_pan_current_y = 0.0;
 
 	void LockPan();
 	void UnlockPan();

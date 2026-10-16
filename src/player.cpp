@@ -403,7 +403,8 @@ void Player::Update(bool update_scene) {
 
 	// Game events can query full screen status and change their behavior, so this needs to
 	// be a game key and not a system key.
-	if (Input::IsTriggered(Input::TOGGLE_FULLSCREEN)) {
+	if (Input::IsTriggered(Input::TOGGLE_FULLSCREEN)
+			&& (!Main_Data::game_system || !Main_Data::game_system->IsManiacFeatureDisabled(8))) {
 		DisplayUi->ToggleFullscreen();
 	}
 
@@ -1272,6 +1273,13 @@ void Player::LoadSavegame(const std::string& save_name, int save_id) {
 	}
 
 	if (Player::IsPatchManiac()) {
+		if (ver > 0 && ver <= 810) {
+			// Older Player saves mislabeled native chunk 0x87 as an FPS request.
+			// Native saves have version 0 and must never take this migration.
+			save->system.maniac_fps_request = save->system.maniac_disabled_features;
+			save->system.maniac_disabled_features =
+				(save->system.save_allowed ? 0 : 1) | (save->system.menu_allowed ? 0 : 4);
+		}
 		if (!ManiacOriginalSave::ImportObservedGlobalScalars(*save)) {
 			Output::Error("Invalid Player Maniac global numeric/switch state in {}", save_name);
 			return;

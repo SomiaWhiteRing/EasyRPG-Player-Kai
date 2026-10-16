@@ -1,0 +1,1228 @@
+{
+  "date": "2026-10-16",
+  "scope": "50 named native-namespace Maniac save fields + 5 overloaded picture fields. Player-private fields and unimplemented native fields are not in the denominator.",
+  "baseline_sha256": "082df5cf00fd3c7647db52d400b53bb9db2350dd71d672709f59bc537a67fb3f",
+  "counts": {
+    "inventory_fields": 55,
+    "confirmed_number_or_meaning_mapping_errors": 1,
+    "additional_related_source_defects": 3,
+    "confirmed_findings_total": 4,
+    "new_runtime_reproductions_this_turn": 0
+  },
+  "limitations": [
+    "Mapping inventory is not a compatibility percentage or exhaustive Maniac bug count.",
+    "Native self-bank payload parsing and all dynamic consumers not exhaustively covered.",
+    "SF02-SF04 are source-confirmed defects, with gameplay symptoms not runtime-reproduced in this turn."
+  ],
+  "fields": [
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_start",
+      "chunk": "0x38",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f54f",
+      "native_data_rvas": [
+        "0x27a500"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f54f",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f552",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f557",
+          "asm": "mov dword ptr [rip + 0x1eafa3], eax"
+        },
+        {
+          "va": "0x14008f55d",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_end",
+      "chunk": "0x39",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f562",
+      "native_data_rvas": [
+        "0x27a504"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f562",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f565",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f56a",
+          "asm": "mov dword ptr [rip + 0x1eaf94], eax"
+        },
+        {
+          "va": "0x14008f570",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_interval",
+      "chunk": "0x3a",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f575",
+      "native_data_rvas": [
+        "0x27a50c"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f575",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f578",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f57d",
+          "asm": "mov dword ptr [rip + 0x1eaf89], eax"
+        },
+        {
+          "va": "0x14008f583",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_interval_range",
+      "chunk": "0x3b",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f588",
+      "native_data_rvas": [
+        "0x27a510"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f588",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f58b",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f590",
+          "asm": "mov dword ptr [rip + 0x1eaf7a], eax"
+        },
+        {
+          "va": "0x14008f596",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_frame_delay",
+      "chunk": "0x3c",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f59b",
+      "native_data_rvas": [
+        "0x27a514"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f59b",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f59e",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f5a3",
+          "asm": "mov dword ptr [rip + 0x1eaf6b], eax"
+        },
+        {
+          "va": "0x14008f5a9",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_frame_delay_range",
+      "chunk": "0x3e",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f5c8",
+      "native_data_rvas": [
+        "0x27a518"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f5c8",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f5cb",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f5d0",
+          "asm": "mov dword ptr [rip + 0x1eaf42], eax"
+        },
+        {
+          "va": "0x14008f5d6",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_animation_flags",
+      "chunk": "0x3f",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f5db",
+      "native_data_rvas": [
+        "0x27a51c"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f5db",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f5de",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f5e3",
+          "asm": "mov dword ptr [rip + 0x1eaf33], eax"
+        },
+        {
+          "va": "0x14008f5e9",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_width",
+      "chunk": "0x40",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f5ee",
+      "native_data_rvas": [
+        "0x27a520"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f5ee",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f5f1",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f5f6",
+          "asm": "mov dword ptr [rip + 0x1eaf24], eax"
+        },
+        {
+          "va": "0x14008f5fc",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_face_height",
+      "chunk": "0x41",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f601",
+      "native_data_rvas": [
+        "0x27a524"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f601",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f604",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f609",
+          "asm": "mov dword ptr [rip + 0x1eaf15], eax"
+        },
+        {
+          "va": "0x14008f60f",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_mouse_flags",
+      "chunk": "0x86",
+      "player_type": "UInt8",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f9ae",
+      "native_data_rvas": [
+        "0x27a6b3"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f9ae",
+          "asm": "mov r8d, 1"
+        },
+        {
+          "va": "0x14008f9b4",
+          "asm": "lea rdx, [rip + 0x1eacf8]"
+        },
+        {
+          "va": "0x14008f9bb",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f9be",
+          "asm": "call 0x140007b60"
+        },
+        {
+          "va": "0x14008f9c3",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_current_x",
+      "chunk": "0x33",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26ca90"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_finish_x",
+      "chunk": "0x34",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26ca98"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_current_y",
+      "chunk": "0x35",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26caa0"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_finish_y",
+      "chunk": "0x36",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26caa8"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_current_scale",
+      "chunk": "0x37",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26cab0"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_finish_scale",
+      "chunk": "0x38",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26cab8"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_time_left",
+      "chunk": "0x39",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26cac0"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "SaveScreen",
+      "field": "maniac_zoom_layer",
+      "chunk": "0x3a",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x8469e..0x84860",
+      "native_data_rvas": [
+        "0x26cac4"
+      ],
+      "consumer": "src/game_screen.cpp:57; native runtime-250921/0017da20.c:287"
+    },
+    {
+      "structure": "Save",
+      "field": "maniac_original_bank_bytes",
+      "chunk": "0x74",
+      "player_type": "Vector<UInt8>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "existing original-save evidence reused; bank payload codec not exhaustively re-audited",
+      "evidence": "docs/analyze-maniac-original-save.py:219; docs/evidence/maniac-250921-save-audit.json",
+      "finding": "SF02"
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "maniac_event_info",
+      "chunk": "0xe",
+      "player_type": "Ref<ManiacEventInfo>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x871ba..0x87276",
+      "native_member": "+0x3d byte",
+      "findings": [
+        "SF02",
+        "SF03"
+      ],
+      "consumer": "src/game_interpreter_map.cpp:87; src/maniac_original_save.h:249"
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "maniac_event_id",
+      "chunk": "0xf",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x871ba..0x87276",
+      "native_member": "+0x2c int32",
+      "findings": [
+        "SF02",
+        "SF03"
+      ],
+      "consumer": "src/game_interpreter_map.cpp:87; src/maniac_original_save.h:249"
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "maniac_event_page_id",
+      "chunk": "0x10",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x871ba..0x87276",
+      "native_member": "+0x30 int32",
+      "findings": [],
+      "consumer": "src/game_interpreter_map.cpp:87; src/maniac_original_save.h:249"
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "maniac_loop_info_size",
+      "chunk": "0x11",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x871ba..0x87276",
+      "native_member": "+0x38 group count",
+      "findings": [],
+      "consumer": "src/game_interpreter_map.cpp:87; src/maniac_original_save.h:249"
+    },
+    {
+      "structure": "SaveEventExecFrame",
+      "field": "maniac_loop_info",
+      "chunk": "0x12",
+      "player_type": "Vector<Int32>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x871ba..0x87276",
+      "native_member": "+0x08 pointer, count * 8 bytes",
+      "findings": [],
+      "consumer": "src/game_interpreter_map.cpp:87; src/maniac_original_save.h:249"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "maniac_current_magnify_height",
+      "chunk": "0xa",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_member": "+0x28",
+      "native_writer_rva": "0x6bc59",
+      "consumer": "src/game_pictures.cpp; ShowPicture-250921.md"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "maniac_finish_magnify_height",
+      "chunk": "0x24",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_member": "+0xb0",
+      "native_writer_rva": "0x6c0b6",
+      "consumer": "src/game_pictures.cpp; ShowPicture-250921.md"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "maniac_image_data",
+      "chunk": "0x1c",
+      "player_type": "Vector<UInt8>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_member": "image +0x90, compressor 0xf3750",
+      "native_writer_rva": "0x6bf60",
+      "consumer": "src/game_pictures.cpp; ShowPicture-250921.md"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "maniac_spritesheet_start",
+      "chunk": "0x1d",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_member": "+0xfc",
+      "native_writer_rva": "0x6bf90",
+      "consumer": "src/game_pictures.cpp; ShowPicture-250921.md"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "maniac_spritesheet_end",
+      "chunk": "0x1e",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_member": "+0x100",
+      "native_writer_rva": "0x6bfb4",
+      "consumer": "src/game_pictures.cpp; ShowPicture-250921.md"
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "maniac_horizontal_pan_speed",
+      "chunk": "0x8d",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x66c08..0x66c8e",
+      "native_data_rvas": [
+        "0x269900"
+      ],
+      "finding": "SF04",
+      "consumer": "src/game_player.cpp:53; src/game_player.cpp:877"
+    },
+    {
+      "structure": "SavePartyLocation",
+      "field": "maniac_vertical_pan_speed",
+      "chunk": "0x8e",
+      "player_type": "Double",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_writer_range": "0x66c08..0x66c8e",
+      "native_data_rvas": [
+        "0x269908"
+      ],
+      "finding": "SF04",
+      "consumer": "src/game_player.cpp:53; src/game_player.cpp:877"
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_strings",
+      "chunk": "0x24",
+      "player_type": "Vector<DBString>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f40a",
+      "native_data_rvas": [
+        "0x27a4d0"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f40a",
+          "asm": "mov r8d, edi"
+        },
+        {
+          "va": "0x14008f40d",
+          "asm": "lea rdx, [rip + 0x1eb0bc]"
+        },
+        {
+          "va": "0x14008f414",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f417",
+          "asm": "call 0x14008d5a0"
+        },
+        {
+          "va": "0x14008f41c",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_window_width",
+      "chunk": "0x2d",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f47b",
+      "native_data_rvas": [
+        "0x27a68c"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f47b",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f47e",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f483",
+          "asm": "mov dword ptr [rip + 0x1eb203], eax"
+        },
+        {
+          "va": "0x14008f489",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_window_height",
+      "chunk": "0x2e",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f48e",
+      "native_data_rvas": [
+        "0x27a690"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f48e",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f491",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f496",
+          "asm": "mov dword ptr [rip + 0x1eb1f4], eax"
+        },
+        {
+          "va": "0x14008f49c",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_font_name",
+      "chunk": "0x2f",
+      "player_type": "DBString",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f4a1",
+      "native_data_rvas": [
+        "0x27a698"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f4a1",
+          "asm": "mov r8d, edi"
+        },
+        {
+          "va": "0x14008f4a4",
+          "asm": "lea rdx, [rip + 0x1eb1ed]"
+        },
+        {
+          "va": "0x14008f4ab",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f4ae",
+          "asm": "call 0x1400c9b50"
+        },
+        {
+          "va": "0x14008f4b3",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_font_size",
+      "chunk": "0x30",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f4b8",
+      "native_data_rvas": [
+        "0x27a6a0"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f4b8",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f4bb",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f4c0",
+          "asm": "mov dword ptr [rip + 0x1eb1da], eax"
+        },
+        {
+          "va": "0x14008f4c6",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_flags",
+      "chunk": "0x32",
+      "player_type": "ManiacMessageHook_Flags",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f4cb",
+      "native_data_rvas": [
+        "0x27a528"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f4cb",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f4ce",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f4d3",
+          "asm": "mov dword ptr [rip + 0x1eb04f], eax"
+        },
+        {
+          "va": "0x14008f4d9",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_common_event_id",
+      "chunk": "0x42",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f614",
+      "native_data_rvas": [
+        "0x27a538"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f614",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f617",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f61c",
+          "asm": "mov dword ptr [rip + 0x1eaf16], eax"
+        },
+        {
+          "va": "0x14008f622",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_callback_system_variable",
+      "chunk": "0x43",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f627",
+      "native_data_rvas": [
+        "0x27a53c"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f627",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f62a",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f62f",
+          "asm": "mov dword ptr [rip + 0x1eaf07], eax"
+        },
+        {
+          "va": "0x14008f635",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_callback_system_string_variable",
+      "chunk": "0x44",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f63a",
+      "native_data_rvas": [
+        "0x27a540"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f63a",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f63d",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f642",
+          "asm": "mov dword ptr [rip + 0x1eaef8], eax"
+        },
+        {
+          "va": "0x14008f648",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_callback_user_variable",
+      "chunk": "0x45",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f64d",
+      "native_data_rvas": [
+        "0x27a544"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f64d",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f650",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f655",
+          "asm": "mov dword ptr [rip + 0x1eaee9], eax"
+        },
+        {
+          "va": "0x14008f65b",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_hook_callback_user_string_variable",
+      "chunk": "0x46",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f660",
+      "native_data_rvas": [
+        "0x27a548"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f660",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f663",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f668",
+          "asm": "mov dword ptr [rip + 0x1eaeda], eax"
+        },
+        {
+          "va": "0x14008f66e",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_battle_alignment",
+      "chunk": "0x85",
+      "player_type": "UInt8",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f994",
+      "native_data_rvas": [
+        "0x27a667"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f994",
+          "asm": "mov r8d, 1"
+        },
+        {
+          "va": "0x14008f99a",
+          "asm": "lea rdx, [rip + 0x1eacc6]"
+        },
+        {
+          "va": "0x14008f9a1",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f9a4",
+          "asm": "call 0x140007b60"
+        },
+        {
+          "va": "0x14008f9a9",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_fps_request",
+      "chunk": "0x87",
+      "player_type": "Int32",
+      "mapping_result": "confirmed_wrong_semantic_mapping",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f9c8",
+      "native_data_rvas": [
+        "0x27a688"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f9c8",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f9cb",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f9d0",
+          "asm": "mov dword ptr [rip + 0x1eacb2], eax"
+        },
+        {
+          "va": "0x14008f9d6",
+          "asm": "jmp 0x14008fad2"
+        }
+      ],
+      "finding": "SF01",
+      "native_meaning": "feature disable mask; bit2 disables menu, not FPS"
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_frameskip",
+      "chunk": "0x88",
+      "player_type": "UInt8",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f9db",
+      "native_data_rvas": [
+        "0x27a6b0"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f9db",
+          "asm": "mov r8d, 1"
+        },
+        {
+          "va": "0x14008f9e1",
+          "asm": "lea rdx, [rip + 0x1eacc8]"
+        },
+        {
+          "va": "0x14008f9e8",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f9eb",
+          "asm": "call 0x140007b60"
+        },
+        {
+          "va": "0x14008f9f0",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_picture_limit",
+      "chunk": "0x89",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8f9f5",
+      "native_data_rvas": [
+        "0x27a680"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008f9f5",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008f9f8",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008f9fd",
+          "asm": "mov dword ptr [rip + 0x1eac7d], eax"
+        },
+        {
+          "va": "0x14008fa03",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_run_when_inactive",
+      "chunk": "0x8a",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8fa08",
+      "native_data_rvas": [
+        "0x27a6ac"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008fa08",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008fa0b",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008fa10",
+          "asm": "mov byte ptr [rip + 0x1eac96], al"
+        },
+        {
+          "va": "0x14008fa16",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_joypad_bindings",
+      "chunk": "0x8b",
+      "player_type": "Vector<UInt8>",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8fa1b",
+      "native_data_rvas": [
+        "0x27a668"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008fa1b",
+          "asm": "mov r8d, 0x10"
+        },
+        {
+          "va": "0x14008fa21",
+          "asm": "lea rdx, [rip + 0x1eac40]"
+        },
+        {
+          "va": "0x14008fa28",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008fa2b",
+          "asm": "call 0x140007b60"
+        },
+        {
+          "va": "0x14008fa30",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_spacing_char",
+      "chunk": "0x8e",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8fa66",
+      "native_data_rvas": [
+        "0x27a6a4"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008fa66",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008fa69",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008fa6e",
+          "asm": "mov dword ptr [rip + 0x1eac30], eax"
+        },
+        {
+          "va": "0x14008fa74",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SaveSystem",
+      "field": "maniac_message_spacing_line",
+      "chunk": "0x8f",
+      "player_type": "Int32",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static mapping only; not full runtime validation",
+      "native_loader_rva": "0x8fa76",
+      "native_data_rvas": [
+        "0x27a6a8"
+      ],
+      "instructions": [
+        {
+          "va": "0x14008fa76",
+          "asm": "mov rcx, rbx"
+        },
+        {
+          "va": "0x14008fa79",
+          "asm": "call 0x1400c9ae0"
+        },
+        {
+          "va": "0x14008fa7e",
+          "asm": "mov dword ptr [rip + 0x1eac24], eax"
+        },
+        {
+          "va": "0x14008fa84",
+          "asm": "jmp 0x14008fad2"
+        }
+      ]
+    },
+    {
+      "structure": "SavePicture",
+      "field": "fixed_to_map",
+      "chunk": "0x6",
+      "player_type": "custom adapter retaining ordinary field view",
+      "native_member": "+0xa0 image kind/follow packed word",
+      "native_writer_rva": "0x6bb93",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static adapter/mapping review; no new image runtime acceptance"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "use_transparent_color",
+      "chunk": "0x9",
+      "player_type": "custom adapter retaining ordinary field view",
+      "native_member": "+0xa4 chromakey/text spacing packed word",
+      "native_writer_rva": "0x6bc31",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static adapter/mapping review; no new image runtime acceptance"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "current_bot_trans",
+      "chunk": "0x12",
+      "player_type": "custom adapter retaining ordinary field view",
+      "native_member": "+0x78/+0x7c two int32 dimensions",
+      "native_writer_rva": "0x6bdd3",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static adapter/mapping review; no new image runtime acceptance"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "spritesheet_play_once",
+      "chunk": "0x18",
+      "player_type": "custom adapter retaining ordinary field view",
+      "native_member": "+0xf8 raw int32 finish mode",
+      "native_writer_rva": "0x6bebc",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static adapter/mapping review; no new image runtime acceptance"
+    },
+    {
+      "structure": "SavePicture",
+      "field": "flags",
+      "chunk": "0x1b",
+      "player_type": "custom adapter retaining ordinary field view",
+      "native_member": "+0x10c lifecycle flags",
+      "native_writer_rva": "0x6bf3c",
+      "mapping_result": "no_additional_number_mismatch_identified",
+      "coverage": "static adapter/mapping review; no new image runtime acceptance"
+    }
+  ]
+}

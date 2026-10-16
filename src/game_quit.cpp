@@ -20,6 +20,8 @@
 #include "input.h"
 #include "scene.h"
 #include <player.h>
+#include "main_data.h"
+#include "game_system.h"
 
 constexpr int num_seconds = 2;
 constexpr int start_time = num_seconds * DEFAULT_FPS;
@@ -37,7 +39,8 @@ Game_Quit::Game_Quit()
 }
 
 void Game_Quit::Update() {
-	if (Scene::instance == nullptr || Scene::instance->type == Scene::Title || !Scene::Find(Scene::Title) || !Input::IsPressed(Input::RESET)) {
+	if (Scene::instance == nullptr || Scene::instance->type == Scene::Title || !Scene::Find(Scene::Title) || !Input::IsPressed(Input::RESET)
+			|| (Main_Data::game_system && Main_Data::game_system->IsManiacFeatureDisabled(128))) {
 		if (time_left != start_time) {
 			Reset();
 		}

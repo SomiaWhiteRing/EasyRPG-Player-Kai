@@ -113,6 +113,30 @@ void Game_System::SetManiacPictureLimit(int32_t limit) {
 	data.maniac_picture_limit = limit;
 }
 
+void Game_System::SetAllowSave(bool allow) {
+	data.save_allowed = allow;
+	if (Player::IsPatchManiac()) {
+		data.maniac_disabled_features = (data.maniac_disabled_features & ~1) | (allow ? 0 : 1);
+	}
+}
+
+void Game_System::SetAllowMenu(bool allow) {
+	data.menu_allowed = allow;
+	if (Player::IsPatchManiac()) {
+		data.maniac_disabled_features = (data.maniac_disabled_features & ~4) | (allow ? 0 : 4);
+	}
+}
+
+void Game_System::SetManiacDisabledFeatures(int32_t mask) {
+	data.maniac_disabled_features = mask;
+	data.save_allowed = (mask & 1) == 0;
+	data.menu_allowed = (mask & 4) == 0;
+}
+
+bool Game_System::IsManiacFeatureDisabled(uint32_t mask) const {
+	return Player::IsPatchManiac() && (static_cast<uint32_t>(data.maniac_disabled_features) & mask) != 0;
+}
+
 void Game_System::ApplyManiacFpsRequest() {
 	const int old_fps = Game_Clock::GetTargetGameFps();
 	const int request = data.maniac_fps_request;

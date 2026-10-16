@@ -246,10 +246,16 @@ inline bool Decode(const std::vector<uint8_t>& bytes, Game_ManiacSelfVariables::
 	return true;
 }
 
-inline void RestoreMapFrameIdentity(lcf::rpg::SaveEventExecState& state, int map_id) {
-	if (map_id <= 0) return;
+inline void RestoreManiacFrameIdentity(lcf::rpg::SaveEventExecState& state, int map_id) {
 	for (auto& frame : state.stack) {
-		if (frame.easyrpg_self_scope == 0 && frame.event_id > 0) {
+		if (frame.easyrpg_self_scope != 0) continue;
+		if ((frame.maniac_event_info & 0xf0) == 0x20 && frame.maniac_event_id > 0) {
+			frame.easyrpg_self_scope = 1;
+			frame.easyrpg_self_map_id = 0;
+			frame.easyrpg_self_event_id = frame.maniac_event_id;
+		} else if (map_id > 0 && frame.event_id > 0) {
+			// A zero map event_id can mean an event on a previous map.
+			// Its native ID alone does not identify the owning map.
 			frame.easyrpg_self_scope = 2;
 			frame.easyrpg_self_map_id = map_id;
 			frame.easyrpg_self_event_id = frame.event_id;
@@ -258,16 +264,19 @@ inline void RestoreMapFrameIdentity(lcf::rpg::SaveEventExecState& state, int map
 }
 
 inline bool ImportObservedBanks(lcf::rpg::Save& save) {
+	const int map_id = save.party_location.map_id;
+	RestoreManiacFrameIdentity(save.foreground_event_execstate, map_id);
+	for (auto& event : save.map_info.events) {
+		RestoreManiacFrameIdentity(event.parallel_event_execstate, map_id);
+	}
+	for (auto& event : save.common_events) {
+		RestoreManiacFrameIdentity(event.parallel_event_execstate, map_id);
+	}
 	if (save.maniac_original_bank_bytes.empty()
 		|| !save.easyrpg_data.maniac_self_variable_banks.empty()) return true;
 	Game_ManiacSelfVariables::Banks imported;
 	if (!Decode(save.maniac_original_bank_bytes, imported)) return false;
 	save.easyrpg_data.maniac_self_variable_banks = std::move(imported);
-	const int map_id = save.party_location.map_id;
-	RestoreMapFrameIdentity(save.foreground_event_execstate, map_id);
-	for (auto& event : save.map_info.events) {
-		RestoreMapFrameIdentity(event.parallel_event_execstate, map_id);
-	}
 	return true;
 }
 

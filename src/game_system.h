@@ -226,6 +226,8 @@ public:
 	void SetAllowSave(bool allow);
 	bool GetAllowMenu();
 	void SetAllowMenu(bool allow);
+	void SetManiacDisabledFeatures(int32_t mask);
+	bool IsManiacFeatureDisabled(uint32_t mask) const;
 
 	int GetSaveCount();
 	void IncSaveCount();
@@ -683,16 +685,8 @@ inline bool Game_System::GetAllowEscape() {
 	return data.escape_allowed;
 }
 
-inline void Game_System::SetAllowSave(bool allow) {
-	data.save_allowed = allow;
-}
-
 inline bool Game_System::GetAllowSave() {
 	return data.save_allowed;
-}
-
-inline void Game_System::SetAllowMenu(bool allow) {
-	data.menu_allowed = allow;
 }
 
 inline bool Game_System::GetAllowMenu() {

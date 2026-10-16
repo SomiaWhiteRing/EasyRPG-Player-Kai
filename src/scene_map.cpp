@@ -349,7 +349,8 @@ void Scene_Map::UpdateSceneCalling() {
 	}
 
 	if (Player::debug_flag) {
-		if (call == nullptr && Input::IsTriggered(Input::DEBUG_MENU)) {
+		if (call == nullptr && Input::IsTriggered(Input::DEBUG_MENU)
+				&& !Main_Data::game_system->IsManiacFeatureDisabled(32)) {
 			call = std::make_shared<Scene_Debug>();
 		}
 

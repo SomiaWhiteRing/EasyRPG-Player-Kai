@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-16",
+  "baseline_commit": "8d78a31001adf1fe2228b802db13661bf4b5d6af",
+  "save_schema_revision": 811,
+  "native_mask_chunk": "0x87",
+  "player_private_fps_chunk": "0xC9",
+  "windows_build": "passed",
+  "temporary_consumer_check": {
+    "cases": 1,
+    "assertions": 42,
+    "failed": 0,
+    "source_sha256": "b178a782968fa5415058dc3fc944aa319e5c5a849d89ad58a223553d54586f88",
+    "source_removed_before_commit": true
+  },
+  "existing_tests": {
+    "selected": 504,
+    "independently_passed": 470,
+    "passed_with_existing_initializer": 34,
+    "passed_total": 504,
+    "unique_case_assertions": 3677971,
+    "failures_after_valid_execution": 0,
+    "harness_limits": [
+      "Monolithic execution exits early through Output::BeginManiacFileOutput; exit code 0 is not sufficient.",
+      "MoveRoute MapGuard does not initialize game_system; 34 cases were executed after an existing MockGame test, matching their normal-suite prerequisite."
+    ],
+    "initializer": "Maniac 250921 interpreter tuple reads current and negative nest into zero and SELF ranges"
+  },
+  "patch_reconstruction": {
+    "changed_files": 41,
+    "generated_and_source_bytes_match_except_csv_line_endings": true,
+    "csv_normalized_content_match": true
+  },
+  "runtime": {
+    "exe_sha256": "b124c276c8c3debfc64541a9b28b014fcb37ac4c0aacba8c671bded7704e1a67",
+    "save12_original_sha256": "db3493f89c78c0722c16d855e4200f648f427787fea2774145916bcbbd6bab27",
+    "save12_unchanged": true,
+    "logical_frames": 120,
+    "results": [
+      {
+        "case": "native_original",
+        "seconds": 4.468,
+        "exit_code": 0,
+        "timeout": false,
+        "input_sha256": "db3493f89c78c0722c16d855e4200f648f427787fea2774145916bcbbd6bab27"
+      },
+      {
+        "case": "legacy_player_fps30",
+        "seconds": 5.516,
+        "exit_code": 0,
+        "timeout": false,
+        "input_sha256": "ba2d1d1ca4f91760577627b2ff11e381861a6b239eec46b4060cfc3104a49d46"
+      },
+      {
+        "case": "new_player_fps30",
+        "seconds": 5.5,
+        "exit_code": 0,
+        "timeout": false,
+        "input_sha256": "19e5bb7d94de83d1c144cfd320afdf05489d7ff9731835bc58b38a0b89384b36"
+      }
+    ],
+    "mode": "SDL dummy, no audio, no key inputs, isolated save and config paths"
+  },
+  "not_performed": [
+    "manual UI",
+    "browser",
+    "Android build/runtime",
+    "Web build/runtime"
+  ],
+  "product_edits": [
+    "SF01 native mask and private FPS separation with legacy Player migration",
+    "SF02 native frame SELF restoration independent of bank presence",
+    "SF03 common frame native identity population",
+    "SF04 initialize and restore pan accumulators"
+  ]
+}

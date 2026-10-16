@@ -625,6 +625,10 @@ void Game_Interpreter::Push(Game_CommonEvent* ev) {
 	if (!list.empty() || (Player::IsPatchManiac())) {
 		Push(std::move(list), 0, false);
 		auto& frame = _state.stack.back();
+		if (Player::IsPatchManiac()) {
+			frame.maniac_event_info = 0x20 | static_cast<int>(ev->GetTrigger());
+			frame.maniac_event_id = ev->GetId();
+		}
 		frame.easyrpg_self_scope = 1;
 		frame.easyrpg_self_map_id = 0;
 		frame.easyrpg_self_event_id = ev->GetId();
@@ -4164,6 +4168,10 @@ bool Game_Interpreter::CommandChangeEscapeAccess(lcf::rpg::EventCommand const& c
 }
 
 bool Game_Interpreter::CommandChangeSaveAccess(lcf::rpg::EventCommand const& com) { // code 11930
+	if (Player::IsPatchManiac() && com.parameters[0] == -1 && com.parameters.size() >= 2) {
+		Main_Data::game_system->SetManiacDisabledFeatures(com.parameters[1]);
+		return true;
+	}
 	Main_Data::game_system->SetAllowSave(com.parameters[0] != 0);
 	return true;
 }

@@ -55,6 +55,8 @@ void Game_Player::SetSaveData(lcf::rpg::SavePartyLocation save)
 	*data() = std::move(save);
 
 	SanitizeData("Party");
+	maniac_pan_current_x = data()->pan_current_x;
+	maniac_pan_current_y = data()->pan_current_y;
 
 	// RPG_RT will always reset the hero graphic on loading a save, even if
 	// a move route changed the graphic.
