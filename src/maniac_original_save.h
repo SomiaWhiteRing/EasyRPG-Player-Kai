@@ -270,6 +270,20 @@ inline bool ImportObservedBanks(lcf::rpg::Save& save) {
 		RestoreManiacFrameIdentity(event.parallel_event_execstate, map_id);
 	}
 	for (auto& event : save.common_events) {
+		auto& stack = event.parallel_event_execstate.stack;
+		if (!stack.empty()) {
+			auto& frame = stack.front();
+			// Older Player saves omitted native identity on ordinary common-event
+			// entry. Only the parallel root has a known trigger and container ID;
+			// require matching private SELF identity before repairing it.
+			if (event.ID > 0 && frame.event_id == 0
+					&& frame.maniac_event_info == 0 && frame.maniac_event_id == 0
+					&& frame.easyrpg_self_scope == 1 && frame.easyrpg_self_map_id == 0
+					&& frame.easyrpg_self_event_id == event.ID) {
+				frame.maniac_event_info = 0x24;
+				frame.maniac_event_id = event.ID;
+			}
+		}
 		RestoreManiacFrameIdentity(event.parallel_event_execstate, map_id);
 	}
 	if (save.maniac_original_bank_bytes.empty()

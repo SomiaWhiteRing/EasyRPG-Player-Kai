@@ -6787,6 +6787,7 @@ AsyncOp Game_Interpreter::RunManiacMessageHook(int common_event_id, std::unique_
 	frame.easyrpg_self_map_id = 0;
 	frame.easyrpg_self_event_id = common_event_id;
 	frame.maniac_event_info = 0x28;
+	frame.maniac_event_id = common_event_id;
 	// Each invocation has its own budget. A wait/failed dispatch stops this
 	// invocation; do not spin until completion or consume the caller's budget.
 	hook.Update();

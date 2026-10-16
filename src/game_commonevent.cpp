@@ -21,6 +21,7 @@
 #include "game_switches.h"
 #include "game_interpreter_map.h"
 #include "main_data.h"
+#include "player.h"
 #include <lcf/reader_util.h>
 #include <cassert>
 
@@ -101,6 +102,14 @@ lcf::rpg::SaveEventExecState Game_CommonEvent::GetSaveData() {
 	if (GetTrigger() == lcf::rpg::EventPage::Trigger_parallel && state.stack.empty()) {
 		// RPG_RT always stores an empty stack frame for parallel events.
 		state.stack.push_back({});
+		if (Player::IsPatchManiac()) {
+			auto& frame = state.stack.back();
+			frame.ID = 1;
+			frame.maniac_event_info = 0x20 | GetTrigger();
+			frame.maniac_event_id = GetId();
+			frame.easyrpg_self_scope = 1;
+			frame.easyrpg_self_event_id = GetId();
+		}
 	}
 	return state;
 }
