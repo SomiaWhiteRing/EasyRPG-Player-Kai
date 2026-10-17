@@ -59,8 +59,11 @@ namespace Game_Battle {
 	/** Run Maniac battle-start and parallel common events, preserving async continuations. */
 	AsyncOp UpdateManiacCommonEvents();
 	bool IsManiacBattleStarting();
-	void RequestManiacForceFlee();
+	bool RequestManiacForceFlee();
 	bool IsManiacForceFleeRequested();
+	/** Stop effects and callers after a terminal callback operation, before Quit frees the battle. */
+	void CancelManiacBattle();
+	bool IsManiacBattleCancelled();
 
 	/**
 	 * Updates the battle animation

@@ -115,8 +115,9 @@ bool maniac_damage_hook_running = false;
 std::unique_ptr<Game_Interpreter_Battle> maniac_atb_interpreter;
 std::unique_ptr<Game_Interpreter_Battle> maniac_target_interpreter;
 
-bool Game_Interpreter_Battle::IsManiacStateHookRunning() {
-	return Player::IsPatchManiac() && maniac_state_hook_running;
+bool Game_Interpreter_Battle::IsManiacBattleEndDeferred() {
+	// 250921 checks both 279139 (state) and 279137 (damage pop).
+	return Player::IsPatchManiac() && (maniac_state_hook_running || maniac_damage_hook_running);
 }
 
 Game_Interpreter_Battle::Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages, int troop_id)
@@ -369,8 +370,7 @@ bool Game_Interpreter_Battle::CommandForceFlee(lcf::rpg::EventCommand const& com
 	switch (com.parameters[0]) {
 	case 0:
 		if (!check || Game_Battle::GetBattleCondition() != lcf::rpg::System::BattleCondition_pincers) {
-			this->force_flee_enabled = true;
-			if (maniac) Game_Battle::RequestManiacForceFlee();
+			if (!maniac || Game_Battle::RequestManiacForceFlee()) this->force_flee_enabled = true;
 		}
 		break;
 	case 1:
@@ -473,11 +473,13 @@ bool Game_Interpreter_Battle::CommandChangeMonsterHP(lcf::rpg::EventCommand cons
 		}
 
 		enemy->ChangeHp(change, lethal);
+		if (Game_Battle::IsManiacBattleCancelled()) return false;
 
 		auto& scene = Scene::instance;
 		if (scene) {
 			scene->OnEventHpChanged(enemy, change);
 		}
+		if (Game_Battle::IsManiacBattleCancelled()) return false;
 
 		if (enemy->IsDead()) {
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_EnemyKill));
@@ -530,6 +532,7 @@ bool Game_Interpreter_Battle::CommandChangeMonsterCondition(lcf::rpg::EventComma
 		} else {
 			enemy->AddState(state_id, true);
 		}
+		if (Game_Battle::IsManiacBattleCancelled()) return false;
 	}
 	return true;
 }
@@ -837,6 +840,7 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 		// Stop the suspended caller as well as this hook. The old scene is
 		// retained until both C++ call stacks return safely.
 		_async_op = operation;
+		Game_Battle::CancelManiacBattle();
 		hook_interpreter->EndEventProcessing();
 		if (Scene::instance == hook_scene) {
 			if (auto battle = std::dynamic_pointer_cast<Scene_Battle>(hook_scene)) {
@@ -855,6 +859,7 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 			running = false;
 		});
 		const auto scene = Scene::instance;
+		bool resuming_scene = false;
 		const auto wait_frame = []() {
 			#ifdef __EMSCRIPTEN__
 			// Yield to the host while the callback keeps its caller suspended.
@@ -866,7 +871,7 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 		hook_interpreter->Update();
 		if (retire_hook()) return true;
 		while (hook_interpreter->IsRunning() && Game_Battle::IsBattleRunning()
-				&& Scene::instance == scene && !Player::exit_flag && !Player::reset_flag) {
+				&& !Game_Battle::IsManiacBattleCancelled()) {
 			// The suspended main loop cannot service host input or window closure.
 			Player::UpdateInput();
 			if (!DisplayUi->ProcessEvents()) {
@@ -878,12 +883,31 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 				wait_frame();
 				continue;
 			}
+			if (Scene::instance != scene || resuming_scene) {
+				// A menu covers the battle without completing its suspended callback.
+				// Use the host scene lifecycle, including Start/Continue/transitions.
+				if (Scene::Find(Scene::Battle) != scene) {
+					Game_Battle::CancelManiacBattle();
+					break;
+				}
+				if (!resuming_scene) scene->FinishSceneChange();
+				resuming_scene = true;
+				Scene::instance->MainFunction();
+				if (Scene::Find(Scene::Battle) != scene) {
+					Game_Battle::CancelManiacBattle();
+					break;
+				}
+				if (Scene::instance == scene && scene->IsReadyForUpdate()) resuming_scene = false;
+				Player::Draw();
+				wait_frame();
+				continue;
+			}
 			// The scene advances messages, timers and async operations, while
 			// this driver owns the independent hook's interpreter updates.
 			Player::Update(!Scene::IsAsyncPending());
 			if (retire_hook()) return true;
-			if (Scene::instance != scene || !Game_Battle::IsBattleRunning()
-					|| Player::exit_flag || Player::reset_flag) break;
+			if (!Game_Battle::IsBattleRunning() || Game_Battle::IsManiacBattleCancelled()) break;
+			if (Scene::instance != scene) continue;
 			Player::Draw();
 			wait_frame();
 			if (Scene::instance == scene && Game_Battle::IsBattleRunning()
@@ -904,6 +928,10 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 		if (retire_hook()) return true;
 	} else {
 		hook_interpreter->Update();
+	}
+	if (Game_Battle::IsManiacBattleCancelled()) {
+		hook_interpreter->EndEventProcessing();
+		return true;
 	}
 	if (hook_type == ManiacBattleHookType::Targetting && hook_result) {
 		// Native reads slot five from the base captured before the hook ran.

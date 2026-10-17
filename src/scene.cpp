@@ -79,6 +79,7 @@ enum PushPopOperation {
 };
 
 int Scene::push_pop_operation = 0;
+bool Scene::main_function_initialized = false;
 
 lcf::rpg::SaveSystem::Scene Scene::rpgRtSceneFromSceneType(SceneType t) {
 	switch (t) {
@@ -145,7 +146,6 @@ void Scene::ScheduleTransitionIn(Scene::SceneType prev_scene_type) {
 }
 
 void Scene::MainFunction() {
-	static bool init = false;
 
 	if (IsAsyncPending()) {
 		Player::Update(false);
@@ -160,7 +160,7 @@ void Scene::MainFunction() {
 	// The continuation could have caused a new async wait condition, or
 	// it could have changed the scene.
 	if (!IsAsyncPending() && Scene::instance.get() == this) {
-		if (!init) {
+		if (!main_function_initialized) {
 			auto prev_scene = Graphics::UpdateSceneCallback();
 			auto prev_scene_type = prev_scene ? prev_scene->type : Null;
 
@@ -188,13 +188,22 @@ void Scene::MainFunction() {
 
 			ScheduleTransitionIn(prev_scene_type);
 
-			init = true;
+			main_function_initialized = true;
 			return;
 		} else {
 			Player::Update();
 		}
 	}
 
+	FinishSceneChange();
+}
+
+bool Scene::IsReadyForUpdate() const {
+	return Scene::instance.get() == this && main_function_initialized
+		&& !async_continuation && !IsAsyncPending();
+}
+
+void Scene::FinishSceneChange() {
 	if (Scene::instance.get() != this) {
 		// Shutdown after scene switch
 		assert(Scene::instance == instances.back() &&
@@ -209,7 +218,7 @@ void Scene::MainFunction() {
 			TransitionOut(next_scene);
 		}
 
-		init = false;
+		main_function_initialized = false;
 	}
 }
 

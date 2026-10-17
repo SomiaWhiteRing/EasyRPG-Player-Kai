@@ -159,6 +159,7 @@ void Game_BattleAlgorithm::AlgorithmBase::ApplyCustomEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplySwitchEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	const auto sw = GetAffectedSwitch();
 	if (sw > 0) {
 		Main_Data::game_switches->Set(sw, true);
@@ -167,6 +168,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplySwitchEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplyHpEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 
@@ -176,6 +178,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyHpEffect() {
 	int hp = GetAffectedHp();
 	if (hp != 0) {
 		hp = target->ChangeHp(hp, true);
+		if (Game_Battle::IsManiacBattleCancelled()) return hp;
 		if (IsAbsorbHp()) {
 			// Only absorb the hp that were left
 			source->ChangeHp(-hp, true);
@@ -185,6 +188,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyHpEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplySpEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 	auto sp = GetAffectedSp();
@@ -210,6 +214,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplySpEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplyAtkEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 	auto atk = GetAffectedAtk();
@@ -233,6 +238,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyAtkEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplyDefEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 	auto def = GetAffectedDef();
@@ -256,6 +262,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyDefEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplySpiEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 	auto spi = GetAffectedSpi();
@@ -279,6 +286,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplySpiEffect() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplyAgiEffect() {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	assert(target);
 	auto agi = GetAffectedAgi();
@@ -302,6 +310,7 @@ int Game_BattleAlgorithm::AlgorithmBase::ApplyAgiEffect() {
 }
 
 bool Game_BattleAlgorithm::AlgorithmBase::ApplyStateEffect(StateEffect se) {
+	if (Game_Battle::IsManiacBattleCancelled()) return false;
 	auto* target = GetTarget();
 	if (!target) {
 		return false;
@@ -324,6 +333,7 @@ bool Game_BattleAlgorithm::AlgorithmBase::ApplyStateEffect(StateEffect se) {
 	}
 
 	// Apply revived hp healing
+	if (Game_Battle::IsManiacBattleCancelled()) return rc;
 	if (was_dead && !target->IsDead()) {
 		auto hp = GetAffectedHp();
 		target->ChangeHp(hp - 1, false);
@@ -339,6 +349,7 @@ void Game_BattleAlgorithm::AlgorithmBase::ApplyStateEffects() {
 }
 
 int Game_BattleAlgorithm::AlgorithmBase::ApplyAttributeShiftEffect(AttributeEffect ae) {
+	if (Game_Battle::IsManiacBattleCancelled()) return 0;
 	auto* target = GetTarget();
 	if (target) {
 		return target->ShiftAttributeRate(ae.attr_id, ae.shift);

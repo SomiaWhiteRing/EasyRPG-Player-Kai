@@ -86,6 +86,9 @@ public:
 	 * the stack.
 	 */
 	void MainFunction();
+	/** Finish a scene switch while a synchronous caller remains suspended. */
+	void FinishSceneChange();
+	bool IsReadyForUpdate() const;
 
 	/**
 	 * Start processing.
@@ -317,6 +320,7 @@ private:
 	static std::vector<std::shared_ptr<Scene> > instances;
 
 	static int push_pop_operation;
+	static bool main_function_initialized;
 
 	DrawableList drawable_list;
 	/**

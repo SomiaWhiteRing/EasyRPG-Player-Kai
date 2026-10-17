@@ -312,6 +312,7 @@ bool Scene_Battle::HandleManiacHookOperation(AsyncOp operation) {
 		auto map = std::dynamic_pointer_cast<Scene_Map>(Scene::Find(Scene::Map));
 		if (!map) return false;
 		map->QueueManiacLoad(operation);
+		Game_Battle::CancelManiacBattle();
 		Scene::PopUntil(Scene::Map);
 		return true;
 	}
@@ -319,7 +320,9 @@ bool Scene_Battle::HandleManiacHookOperation(AsyncOp operation) {
 		EndBattle(static_cast<BattleResult>(operation.GetBattleResult()));
 		return true;
 	}
-	return CheckSceneExit(operation);
+	const bool exiting = CheckSceneExit(operation);
+	if (exiting) Game_Battle::CancelManiacBattle();
+	return exiting;
 }
 
 bool Scene_Battle::UpdateEvents() {
@@ -329,7 +332,9 @@ bool Scene_Battle::UpdateEvents() {
 	if (Scene::instance.get() != this) return false;
 	status_window->Refresh();
 
-	if (interp.IsForceFleeEnabled() || Game_Battle::IsManiacForceFleeRequested()) {
+	if (Game_Battle::IsManiacForceFleeRequested()) {
+		UpdateManiacForceFlee();
+	} else if (interp.IsForceFleeEnabled()) {
 		if (state != State_Escape) {
 			SetState(State_Escape);
 		}
@@ -362,7 +367,7 @@ bool Scene_Battle::HandleEventOperation(AsyncOp operation) {
 bool Scene_Battle::UpdateManiacCommonEvents() {
 	const auto operation = Game_Battle::UpdateManiacCommonEvents();
 	if (Scene::instance.get() != this || !HandleEventOperation(operation)) return false;
-	if (Game_Battle::IsManiacForceFleeRequested() && state != State_Escape) SetState(State_Escape);
+	UpdateManiacForceFlee();
 	auto call = TakeRequestedScene();
 	if (call && (call->type == Scene::Gameover || call->type == Scene::Settings)) {
 		Scene::Push(std::move(call));
@@ -386,6 +391,13 @@ bool Scene_Battle::UpdateTimers() {
 		return false;
 	}
 	return true;
+}
+
+void Scene_Battle::UpdateManiacForceFlee() {
+	if (!Game_Battle::IsManiacForceFleeRequested() || maniac_force_flee_accepted
+			|| state == State_Victory || state == State_Defeat) return;
+	maniac_force_flee_accepted = true;
+	if (state != State_Escape) SetState(State_Escape);
 }
 
 void Scene_Battle::UpdateGraphics() {
@@ -685,6 +697,7 @@ void Scene_Battle::ActionSelectedCallback(Game_Battler* for_battler) {
 		target_index,
 		&target_index
 	);
+	if (Game_Battle::IsManiacBattleCancelled()) return;
 	if (target_hook_ran && for_battler->GetBattleAlgorithm() == selected_action
 		&& (maniac ? (target_type == 1 || target_type == 3) : single_target != nullptr)) {
 		auto& party = maniac
@@ -732,6 +745,7 @@ void Scene_Battle::SelectionFlash(Game_Battler* battler) {
 
 void Scene_Battle::EndBattle(BattleResult result) {
 	assert(Scene::instance.get() == this && "EndBattle called multiple times!");
+	Game_Battle::CancelManiacBattle();
 
 	Main_Data::game_party->IncBattleCount();
 	switch (result) {

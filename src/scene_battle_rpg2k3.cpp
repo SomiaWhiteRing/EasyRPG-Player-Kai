@@ -856,6 +856,7 @@ void Scene_Battle_Rpg2k3::CreateEnemyActions() {
 			}
 			assert(enemy->GetBattleAlgorithm() != nullptr);
 			ActionSelectedCallback(enemy);
+			if (Game_Battle::IsManiacBattleCancelled()) return;
 #ifdef EP_DEBUG_BATTLE2K3_STATE_MACHINE
 			Output::Debug("Battle2k3 ScheduleEnemyAction name={} type={} frame={}", enemy->GetName(), static_cast<int>(enemy->GetBattleAlgorithm()->GetType()), Main_Data::game_system->GetFrameCounter());
 #endif
@@ -905,6 +906,7 @@ void Scene_Battle_Rpg2k3::CreateActorAutoActions() {
 
 		actor->SetLastBattleAction(-1);
 		ActionSelectedCallback(actor);
+		if (Game_Battle::IsManiacBattleCancelled()) return;
 	}
 }
 
@@ -917,10 +919,12 @@ bool Scene_Battle_Rpg2k3::UpdateAtb() {
 	if (native_maniac) {
 		// RPG_RT selects ready auto actions before their next ATB hook.
 		CreateActorAutoActions();
+		if (Game_Battle::IsManiacBattleCancelled()) return false;
 	}
 	if (IsAtbAccumulating()) {
 		// FIXME: If one monster can act now, he gets his battle algo set, and we abort updating atb for other monsters
 		Game_Battle::UpdateAtbGauges();
+		if (Game_Battle::IsManiacBattleCancelled()) return false;
 	}
 
 	CreateEnemyActions();
@@ -976,12 +980,16 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 			}
 		}
 
+		if (maniac_escape_end_timer > 0 && --maniac_escape_end_timer == 0) {
+			SetState(maniac_escape_end_result == BattleResult::Defeat ? State_Defeat : State_Victory);
+		}
 		CheckBattleEndConditions();
-		UpdateAtb();
+		if (!UpdateAtb()) return false;
 
 		if (Player::IsPatchManiac()
 				&& !Game_Battle::IsBattleAnimationWaiting()
-				&& !Game_Message::IsMessageActive()) {
+				&& !Game_Message::IsMessageActive()
+				&& !(state == State_Escape && maniac_escape_end_timer > 0)) {
 			// Hooks can change a troop condition while no unit can act.
 			// Poll the dynamic conditions independently of action completion.
 			if (!CheckBattleEndAndScheduleEvents(EventTriggerType::eAfterBattleAction, nullptr)) {
@@ -994,6 +1002,7 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 
 void Scene_Battle_Rpg2k3::vUpdate() {
 	const auto process_scene = UpdateBattleState();
+	if (Game_Battle::IsManiacBattleCancelled()) return;
 
 	while (process_scene) {
 		// A pumped callback suspends the action that invoked it. Only the
@@ -1002,7 +1011,7 @@ void Scene_Battle_Rpg2k3::vUpdate() {
 			break;
 		}
 		// Something ended the battle.
-		if (Scene::instance.get() != this) {
+		if (Scene::instance.get() != this || Game_Battle::IsManiacBattleCancelled()) {
 			break;
 		}
 
@@ -1027,6 +1036,7 @@ void Scene_Battle_Rpg2k3::vUpdate() {
 		}
 	}
 
+	if (Game_Battle::IsManiacBattleCancelled()) return;
 	UpdateAnimations();
 	UpdateGraphics();
 }
@@ -1038,6 +1048,19 @@ void Scene_Battle_Rpg2k3::NextTurn(Game_Battler* battler) {
 }
 
 bool Scene_Battle_Rpg2k3::CheckBattleEndConditions() {
+	UpdateManiacForceFlee();
+	if (state == State_Escape && maniac_force_flee_accepted) {
+		// 18c080 records a candidate without replacing escape phase 4.
+		// 188680 commits it after 60 updates; 18cb30 can finish escape first.
+		if (maniac_escape_end_result != BattleResult::Abort) return true;
+		if (Game_Battle::CheckLose()) maniac_escape_end_result = BattleResult::Defeat;
+		else if (Game_Battle::CheckWin()) maniac_escape_end_result = BattleResult::Victory;
+		if (maniac_escape_end_result != BattleResult::Abort) {
+			maniac_escape_end_timer = 60;
+			return true;
+		}
+		return false;
+	}
 	if (state == State_Defeat || Game_Battle::CheckLose()) {
 		if (state != State_Defeat) {
 			SetState(State_Defeat);
@@ -1806,6 +1829,7 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionBa
 
 	if (scene_action_substate == eBattleAction) {
 		auto rc = ProcessBattleAction(pending_battle_action.get());
+		if (Game_Battle::IsManiacBattleCancelled()) return SceneActionReturn::eWaitTillNextFrame;
 		// If interpreter or something else changed the battle state, cleanup before we abort.
 		if (state != State_Battle) {
 			pending_battle_action = {};
@@ -2298,7 +2322,9 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 
 	for (auto* b : battlers) {
 		b->BattleStateHeal();
+		if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 		int damageTaken = b->ApplyConditions();
+		if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 		if (damageTaken != 0) {
 			DrawFloatText(
 					b->GetBattlePosition().x,
@@ -2307,6 +2333,7 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 					std::to_string(std::abs(damageTaken)),
 					b,
 					damageTaken < 0 ? Scene_Battle_Rpg2k3::FloatTextType::Damage : Scene_Battle_Rpg2k3::FloatTextType::Heal);
+			if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 		}
 		if (b->GetType() == Game_Battler::Type_Ally) {
 			auto* sprite = static_cast<Game_Actor*>(b)->GetActorBattleSprite();
@@ -2689,6 +2716,7 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 	action->ApplyAgiEffect();
 	action->ApplyStateEffects();
 	action->ApplyAttributeShiftEffects();
+	if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 
 	if (action->IsSuccess() && action->IsAffectHp() && action->GetAffectedHp() <= 0) {
 		if (target->GetType() == Game_Battler::Type_Enemy) {
@@ -2732,6 +2760,7 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 						std::to_string(std::abs(hp)),
 						target,
 						hp > 0 ? Scene_Battle_Rpg2k3::FloatTextType::Heal : Scene_Battle_Rpg2k3::FloatTextType::Damage);
+				if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 
 				if (action->IsAbsorbHp()) {
 					DrawFloatText(
@@ -2766,6 +2795,7 @@ Scene_Battle_Rpg2k3::BattleActionReturn Scene_Battle_Rpg2k3::ProcessBattleAction
 				Scene_Battle_Rpg2k3::FloatTextType::Miss);
 	}
 
+	if (Game_Battle::IsManiacBattleCancelled()) return BattleActionReturn::eWait;
 	status_window->Refresh();
 
 	// Repeat on next target
@@ -2936,6 +2966,7 @@ void Scene_Battle_Rpg2k3::ActionSelectedCallback(Game_Battler* for_battler) {
 	}
 
 	Scene_Battle::ActionSelectedCallback(for_battler);
+	if (Game_Battle::IsManiacBattleCancelled()) return;
 
 	if (for_battler->GetType() == Game_Battler::Type_Ally) {
 		ReturnToMainBattleState();

@@ -178,6 +178,7 @@ protected:
 
 	void InitEscapeChance();
 	bool TryEscape();
+	void UpdateManiacForceFlee();
 
 	// Variables
 	State state = State_Start;
@@ -189,6 +190,7 @@ protected:
 	int escape_chance = 0;
 	bool allow_escape = false;
 	bool first_strike = false;
+	bool maniac_force_flee_accepted = false;
 
 	Game_Actor* active_actor = nullptr;
 

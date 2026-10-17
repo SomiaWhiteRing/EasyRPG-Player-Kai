@@ -68,6 +68,7 @@ namespace {
 	size_t parallel_event_index = 0;
 	bool resuming_parallel_events = false;
 	bool maniac_force_flee = false;
+	bool maniac_battle_cancelled = false;
 
 	int terrain_id;
 	lcf::rpg::System::BattleCondition battle_cond = lcf::rpg::System::BattleCondition_none;
@@ -90,6 +91,7 @@ void Game_Battle::Init(int troop_id) {
 	start_event_index = parallel_event_index = 0;
 	resuming_parallel_events = false;
 	maniac_force_flee = false;
+	maniac_battle_cancelled = false;
 	maniac_active_interpreter = nullptr;
 	if (Player::IsPatchManiac()) {
 		for (const auto& event : lcf::Data::commonevents) {
@@ -119,6 +121,7 @@ void Game_Battle::Quit() {
 	start_event_index = parallel_event_index = 0;
 	resuming_parallel_events = false;
 	maniac_force_flee = false;
+	maniac_battle_cancelled = false;
 	maniac_active_interpreter = nullptr;
 	spriteset.reset();
 	animation_actors.reset();
@@ -141,12 +144,28 @@ void Game_Battle::Quit() {
 	Main_Data::game_pictures->OnBattleEnd();
 }
 
-void Game_Battle::RequestManiacForceFlee() {
-	maniac_force_flee = true;
+bool Game_Battle::RequestManiacForceFlee() {
+	// Native 01d2b0 tests eligibility when the command executes.
+	for (auto* actor : Main_Data::game_party->GetActors()) {
+		if (!actor->IsHidden() && actor->CanActOrRecoverable()) {
+			maniac_force_flee = true;
+			return true;
+		}
+	}
+	return false;
 }
 
 bool Game_Battle::IsManiacForceFleeRequested() {
 	return Player::IsPatchManiac() && maniac_force_flee;
+}
+
+void Game_Battle::CancelManiacBattle() {
+	if (Player::IsPatchManiac()) maniac_battle_cancelled = true;
+}
+
+bool Game_Battle::IsManiacBattleCancelled() {
+	return Player::IsPatchManiac() && IsBattleRunning()
+		&& (maniac_battle_cancelled || Player::exit_flag || Player::reset_flag);
 }
 
 bool Game_Battle::IsManiacBattleStarting() {
@@ -220,13 +239,12 @@ void Game_Battle::UpdateGraphics() {
 }
 
 bool Game_Battle::CheckWin() {
-	// 250921 defers both outcomes until the state callback has returned.
-	if (Game_Interpreter_Battle::IsManiacStateHookRunning()) return false;
+	if (Game_Interpreter_Battle::IsManiacBattleEndDeferred()) return false;
 	return !Main_Data::game_enemyparty->IsAnyActive();
 }
 
 bool Game_Battle::CheckLose() {
-	if (Game_Interpreter_Battle::IsManiacStateHookRunning()) return false;
+	if (Game_Interpreter_Battle::IsManiacBattleEndDeferred()) return false;
 	// If there are active characters, but all of them are in a state with Restriction "Do Nothing" and 0% recovery probability (including death), it's game over
 	// Physical recovery doesn't matter in this case
 	for (auto& actor : Main_Data::game_party->GetActors()) {
@@ -329,6 +347,7 @@ void Game_Battle::UpdateAtbGauges() {
 				bat->GetAtbGauge(),
 				increment, 0, 0, &increment
 			);
+			if (IsManiacBattleCancelled()) return;
 
 			if (native_maniac) {
 				bat->SetManiacAtbGauge(static_cast<int32_t>(
@@ -341,7 +360,7 @@ void Game_Battle::UpdateAtbGauges() {
 }
 
 bool Game_Battle::ManiacBattleHook(Game_Interpreter_Battle::ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4, int var5, int var6, int* hook_result) {
-	if (Player::IsPatchManiac() && interpreter) {
+	if (Player::IsPatchManiac() && interpreter && !IsManiacBattleCancelled()) {
 		return GetInterpreterBattle().ManiacBattleHook(hook_type, var1, var2, var3, var4, var5, var6, hook_result);
 	} else {
 		return false;

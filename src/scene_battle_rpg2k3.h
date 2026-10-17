@@ -229,6 +229,8 @@ protected:
 	int scene_action_substate = 0;
 	int battle_action_state = BattleActionState_Begin;
 	int battle_end_timer = 0;
+	int maniac_escape_end_timer = 0;
+	BattleResult maniac_escape_end_result = BattleResult::Abort;
 
 	std::unique_ptr<Window_ActorSp> sp_window;
 	void RecreateSpWindow(Game_Battler* battler);
