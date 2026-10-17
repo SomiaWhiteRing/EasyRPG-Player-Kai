@@ -195,7 +195,7 @@ protected:
 	 * @param mode 0: party, 1: specific actor, 2: actor referenced by variable.
 	 * @param id actor ID (mode = 1) or variable ID (mode = 2).
 	 */
-	static std::vector<Game_Actor*> GetActors(int mode, int id);
+	std::vector<Game_Actor*> GetActors(int mode, int id);
 
 	/**
 	 * When current frame finishes executing we pop the stack

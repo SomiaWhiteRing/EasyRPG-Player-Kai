@@ -358,12 +358,14 @@ bool Game_Interpreter_Battle::CommandForceFlee(lcf::rpg::EventCommand const& com
 		return true;
 	}
 
-	bool check = com.parameters[2] == 0;
+	const bool maniac = Player::IsPatchManiac();
+	const bool check = maniac ? (com.parameters[2] & 1) != 0 : com.parameters[2] == 0;
 
 	switch (com.parameters[0]) {
 	case 0:
 		if (!check || Game_Battle::GetBattleCondition() != lcf::rpg::System::BattleCondition_pincers) {
 			this->force_flee_enabled = true;
+			if (maniac) Game_Battle::RequestManiacForceFlee();
 		}
 		break;
 	case 1:
@@ -382,7 +384,7 @@ bool Game_Interpreter_Battle::CommandForceFlee(lcf::rpg::EventCommand const& com
 		}
 		break;
 	case 2:
-		if (!check || Game_Battle::GetBattleCondition() != lcf::rpg::System::BattleCondition_surround) {
+		if ((!maniac && !check) || Game_Battle::GetBattleCondition() != lcf::rpg::System::BattleCondition_surround) {
 			const int target = BattleOperand(*this, com, 1, 3);
 			auto* enemy = Main_Data::game_enemyparty->GetEnemy(target);
 			if (!enemy) {

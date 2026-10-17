@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-17",
+  "baseline": "4e87bb860",
+  "version": "2026.10.5",
+  "temporary_probe_sha256": "3f553b6119f3f7526bb546d451e6d14ff71c41f5440db2fc3a30e0642e3799d5",
+  "checks": [
+    {
+      "name": "Task source pattern consumers",
+      "cases": 1,
+      "assertions": 62,
+      "failed": 0
+    },
+    {
+      "name": "Battle algorithms",
+      "cases": 56,
+      "assertions": 3290,
+      "failed": 0
+    },
+    {
+      "name": "Battle dispatch",
+      "cases": 3,
+      "assertions": 26,
+      "failed": 0
+    },
+    {
+      "name": "SELF current and caller banks",
+      "cases": 1,
+      "assertions": 58,
+      "failed": 0
+    }
+  ],
+  "logs": [
+    "C:/buildscripts/source-pattern-consumers.log",
+    "C:/buildscripts/source-pattern-battle.log",
+    "C:/buildscripts/source-pattern-dispatch.log",
+    "C:/buildscripts/source-pattern-self.log"
+  ],
+  "build_log": "C:/buildscripts/source-pattern-build-2.log",
+  "final_build_log": "C:/buildscripts/source-pattern-final-build.log",
+  "temporary_probe_removed": true,
+  "limits": [
+    "No manual gameplay",
+    "No Android/Web build or runtime",
+    "No new RPG_RT dynamic execution"
+  ],
+  "player_sha256": "6e77ac3782592b8b832e55cddf13b2ae3bc716bfc1925ef08ddd53673fa64d8b"
+}

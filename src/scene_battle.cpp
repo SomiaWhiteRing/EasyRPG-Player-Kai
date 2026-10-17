@@ -152,7 +152,7 @@ void Scene_Battle::InitEscapeChance() {
 }
 
 bool Scene_Battle::TryEscape() {
-	if (first_strike || Game_Battle::GetInterpreterBattle().IsForceFleeEnabled() || Rand::PercentChance(escape_chance)) {
+	if (first_strike || Game_Battle::IsManiacForceFleeRequested() || Game_Battle::GetInterpreterBattle().IsForceFleeEnabled() || Rand::PercentChance(escape_chance)) {
 		return true;
 	}
 	escape_chance += 10;
@@ -328,7 +328,7 @@ bool Scene_Battle::UpdateEvents() {
 	if (Scene::instance.get() != this) return false;
 	status_window->Refresh();
 
-	if (interp.IsForceFleeEnabled()) {
+	if (interp.IsForceFleeEnabled() || Game_Battle::IsManiacForceFleeRequested()) {
 		if (state != State_Escape) {
 			SetState(State_Escape);
 		}
@@ -361,6 +361,7 @@ bool Scene_Battle::HandleEventOperation(AsyncOp operation) {
 bool Scene_Battle::UpdateManiacCommonEvents() {
 	const auto operation = Game_Battle::UpdateManiacCommonEvents();
 	if (Scene::instance.get() != this || !HandleEventOperation(operation)) return false;
+	if (Game_Battle::IsManiacForceFleeRequested() && state != State_Escape) SetState(State_Escape);
 	auto call = TakeRequestedScene();
 	if (call && (call->type == Scene::Gameover || call->type == Scene::Settings)) {
 		Scene::Push(std::move(call));

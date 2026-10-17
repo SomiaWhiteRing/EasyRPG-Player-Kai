@@ -1945,9 +1945,9 @@ std::vector<Game_Actor*> Game_Interpreter::GetActors(int mode, int id) {
 		break;
 	case 2:
 		// Var hero
-		actor = Main_Data::game_actors->GetActor(Main_Data::game_variables->Get(id));
+		actor = Main_Data::game_actors->GetActor(ReadVariable(id));
 		if (!actor) {
-			Output::Warning("Invalid actor ID {}", Main_Data::game_variables->Get(id));
+			Output::Warning("Invalid actor ID {}", ReadVariable(id));
 			return actors;
 		}
 
@@ -2327,9 +2327,15 @@ bool Game_Interpreter::CommandChangeSP(lcf::rpg::EventCommand const& com) { // C
 
 bool Game_Interpreter::CommandChangeCondition(lcf::rpg::EventCommand const& com) { // Code 10480
 	bool remove = com.parameters[2] != 0;
-	int state_id = com.parameters[3];
+	const int mode = Player::IsPatchManiac() && com.parameters.size() > 4 ? com.parameters[4] & 15 : 0;
+	const int raw_state = com.parameters[3];
+	// State has an indirect actor selector distinct from its state-ID mode.
+	const int target_mode = Player::IsPatchManiac() && com.parameters[0] > 2 ? 1 : com.parameters[0];
+	const int target = Player::IsPatchManiac() && com.parameters[0] > 2
+		? ReadVariableIndirect(com.parameters[1]) : com.parameters[1];
 
-	for (const auto& actor : GetActors(com.parameters[0], com.parameters[1])) {
+	for (const auto& actor : GetActors(target_mode, target)) {
+		const int state_id = mode == 0 ? raw_state : mode == 1 ? ReadVariable(raw_state) : ReadVariableIndirect(raw_state);
 		if (remove) {
 			// RPG_RT: On the map, will remove battle states even if actor has
 			// state inflicted by equipment.
@@ -2469,7 +2475,9 @@ bool Game_Interpreter::CommandPlayBGM(lcf::rpg::EventCommand const& com) { // co
 }
 
 bool Game_Interpreter::CommandFadeOutBGM(lcf::rpg::EventCommand const& com) { // code 11520
-	int fadeout = com.parameters[0];
+	const int mode = Player::IsPatchManiac() && com.parameters.size() > 1 ? com.parameters[1] & 15 : 0;
+	const int raw = com.parameters[0];
+	const int fadeout = mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
 	Main_Data::game_system->BgmFade(fadeout);
 	return true;
 }

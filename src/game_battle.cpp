@@ -67,6 +67,7 @@ namespace {
 	size_t start_event_index = 0;
 	size_t parallel_event_index = 0;
 	bool resuming_parallel_events = false;
+	bool maniac_force_flee = false;
 
 	int terrain_id;
 	lcf::rpg::System::BattleCondition battle_cond = lcf::rpg::System::BattleCondition_none;
@@ -88,6 +89,7 @@ void Game_Battle::Init(int troop_id) {
 	parallel_events.clear();
 	start_event_index = parallel_event_index = 0;
 	resuming_parallel_events = false;
+	maniac_force_flee = false;
 	maniac_active_interpreter = nullptr;
 	if (Player::IsPatchManiac()) {
 		for (const auto& event : lcf::Data::commonevents) {
@@ -116,6 +118,7 @@ void Game_Battle::Quit() {
 	parallel_events.clear();
 	start_event_index = parallel_event_index = 0;
 	resuming_parallel_events = false;
+	maniac_force_flee = false;
 	maniac_active_interpreter = nullptr;
 	spriteset.reset();
 	animation_actors.reset();
@@ -136,6 +139,14 @@ void Game_Battle::Quit() {
 	Main_Data::game_actors->ResetBattle();
 	Main_Data::game_enemyparty->ResetBattle(0);
 	Main_Data::game_pictures->OnBattleEnd();
+}
+
+void Game_Battle::RequestManiacForceFlee() {
+	maniac_force_flee = true;
+}
+
+bool Game_Battle::IsManiacForceFleeRequested() {
+	return Player::IsPatchManiac() && maniac_force_flee;
 }
 
 bool Game_Battle::IsManiacBattleStarting() {
