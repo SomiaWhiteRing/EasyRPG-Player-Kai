@@ -388,6 +388,8 @@ package_android() {
 	)
 
 	log "Building Android APK"
+	local gradle_started=$SECONDS
+	ccache --zero-stats
 	(
 		cd builds/android
 		local gradle_args=(
@@ -416,6 +418,8 @@ package_android() {
 
 		run_android_gradle "${gradle_args[@]}"
 	)
+	log "Android Gradle build completed in $((SECONDS - gradle_started)) seconds"
+	ccache --show-stats
 
 	log "Inspecting Android packaging inputs"
 	(inspect_android_packaging_inputs)

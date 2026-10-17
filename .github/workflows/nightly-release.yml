@@ -142,6 +142,23 @@ jobs:
           restore-keys: |
             easyrpg-local-docker-android-${{ runner.os }}-
 
+      # Keep the large SDK/NDK snapshot above; refresh compiler outputs separately.
+      - name: Restore Android incremental build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            external/local-docker/android-build
+            builds/android/app/SDL3-*.aar
+          key: easyrpg-android-build-v1-${{ runner.os }}-${{ hashFiles('builds/docker/package.Dockerfile', 'builds/ci/package-ubuntu-nightly.cache.env', 'builds/android/*.gradle', 'builds/android/gradle.properties', 'builds/android/gradle/wrapper/gradle-wrapper.properties', 'builds/android/app/build.gradle', 'builds/android/assets/build.gradle') }}-${{ github.sha }}
+          restore-keys: |
+            easyrpg-android-build-v1-${{ runner.os }}-${{ hashFiles('builds/docker/package.Dockerfile', 'builds/ci/package-ubuntu-nightly.cache.env', 'builds/android/*.gradle', 'builds/android/gradle.properties', 'builds/android/gradle/wrapper/gradle-wrapper.properties', 'builds/android/app/build.gradle', 'builds/android/assets/build.gradle') }}-
+
+      - name: Restore source timestamps for Android incremental build
+        run: |
+          $marker = "external/local-docker/android-build/.player-cache-commit"
+          $changedSince = if (Test-Path $marker) { Get-Content $marker -Raw } else { "" }
+          ./builds/ci/restore-git-mtime.ps1 -ChangedSince $changedSince.Trim()
+
       - name: Package Android nightly artifact
         env:
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
@@ -150,6 +167,8 @@ jobs:
           ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
         run: |
           ./builds/package-docker.ps1 android
+          if ($LASTEXITCODE -ne 0) { throw "Android package build failed." }
+          git rev-parse HEAD | Set-Content -NoNewline "external/local-docker/android-build/.player-cache-commit"
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4

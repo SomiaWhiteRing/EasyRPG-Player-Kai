@@ -114,6 +114,14 @@ $containerEnvArgs = @(
 )
 
 if ($Target -in @("all", "android")) {
+	if (-not $isWindowsHost) {
+		# Refresh build outputs separately from the large SDK/NDK snapshot in CI.
+		$containerEnvArgs += @(
+			"-e", "ANDROID_GRADLE_BUILD_ROOT=/workspace/external/local-docker/android-build",
+			"-e", "CCACHE_DIR=/workspace/external/local-docker/android-build/ccache",
+			"-e", "CCACHE_MAXSIZE=1G"
+		)
+	}
 	foreach ($name in $androidSigningEnv) {
 		# Docker inherits the value; keep secret values out of command-line arguments.
 		$containerEnvArgs += @("-e", $name)
