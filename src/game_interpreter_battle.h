@@ -63,6 +63,7 @@ public:
 	bool ExecuteCommand(lcf::rpg::EventCommand const& com) override;
 
 	static void InitBattle();
+	static bool IsManiacStateHookRunning();
 
 	/**
 	 * All possible hook type events that maniacs offers.

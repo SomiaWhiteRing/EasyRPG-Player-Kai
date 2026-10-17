@@ -556,7 +556,11 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		}
 
 		if (maniac_dispatch != ManiacDispatch::Continue
-			&& Game_Battle::IsBattleRunning() && Player::IsRPG2k3() && Game_Battle::CheckWin()) {
+			&& Game_Battle::IsBattleRunning() && Player::IsRPG2k3()
+			// Independent Maniac callbacks use the mode-0 executor, which has
+			// no troop-page cancellation when the last enemy dies.
+			&& (!Player::IsPatchManiac() || this == &Game_Battle::GetPrimaryInterpreterBattle())
+			&& Game_Battle::CheckWin()) {
 			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
 			if (Player::IsPatchManiac() && maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
 			break;

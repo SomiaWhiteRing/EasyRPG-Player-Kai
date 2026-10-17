@@ -39,6 +39,7 @@
 #include "scene_battle.h"
 #include "utils.h"
 #include "game_clock.h"
+#include "baseui.h"
 #include <lcf/scope_guard.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -113,6 +114,10 @@ std::unique_ptr<Game_Interpreter_Battle> maniac_damage_interpreter;
 bool maniac_damage_hook_running = false;
 std::unique_ptr<Game_Interpreter_Battle> maniac_atb_interpreter;
 std::unique_ptr<Game_Interpreter_Battle> maniac_target_interpreter;
+
+bool Game_Interpreter_Battle::IsManiacStateHookRunning() {
+	return Player::IsPatchManiac() && maniac_state_hook_running;
+}
 
 Game_Interpreter_Battle::Game_Interpreter_Battle(Span<const lcf::rpg::TroopPage> pages, int troop_id)
 	: Game_Interpreter(true), pages(pages), executed(pages.size(), false), troop_id(troop_id)
@@ -850,22 +855,42 @@ bool Game_Interpreter_Battle::ManiacBattleHook(ManiacBattleHookType hook_type, i
 			running = false;
 		});
 		const auto scene = Scene::instance;
-		hook_interpreter->Update();
-		if (retire_hook()) return true;
-		while (hook_interpreter->IsRunning() && Game_Battle::IsBattleRunning()
-				&& Scene::instance == scene && !Player::exit_flag && !Player::reset_flag) {
-			// Battle updates temporarily execute this hook rather than re-entering
-			// its suspended caller. This also advances waits, messages and timers.
-			Player::Update();
-			if (retire_hook()) return true;
-			Player::Draw();
+		const auto wait_frame = []() {
 			#ifdef __EMSCRIPTEN__
-			// Host keyboard/stop messages need the worker event loop while a
-			// pumped hook keeps the caller suspended.
+			// Yield to the host while the callback keeps its caller suspended.
 			emscripten_sleep(1000 / Game_Clock::GetTargetGameFps());
 			#else
 			Game_Clock::SleepFor(Game_Clock::GetTargetGameTimeStep());
 			#endif
+		};
+		hook_interpreter->Update();
+		if (retire_hook()) return true;
+		while (hook_interpreter->IsRunning() && Game_Battle::IsBattleRunning()
+				&& Scene::instance == scene && !Player::exit_flag && !Player::reset_flag) {
+			// The suspended main loop cannot service host input or window closure.
+			Player::UpdateInput();
+			if (!DisplayUi->ProcessEvents()) {
+				Player::exit_flag = true;
+				break;
+			}
+			if (Player::exit_flag || Player::reset_flag) break;
+			if (DisplayUi->IsFocusPaused()) {
+				wait_frame();
+				continue;
+			}
+			// The scene advances messages, timers and async operations, while
+			// this driver owns the independent hook's interpreter updates.
+			Player::Update(!Scene::IsAsyncPending());
+			if (retire_hook()) return true;
+			if (Scene::instance != scene || !Game_Battle::IsBattleRunning()
+					|| Player::exit_flag || Player::reset_flag) break;
+			Player::Draw();
+			wait_frame();
+			if (Scene::instance == scene && Game_Battle::IsBattleRunning()
+					&& !Player::exit_flag && !Player::reset_flag && !Scene::IsAsyncPending()) {
+				hook_interpreter->Update(!hook_interpreter->IsAsyncPending());
+				if (retire_hook()) return true;
+			}
 		}
 	} else if (native_atb || native_target) {
 		// These hooks run one slice and return even when a wait is pending.

@@ -220,10 +220,13 @@ void Game_Battle::UpdateGraphics() {
 }
 
 bool Game_Battle::CheckWin() {
+	// 250921 defers both outcomes until the state callback has returned.
+	if (Game_Interpreter_Battle::IsManiacStateHookRunning()) return false;
 	return !Main_Data::game_enemyparty->IsAnyActive();
 }
 
 bool Game_Battle::CheckLose() {
+	if (Game_Interpreter_Battle::IsManiacStateHookRunning()) return false;
 	// If there are active characters, but all of them are in a state with Restriction "Do Nothing" and 0% recovery probability (including death), it's game over
 	// Physical recovery doesn't matter in this case
 	for (auto& actor : Main_Data::game_party->GetActors()) {

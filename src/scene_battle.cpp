@@ -324,7 +324,8 @@ bool Scene_Battle::HandleManiacHookOperation(AsyncOp operation) {
 
 bool Scene_Battle::UpdateEvents() {
 	auto& interp = Game_Battle::GetInterpreterBattle();
-	interp.Update();
+	// A synchronous callback is advanced by its own driver, once per frame.
+	if (!Game_Battle::IsManiacHookPumping()) interp.Update();
 	if (Scene::instance.get() != this) return false;
 	status_window->Refresh();
 
