@@ -5863,7 +5863,7 @@ TEST_CASE("Maniac global scalar save keeps native switch bytes and complete Play
 	REQUIRE(ManiacOriginalSave::EncodeObservedGlobalScalars(save));
 	CHECK(save.system.variables == std::vector<int32_t>{0, INT32_MIN, INT32_MAX});
 	CHECK(save.system.maniac_switch_payload == std::vector<uint8_t>{7, 0, 255});
-	CHECK(save.easyrpg_data.maniac_global_variables.size() == 5);
+	CHECK(save.easyrpg_data.maniac_global_variable_vector_size == 5);
 	CHECK(save.easyrpg_data.maniac_global_switches.size() == 5);
 	std::stringstream file;
 	REQUIRE(lcf::LSD_Reader::Save(file, save, lcf::EngineVersion::e2k3, "CP936"));
@@ -5920,6 +5920,8 @@ TEST_CASE("Maniac global scalar save restores zero tails and rejects contradicto
 	CHECK(loaded->system.switches.size() == 17);
 	CHECK(loaded->system.variables.back() == 0);
 	CHECK_FALSE(loaded->system.switches.back());
+	loaded->easyrpg_data.maniac_global_variables.assign(17, 0); // Contradictory legacy copy.
+	loaded->easyrpg_data.maniac_global_variable_vector_size = -1;
 	loaded->system.variables[0] = 12;
 	CHECK_FALSE(ManiacOriginalSave::ImportObservedGlobalScalars(*loaded));
 	CHECK(loaded->system.variables[0] == 12);

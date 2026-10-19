@@ -47,7 +47,7 @@ namespace Version {
  * Version written to the easyrpg_data.version field in savegames.
  * Increment the last digit (0) only when having a good reason.
  */
-// Revision 2 preserves Maniac key-input variable IDs using their native BER format.
-#define PLAYER_SAVEGAME_VERSION (Version::MAJOR * 1000 + Version::MINOR * 100 + Version::PATCH * 10 + 2)
+// Revision 3 stores Maniac numeric zero tails as a logical length.
+#define PLAYER_SAVEGAME_VERSION (Version::MAJOR * 1000 + Version::MINOR * 100 + Version::PATCH * 10 + 3)
 
 #endif

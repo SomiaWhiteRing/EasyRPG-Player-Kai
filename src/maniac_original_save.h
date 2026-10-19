@@ -340,11 +340,16 @@ inline bool EncodeStringSlots(const Game_ManiacSelfVariables::Bank& bank, std::v
 inline bool ImportObservedGlobalScalars(lcf::rpg::Save& save) {
 	const auto& variables = save.easyrpg_data.maniac_global_variables;
 	const auto& switches = save.easyrpg_data.maniac_global_switches;
+	const int32_t variable_size = save.easyrpg_data.maniac_global_variable_vector_size;
+	if (variable_size < -1 || (variable_size >= 0
+		&& (static_cast<size_t>(variable_size) < save.system.variables.size()
+			|| !variables.empty()))) return false;
 	if ((!variables.empty() && (variables.size() < save.system.variables.size()
 		|| !std::equal(save.system.variables.begin(), save.system.variables.end(), variables.begin())))
 		|| (!switches.empty() && (switches.size() < save.system.switches.size()
 		|| !std::equal(save.system.switches.begin(), save.system.switches.end(), switches.begin())))) return false;
 	if (!variables.empty()) save.system.variables = variables;
+	else if (variable_size >= 0) save.system.variables.resize(variable_size, 0);
 	if (!switches.empty()) save.system.switches = switches;
 	if (save.easyrpg_data.maniac_global_switch_raw.empty() && save.system.maniac_switch_payload_present) {
 		const auto& bytes = save.system.maniac_switch_payload;
@@ -359,6 +364,7 @@ inline bool ImportObservedGlobalScalars(lcf::rpg::Save& save) {
 }
 
 inline bool EncodeObservedGlobalScalars(lcf::rpg::Save& save) {
+	if (save.system.variables.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max())) return false;
 	std::vector<uint8_t> switches;
 	switches.reserve(save.system.switches.size());
 	for (bool value : save.system.switches) switches.push_back(value ? 1 : 0);
@@ -371,7 +377,10 @@ inline bool EncodeObservedGlobalScalars(lcf::rpg::Save& save) {
 		if (raw[i + 1] <= 1 || !save.system.switches[raw[i] - 1]) return false;
 		switches[raw[i] - 1] = static_cast<uint8_t>(raw[i + 1]);
 	}
-	save.easyrpg_data.maniac_global_variables = save.system.variables;
+	// The native array below already stores every nonzero value. Retain its
+	// logical length separately instead of writing a second, zero-padded array.
+	save.easyrpg_data.maniac_global_variable_vector_size = static_cast<int32_t>(save.system.variables.size());
+	save.easyrpg_data.maniac_global_variables.clear();
 	save.easyrpg_data.maniac_global_switches = save.system.switches;
 	while (!save.system.variables.empty() && save.system.variables.back() == 0) save.system.variables.pop_back();
 	while (!switches.empty() && switches.back() == 0) switches.pop_back();

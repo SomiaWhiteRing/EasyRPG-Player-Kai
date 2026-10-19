@@ -108,10 +108,10 @@ index 2e82eaf..0e1388b 100644
  SaveEventExecState,keyinput_decision,f,Int32,0x18,0,0,0,Maniac: Mouse Left (Bit 1)
  SaveEventExecState,keyinput_cancel,f,Int32,0x19,0,0,0,Maniac: Mouse Right (Bit 1)
 diff --git a/generator/csv/fields_easyrpg.csv b/generator/csv/fields_easyrpg.csv
-index e59140f..633b574 100644
+index e59140f..bf5ce47 100644
 --- a/generator/csv/fields_easyrpg.csv
 +++ b/generator/csv/fields_easyrpg.csv
-@@ -1,14 +1,41 @@
+@@ -1,14 +1,42 @@
  Structure,Field,Size Field?,Type,Index,Default Value,PersistIfDefault,Is2k3,Comment
  Save,easyrpg_data,f,SaveEasyRpgData,0xC8,,0,0,Additional save data written by EasyRPG Player
 +Save,maniac_original_bank_bytes,f,Vector<UInt8>,0x74,,0,0,Raw original Maniac bank extension preserved for format investigation and interoperability
@@ -130,6 +130,7 @@ index e59140f..633b574 100644
 +SaveEasyRpgData,maniac_global_string_raw_bytes,f,Vector<UInt8>,0x6E,,0,0,Exact global string bytes independent of project codepage
 +SaveEasyRpgData,maniac_global_variables,,Vector<Int32>,0x6F,,0,0,Full Player-owned positive global numeric slots including zero tails
 +SaveEasyRpgData,maniac_global_switches,,Vector<Boolean>,0x70,,0,0,Full Player-owned positive global switch slots including zero tails
++SaveEasyRpgData,maniac_global_variable_vector_size,,Int32,0x71,-1,0,0,Logical length of positive global numeric slots; -1 denotes legacy saves
 +SaveEasyRpgSelfVariableBank,scope,,Int32,0x01,0,0,0,1 common event 2 map event
 +SaveEasyRpgSelfVariableBank,map_id,,Int32,0x02,0,0,0,Map ID for map event scope
 +SaveEasyRpgSelfVariableBank,event_id,,Int32,0x03,0,0,0,Common or map event ID
@@ -153,7 +154,7 @@ index e59140f..633b574 100644
  SaveEventExecState,easyrpg_active,f,Boolean,0xC9,False,0,0,When true state of an event is preserved in easyrpg_string and easyrpg_parameters
  SaveEventExecState,easyrpg_string,f,DBString,0xCA,,0,0,Preserved string data of an event
  SaveEventExecState,easyrpg_parameters,f,Vector<Int32>,0xCB,,0,0,Preserved int parameter of an event
-@@ -18,6 +45,9 @@ SavePicture,easyrpg_blend_mode,f,Int32,0xC9,0,0,1,Blend mode to use for blit. Se
+@@ -18,6 +46,9 @@ SavePicture,easyrpg_blend_mode,f,Int32,0xC9,0,0,1,Blend mode to use for blit. Se
  SavePicture,easyrpg_type,f,Enum<EasyRpgPictureType>,0xCA,0,0,1,Type of this picture
  SavePicture,maniac_current_magnify_height,f,Double,0x0A,100.0,0,0,Current zoom level of picture (y direction).
  SavePicture,maniac_finish_magnify_height,f,Int32,0x24,100,0,0,Final zoom level to animate picture to (y direction).
@@ -163,7 +164,7 @@ index e59140f..633b574 100644
  SaveEasyRpgWindow,texts,f,Array<SaveEasyRpgText>,0x01,,0,0,Texts to render
  SaveEasyRpgWindow,width,f,Int32,0x02,0,0,0,Window width (px)
  SaveEasyRpgWindow,height,f,Int32,0x03,0,0,0,Window height (px)
-@@ -39,6 +69,7 @@ SaveMapEventBase,easyrpg_runtime_flags,f,EasyRpgEventRuntime_Flags,0xCC,0,0,0,Ru
+@@ -39,6 +70,7 @@ SaveMapEventBase,easyrpg_runtime_flags,f,EasyRpgEventRuntime_Flags,0xCC,0,0,0,Ru
  SavePartyLocation,maniac_horizontal_pan_speed,f,Double,0x8D,0,0,0,horizontal speed in the scrolls of the screen
  SavePartyLocation,maniac_vertical_pan_speed,f,Double,0x8E,0,0,0,vertical speed in the scrolls of the screen
  SaveSystem,maniac_strings,f,Vector<DBString>,0x24,,0,0,rpg::Strings
@@ -171,7 +172,7 @@ index e59140f..633b574 100644
  SaveSystem,maniac_message_window_width,f,Int32,0x2D,0,0,0,Width of the message window in pixels
  SaveSystem,maniac_message_window_height,f,Int32,0x2E,0,0,0,Height of the message window in pixels
  SaveSystem,maniac_message_font_name,f,DBString,0x2F,,0,0,Font to use in the message window
-@@ -49,9 +80,12 @@ SaveSystem,maniac_message_hook_callback_system_variable,f,Int32,0x43,0,0,0,Varia
+@@ -49,9 +81,12 @@ SaveSystem,maniac_message_hook_callback_system_variable,f,Int32,0x43,0,0,0,Varia
  SaveSystem,maniac_message_hook_callback_system_string_variable,f,Int32,0x44,0,0,0,String Variable populated when hook is invoked
  SaveSystem,maniac_message_hook_callback_user_variable,f,Int32,0x45,0,0,0,Variable (starting range) populated when hook is invoked
  SaveSystem,maniac_message_hook_callback_user_string_variable,f,Int32,0x46,0,0,0,String Variable populated when hook is invoked (TODO: Difference between System and User callback)
@@ -187,7 +188,7 @@ index e59140f..633b574 100644
  SaveSystem,maniac_joypad_bindings,,Vector<UInt8>,0x8B,,0,0,"JoyLeft, JoyRight, JoyUp, JoyDown, Joy1, ... Joy12"
  SaveSystem,maniac_message_spacing_char,f,Int32,0x8E,0,0,0,Additional spacing between characters in the message window (Editor value - 1)
  SaveSystem,maniac_message_spacing_line,f,Int32,0x8F,0,0,0,Additional spacing between lines in the message window (Editor value - 1)
-@@ -133,6 +167,7 @@ Terms,easyrpg_battle2k3_escape,f,DBString,0xD8,DBString(kDefaultTerm),0,1,RPG Ma
+@@ -133,6 +168,7 @@ Terms,easyrpg_battle2k3_escape,f,DBString,0xD8,DBString(kDefaultTerm),0,1,RPG Ma
  Terms,easyrpg_battle2k3_special_combat_back,f,DBString,0xD9,,0,1,Message for back and pincer attack
  Terms,easyrpg_battle2k3_skill,f,DBString,0xDA,DBString(kDefaultTerm),0,1,RPG Maker 2003 battle general skill start notification
  Terms,easyrpg_battle2k3_item,f,DBString,0xDB,DBString(kDefaultTerm),0,1,RPG Maker 2003 battle general item start notification
@@ -318,54 +319,54 @@ delta 14
 WcmZ3umTAWtrVXb$HXC>5@d5xfbOxgU
 
 diff --git a/src/generated/lcf/lsd/chunks.h b/src/generated/lcf/lsd/chunks.h
-index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..c7fe142cc40798b4d179fcf5040da86950cfe633 100644
+index 1f4a952df550ccc42124979ed9d1f1ba1c90d401..1427923124c0b44a6e0cfaa95a67b3f7c38a6e23 100644
 GIT binary patch
-delta 5070
-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
-OB|R6PEDoRleEC0<@N_Z&
+delta 5198
+zcmb7IO>Y}T7#0z&lBg<(0xD_`b3md5qO8;4rbIz%oTML=Dr%q<4jsn3v+E)I#mv}_
+zt5(Z}OOWWnfYby01|%bK;)M7g`~&_1@67D(?Anf9PHlGIecrEUp7$O9{>#GOe=Yp>
+z>taS?MqK0*mm>IYL?laMBqZSyvDl->Xk~4AX=y3ac39bA^L86K$5%JsS1;FAR?sI?
+zfoSZV3Zvd_XA0%|929rph7@ol<vkKkiKu*~gSs&XuC(SP&b%Z-@NYn8z+z*d!FT3>
+zdo&~ilv0j-PNHe3`Z+ds+h<h%t>KT0e`eDwXi$tbgfT1J3UD>zy*Uy4AqfOp$tL<-
+z@&OwYo&WwgT115)P(Do|mxdwgGf#F<(xaR+Z(0S6fr8s`O1N8j{*!ne%7TuZ1(;iC
+z#K!2>()O9w7+REc1;nURZ8Pa0j|tKasX!t1B~af(TzfHwEKa*}n7#4lYx?g>0XCb%
+zC+D9W?h!G#e{d6}ob`yL=(A7v8%-31NgD_%BxiAe{Di}KLJ{FdK!@5nG8O`Nr4OH}
+zxLcc}f6u@Da>0T&krFshLKegkjU@_`K57rZ(-mjig$I;xp~mVaauXg?F4m|QP_cy)
+z*`d78AlJu~Cn)iKLFK!3=LQ>FY~_FR1Ko+NdX_1XT~3QqK_cP^U5OKk_74unF!OSH
+z*f$>uoz&*Fvb_gzET9TSz4G<|5aRTkE)~+mn3YPC3S7L=^_dU}PWtAIt%@U->f&sv
+zGOZ&)L+VO&FNx{e2J*mAAgBxI8W^svPdsVpC)(tUwi&iAymKcHQMpN(t1A(*h{-bG
+zJ_DM2)F<6gqK4x*nnu+3!8z+u6fqFgZiE`cZ!f%8G?vB0yrsv~?P|5%*}IQ~OG3g?
+zOgK;a)I&0{9S1??-B>bElQ1D(y_xU^_aQf20_$#C4ZM>K?gGU}k6!=xY!QTTIfZgO
+zPC)$JF6WA1hE(Wb9bTE>+yo!%re3{THZ?C%6%HmxKu<%<G@K805uE~UV;0(2a9_*_
+zZeW5lG_J6?8eCS7ZW>%3T#nX!k>Eh=Rq<xTrn*ZZz6`|P9*NVdcRFGoUI9351XmO0
+zG$K%KB}Qr*WuWs_nb+-5#KKwy6>}zsaTU)T;z<niTz_ww_W*PWwh3T!o+%mOOFx~<
+z%9?%|vNi}<lyaCMV77Df{tY;5$21h6TyUCD0-_AW4hw{+E0t=O2eK9kY%c-D9+5;-
+zq0uTG75=+2iAW}yi$sS4OU))@Mr;jAfKExOjVkL-V|O~D1ynoD95}kD_8zEoWBAeb
+z<<TowE;emN3QEw>U+odjbh5%tQkY!{2ZdsyhEHJ(@if4ocs@3E3c6JdG)1>}5fLJB
+z8B8h<#xuwk$e{(wV27(AMI^<{MA@?ILo10Q&?1Nf-Xq#moSz3hj;y~bvGZjjgZ*)r
+z`mirpu5b#98-u(G2?WqODF;vn)21TY$gHKt7;6KS|E^stUI3RgJWnxjCN{}!G<;+D
+z?Bw!r?cw6+<3}GZwC>V?xC1kup*ndJm8_RNggTk21R1smru>YC9wHt|VVIA;`)YZ`
+z^58xUopJ8BNqmIpv81s&RWM1ZfPEP76f^Q&gT*~nu)q{dZ8dt?1^#f-W+9V<x&RbD
+zumZ>D)Pi9q_qC1Dvy-zg*@(>iUQPOy^Q>5BX{sQK8s>e`v@B|%eHiqnRp}b8=#VM}
+z^7UL$NV0Z3%_0n}hZm|LO{>#&yp(WQg^INdnD2H>o8TS+O9vba&0wgLet=TKcr}NN
+zxY&G+h5i~A>%MVmb-d;>?F<A1xi6f?-H37!oT3Uygs?#A<*b%c?xirp+CpECn)Z@4
+z(^I~6T6~kzG%v<9_o3=%m#fb^RIQN6<dNA#Cg4GeNEjxr7L_?(ux2ahh3=Le5jRQz
+z8l^zaG!abiPI=3+s@L1Q)z(xxqt|V$5wJ=>Cz-vf-Aw}BlaR)Nx|;Y!cXIe1Y;16d
+zSnP&fPfbh737nQV$WYvc8;t>-k)r{?f<0Da9tvt_&!ORTtS*BtaY1*%y^`NT>jyFX
+zrA7!$LO3@ys%Jny3j4jPF;?%B7%L=fkhCkS^?S##TaKk>j<mYUr!bt9WP|&ZCts@#
+z*-hZFy1bp1S{4V2@z@GO)6Ro^Rhl{_$J$qr-_*~RSCd;piKjQTI0OP^IzxNsobS>c
+z)4XFZ?9qHxXrG-P*(7tuDO$^M3$4Osg2Ek1-z@c55Ck-NYK4nD@i=|1HQ;BJr(4TQ
+z!=FzsjsE!lpM~M`lZ&q&g5EyJw}Kr|+u^~Zx3Y%j4GaV`kk>22*>u&e1x}-~zv#6<
+zjSf4^jb*`was_bK%g-iPfK2ZI=9}7ZckDIcUao=lc~L!7P{cNDi~8(1_C|1M6#Mk=
+zL_brSo;S|1W986X!DoD_4RVime2fdyxc;!%EMX;ZrdKpQoAV+lA%mq+{RB`^Bgf8*
+yNlq!W;#Y%HwP;d`loNGA$LZtPiD4w6ivNEEA<v?&0M7NCoIud0%fshCT>1~F^q++Q
 
 delta 331
-zcmX?dh-u4QrVaBrCTnqR-mJr8!aDhiVDaX~LeeY-Ziyv{Ilh?{3T{P-xv9n3nFR_O
+zcmX?lm}$#grVaBrCTnqR-mJr8!aDhiVDaX~LeeY-Ziyv{Ilh?{3T{P-xv9n3nFR_O
 z2DX0rd8s-IhPH<KraB5nK+0H0!5ByxX-;;KP#1%13dl?@DJ@D>@X5^0ESbDfLc2aJ
 zu_!aYv{(VIB)^~}Ge56bK_enUA;M81!bu^*SyNBJ(MrL$I6W9-pTC=%eo$~mW?Bi*
 zYJC$;1t%+okksOmfSkli1@F|<0)2l!eV`(ctPxONN5R=jAt14|I8`AnKN)COPJVHT
 zLU>|kiGGl5X&y+Kp{9bCJ{Kn^XKrF%W@2(Y)DfFqB-z+EZ&q5)vpLbg*le;xo%H6|
-t3}>dv>-*Rz`{r_P{+#tob26i{^yC9`*eB1L`UJ+_+&lXL(`5C9vH+vtZ9V`1
+t3}>dv>-*Rz`{r_P{+#tob26i{^yL5Z*eB1L`UJ+_%s1x&)8rKkWdW@xZN&fp
 
 diff --git a/src/generated/lcf/rpg/eventcommand.h b/src/generated/lcf/rpg/eventcommand.h
 index 0e5ed36e4b8fc1918b826a6add1dfdf49fe77802..4aa19499a9d74a1dba31f30c8c810bbf72c59a87 100644
@@ -405,36 +406,36 @@ delta 31
 ncmdm|u~mJ;OUBKA8T(i^?_(=wVzK7ptet#-O?-17=LRkS(BKQt
 
 diff --git a/src/generated/lcf/rpg/saveeasyrpgdata.h b/src/generated/lcf/rpg/saveeasyrpgdata.h
-index a56876d9f8c8181b5e889d731ca34f31bc4cc721..a254d2159fb95661867f4b202e6525c23a2d6c3a 100644
+index a56876d9f8c8181b5e889d731ca34f31bc4cc721..c4875f399a607818e3409a01eb9382335743becc 100644
 GIT binary patch
-literal 3558
-zcmbtXZBOGk5dNI}ih-3-%a-O?_<%}ViKQ)z!~xo(J*`fs$Vr{ndubfmZVS8Ozu(x2
-z(==@gtLq1nc*f5>^J?QA!vX%_W_UmRdi69M!07gF2q!Rjfcu9h7!GcqjD`!xaPqDn
-zYHH=D8IusPm;ydiA{6ilViv?<)P`%Gz6ds*DQJYvd=<z-&A5<ly?drqDm$JxWootv
-z+998NLn2?kKHhj422!*-6a^xkwz-(*wsRFUJQ9?8cPtPT9#WdXm@h;~@e!#N5wrz@
-z#<-tOV3ACy05zlVC%SycLYhcwxQuwV9xdV+!h$(TCdk~V0ZSq-=0q``v>-Kzuw-;)
-z@U9;ozu(^9Xtzu})Ql)t5eX9}m0-a_q4^a$irPq7W)wp{G3Gtj{lFq57s1{2$j1oy
-z<EwAO;nny%z7MXRuKX|V2Nbh}?$K~P557=>K1#$(!gw*E(3NV!64jpdOKVFSDlSSZ
-zhnO;N5@@c;v^_gq>lz7$-jifW^E5~rM@u3Y31S+M<li?ptXMMPt8KNACyG8Jxst&y
-zM;4UKOYFMpC8fR+gelo~UGLabACl^H#>mQ4O*$PAMIelcH09;F37J!w5-bID4t|xs
-zaVLH|Mi;6GC`cCpX1(J&4o2?mldoWjF~!6~5B|6;E$alPWJ>Ki#=6tVg4-?O{$<?n
-zV*%(eNR3dVImXC-%Om?4Bin~LNf-%z9dh5s+}A-jFbhjCR})yVe2&^!Zap~tbb5Yq
-zdRDcU?<ugSF%L-WORUdu<_oeayO;y#It7EDRB-F{;Pcqjjpb_b%%ZO~>jAThGfI9c
-zsHBOqu;mcdQO-=zd8%G~8FOWVQi;hXoh&=PWIv0nRrP5?1;K{(aU{)o;_E{4LlWZL
-z$n#&Orc-d?tF35e)G(TU@S^Be(rY}j0p8LNIFGk%n2Z_h*Gt#MYK`@T(5k>w?F1LS
-zUIV*Ks%o7dLEOSgw^JgTx;-30)j}i?w~OlUfv_JaKSB%~+qMO?(0*BIUh&Y=!u-R^
-z>MJ`_ua{R4Hi}*w+HQu*4qFmM#cx>LlJ4GZQ)P;G7r=(XZj4g-??Nbv-`u}$pHc{{
-zE9+LYYJ2fY4Yh|>Noz0KM$6TbD`{2H_BCV~uU@Z;m`}V)kM8lc=;Pf;Hq~+$L?PV0
-zH=Db3=T<Aj0s30g;0OP^!4Dd-q20`_nCX_E!bim*>2@0xfvg=MJotfNuA{I-VjQJl
-zPH;U(VblVBnw$4Wyq+cMT0P@jz0R%z-6dy}mj2W4yN-SW-pz(Me6usAQ94%jfsg!x
-zAC|}H2qODlU?1z7DVp&^V<*8IUaIm5hc`NC;3NiSCOba5AQj&6LY((fby3uBpaDC&
-z+WOdNG@F<3@gvKIq?651yx4L;3uh%)DpXrgaO(ep!+aVZwt%(Z$aqmAiu2rYoK4qD
-zME+*~w6w2B+N91KmWSiK+nxH+`nHGX@Ak0X%5OSd4^)oBc@c-rlwABS;q9S`d{0j6
-zvJ{yL$vJNC#e!7N7lvCy*K-ros1ufbMC;de_Hhln{T1*&zrMucrM0?*_gehVfhH3c
-Gx&HyW>$nI2
+literal 3691
+zcmbtXZExC05dLicib*OVND00)`4CY+N&}>ka!FL8o~qNyTAMX&&v>of1(H_%?>D>l
+z8e=d?b@>q6JG0L`^SX<70!R1<H>3N}m#e4I5XQH6BRGZO1KdA6!Dx8<WHekjfzvnr
+zp{7=TnllLziz(nUB|-s@AZ9@vMjg23>5E{qxq@cc%2$Cb)tn32(YxnLrLyaJGp6Rt
+zpcC?iHzM-o%j1ogVIW1TLs1~oS%-^RZaY^&!(&0IcgF%j;UT37O!!iS6d#dV6G7V`
+zXpH;m6qd=93Q%(jf1=BGEToB~hRc{|>(MffAuO1aWQxp<8n7hdVnGz+NgGmw2rEX{
+z2Jiae@!ReFjdsh#L(PeTHIXo7QVA9;6`Eh8qo|FPWkxaNQ)Aw9-FGZPauM8Jk9~}Q
+zKe_rk8eL7k;rsCF>B|4?zC$rf=m8Da^WZZj=%YluB#f6+3O%W&EK!~LptQE4q2i*n
+za*QeSrh(>~%sTVqjjoYk=sihRG*5%1akL_Wkszi4N&bCx!<r>izTQ;}d7|huk}DbP
+zab!WsqQtJJUQ+5SL70*Q*Y!?J^&zQlcY>@;)ugi_Q3S%6NK;;(n~(*SDZx@e=iq1Q
+z8+YQjV|1a4fP!=xVAi{?<6z{@Klln(7*k9<^x=<>rDdJKl+37I$5?l}S#WzL+`o+b
+z11ta?2B{HhG$$C@uX$uYVPpreAPFO(uS4$JnEN{D24-mq=4t{fmM>5n%dHP*AI>f=
+z&(5p%@;wFiEam};eTnrM&V51FWfybcT&H00g9>iF9)6mby0Kg>o>}y@W<6k5aYo5c
+z1(h^W7PcIsI?9;|x=7WFFJrDuP%1ImrjupIm+VK8wW>Z%s36#|K8~aXPkdcSen>)`
+z8+rcA)N~3ieYF$Kj2cGM4_*}ANqUV(Ho!aj0q60K4U@49yXr)iQw!&ByM20w8Ts|m
+zb+N!>JybM0@KpQFMZe#~#+0hs8V!isI2`v%L`!#+BdA)61maH7FntjA1LY0Gz)5er
+zMhoqimF7(XeJ#vCtgOBnGWB|S1!1dCw4vSpsqC;-R5Zz!#U1JX-9<XG_9+?80k#zO
+zW0X2(FNICly}EzXal1@PW~|ylyiyMypjFa3h_+R(wd6`#RkTArT*j-{t0Lw@veMQE
+zd@WjkKax$g+y_wz_wUU{HQl?_%J%QHz}o|%9Fh9Lp=U<T$T<4nBjczUn?SU3D`v#z
+zSAj+`ntHuvMIdWO5)Zy3nCmDkx)|p<m}`U{<}hx9zEYU?N4z5@>RLVHaKFy(BfS-8
+z)3*LM7`Tpp0$vbDcmiYxU9)ty>str%3%*+(;|4_by}&-v*JCu}hsI8V*UVJqGZU|s
+z(8Tc#%p5QH=z&yt(G2m>k*bHHK@$zwVc5}USF_dn2=CvsZ0tJORL0vi2efcra-~AG
+z4F#vcPdLu!>v0=c8yd!o5>Y%M9LL#qy+q`1_D@^;+R!F--mp9z=gsca59`-Gym+&R
+z^;Uk<>3X1Y94?ADY^UV%cM01QWi!r^@99}xmLgLjImg|-Sdi-Z(r|0)dTwDFb;7cb
+iX!E+sKCWT6{{s9`vAId(&AGaSmuvj_LX#<r-2VWiH0T!q
 
-delta 25
-hcmaDR{f%dXCe!8;CI!aHPgz%QKEkQSG`Wj61^|O=34Z_p
+delta 32
+ocmaDY^NnYNCe!8;CIv>OTI<QaT;h`r*(PoF<Wggr%+D7C0I;eFfB*mh
 
 diff --git a/src/generated/lcf/rpg/saveeasyrpgselfvariablebank.h b/src/generated/lcf/rpg/saveeasyrpgselfvariablebank.h
 new file mode 100644
@@ -579,32 +580,33 @@ delta 16
 XcmX>ncUERY9?xbk-i3^l1^Dd%I9~;v
 
 diff --git a/src/generated/lsd_saveeasyrpgdata.cpp b/src/generated/lsd_saveeasyrpgdata.cpp
-index 9e3b61d3e89b662ff89ad51adaf49c9373cc7c96..40d14b94add2557453572e7ab2b3b79574b12fe9 100644
+index 9e3b61d3e89b662ff89ad51adaf49c9373cc7c96..a2d4b730fd7fa2f6a8a8d026d2841499b76278f6 100644
 GIT binary patch
-literal 4891
-zcmb_gYj4{&6#ZQNiaQM$+90)t?aQEc2G-cg0(eOgdmDyf5GaY3h{~csQZd}3|9w{v
-zDwHfavQh(q9Nlv+?>T(ixq$ER12@aN<->2A<pQp6S4(&ci+i}c-@tNlyD1SCT)^8=
-zA4C@5P0S>0SwaDy84(Kj782$s!FC2$JUa*$#R^^rZ|b)|austSX9YV}DwD3`L`=oG
-zKMVNISrU18_;}+~Ij}^Hp%@TZG~*(w+pZzl@U@`SSutNwxX)+`Yo3dM;$y4!M9@nR
-zG(kQMAx}dpK*bdPK*=i>&{Wd0mTO+U-{wgIK~p(NL#(`n0ZX@B?1*AKy@agH2#<{J
-z%Y0Y&AOE?%yD4OqeyErz*b@mMlS(i@SJ?a>g(4bDmQ{%X56k8q%W@p}of0fhTHmuY
-zNb-<^jXpYw3>{HMX0hE93*tQeB-^nH?_tY%pggwAk|J)UWJhI2&>Kt)U&=-wFg2{n
-zBQ34Zq6JZ8W?70Ni6{#1=T;CCfu5vNT~rTPmx<qFhq!KsJ9pip8Tb|KPQ-p^Nrm<W
-zusLKjyk;~BdsAGZ)#~S;JT-@k;60)(X!~pH)en7bx^4})v|g>&3$M^bh3j4w)^w^c
-zv35<fk@sWqXT6zTW6_rxiRf^V8ZoL$18nQ>lj@WzEHnp-izB!HW@*Ux^Ty|W`M(^N
-zPy<FOc*5HC*Kc0`nkL)7h+xD|=m(O1dQ!3@DI<X=5#T-62+v2z330=mQF>3(?cwMo
-zSMu%@sq+h5vG@*k({Q*KkFn<nG@3w~7G}JiB*+}5T3a(N>w=?%`y}xsuA@Qh39^4y
-z;t}H<p?zd6_b4_=v=*w@xwg(`+<vBlkCoaYO;FqAcLcY>lQb_r;O@cFXsC0`pm&bs
-zVuMYik}^SXo86IX1Sg3--N8n7FB4SKRE_QC9_q`q>jE&#um>76$%}Jlc-5nL22lr3
-zCR{zgYU>Gk#GG!6(fpt*24<2eqXtN|dwY_7K5@EeuO0RHFqqSQXea3(9R}u``an}E
-z@E96;cstnf)GN-GUO<9)gcHNuv%EN&rg38!HOUWivJ`v$FL)Y0y<*~a==ldl&z&j_
-z?<`a5ow%B9W{Sp;e#DE-&=Y3B481>%cA+6mkZ*E3x|`681^b*QgI!;qgwE*l8b3j6
-zb?BlJsU4|0(o)*KK@Q*b=K5l}K6$0w7MDf&?|*o${DPOj_O%d8(r@%l$$0g24bh-_
-zrR=#I7_=H>9BYq*de3Rjqk|AV9P}ZjQ;JU1I><bW(Yx_rtMw*e>`~7_jb*$CI=sg9
-sfcxkFAW%D046p&^PlNaF&(+HM`py_+K|-WF`MU(7zk=hmegm=o2SFdY6#xJL
+literal 5208
+zcmb_gZExE)5dK{Kikk)uZID{S`ejgC18eML0lcJ$y$wS#2(&~?L}gJRsTgk2|K8IJ
+z6-t(DS*d|Qj_$eRJrCdR>|DT4_<@`G-TdK?)qDomw~INvhS@#b-LGIiyImCs3ohXG
+zpbsK*@G4>wHY}!q&y)xSd;>9C$NpvlS3KPd7DftQ`md_DKr$6^At$+aq*N+h#|fE=
+zvh~F0TW3z>{^8?|Q^vp)HHM-=q~U~%uo}C9;K0{{QfI-|g2H`D6Ik+0_!J)-wIhOF
+zf}k<_(*Uw0paN7x;V-1TU_MPGEpoZ$<@-$*$KcnQlO({*3mC9u!^M^;#*<4(i-_>Z
+z=&p!&b^r0d+q;{bR-uQAh=LuF5HP6(TW1P~-yu;%W6H8j(dR)iykl981AkJ2=}GHn
+zmiTcNP_R))CzgRD3d<z2J8XWGC7)%}R^mMzIrEjrwrQN(t%Pi;ObKd(f#GX0=mUm^
+zC3&QU^l3OFicBm^QFJ1T!n>*EM?|0|iBuQm1C~YLcQ_%g+wz^dZaxgW2fJml-&#_k
+zd_Ju9DGja}jf2h*mngM*^P8upP&#;zC=1H|(t7br*O;zb0WPf<i{;GAIZ@%dSGhE;
+zEKICjx!LIVYyM}w8lPi6mnjKpf07z8C`$uu>+hrTlq$$M`-+PLwf|*Fz<1MH=Uwr?
+z?59ux1~GWT+SS(|p8t}@n}3L4WF6BFB>DWrWJ?l8d`}|4d#n)N8X-r>_4^Fsd(_?T
+zw~kUJYj2S%zQ7ZUZ;>|*`e*SFdk#Tk2z1lLjJKl*nafmjtJh_fa2WG7i9Lzus2_QP
+z>`qcV@HmHPm$RmOU>ikR6V>NjlV`ndzfi%4Qf)YmVB7X@5pI}Aah`p^+k+)x-{clX
+z?;Ohc1)GG0%Lu|v?-pIdIEw7?2{xj8si2Z3YUng~xIT}&P5`6yYoI}+v^Zynmothr
+zh}wHH=IZpRtvBR>=XhC+;d@mvFr!2nv_Q(++mr0ek?Nv(c2w)b@Eos0Gf4O9Ffcz<
+z2bxfUWoY1Gcd+G&m)Dk_PyA?r68*ksX>l}6twuj;lpf}0$?y8#u^K*pV&Zk^t@nza
+zyH#qxvqY(G;&Qi{A!<Ro5ziJwZ<ro2^!+qgh1y{RebcwayEZ+W@S5|ucj}8u=!_|^
+z@FTdEMHiLm+M=p0qnPUHJW&A|$IH+gQqKT3k9qG?oSq|i_k?L_(1mK~(d?-Ed*7*U
+zw3kO)>`mT0%TNDfoBb7=;%1wSEcF}RIU28?+A<BQZjO##$#APcMwx$T)OT=QpZ7v)
+zz4AJ*7iAPVLom8JIfXUu>{HO@+Gz<E_MiEu;+iLBJ8F4wYK8I**NxEot{0#~w06MV
+c-;0Iy?X9sQ{g_C3^hX^;e*?#9{D5SA2i3AJ4FCWD
 
 delta 15
-XcmbQO_L*zLG?vLF0#hbm67mE9HO>Zf
+Xcmcbi@tJGGG?vLNf>S2*i+BP6H?9T)
 
 diff --git a/src/generated/lsd_saveeasyrpgselfvariablebank.cpp b/src/generated/lsd_saveeasyrpgselfvariablebank.cpp
 new file mode 100644
@@ -724,27 +726,27 @@ delta 11
 Scmeytx1D!G9ouAkc1r*qNCXi8
 
 diff --git a/src/generated/rpg_saveeasyrpgdata.cpp b/src/generated/rpg_saveeasyrpgdata.cpp
-index 4edc3197eb7927b5aa7d6d143e7db6fad76693b1..fadcac4af758713680fcde5b8dafc92a0ad1c8b6 100644
+index 4edc3197eb7927b5aa7d6d143e7db6fad76693b1..1fedb143c93598a427d86a20221601f1aec8049d 100644
 GIT binary patch
-literal 2499
-zcmb_dU2obj6n$QP#a$*%&{DEzpqi#ayGk8YEiY45MNV=_yd`#IJ0M!|-*@vt8qq?b
-zBQH_xbI(2JIJTV=_)HI6jmD$9AJfqgF0XG!a0bH(j3-kV4X>vK!h#bx+v_1@4xUC_
-z!;HrW^iG*FAZHMBFZO3$xRB{m@h~#b^4rxYu*^hK>26*f8I$Us<AmHqnb-AY;*6MH
-z-rZg~B?n1dV~{3P8g``$tKJoa8eb|z=Z1R<VUnVNdzmR8=`}M8rmzDFW2(mhG7+Ex
-z6CwN}%QxIdp|Q|%Da-L$7RTV%%9#jAc>x11W>O{0a49;F7K||GxG4B8Cbz$@$5*+n
-zA`cTW0}G}h;MyqeWro@>$S9#nvMwe1GAP<RmgP9`6B)_V))y}PI13PL%F!X$j%IVL
-z5(t=K-N?2q!4lLdBcp_Z=f*cx(6^;c(CbO+jx6~KGDXFVRD(flV?uYxu+RqXsY|f{
-zX*i@VRO9_=6VoTDVK4xDWB%Fh*Hd%SO}U)ggrll%_5A|Kdjy!W5NphOpb1)V5y*u;
-z&#5VGXlee0t^p3`@U2g;lD>j<^VwFr52vTR5Lzj15uEVw9qb1idSG|JZs!(qX;tk5
-zf21C(+QDPPO$QPtIP+bN@ywkw#hDkQ>oM{7U1{4ZKcsd$-ChP1{lGFI9~jiRSCoyZ
-z<_c7^VJtlsyPAGkKXMgYytgFV>i);|D-nBnuBz%~dqO2Q&A)}&kpk^t5xP5w@;zQ5
-z_M&l9g&Kv~qN_o-M!rjnNotm^j-}c6A6>^=YH!pZW6fTX9<p|o|2g_}V!8P)-yKu~
-z_*PCR^0N;Em#&yZ3O7GGU7z{UYufG5w}`7vQhKFL;(AMiAB(@PK3@1W<ss3px6Oer
-z>aruquelD<U7l12hhLm;sE?p}Ent`ERes4RG?@}0b>CW9)(Yt6f4R%)?%o`t>)rYX
-DW;qrM
+literal 2588
+zcmb_eU2obz5PYtG#nzQ7NC@sT5LHz|(nx8D5?-n(I-TvszSh38?#>_*@!z{P#<2(_
+zkm481x3jY|dmldU2tLyTm&2Rk-H-9`94@Y|hj0StBe)rjVR(KuE)fnK!O2b!Aq((0
+z76v9FL7;cWwFNbSMEFTC>B5=H=2}Ftg;vn6MuF!xR@!un?AY4O^gJ&THqQNSpi*zh
+z&HV26(pz$n#1#f9ptGo}bX3)@AXNB5BYM}u*9fBwCETlA2S~4popFsF(3ns@hLFn;
+zHP{&87g@d*0ZN0VmJ78UpX5mbL9Lw2kd&7&5OSh)%B@hc16j!kQ-QOR?`(AY`|9Sh
+zuvPZM#@xb;8wiE5TKKu8@-s3@Xp(G}5(5>M<vqvoJot&6<QeCSkU^4%2rl)}BiEkc
+zQ>;1=a?881>o}69XfjSl2?fuMZ_1!=$JnsfQ&b&!`V~}$np>p@gVtKWbjYwY7VfD^
+zIRRO8PE{z!|I;R>Ps+ex0Pb4++3nY%De0!ZoVtXgtZw!F0w`*PnDGc}%xa(snh6=I
+znK><}soT&p;t81r0jKb-Pp>6?1?v{kR=W?!$D$NkDQyv)@bDen2N!zacED{H77A%q
+z?t^%w8jIS&W5Z1cQZ5A#n89Sird$i|C&+v*|Gq12d*+AKZl~MHfTjhkQu2Xe-S>*J
+z5o*pr6^#<*^Mn~%vO&x=pS?FF+w%U$^(zrOd9JeRX?sGg*3ECiywL^P!7^fR5EXm8
+zLhMAtGK~hM-J+{Ow?e*4i)m)(%p}V0x<*&+U21RSA7aj4k?u2hmH#OQbYih$m%rVp
+z25?iKP!?w&hKznOsgkTXI$6Mj_%-cz=qBQ7lPtZ`CSm^E;>X%wXCJQlHRV37Uu~N`
+zUDRm@kY97{qkDN$?cMzHd_!{p)hhw}h+a8mjRm}ArEh}1EXhUj_tI!{EkT*Svv8aR
+S(3Rrll0cV&^&z@9IR5|$mNu0D
 
 delta 11
-ScmX>s{EBUZA@k%ePD=nA&IAeo
+ScmbOu@``PPA@k(NoR$C^HUvEY
 
 diff --git a/src/generated/rpg_saveeasyrpgselfvariablebank.cpp b/src/generated/rpg_saveeasyrpgselfvariablebank.cpp
 new file mode 100644
