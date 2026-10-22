@@ -34,6 +34,7 @@
 #include "output.h"
 #include <cmath>
 #include <cassert>
+#include <algorithm>
 
 Game_Event::Game_Event(int map_id, const lcf::rpg::Event* event) :
 	Game_EventBase(Event),
@@ -348,6 +349,36 @@ static std::vector<lcf::rpg::EventCommand> _empty_list = {};
 
 const std::vector<lcf::rpg::EventCommand>& Game_Event::GetList() const {
 	return page ? page->event_commands : _empty_list;
+}
+
+bool Game_Event::IsInteractionCandidate() const {
+	if (!IsActive() || !page) {
+		return false;
+	}
+	using Trigger = lcf::rpg::EventPage;
+	if (page->trigger != Trigger::Trigger_action
+			&& page->trigger != Trigger::Trigger_touched
+			&& page->trigger != Trigger::Trigger_collision) {
+		return false;
+	}
+
+	return std::any_of(page->event_commands.begin(), page->event_commands.end(), [](const auto& command) {
+		using Cmd = lcf::rpg::EventCommand::Code;
+		if (command.code == 0) {
+			return false;
+		}
+		if (command.code != static_cast<uint32_t>(Cmd::Comment)
+				&& command.code != static_cast<uint32_t>(Cmd::Comment_2)) {
+			return true;
+		}
+		// Comments can contain executable DynRPG, EasyRPG or Destiny scripts.
+		if (command.string.empty()) {
+			return false;
+		}
+		return (command.string[0] == '@' && (Player::IsPatchDynRpg()
+				|| (Player::HasEasyRpgExtensions() && StartsWith(command.string, "@easyrpg_"))))
+			|| (command.string[0] == '$' && Player::IsPatchDestiny());
+	});
 }
 
 void Game_Event::OnFinishForegroundEvent() {

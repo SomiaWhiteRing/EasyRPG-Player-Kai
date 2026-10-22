@@ -107,6 +107,9 @@ public:
 	 */
 	const std::vector<lcf::rpg::EventCommand>& GetList() const;
 
+	/** Whether the current page has player-triggered interaction commands. Does not start the event. */
+	bool IsInteractionCandidate() const;
+
 	/**
 	 * Event returns to its original direction before talking to the hero.
 	 */

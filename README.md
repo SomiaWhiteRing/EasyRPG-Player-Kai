@@ -11,7 +11,7 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 
 按 `F1` 打开系统设置菜单后，可以进入 `追加功能` 单独开关本分支新增功能。
 
-这些开关默认启用，也会写入配置文件的 `[Player]` 段：
+以下开关默认启用，也会写入配置文件的 `[Player]` 段：
 
 - `ExtraMessageHistory`：对话历史记录
 - `ExtraMouseSupport`：鼠标功能补完
@@ -20,6 +20,10 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 - `ExtraNameInputChoices`：输入式解谜自动选项化
 - `ExtraHideManiacLogs`：隐藏 Maniac 相关日志
 - `ExtraForceTestPlay`：强制启用 EasyRPG 调试模式
+
+`ExtraInteractionHighlight`（场景交互高亮）默认关闭。开启后，在可自由操作的地图场景中按住 `E` 显示交互位置，松开即隐藏。青色框表示确认键触发，橙色框表示玩家或事件接触触发；没有图像的调查点也会显示。可以在 `Input → Key/Button mapping → Engine → Highlight Interactions` 修改高亮键；Android 可在虚拟按键布局中添加“高亮交互位置（按住）”按钮。
+
+高亮依据当前生效事件页，排除自动执行、并行处理、空白页和普通注释页。事件内部的条件分支可能让交互没有可见反应；通过并行事件、原始键码或鼠标自行实现的交互系统无法通用识别。
 
 ### 隐藏Maniac相关的错误提示
 
