@@ -99,8 +99,8 @@ struct Game_ConfigPlayer {
 	BoolConfigParam extra_movie_playback{ "兼容视频播放", "使用平台内置解码器播放游戏中插入的视频", "Player", "ExtraMoviePlayback", true };
 	BoolConfigParam extra_recommended_soundfont{ "MIDI音效改良", "使用作者推荐的SoundFont", "Player", "ExtraRecommendedSoundFont", true };
 	BoolConfigParam extra_name_input_choices{ "输入解谜选项化", "为输入式解谜提供候选选项", "Player", "ExtraNameInputChoices", true };
-	BoolConfigParam extra_interaction_highlight{ "场景交互高亮", "按住高亮键显示交互位置（默认 E）", "Player", "ExtraInteractionHighlight", false };
-	BoolConfigParam extra_pinyin_input{ "拼音输入法", "为角色名输入界面添加拼音候选输入", "Player", "ExtraPinyinInput", false };
+	BoolConfigParam extra_interaction_highlight{ "场景交互高亮", "按住高亮键显示交互位置（默认 E）", "Player", "ExtraInteractionHighlight", true };
+	BoolConfigParam extra_pinyin_input{ "拼音输入法", "为角色名输入界面添加拼音候选输入", "Player", "ExtraPinyinInput", true };
 	BoolConfigParam extra_hide_maniac_logs{ "隐藏Maniac日志", "隐藏 Maniac 相关诊断提示", "Player", "ExtraHideManiacLogs", true };
 	BoolConfigParam extra_force_testplay{ "强制TestPlay", "强制启用EasyRPG的调试模式", "Player", "ExtraForceTestPlay", true };
 	EnumConfigParam<ConfigEnum::StartupLogos, 3> show_startup_logos{
