@@ -22,6 +22,31 @@
 
 #include "bitmap.h"
 #include "font.h"
+#include "utils.h"
+
+namespace {
+	constexpr int kCandidateGap = 8;
+
+	std::string CandidateLabel(int slot, const std::string& candidate) {
+		return std::to_string(slot + 1) + "." + candidate;
+	}
+
+	std::string FitText(std::string text, int max_width, bool keep_end = false) {
+		if (Text::GetSize(*Font::Default(), text).width <= max_width) {
+			return text;
+		}
+		auto chars = Utils::DecodeUTF32(text);
+		while (!chars.empty()) {
+			if (keep_end) chars.erase(chars.begin());
+			else chars.pop_back();
+			text = keep_end ? "..." + Utils::EncodeUTF(chars) : Utils::EncodeUTF(chars) + "...";
+			if (Text::GetSize(*Font::Default(), text).width <= max_width) {
+				return text;
+			}
+		}
+		return {};
+	}
+}
 
 Window_Pinyin::Window_Pinyin(int ix, int iy, int iwidth, int iheight)
 	: Window_Base(ix, iy, iwidth, iheight) {
@@ -29,14 +54,19 @@ Window_Pinyin::Window_Pinyin(int ix, int iy, int iwidth, int iheight)
 	Refresh();
 }
 
-void Window_Pinyin::SetQuery(std::string nquery) {
+void Window_Pinyin::SetInput(std::string nquery, std::vector<std::string> ncandidates) {
 	query = std::move(nquery);
+	candidates = std::move(ncandidates);
+	index = 0;
+	commit_error = false;
 	Refresh();
 }
 
-void Window_Pinyin::SetCandidates(std::vector<std::string> ncandidates) {
-	candidates = std::move(ncandidates);
-	index = 0;
+void Window_Pinyin::SetCommitError(bool error) {
+	if (commit_error == error) {
+		return;
+	}
+	commit_error = error;
 	Refresh();
 }
 
@@ -44,6 +74,7 @@ void Window_Pinyin::Clear() {
 	query.clear();
 	candidates.clear();
 	index = 0;
+	commit_error = false;
 	Refresh();
 }
 
@@ -53,12 +84,12 @@ void Window_Pinyin::MovePage(int delta) {
 	}
 
 	const auto page_count = GetPageCount();
-	auto page = index / kVisibleCandidates;
+	auto page = GetPage();
 	page = (page + delta) % page_count;
 	if (page < 0) {
 		page += page_count;
 	}
-	index = page * kVisibleCandidates;
+	index = page_starts[page];
 	Refresh();
 }
 
@@ -76,7 +107,7 @@ bool Window_Pinyin::SetVisibleSelection(int slot) {
 	}
 
 	const auto candidate_index = GetFirstVisibleIndex() + slot;
-	if (candidate_index >= static_cast<int>(candidates.size())) {
+	if (candidates.empty() || candidate_index >= page_starts[GetPage() + 1]) {
 		return false;
 	}
 
@@ -101,45 +132,81 @@ const std::string& Window_Pinyin::GetSelectedCandidate() const {
 }
 
 int Window_Pinyin::GetFirstVisibleIndex() const {
-	return (index / kVisibleCandidates) * kVisibleCandidates;
+	return candidates.empty() ? 0 : page_starts[GetPage()];
+}
+
+int Window_Pinyin::GetPage() const {
+	return static_cast<int>(std::upper_bound(page_starts.begin(), page_starts.end(), index) - page_starts.begin()) - 1;
 }
 
 int Window_Pinyin::GetPageCount() const {
 	if (candidates.empty()) {
 		return 0;
 	}
-	return (static_cast<int>(candidates.size()) + kVisibleCandidates - 1) / kVisibleCandidates;
+	return static_cast<int>(page_starts.size()) - 1;
+}
+
+void Window_Pinyin::RebuildPages() {
+	page_starts.clear();
+	int first = 0;
+	while (first < static_cast<int>(candidates.size())) {
+		page_starts.push_back(first);
+		int used_width = 0;
+		int count = 0;
+		while (first + count < static_cast<int>(candidates.size()) && count < kVisibleCandidates) {
+			const int item_width = Text::GetSize(*Font::Default(), CandidateLabel(count, candidates[first + count])).width;
+			const int gap = count == 0 ? 0 : kCandidateGap;
+			if (count > 0 && used_width + gap + item_width > contents->GetWidth()) {
+				break;
+			}
+			used_width += gap + item_width;
+			++count;
+		}
+		first += count;
+	}
+	page_starts.push_back(first);
 }
 
 void Window_Pinyin::Refresh() {
+	RebuildPages();
 	contents->Clear();
+	SetCursorRect(Rect());
 
-	std::string line = "拼音:";
-	line += query.empty() ? "_" : query;
+	std::string page;
 	if (!candidates.empty()) {
-		line += " ";
-		line += std::to_string(index / kVisibleCandidates + 1);
-		line += "/";
-		line += std::to_string(GetPageCount());
+		page = std::to_string(GetPage() + 1) + "/" + std::to_string(GetPageCount());
 	}
-	contents->TextDraw(0, 0, Font::ColorDefault, line);
+	const int page_width = Text::GetSize(*Font::Default(), page).width;
+	int query_right = contents->GetWidth() - page_width - kCandidateGap;
+	if (commit_error) {
+		const std::string error = "名字空间不足";
+		const int error_width = Text::GetSize(*Font::Default(), error).width;
+		query_right -= error_width;
+		contents->TextDraw(query_right, 0, Font::ColorCritical, error);
+		query_right -= kCandidateGap;
+	}
+	const std::string label = "拼音:";
+	const int label_width = Text::GetSize(*Font::Default(), label).width;
+	contents->TextDraw(0, 0, Font::ColorDefault, label);
+	contents->TextDraw(label_width, 0, Font::ColorDefault,
+		FitText(query.empty() ? "_" : query, query_right - label_width, true));
+	contents->TextDraw(contents->GetWidth() - page_width, 0, Font::ColorDefault, page);
 
-	int x = Text::GetSize(*Font::Default(), line).width + 8;
+	int x = 0;
 	const int first = GetFirstVisibleIndex();
-	const int count = std::min<int>(kVisibleCandidates, static_cast<int>(candidates.size()) - first);
+	const int count = candidates.empty() ? 0 : page_starts[GetPage() + 1] - first;
 	for (int i = 0; i < count; ++i) {
 		const int candidate_index = first + i;
-		if (candidate_index >= static_cast<int>(candidates.size())) {
-			break;
+		const auto item = FitText(CandidateLabel(i, candidates[candidate_index]), contents->GetWidth() - x);
+
+		const int item_width = Text::GetSize(*Font::Default(), item).width;
+		if (candidate_index == index) {
+			SetCursorRect(Rect(x, 14, item_width, 16));
 		}
-
-		std::string item;
-		item += static_cast<char>('1' + i);
-		item += '.';
-		item.append(candidates[candidate_index]);
-
-		const auto color = candidate_index == index ? Font::ColorDefault : Font::ColorDisabled;
-		contents->TextDraw(x, 0, color, item);
-		x += Text::GetSize(*Font::Default(), item).width + 6;
+		contents->TextDraw(x, 16, Font::ColorDefault, item);
+		x += item_width + kCandidateGap;
+	}
+	if (!query.empty() && candidates.empty()) {
+		contents->TextDraw(0, 16, Font::ColorDisabled, "无候选，请修改拼音");
 	}
 }

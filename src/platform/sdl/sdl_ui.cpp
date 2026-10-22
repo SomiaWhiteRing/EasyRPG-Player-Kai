@@ -660,6 +660,8 @@ Input::Keys::InputKey SdlKey2InputKey(SDLKey sdlkey) {
 		case SDLK_y				: return Input::Keys::Y;
 		case SDLK_z				: return Input::Keys::Z;
 		case SDLK_BACKQUOTE	: return Input::Keys::BACKTICK;
+		case SDLK_EQUALS		: return Input::Keys::EQUALS;
+		case SDLK_MINUS		: return Input::Keys::MINUS;
 		case SDLK_LSUPER		: return Input::Keys::LOS;
 		case SDLK_RSUPER		: return Input::Keys::ROS;
 		case SDLK_MENU			: return Input::Keys::MENU;

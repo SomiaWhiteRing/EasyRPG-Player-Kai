@@ -28,7 +28,6 @@
 #include "generated/pinyin_simp_dict.h"
 
 namespace {
-	constexpr size_t kMaxDirectCandidates = 160;
 	constexpr size_t kMaxCompositeCandidates = 96;
 	constexpr size_t kMaxSegmentations = 12;
 	constexpr size_t kMaxSegments = 6;
@@ -61,6 +60,14 @@ namespace {
 			}
 		}
 
+		// The dictionary spells these syllables as lue/nue, while v is the
+		// keyboard spelling of u-umlaut in lv/nv and lve/nve.
+		for (size_t i = 1; i + 1 < normalized.size(); ++i) {
+			if (normalized[i] == 'v' && normalized[i + 1] == 'e'
+					&& (normalized[i - 1] == 'l' || normalized[i - 1] == 'n')) {
+				normalized[i] = 'u';
+			}
+		}
 		return normalized;
 	}
 
@@ -156,6 +163,21 @@ namespace {
 		return query.find('\'') != std::string_view::npos;
 	}
 
+	bool MatchesBoundaries(std::string_view spelling, std::string_view query) {
+		// An explicit separator must coincide with a dictionary syllable
+		// boundary: xi'an must not also return the one-syllable xian entries.
+		size_t pos = 0;
+		for (auto c: spelling) {
+			if (c == ' ') {
+				if (pos < query.size() && query[pos] == '\'') ++pos;
+			} else {
+				if (pos >= query.size() || query[pos] == '\'') return false;
+				++pos;
+			}
+		}
+		return pos == query.size();
+	}
+
 	std::vector<std::string> SplitDelimitedQuery(std::string_view query) {
 		std::vector<std::string> segments;
 
@@ -244,7 +266,8 @@ namespace {
 		const PinyinIndex& index,
 		const std::vector<std::string>& segments,
 		std::vector<std::string>& out,
-		std::unordered_set<std::string>& seen
+		std::unordered_set<std::string>& seen,
+		size_t max_candidates
 	) {
 		if (segments.size() < 2 || segments.size() > kMaxSegments) {
 			return;
@@ -286,7 +309,7 @@ namespace {
 		});
 
 		for (auto& candidate: built) {
-			if (out.size() >= kMaxDirectCandidates + kMaxCompositeCandidates) {
+			if (out.size() >= max_candidates) {
 				return;
 			}
 			AddUnique(out, seen, std::move(candidate.text));
@@ -303,6 +326,11 @@ std::vector<std::string> PinyinInput::Lookup(std::string_view query) {
 	if (query.empty()) {
 		return {};
 	}
+	if (query.size() > kMaxQueryLength || query.front() == '\'' || query.back() == '\''
+			|| query.find("''") != std::string_view::npos
+			|| !std::all_of(query.begin(), query.end(), IsValidInputChar)) {
+		return {};
+	}
 
 	const auto& index = GetIndex();
 	const auto key = NormalizeKey(query);
@@ -314,12 +342,16 @@ std::vector<std::string> PinyinInput::Lookup(std::string_view query) {
 	std::unordered_set<std::string> seen;
 
 	auto [begin, end] = FindRange(index, key);
-	for (auto it = begin; it != end && result.size() < kMaxDirectCandidates; ++it) {
-		AddUnique(result, seen, std::string(it->word));
+	for (auto it = begin; it != end; ++it) {
+		if (!HasDelimiter(query) || MatchesBoundaries(it->spelling, query)) {
+			AddUnique(result, seen, std::string(it->word));
+		}
 	}
 
+	const auto max_candidates = result.size() + kMaxCompositeCandidates;
 	for (const auto& segments: SegmentQuery(query, index)) {
-		AddCompositeCandidates(index, segments, result, seen);
+		if (result.size() >= max_candidates) break;
+		AddCompositeCandidates(index, segments, result, seen, max_candidates);
 	}
 
 	return result;

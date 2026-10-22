@@ -483,6 +483,7 @@ void Window_Settings::RefreshExtra() {
 		RecommendedSoundFont::Refresh();
 	});
 	AddOption(cfg.extra_name_input_choices, [&cfg]() { cfg.extra_name_input_choices.Toggle(); });
+	AddOption(cfg.extra_pinyin_input, [&cfg]() { cfg.extra_pinyin_input.Toggle(); });
 	AddOption(cfg.extra_interaction_highlight, [&cfg]() { cfg.extra_interaction_highlight.Toggle(); });
 	AddOption(cfg.extra_hide_maniac_logs, [&cfg]() { cfg.extra_hide_maniac_logs.Toggle(); });
 	AddOption(cfg.extra_force_testplay, [&cfg]() {

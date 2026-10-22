@@ -224,6 +224,8 @@ namespace Input {
 			FIVE_FINGERS,
 #endif
 
+			EQUALS,
+			MINUS,
 			KEYS_COUNT
 		};
 
@@ -422,6 +424,8 @@ namespace Input {
 			"FOUR_FINGERS",
 			"FIVE_FINGERS",
 #endif
+			"EQUALS",
+			"MINUS",
 			"KEYS_COUNT"
 		);
 	}

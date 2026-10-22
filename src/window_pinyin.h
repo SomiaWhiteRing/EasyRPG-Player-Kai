@@ -25,10 +25,10 @@
 
 class Window_Pinyin : public Window_Base {
 public:
-	Window_Pinyin(int ix, int iy, int iwidth = 256, int iheight = 32);
+	Window_Pinyin(int ix, int iy, int iwidth = 256, int iheight = 48);
 
-	void SetQuery(std::string query);
-	void SetCandidates(std::vector<std::string> candidates);
+	void SetInput(std::string query, std::vector<std::string> candidates);
+	void SetCommitError(bool error);
 	void Clear();
 	void MovePage(int delta);
 	void SetSelection(int index);
@@ -42,11 +42,15 @@ private:
 	static constexpr int kVisibleCandidates = 4;
 
 	int GetFirstVisibleIndex() const;
+	int GetPage() const;
 	int GetPageCount() const;
+	void RebuildPages();
 
 	std::string query;
 	std::vector<std::string> candidates;
+	std::vector<int> page_starts;
 	int index = 0;
+	bool commit_error = false;
 };
 
 #endif

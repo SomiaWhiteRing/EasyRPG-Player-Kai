@@ -1318,7 +1318,10 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 		# Shared STL container instantiations must all preserve allocation errors.
 		# Mixing exception modes can select a weak resize implementation that aborts.
 		target_compile_options(${PROJECT_NAME} PUBLIC -fexceptions)
-		target_compile_options(lcf PRIVATE -fexceptions)
+		# A prebuilt liblcf must be compiled with the same exception mode.
+		if(TARGET lcf)
+			target_compile_options(lcf PRIVATE -fexceptions)
+		endif()
 		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
 
 		target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_WEB_MOVIE_PLAYER=1)

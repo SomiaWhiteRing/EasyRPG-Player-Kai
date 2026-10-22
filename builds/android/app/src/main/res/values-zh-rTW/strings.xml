@@ -145,4 +145,5 @@
     <string name="error_games_no_rw">無法對「games」資料夾進行讀寫操作。請為EasyRPG提供另一個位置作為默認資料夾。可以在設定中對EasyRPG的默認資料夾進行更改。</string>
     <string name="stretch">忽略縱橫比（拉伸到荧幕寬度）</string>
     <string name="error_no_games_folder">「games」資料夾不存在或者不是資料夾。 請手動創建或為EasyRPG資料夾選擇其他位置。 EasyRPG的默認資料夾可以在設定中更改。</string>
+    <string name="name_input_title">輸入角色名字</string>
 </resources>

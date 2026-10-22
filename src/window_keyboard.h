@@ -66,6 +66,10 @@ public:
 	static const char* const DONE;
 	static const char* const SPACE;
 	static const char* const NEXT_PAGE;
+	static const char* const KEYBOARD_INPUT;
+	static const char* const ERASE;
+	static const char* const PREVIOUS_CANDIDATES;
+	static const char* const NEXT_CANDIDATES;
 	static const char* const DONE_JP;
 	static const char* const DONE_KO;
 	static const char* const DONE_ZH_CN;
@@ -77,6 +81,9 @@ public:
 	static Keyboard_Layout layouts[MODE_END];
 
 protected:
+	int GetRowCount() const;
+	void EnsureValidSelection();
+
 	static const int border_x = 8;
 	static const int border_y = 4;
 	static const int min_width = 2;
@@ -84,6 +91,7 @@ protected:
 	std::string done_text;
 	int row_spacing;
 	int col_spacing;
+	int normal_height;
 	Mode mode;
 	Mode next_mode;
 	int row;

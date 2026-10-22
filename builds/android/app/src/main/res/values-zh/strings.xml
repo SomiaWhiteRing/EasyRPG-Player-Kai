@@ -145,4 +145,5 @@
     <string name="open_save_folder">打开存档文件夹</string>
     <string name="rtp_found">RTP $YEAR 已找到：$NAME（总共 $MAX 个素材，已找到 $FOUND 个）</string>
     <string name="fullscreen_mode">全屏</string>
+    <string name="name_input_title">输入角色名字</string>
 </resources>

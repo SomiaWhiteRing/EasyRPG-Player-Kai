@@ -27,6 +27,10 @@
 const char* const Window_Keyboard::DONE = "<Done>";
 const char* const Window_Keyboard::SPACE = "SPACE";
 const char* const Window_Keyboard::NEXT_PAGE = "<Page>";
+const char* const Window_Keyboard::KEYBOARD_INPUT = "键盘";
+const char* const Window_Keyboard::ERASE = "退格";
+const char* const Window_Keyboard::PREVIOUS_CANDIDATES = "上页";
+const char* const Window_Keyboard::NEXT_CANDIDATES = "下页";
 const char* const Window_Keyboard::DONE_JP = "<決定>";
 const char* const Window_Keyboard::DONE_RU = "<OK>";
 const char* const Window_Keyboard::DONE_KO = "<결정>";
@@ -129,13 +133,14 @@ Keyboard_Layout Window_Keyboard::layouts[Window_Keyboard::MODE_END] = {
 		{ // Pinyin input
 			{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"},
 			{"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"},
-			{"U", "V", "W", "X", "Y", "Z"},
+			{"U", "V", "W", "X", "Y", "Z", "'"},
 			{},
-			{"1", "2", "3", "4"},
-			{SPACE},
-			{},
-			{},
-			{"" , "" , "" , "" , "" , "" , NEXT_PAGE, "", DONE}
+			{"1", "2", "3", "4", PREVIOUS_CANDIDATES, "", NEXT_CANDIDATES, "", ERASE},
+#if defined(USE_KEYBOARD) && defined(SUPPORT_KEYBOARD)
+			{KEYBOARD_INPUT, "", SPACE, "", "", "", NEXT_PAGE, "", DONE}
+#else
+			{"", "", SPACE, "", "", "", NEXT_PAGE, "", DONE}
+#endif
 		}
 	},
 	{
@@ -213,6 +218,7 @@ Keyboard_Layout Window_Keyboard::layouts[Window_Keyboard::MODE_END] = {
 Window_Keyboard::Window_Keyboard(int ix, int iy, int iwidth, int iheight, const char* ndone_text)
 		: Window_Base(ix, iy, iwidth, iheight)
 		, done_text(ndone_text)
+		, normal_height(iheight)
 		, play_cursor(false)
 {
 	row = 0;
@@ -231,8 +237,16 @@ Window_Keyboard::Window_Keyboard(int ix, int iy, int iwidth, int iheight, const 
 }
 
 void Window_Keyboard::SetMode(Window_Keyboard::Mode nmode, Window_Keyboard::Mode nnext_mode) {
+	const bool last_row = row == GetRowCount() - 1;
 	mode = nmode;
 	next_mode = nnext_mode;
+	row = last_row ? GetRowCount() - 1 : std::min(row, GetRowCount() - 1);
+	EnsureValidSelection();
+	const int new_height = mode == Pinyin ? GetRowCount() * row_spacing + 16 : normal_height;
+	if (height != new_height) {
+		SetHeight(new_height);
+		SetContents(Bitmap::Create(width - 16, height - 16));
+	}
 	Refresh();
 	UpdateCursorRect();
 }
@@ -254,6 +268,21 @@ std::string const& Window_Keyboard::GetSelected() const {
 	return layouts[mode].items[row][col];
 }
 
+int Window_Keyboard::GetRowCount() const {
+	return mode == Pinyin ? 6 : row_max;
+}
+
+void Window_Keyboard::EnsureValidSelection() {
+	// Changing layouts can leave the cursor on an empty cell. Never recurse
+	// through Update(): an inactive keyboard has no direction to move it.
+	for (int i = 0; i < GetRowCount() * col_max && GetSelected().empty(); ++i) {
+		col = (col + 1) % col_max;
+		if (col == 0) {
+			row = (row + 1) % GetRowCount();
+		}
+	}
+}
+
 Rect Window_Keyboard::GetItemRect(int row, int col) const {
 	return Rect(col * col_spacing + border_x,
 				row * row_spacing + border_y,
@@ -270,7 +299,7 @@ void Window_Keyboard::UpdateCursorRect() {
 void Window_Keyboard::Refresh() {
 	contents->Clear();
 
-	for (int j = 0; j < row_max; j++) {
+	for (int j = 0; j < GetRowCount(); j++) {
 		for (int i = 0; i < col_max; i++) {
 			Rect r = GetItemRect(j, i);
 			contents->TextDraw(r.x + 4, r.y, Font::ColorDefault, GetKey(j, i));
@@ -281,41 +310,31 @@ void Window_Keyboard::Refresh() {
 void Window_Keyboard::Update() {
 	Window_Base::Update();
 
-	// move left on wide fields
-	int skip_dir = -1;
-
 	if (active) {
-		if (Input::IsRepeated(Input::DOWN)) {
-			play_cursor = true;
-			row = (row + 1) % row_max;
+		int dx = 0;
+		int dy = 0;
+		if (Input::IsRepeated(Input::DOWN)) dy = 1;
+		else if (Input::IsRepeated(Input::UP)) dy = -1;
+		else if (Input::IsRepeated(Input::RIGHT)) dx = 1;
+		else if (Input::IsRepeated(Input::LEFT)) dx = -1;
+		if (dx != 0 || dy != 0) {
+			const int old_row = row;
+			const int old_col = col;
+			do {
+				row = (row + dy + GetRowCount()) % GetRowCount();
+				col = (col + dx + col_max) % col_max;
+				if (col > 0) {
+					const auto& previous = GetKey(row, col - 1);
+					const bool wide_key = (row == GetRowCount() - 1 && (col == col_max - 3 || col == col_max - 1))
+						|| previous == SPACE || (mode == Pinyin && (previous == KEYBOARD_INPUT
+							|| previous == PREVIOUS_CANDIDATES || previous == NEXT_CANDIDATES || previous == ERASE));
+					if (wide_key) {
+						col = std::min(col + (dx > 0 ? 1 : -1), col_max - 1);
+					}
+				}
+			} while (GetSelected().empty() && (row != old_row || col != old_col));
+			play_cursor = row != old_row || col != old_col;
 		}
-		if (Input::IsRepeated(Input::UP)) {
-			play_cursor = true;
-			row = (row + row_max - 1) % row_max;
-		}
-		if (Input::IsRepeated(Input::RIGHT)) {
-			play_cursor = true;
-			col = (col + 1) % col_max;
-			skip_dir = 1;
-		}
-		if (Input::IsRepeated(Input::LEFT)) {
-			play_cursor = true;
-			col = (col + col_max - 1) % col_max;
-		}
-	}
-
-	// Special handling for wide fields
-	if (col > 0) {
-		// page switch and done are always in the bottom right corner
-		if ((row == row_max - 1 && (col == col_max - 3 || col == col_max - 1))
-			|| GetKey(row, col - 1) == SPACE)
-			col = std::min(col + skip_dir, col_max - 1);
-	}
-
-	// Skip empty cells
-	if (GetSelected().empty()) {
-		Update();
-		return;
 	}
 
 	if (play_cursor) {

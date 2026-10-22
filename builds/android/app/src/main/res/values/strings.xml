@@ -158,4 +158,5 @@ Please tell us in detail what went wrong.\n\n
     <string name="unsupported_engine_card">$ENGINE is unsupported</string>
     <string name="unsupported_engine_title">Unsupported engine</string>
     <string name="unsupported_engine_explanation">This game cannot be played in EasyRPG Player because it was created with $ENGINE.\n\nEasyRPG Player is designed to support only RPG Maker 2000 and 2003 games, with no plans to expand to other engines.\n\nFor software capable of launching this game, please check the Play Store.</string>
+    <string name="name_input_title">Enter character name</string>
 </resources>

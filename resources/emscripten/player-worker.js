@@ -10,6 +10,26 @@ let fileOutputConfirmationId = 0;
 let consoleOwned = false;
 let consoleGeneration = 0;
 let consoleForeground = 7, consoleBackground = 0;
+let nameInput, nameInputId = 0;
+
+function beginNameInput(initial) {
+  if (engine?.stopping || engine?.stopped || nameInput) return false;
+  nameInput = {id: ++nameInputId};
+  postMessage({type: 'name-input', id: nameInput.id, initial});
+  return true;
+}
+
+function pollNameInput() {
+  if (!nameInput || !('value' in nameInput)) return null;
+  const result = {value: nameInput.value};
+  nameInput = undefined;
+  return result;
+}
+
+function cancelNameInput() {
+  if (nameInput) postMessage({type: 'name-input-cancel', id: nameInput.id});
+  nameInput = undefined;
+}
 
 function consoleCommand(command) {
   if (command.op === 'close') {
@@ -163,6 +183,8 @@ self.onmessage = async ({data}) => {
         },
         locateFile: path => new URL(path, data.runtimeBase).href,
         readConsoleLine,
+        useSystemNameInput: () => data.systemNameInput === true,
+        beginNameInput, pollNameInput, cancelNameInput,
         confirmFileOutput,
         getJoystickAvailable: () => joystickAvailable,
         consoleCommand,
@@ -174,7 +196,11 @@ self.onmessage = async ({data}) => {
       });
       engine.initApi();
     } else if (engine) {
-      if (data.type === 'console-input-result') {
+      if (data.type === 'name-input-result') {
+        if (nameInput?.id === data.id && !('value' in nameInput))
+          nameInput.value = typeof data.value === 'string' ? data.value : null;
+      }
+      else if (data.type === 'console-input-result') {
         if (consoleInput?.id === data.id) finishConsoleInput(data.value);
       }
       else if (data.type === 'file-output-confirmation-result') {
@@ -192,6 +218,7 @@ self.onmessage = async ({data}) => {
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {
         engine.stopping = true;
+        cancelNameInput();
         consoleCommand({op: 'close'});
         finishConsoleInput(null);
         finishFileOutputConfirmation(false);

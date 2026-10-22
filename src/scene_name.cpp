@@ -15,6 +15,7 @@
  * along with EasyRPG Player. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <string>
@@ -26,6 +27,13 @@
 #include "pinyin_input.h"
 #include "player.h"
 #include "output.h"
+#include "bitmap.h"
+#include "font.h"
+#ifdef __ANDROID__
+#include "platform/android/android.h"
+#elif defined(EMSCRIPTEN)
+#include "platform/emscripten/interface.h"
+#endif
 
 namespace {
 	constexpr int kMarginX = 32;
@@ -36,23 +44,17 @@ namespace {
 	constexpr int kWindowNameHeight = 32;
 	constexpr int kWindowKeyboardWidth = 256;
 	constexpr int kWindowKeyboardHeight = 160;
-	constexpr int kWindowPinyinHeight = 32;
+	constexpr int kWindowPinyinHeight = 48;
+	constexpr int kKeyboardHintWidth = 224;
+	constexpr int kKeyboardHintHeight = 48;
 	constexpr int kWindowChoiceVisibleItems = 9;
 	const char kManualInputLabel[] = "\xE4\xB8\xBB\xE5\x8A\xA8\xE8\xBE\x93\xE5\x85\xA5";
 
-	char GetTriggeredRawPinyinLetter() {
-		for (int key = Input::Keys::A; key <= Input::Keys::Z; ++key) {
-			if (Input::IsRawKeyTriggered(static_cast<Input::Keys::InputKey>(key))) {
-				return static_cast<char>('a' + key - Input::Keys::A);
-			}
-		}
-		return '\0';
-	}
-
 	char GetTriggeredRawNumber() {
-		for (int key = Input::Keys::N1; key <= Input::Keys::N9; ++key) {
-			if (Input::IsRawKeyTriggered(static_cast<Input::Keys::InputKey>(key))) {
-				return static_cast<char>('1' + key - Input::Keys::N1);
+		for (int number = 0; number <= 9; ++number) {
+			if (Input::IsRawKeyTriggered(static_cast<Input::Keys::InputKey>(Input::Keys::N0 + number))
+					|| Input::IsRawKeyTriggered(static_cast<Input::Keys::InputKey>(Input::Keys::KP0 + number))) {
+				return static_cast<char>('0' + number);
 			}
 		}
 		return '\0';
@@ -63,6 +65,21 @@ Scene_Name::Scene_Name(Game_Actor& actor, int charset, bool use_default_name, st
 	: layout_index(charset), use_default_name(use_default_name), actor(actor), candidates(std::move(candidates))
 {
 	Scene::type = Scene::Name;
+}
+
+Scene_Name::~Scene_Name() {
+	RestoreInputMask();
+}
+
+void Scene_Name::Continue(SceneType) {
+	RefreshPinyinWindow();
+}
+
+void Scene_Name::Suspend(SceneType) {
+	RestoreInputMask();
+	if (kbd_window) {
+		kbd_window->SetActive(true);
+	}
 }
 
 void Scene_Name::Start() {
@@ -120,8 +137,9 @@ void Scene_Name::SetupLayouts() {
 	// Letter and symbol pages are used everywhere
 	layouts.push_back(Window_Keyboard::Letter);
 	layouts.push_back(Window_Keyboard::Symbol);
-	// Pinyin input is temporarily unavailable until its controls are reworked.
-	// Keep the page disabled even when an existing config enables ExtraPinyinInput.
+	if (Player::player_config.extra_pinyin_input.Get()) {
+		layouts.push_back(Window_Keyboard::Pinyin);
+	}
 }
 
 void Scene_Name::CreateKeyboardWindow() {
@@ -150,10 +168,18 @@ void Scene_Name::CreateKeyboardWindow() {
 	kbd_window->UpdateCursorRect();
 
 	pinyin_window.reset(new Window_Pinyin(
-		Player::menu_offset_x + kWindowFaceWidth + kMarginX,
-		Player::menu_offset_y + kMarginY,
-		kWindowNameWidth,
+		Player::menu_offset_x + kMarginX,
+		Player::menu_offset_y + kWindowFaceHeight + kMarginY,
+		kWindowKeyboardWidth,
 		kWindowPinyinHeight));
+	keyboard_hint_window.reset(new Window_Base(
+		Player::menu_offset_x + kMarginX + 16,
+		0,
+		kKeyboardHintWidth,
+		kKeyboardHintHeight));
+	keyboard_hint_window->SetContents(Bitmap::Create(kKeyboardHintWidth - 16, kKeyboardHintHeight - 16));
+	keyboard_hint_window->SetZ(Priority_Window + 1);
+	keyboard_hint_window->SetActive(false);
 	RefreshPinyinWindow();
 }
 
@@ -177,9 +203,11 @@ void Scene_Name::CreateChoiceWindow() {
 }
 
 void Scene_Name::EnterChoiceMode() {
+	RestoreInputMask();
 	mode = Mode::Choice;
 	kbd_window.reset();
 	pinyin_window.reset();
+	keyboard_hint_window.reset();
 	name_window->SetActive(false);
 	CreateChoiceWindow();
 	choice_window->SetActive(true);
@@ -206,8 +234,28 @@ void Scene_Name::RefreshPinyinWindow() {
 
 	pinyin_window->SetVisible(IsPinyinMode());
 	pinyin_window->SetActive(IsPinyinMode());
-	pinyin_window->SetQuery(pinyin_query);
-	pinyin_window->SetCandidates(PinyinInput::Lookup(pinyin_query));
+	pinyin_window->SetInput(pinyin_query, PinyinInput::Lookup(pinyin_query));
+	kbd_window->SetY(Player::menu_offset_y + kWindowFaceHeight + kMarginY
+		+ (IsPinyinMode() ? kWindowPinyinHeight : 0));
+	RefreshKeyboardHint();
+}
+
+void Scene_Name::RefreshKeyboardHint() {
+	if (!keyboard_hint_window) {
+		return;
+	}
+	keyboard_hint_window->SetVisible(IsPinyinMode() && keyboard_input);
+	keyboard_hint_window->SetY(kbd_window->GetY() + 8);
+	auto contents = keyboard_hint_window->GetContents();
+	contents->Clear();
+	const std::string lines[] = {system_input ? "系统输入模式" : "键盘输入模式",
+		system_input ? "关闭输入器退出" : "Esc 退出  +/- 翻页"};
+	int y = 0;
+	for (const auto& line: lines) {
+		const int x = std::max(0, (contents->GetWidth() - Text::GetSize(*Font::Default(), line).width) / 2);
+		contents->TextDraw(x, y, Font::ColorDefault, line);
+		y += 16;
+	}
 }
 
 void Scene_Name::ResetPinyinInput() {
@@ -225,6 +273,10 @@ void Scene_Name::AppendPinyinLetter(std::string_view key) {
 	if (!PinyinInput::IsValidInputChar(c)) {
 		return;
 	}
+	if (c == '\'' && (pinyin_query.empty() || pinyin_query.back() == '\'')) {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+		return;
+	}
 
 	pinyin_query.push_back(c);
 	RefreshPinyinWindow();
@@ -237,6 +289,7 @@ bool Scene_Name::CommitPinyinSelection() {
 	}
 
 	if (!name_window->Append(pinyin_window->GetSelectedCandidate())) {
+		pinyin_window->SetCommitError(true);
 		return false;
 	}
 	ResetPinyinInput();
@@ -252,58 +305,193 @@ bool Scene_Name::SelectPinyinCandidateByNumber(std::string_view key) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
 		return true;
 	}
-	return CommitPinyinSelection();
+	// A rejected candidate still consumes the number key. Otherwise the caller
+	// falls back to appending the digit itself when the name is almost full.
+	CommitPinyinSelection();
+	return true;
 }
 
-bool Scene_Name::HandleRawPinyinInput() {
-	if (!IsPinyinMode()) {
+void Scene_Name::SetPhysicalKeyboardInput(bool enabled) {
+	if (enabled && !input_masked) {
+		previous_keymask = Input::GetMask();
+		auto mask = previous_keymask;
+		mask.set();
+		Input::SetMask(mask);
+		input_masked = true;
+	}
+	keyboard_input = enabled;
+	wait_for_key_release = true;
+	backspace_frames = 0;
+	kbd_window->SetActive(!enabled);
+	RefreshKeyboardHint();
+}
+
+void Scene_Name::StartTextInput() {
+	bool use_system = false;
+#ifdef __ANDROID__
+	use_system = EpAndroid::UseSystemNameInput();
+#elif defined(EMSCRIPTEN)
+	use_system = Emscripten_Interface::UseSystemNameInput();
+#endif
+	SetPhysicalKeyboardInput(true);
+	if (!use_system) return;
+	system_input = true;
+	Input::ResetKeys();
+	bool opened = false;
+#ifdef __ANDROID__
+	opened = EpAndroid::BeginNameInput(name_window->Get());
+#elif defined(EMSCRIPTEN)
+	opened = Emscripten_Interface::BeginNameInput(name_window->Get());
+#endif
+	if (!opened) {
+		system_input = false;
+		SetPhysicalKeyboardInput(false);
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+	}
+	RefreshKeyboardHint();
+}
+
+bool Scene_Name::HandleSystemTextInput() {
+	if (!system_input) return false;
+	std::string text;
+	int result = 2;
+#ifdef __ANDROID__
+	result = EpAndroid::PollNameInput(text);
+#elif defined(EMSCRIPTEN)
+	result = Emscripten_Interface::PollNameInput(text);
+#endif
+	if (result == 0) return true;
+	system_input = false;
+	if (result == 1) {
+		if (name_window->TrySet(std::move(text))) ResetPinyinInput();
+		else pinyin_window->SetCommitError(true);
+	}
+	// A native editor may consume key-up. Do not carry a stuck game key back.
+	Input::ResetKeys();
+	SetPhysicalKeyboardInput(false);
+	return true;
+}
+
+void Scene_Name::RestoreInputMask() {
+	if (system_input) {
+#ifdef __ANDROID__
+		EpAndroid::CancelNameInput();
+#elif defined(EMSCRIPTEN)
+		Emscripten_Interface::CancelNameInput();
+#endif
+		system_input = false;
+		Input::ResetKeys();
+	}
+	if (input_masked) {
+		Input::SetMask(previous_keymask);
+	}
+	input_masked = false;
+	keyboard_input = false;
+	wait_for_key_release = false;
+	backspace_frames = 0;
+	if (keyboard_hint_window) {
+		keyboard_hint_window->SetVisible(false);
+	}
+}
+
+void Scene_Name::EraseInput() {
+	if (!pinyin_query.empty() && IsPinyinMode()) {
+		pinyin_query.pop_back();
+		RefreshPinyinWindow();
+	} else if (!name_window->Get().empty()) {
+		name_window->Erase();
+	} else {
+		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+		return;
+	}
+	Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
+}
+
+void Scene_Name::FinishNameInput() {
+	if (IsPinyinMode() && !pinyin_query.empty()) {
+		CommitPinyinSelection();
+		return;
+	}
+	if (name_window->Get().empty()) {
+		name_window->Set(ToString(actor.GetName()));
+	} else {
+		actor.SetName(name_window->Get());
+		RestoreInputMask();
+		Scene::Pop();
+	}
+}
+
+bool Scene_Name::HandlePhysicalKeyboardInput() {
+	if (!input_masked) {
 		return false;
 	}
+#ifdef __ANDROID__
+	// A detached keyboard can no longer send Esc to release the game controls.
+	if (keyboard_input && EpAndroid::UseSystemNameInput()) {
+		StartTextInput();
+		return true;
+	}
+#endif
 
-	if (const auto letter = GetTriggeredRawPinyinLetter()) {
-		const std::string key(1, letter);
-		AppendPinyinLetter(key);
+	if (keyboard_input && Input::IsRawKeyTriggered(Input::Keys::ESCAPE)) {
+		SetPhysicalKeyboardInput(false);
 		return true;
 	}
 
+	// Ignore the key that opened the mode, and keep Esc masked until it is
+	// released. Restoring immediately would turn the same Esc into CANCEL.
+	if (wait_for_key_release) {
+		if (Input::GetAllRawPressed().none()) {
+			wait_for_key_release = false;
+			if (!keyboard_input) {
+				RestoreInputMask();
+			}
+		}
+		return true;
+	}
+
+	if (Input::IsRawKeyPressed(Input::Keys::LCTRL) || Input::IsRawKeyPressed(Input::Keys::RCTRL)
+			|| Input::IsRawKeyPressed(Input::Keys::LALT) || Input::IsRawKeyPressed(Input::Keys::RALT)) {
+		return true;
+	}
+	for (int key = Input::Keys::A; key <= Input::Keys::Z; ++key) {
+		if (Input::IsRawKeyTriggered(static_cast<Input::Keys::InputKey>(key))) {
+			AppendPinyinLetter(std::string(1, static_cast<char>('a' + key - Input::Keys::A)));
+		}
+	}
 	if (Input::IsRawKeyTriggered(Input::Keys::APOSTROPH)) {
 		AppendPinyinLetter("'");
-		return true;
+	}
+	backspace_frames = Input::IsRawKeyPressed(Input::Keys::BACKSPACE) ? backspace_frames + 1 : 0;
+	if (backspace_frames == 1 || (backspace_frames >= 24 && backspace_frames % 4 == 0)) {
+		EraseInput();
+	} else if (const auto number = GetTriggeredRawNumber()) {
+		const std::string key(1, number);
+		if (pinyin_query.empty()) {
+			name_window->Append(key);
+		} else if (!SelectPinyinCandidateByNumber(key)) {
+			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
+		}
+	} else if (Input::IsRawKeyTriggered(Input::Keys::RETURN)) {
+		FinishNameInput();
+	} else if (Input::IsRawKeyTriggered(Input::Keys::SPACE)) {
+		if (pinyin_query.empty()) name_window->Append(" ");
+		else CommitPinyinSelection();
+	} else if (Input::IsRawKeyTriggered(Input::Keys::PGUP)
+			|| Input::IsRawKeyTriggered(Input::Keys::MINUS)
+			|| Input::IsRawKeyTriggered(Input::Keys::KP_SUBTRACT)) {
+		pinyin_window->MovePage(-1);
+	} else if (Input::IsRawKeyTriggered(Input::Keys::PGDN)
+			|| Input::IsRawKeyTriggered(Input::Keys::EQUALS)
+			|| Input::IsRawKeyTriggered(Input::Keys::KP_ADD)) {
+		pinyin_window->MovePage(1);
+	} else if (Input::IsRawKeyTriggered(Input::Keys::LEFT)) {
+		pinyin_window->SetSelection(pinyin_window->GetSelection() - 1);
+	} else if (Input::IsRawKeyTriggered(Input::Keys::RIGHT)) {
+		pinyin_window->SetSelection(pinyin_window->GetSelection() + 1);
 	}
 
-	const auto has_query = !pinyin_query.empty();
-
-	if (has_query) {
-		if (const auto number = GetTriggeredRawNumber()) {
-			const std::string key(1, number);
-			return SelectPinyinCandidateByNumber(key);
-		}
-
-		if (Input::IsRawKeyTriggered(Input::Keys::BACKSPACE)) {
-			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
-			pinyin_query.pop_back();
-			RefreshPinyinWindow();
-			return true;
-		}
-
-		if (Input::IsRawKeyTriggered(Input::Keys::SPACE)) {
-			CommitPinyinSelection();
-			return true;
-		}
-
-		if (pinyin_window && pinyin_window->HasSelection()) {
-			if (Input::IsRawKeyTriggered(Input::Keys::PGUP)) {
-				pinyin_window->MovePage(-1);
-				return true;
-			}
-			if (Input::IsRawKeyTriggered(Input::Keys::PGDN)) {
-				pinyin_window->MovePage(1);
-				return true;
-			}
-		}
-	}
-
-	return false;
+	return true;
 }
 
 void Scene_Name::vUpdate() {
@@ -326,24 +514,21 @@ void Scene_Name::vUpdate() {
 		return;
 	}
 
-	kbd_window->Update();
 	name_window->Update();
-
-	if (HandleRawPinyinInput()) {
+	if (pinyin_window) {
+		pinyin_window->Update();
+	}
+	if (keyboard_hint_window) {
+		keyboard_hint_window->Update();
+	}
+	if (HandleSystemTextInput() || HandlePhysicalKeyboardInput()) {
+		kbd_window->Update();
 		return;
 	}
+	kbd_window->Update();
 
 	if (Input::IsTriggered(Input::CANCEL)) {
-		if (IsPinyinMode() && !pinyin_query.empty()) {
-			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
-			pinyin_query.pop_back();
-			RefreshPinyinWindow();
-		} else if (name_window->Get().size() > 0) {
-			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
-			name_window->Erase();
-		} else {
-			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Buzzer));
-		}
+		EraseInput();
 	} else if (Input::IsTriggered(Input::DECISION)) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 		std::string const& s = kbd_window->GetSelected();
@@ -351,19 +536,8 @@ void Scene_Name::vUpdate() {
 		assert(!s.empty());
 
 		if (s == Window_Keyboard::DONE) {
-			if (IsPinyinMode() && !pinyin_query.empty()) {
-				CommitPinyinSelection();
-				return;
-			}
-			if (name_window->Get().empty()) {
-				name_window->Set(ToString(actor.GetName()));
-				name_window->Refresh();
-			} else {
-				actor.SetName(name_window->Get());
-				Scene::Pop();
-			}
+			FinishNameInput();
 		} else if (s == Window_Keyboard::NEXT_PAGE) {
-			ResetPinyinInput();
 			++layout_index;
 			if (layout_index >= static_cast<int>(layouts.size())) {
 				layout_index = 0;
@@ -375,6 +549,14 @@ void Scene_Name::vUpdate() {
 			}
 			kbd_window->SetMode(layouts[layout_index], layouts[next_index]);
 			RefreshPinyinWindow();
+		} else if (s == Window_Keyboard::KEYBOARD_INPUT) {
+			StartTextInput();
+		} else if (s == Window_Keyboard::ERASE) {
+			EraseInput();
+		} else if (s == Window_Keyboard::PREVIOUS_CANDIDATES) {
+			pinyin_window->MovePage(-1);
+		} else if (s == Window_Keyboard::NEXT_CANDIDATES) {
+			pinyin_window->MovePage(1);
 		} else if (s == Window_Keyboard::SPACE) {
 			if (IsPinyinMode() && !pinyin_query.empty()) {
 				CommitPinyinSelection();

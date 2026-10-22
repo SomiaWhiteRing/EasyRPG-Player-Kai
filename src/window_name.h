@@ -39,6 +39,7 @@ public:
 	void Refresh();
 
 	void Set(std::string text);
+	bool TrySet(std::string text);
 	bool Append(std::string_view text);
 	void Erase();
 	const std::string& Get() const;
