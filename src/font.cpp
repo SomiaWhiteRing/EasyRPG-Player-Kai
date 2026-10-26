@@ -780,6 +780,7 @@ Rect Font::GetSize(char32_t glyph) const {
 	}
 
 	Rect size = vGetSize(glyph);
+	if (size.width == 0 && size.height == 0) return size;
 	size.width += current_style.letter_spacing;
 	size.height = current_style.size;
 
