@@ -21,6 +21,7 @@
 // Headers
 #include <vector>
 #include "scene.h"
+#include "sprite.h"
 #include "window_command.h"
 #include "window_numberinput.h"
 #include "window_varlist.h"
@@ -151,6 +152,7 @@ private:
 	std::unique_ptr<Window_StringView> stringview_window;
 	/** Displays the currently running inteprreters. */
 	std::unique_ptr<Window_Interpreter> interpreter_window;
+	std::unique_ptr<Sprite> current_map_info;
 
 	struct StackFrame {
 		UiMode uimode = eUiMain;

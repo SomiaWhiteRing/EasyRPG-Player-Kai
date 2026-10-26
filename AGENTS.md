@@ -6,7 +6,10 @@ the old full-port completion gates; preserve EasyRPG fonts, input and host APIs.
 
 # Windows local builds
 
-Use `builds/cmake/build-windows.ps1` for local Windows builds of Player's CMake targets.
+When the user explicitly requests or authorizes a local Windows build in the
+current task, use `builds/cmake/build-windows.ps1` for Player's CMake targets.
+For source-editing requests, the default verification is static inspection of
+the changes; report the checks actually performed with the result.
 Pass the existing ASCII build-directory alias; the script reuses its cached
 source and CMake executable. For example:
 

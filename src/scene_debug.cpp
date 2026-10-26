@@ -74,6 +74,9 @@ void Scene_Debug::Start() {
 	CreateChoicesWindow();
 	CreateStringViewWindow();
 	CreateInterpreterWindow();
+	current_map_info = std::make_unique<Sprite>();
+	current_map_info->SetX(Player::menu_offset_x);
+	current_map_info->SetY(Player::menu_offset_y);
 
 	SetupUiRangeList();
 
@@ -697,6 +700,17 @@ void Scene_Debug::CreateRangeWindow() {
 }
 
 void Scene_Debug::UpdateRangeListWindow() {
+	current_map_info->SetVisible(mode == eMap);
+	if (mode == eMap) {
+		auto bitmap = Bitmap::Create(MENU_WIDTH, 32);
+		const auto map_id = Game_Map::GetMapId();
+		bitmap->TextDraw(0, 0, Font::ColorDefault,
+			fmt::format("当前Map {}: {}", map_id, Game_Map::GetMapName(map_id)));
+		bitmap->TextDraw(0, 16, Font::ColorDefault,
+			fmt::format("x: {} y:{}", Main_Data::game_player->GetX(), Main_Data::game_player->GetY()));
+		current_map_info->SetBitmap(bitmap);
+	}
+
 	int idx = 0;
 	const bool is_battle = Game_Battle::IsBattleRunning();
 
