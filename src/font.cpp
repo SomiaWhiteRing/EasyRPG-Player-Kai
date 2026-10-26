@@ -253,6 +253,7 @@ BitmapFont::BitmapFont(std::string_view name, function_type func)
 Rect BitmapFont::vGetSize(char32_t glyph) const {
 	if (current_style.size > 0 && current_style.size < HEIGHT) {
 		const auto small = GetSmallGlyph(glyph);
+		if (small.first->width == 0) return {};
 		// Zfull's native 9px design has an 8px Han advance.
 		const int cell_width = current_style.size == 9 ? 8 : current_style.size;
 		const int native_width = small.second == 9 ? 8 : small.second;
@@ -277,7 +278,8 @@ std::pair<const SmallPixelFallback::Glyph*, int> BitmapFont::GetSmallGlyph(char3
 	const auto* native = size == 8 ? find(font_8, glyph) : size == 9 ? find(font_9, glyph)
 		: size == 10 ? find(font_10, glyph) : find(font_11, glyph);
 	if (native) return {native, size};
-	// 10px covers GBK Han missing from 8px/9px. Keep every fallback in Zfull.
+	// 10px covers GBK Han missing from 8px/9px. Tables also contain the
+	// explicitly selected symbols and whitespace absent from Zfull.
 	if (auto* small = find(font_10, glyph)) return {small, 10};
 	if (auto* small = find(font_11, glyph)) return {small, 11};
 	if (auto* small = find(font_9, glyph)) return {small, 9};
@@ -293,6 +295,7 @@ Font::GlyphRet BitmapFont::vRender(char32_t glyph) const {
 	const int native_width = small.first ? small.first->width : legacy->is_full ? FULL_WIDTH : HALF_WIDTH;
 	const int height = current_style.size > 0 ? current_style.size : HEIGHT;
 	const int width = vGetSize(glyph).width;
+	if (width == 0) return {};
 	const int bitmap_width = std::max(height, width);
 	if (!glyph_bm || glyph_bm->GetWidth() != bitmap_width || glyph_bm->GetHeight() != height) {
 		glyph_bm = Bitmap::Create(nullptr, bitmap_width, height, 0, DynamicFormat(8, 8, 0, 8, 0, 8, 0, 8, 0, PF::Alpha));
@@ -826,6 +829,7 @@ Rect Font::GetSize(char32_t glyph) const {
 	}
 
 	Rect size = vGetSize(glyph);
+	if (size.width == 0 && size.height == 0) return size;
 	size.width += current_style.letter_spacing;
 	size.height = current_style.size;
 
