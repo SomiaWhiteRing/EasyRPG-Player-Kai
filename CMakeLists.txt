@@ -14,19 +14,6 @@ include(PlayerBuildType)
 include(PlayerMisc)
 include(GetGitRevisionDescription)
 
-set(PLAYER_RECOMMENDED_SOUNDFONT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/soundfonts/recommended.sf2")
-
-if(WIN32)
-	set(PLAYER_PYTHON_EXECUTABLE "py" CACHE STRING "Python interpreter used by build helper scripts")
-else()
-	set(PLAYER_PYTHON_EXECUTABLE "python3" CACHE STRING "Python interpreter used by build helper scripts")
-endif()
-
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Emscripten" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
-	set(PLAYER_RECOMMENDED_SOUNDFONT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/recommended_soundfont_data.cpp")
-	set_source_files_properties(${PLAYER_RECOMMENDED_SOUNDFONT_SOURCE} PROPERTIES GENERATED TRUE)
-endif()
-
 # Dependencies provided by CMake Presets
 option(PLAYER_FIND_ROOT_PATH_APPEND "When enabled the items from CMAKE_PREFIX_PATH are added to CMAKE_FIND_ROOT_PATH. Works around problematic CMake Toolchain files" OFF)
 list(APPEND CMAKE_PREFIX_PATH "${PLAYER_PREFIX_PATH_APPEND}")
@@ -320,9 +307,6 @@ add_library(${PROJECT_NAME} OBJECT
 	src/rand.h
 	src/rect.cpp
 	src/rect.h
-	src/recommended_soundfont.cpp
-	src/recommended_soundfont.h
-	${PLAYER_RECOMMENDED_SOUNDFONT_SOURCE}
 	src/registry.h
 	src/registry_wine.cpp
 	src/rtp.cpp
@@ -540,21 +524,6 @@ elseif(MSVC)
 	target_link_options(${PROJECT_NAME} INTERFACE "/STACK:8388608")
 endif()
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-if(PLAYER_RECOMMENDED_SOUNDFONT_SOURCE)
-	add_custom_command(
-		OUTPUT ${PLAYER_RECOMMENDED_SOUNDFONT_SOURCE}
-		COMMAND ${PLAYER_PYTHON_EXECUTABLE}
-			${CMAKE_CURRENT_SOURCE_DIR}/builds/cmake/embed_binary.py
-			${PLAYER_RECOMMENDED_SOUNDFONT_FILE}
-			${PLAYER_RECOMMENDED_SOUNDFONT_SOURCE}
-			EmbeddedResources
-			recommended_soundfont
-		DEPENDS
-			${CMAKE_CURRENT_SOURCE_DIR}/builds/cmake/embed_binary.py
-			${PLAYER_RECOMMENDED_SOUNDFONT_FILE}
-		VERBATIM)
-endif()
 
 # Optimize floating point math functions into intrinsics and don't check or set errno (i.e. sqrt(-1))
 if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -1294,13 +1263,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 			 --bind --pre-js ${PLAYER_JS_PREJS} --post-js ${PLAYER_JS_POSTJS} \
 			 -sEXPORTED_RUNTIME_METHODS=['FS','HEAPU8','HEAP16'] \
 			 -sEXPORTED_FUNCTIONS=_main,_malloc,_free")
-		# These are linker inputs, including the .data preload generated from the
-		# SoundFont. Track them for cached Ninja/Make builds used by Web nightly.
-		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_DEPENDS
-			"${PLAYER_JS_PREJS}" "${PLAYER_JS_POSTJS}"
-			"${PLAYER_RECOMMENDED_SOUNDFONT_FILE}")
-
-		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " --preload-file ${PLAYER_RECOMMENDED_SOUNDFONT_FILE}@/builtin/recommended.sf2")
+		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_DEPENDS "${PLAYER_JS_PREJS}" "${PLAYER_JS_POSTJS}")
 
 		# Shared STL container instantiations must all preserve allocation errors.
 		# Mixing exception modes can select a weak resize implementation that aborts.

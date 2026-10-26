@@ -23,7 +23,6 @@
 #include "decoder_fmmidi.h"
 #include "decoder_wildmidi.h"
 #include "output.h"
-#include "recommended_soundfont.h"
 #ifdef EMSCRIPTEN
 #include "platform/emscripten/audio.h"
 #endif
@@ -158,11 +157,6 @@ void MidiDecoder::ChangeFluidsynthSoundfont(std::string_view sf_path) {
 	// In the game instance settings are forwarded to the audio instance.
 	if (WebAudio::IsProxy()) { Audio().Update(); return; }
 #endif
-	const auto recommended_soundfont = RecommendedSoundFont::GetPath();
-	if (!recommended_soundfont.empty()) {
-		sf_path = std::string_view(recommended_soundfont.data(), recommended_soundfont.size());
-	}
-
 	if (!works.fluidsynth || works.fluidsynth_status.empty()) {
 		// Fluidsynth was not initialized yet or failed, will use the path from the config automatically
 		works.fluidsynth = true;

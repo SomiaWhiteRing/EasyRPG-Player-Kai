@@ -6,7 +6,7 @@ ARTIFACT_DIR="${ARTIFACT_DIR:-build/artifacts}"
 PACKAGE_DIR="${PACKAGE_DIR:-build/package/web}"
 ASSET_NAME="${ASSET_NAME:-EasyRPG-Player-Kai-local-web.zip}"
 
-for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player.data player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
+for file in easyrpg-player.js easyrpg-player.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
 	if [ ! -s "$BUILD_DIR/$file" ]; then
 		echo "Missing required Web build output: $BUILD_DIR/$file" >&2
 		exit 1
@@ -26,7 +26,6 @@ cp docs/web-audio.md "$PACKAGE_DIR/"
 cp COPYING "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.js" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.wasm" "$PACKAGE_DIR/"
-cp "$BUILD_DIR/easyrpg-player.data" "$PACKAGE_DIR/"
 
 cat > "$PACKAGE_DIR/README.txt" <<'EOF'
 EasyRPG Player Kai private archive-site Web build.
@@ -40,11 +39,11 @@ Worker runs the native decoders/mixer and supplies AudioWorklet directly.
 Installed files use a bounded memory cache. No SharedArrayBuffer or COOP/COEP
 is required.
 
-Keep easyrpg-player.js, easyrpg-player.wasm, easyrpg-player.data, player-host.js,
+Keep easyrpg-player.js, easyrpg-player.wasm, player-host.js,
 player-worker.js, player-audio.js, player-audio-worker.js, player-files.js,
 player-movie.js, player-movie-worker.js,
 movie-decoder.js and movie-decoder.wasm together at one immutable runtime URL.
-The .data contains the recommended SoundFont; saves use /work-saves/<workId> IDBFS.
+Saves use /work-saves/<workId> IDBFS.
 Await player.stop() before destroying the player document.
 
 Legacy movies use a lazy-loaded, decode-only FFmpeg WASM worker. See web-movies.md

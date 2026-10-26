@@ -117,8 +117,6 @@ android {
     }
 }
 
-android.sourceSets.main.assets.srcDirs += "$buildDir/generated/assets/recommendedSoundfont"
-
 allprojects {
     repositories {
         maven {
@@ -140,12 +138,7 @@ dependencies {
 }
 
 afterEvaluate {
-    preBuild.dependsOn downloadSdlAar, copyRecommendedSoundfont
-}
-
-tasks.register('copyRecommendedSoundfont', Copy) {
-    from(rootProject.file("../../resources/soundfonts/recommended.sf2"))
-    into(layout.buildDirectory.dir("generated/assets/recommendedSoundfont/builtin"))
+    preBuild.dependsOn downloadSdlAar
 }
 
 tasks.register('downloadSdlAar') {

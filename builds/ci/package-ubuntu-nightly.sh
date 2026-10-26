@@ -199,10 +199,6 @@ package_web() {
 			exit 1
 		}
 	done
-	test -s "$build_dir/easyrpg-player.data" || {
-		echo "Missing build output: $build_dir/easyrpg-player.data"
-		exit 1
-	}
 	grep -q "createEasyRpgEngine" "$build_dir/easyrpg-player.js"
 
 	log "Packaging Web artifact"
@@ -251,7 +247,7 @@ import zipfile
 apk_path = sys.argv[1]
 with zipfile.ZipFile(apk_path) as archive:
 	for name in sorted(archive.namelist()):
-		if name.startswith("lib/") or name == "assets/builtin/recommended.sf2":
+		if name.startswith("lib/"):
 			print(name)
 ' {} \; 2>/dev/null || true
 
@@ -260,7 +256,6 @@ with zipfile.ZipFile(apk_path) as archive:
 	fi
 
 	echo "Compressed assets:"
-	find "$app_build_dir/intermediates/compressed_assets" -type f -name '*recommended*' -print -exec unzip -lv {} \; 2>/dev/null || true
 	echo "Native libraries:"
 	find "$app_build_dir/intermediates" -path '*native_libs*' -type f \( -name '*.so' -o -name '*.json' \) -print -exec ls -lh {} \; 2>/dev/null || true
 }
@@ -444,7 +439,6 @@ import zipfile
 apk_path = os.environ["APK_PATH"]
 abis = [abi for abi in os.environ["ANDROID_ABIS"].split(",") if abi]
 required = [f"lib/{abi}/libeasyrpg_android.so" for abi in abis]
-required.append("assets/builtin/recommended.sf2")
 
 with zipfile.ZipFile(apk_path) as archive:
 	names = set(archive.namelist())
@@ -469,7 +463,7 @@ if missing:
 		print(f"  {name}")
 	print("APK entries relevant to native libraries and built-in assets:")
 	for name in sorted(names):
-		if name.startswith("lib/") or name == "assets/builtin/recommended.sf2":
+		if name.startswith("lib/"):
 			print(f"  {name}")
 	sys.exit(1)
 PY

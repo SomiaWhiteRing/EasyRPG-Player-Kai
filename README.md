@@ -14,17 +14,6 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 这些开关默认启用，也会写入配置文件的 `[Player]` 段：
 
 - `ExtraMoviePlayback`：兼容视频播放
-- `ExtraRecommendedSoundFont`：使用作者推荐的SoundFont
-
-### Web 随附 SoundFont
-
-Web 版默认启用 `ExtraRecommendedSoundFont`，使用 `resources/soundfonts/recommended.sf2`。自动构建将它打包到 `easyrpg-player.data`，启动时预加载为虚拟文件 `/builtin/recommended.sf2`；无需给每个游戏重复添加音色库。
-
-本分支的 Web ZIP 专供 VIPRPG-ZH-Archive 使用。站点通过 `player-host.js` 的 `createEasyRpgPlayer({ runtimeBase, workId, packages })` 启动游戏和音频两个 Worker，将已经安装的 OPFS pack 挂载为 WORKERFS。文件读取使用有容量上限的内存缓存；游戏 Worker 输出 OffscreenCanvas/WebGL2，音频 Worker 复用原生解码器与混音器并直接供给 AudioWorklet，游戏帧阻塞不会停止持续供音（见[音频架构](docs/web-audio.md)）。部署时须完整保留 ZIP 中的 JS、WASM、data 和许可文件，包括按需加载的视频模块（见[视频部署说明](docs/web-movies.md)）。不需要 SharedArrayBuffer 或跨源隔离。销毁播放文档前必须等待返回对象的 `stop()` 完成，以确认 IDBFS 存档已经写入并结束两个 Worker。
-
-初始化脚本保留 Emscripten 音色库预加载回调，等待资源挂载后才启动播放器。浏览器已保存的设置仍然有效：若之前关闭过额外功能中的「MIDI音效改良」或音频设置中的 FluidSynth，请在 `F1` 设置中重新启用；首次使用默认开启。
-
-初始化 MIDI 合成器后，调试日志中的 `Fluidsynth: Using soundfont /builtin/recommended.sf2` 表示随附音色库已成功加载。
 
 ### 加速倍率支持小数
 

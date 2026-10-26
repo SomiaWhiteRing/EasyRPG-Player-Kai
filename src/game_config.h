@@ -89,7 +89,6 @@ struct Game_ConfigPlayer {
 	BoolConfigParam settings_in_title{ "Show settings on title screen", "Display settings menu item on the title screen", "Player", "SettingsInTitle", false };
 	BoolConfigParam settings_in_menu{ "Show settings in menu", "Display settings menu item on the menu screen", "Player", "SettingsInMenu", false };
 	BoolConfigParam extra_movie_playback{ "兼容视频播放", "使用平台内置解码器播放游戏中插入的视频", "Player", "ExtraMoviePlayback", true };
-	BoolConfigParam extra_recommended_soundfont{ "MIDI音效改良", "使用作者推荐的SoundFont", "Player", "ExtraRecommendedSoundFont", true };
 	EnumConfigParam<ConfigEnum::StartupLogos, 3> show_startup_logos{
 		"Startup Logos", "Logos that are displayed on startup", "Player", "StartupLogos", ConfigEnum::StartupLogos::Custom,
 		Utils::MakeSvArray("None", "Custom", "All"),

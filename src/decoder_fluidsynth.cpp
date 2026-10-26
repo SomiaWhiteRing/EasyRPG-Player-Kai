@@ -24,7 +24,6 @@
 #include <cassert>
 #include "filefinder.h"
 #include "output.h"
-#include "recommended_soundfont.h"
 
 #if FLUIDSYNTH_VERSION_MAJOR >= 3 || (FLUIDSYNTH_VERSION_MAJOR == 2 && FLUIDSYNTH_VERSION_MINOR >= 2)
 #define FLUIDSYNTH_22_OR_NEWER
@@ -119,12 +118,8 @@ namespace {
 static bool load_default_sf(std::string& status_message, fluid_synth_t* syn) {
 	// Attempt loading a soundfont
 	std::vector<std::string> sf_paths;
-	std::string recommended_soundfont = RecommendedSoundFont::GetPath();
-	if (!recommended_soundfont.empty()) {
-		sf_paths.emplace_back(recommended_soundfont);
-	}
 	std::string preferred_soundfont = Audio().GetFluidsynthSoundfont();
-	if (recommended_soundfont.empty() && !preferred_soundfont.empty()) {
+	if (!preferred_soundfont.empty()) {
 		sf_paths.emplace_back(preferred_soundfont);
 	}
 	sf_paths.emplace_back("easyrpg.soundfont");

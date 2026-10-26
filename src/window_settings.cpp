@@ -36,7 +36,6 @@
 #include "audio.h"
 #include "audio_midi.h"
 #include "audio_generic_midiout.h"
-#include "recommended_soundfont.h"
 
 #ifdef EMSCRIPTEN
 #  include "platform/emscripten/interface.h"
@@ -357,12 +356,6 @@ void Window_Settings::RefreshAudioMidi() {
 }
 
 void Window_Settings::RefreshAudioSoundfont() {
-	if (Player::player_config.extra_recommended_soundfont.Get()) {
-		AddOption(MenuItem("<Built-in Recommended SoundFont>", "使用作者推荐的SoundFont", "[x]"), []() {});
-		GetFrame().options.back().help2 = "Disable this in Extra features to use EasyRPG SoundFont settings";
-		return;
-	}
-
 	auto fs = Game_Config::GetSoundfontFilesystem();
 
 	if (!fs) {
@@ -472,10 +465,6 @@ void Window_Settings::RefreshExtra() {
 	auto& cfg = Player::player_config;
 
 	AddOption(cfg.extra_movie_playback, [&cfg]() { cfg.extra_movie_playback.Toggle(); });
-	AddOption(cfg.extra_recommended_soundfont, [&cfg]() {
-		cfg.extra_recommended_soundfont.Toggle();
-		RecommendedSoundFont::Refresh();
-	});
 }
 
 void Window_Settings::RefreshEngineFont(bool mincho) {

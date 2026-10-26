@@ -88,7 +88,7 @@ void WebAudio::SetFluidsynthSoundfont(std::string_view sf) {
 void WebAudio::Update() {
   Json config = {{"op","config"},{"music",cfg.music_volume.Get()},{"sound",cfg.sound_volume.Get()},
     {"fluidsynth",cfg.fluidsynth_midi.Get()},{"wildmidi",cfg.wildmidi_midi.Get()},
-    {"soundfont",cfg.soundfont.Get()},{"recommended",Player::player_config.extra_recommended_soundfont.Get()}};
+    {"soundfont",cfg.soundfont.Get()}};
   const auto text = config.dump();
   if (last_config != text) { last_config = text; Command(config); }
 }
@@ -100,7 +100,7 @@ EMSCRIPTEN_KEEPALIVE void web_audio_init(int rate) {
   FileFinder::SetGameFilesystem(FileFinder::Root().Create("/game"));
   Game_Clock::ResetFrame(Game_Clock::now());
   mixer = std::make_unique<MixerAudio>(rate);
-  // Load the bundled soundfont before the game begins, outside playback deadlines.
+  // Initialize MIDI capabilities before the game begins, outside playback deadlines.
   std::string status;
   const bool available = MidiDecoder::CheckFluidsynth(status);
   EM_ASM({Module.audioCapabilities = ({fluidsynth:!!$0, fluidStatus:UTF8ToString($1)});}, available, status.c_str());
@@ -130,10 +130,8 @@ EMSCRIPTEN_KEEPALIVE void web_audio_command(const char* text) {
     mixer->SE_SetGlobalVolume(c.at("sound"));
     mixer->SetFluidsynthEnabled(c.at("fluidsynth"));
     mixer->SetWildMidiEnabled(c.at("wildmidi"));
-    const bool changed = Player::player_config.extra_recommended_soundfont.Get() != c.at("recommended").get<bool>();
-    Player::player_config.extra_recommended_soundfont.Set(c.at("recommended"));
     const auto sf = c.at("soundfont").get<std::string>();
-    if (changed || mixer->GetFluidsynthSoundfont() != sf || c.value("reloadSoundfont", false)) mixer->SetFluidsynthSoundfont(sf);
+    if (mixer->GetFluidsynthSoundfont() != sf || c.value("reloadSoundfont", false)) mixer->SetFluidsynthSoundfont(sf);
   }
 }
 EMSCRIPTEN_KEEPALIVE void web_audio_render(uint8_t* buffer, int frames) {
