@@ -41,6 +41,7 @@
 
 #include <lcf/reader_util.h>
 #include "bitmapfont.h"
+#include "generated/bitmapfont_small.h"
 
 #include "filefinder.h"
 #include "output.h"
@@ -132,6 +133,7 @@ namespace {
 		GlyphRet vRender(char32_t glyph) const override;
 
 	private:
+		std::pair<const SmallPixelFallback::Glyph*, int> GetSmallGlyph(char32_t glyph) const;
 		function_type func;
 		mutable BitmapRef glyph_bm;
 	}; // class BitmapFont
@@ -249,16 +251,60 @@ BitmapFont::BitmapFont(std::string_view name, function_type func)
 {}
 
 Rect BitmapFont::vGetSize(char32_t glyph) const {
+	if (current_style.size > 0 && current_style.size < HEIGHT) {
+		const auto small = GetSmallGlyph(glyph);
+		// Zfull's native 9px design has an 8px Han advance.
+		const int cell_width = current_style.size == 9 ? 8 : current_style.size;
+		const int native_width = small.second == 9 ? 8 : small.second;
+		return {0, 0, std::max(1, (small.first->width * cell_width + native_width / 2) / native_width), current_style.size};
+	}
 	auto bm_glyph = func(glyph);
 	size_t units = bm_glyph->is_full ? 2 : 1;
 	return {0, 0, static_cast<int>(units * HALF_WIDTH), HEIGHT};
 }
 
-Font::GlyphRet BitmapFont::vRender(char32_t glyph) const {
-	std::vector<Font::GlyphRet> glyphs;
+std::pair<const SmallPixelFallback::Glyph*, int> BitmapFont::GetSmallGlyph(char32_t glyph) const {
+	using namespace SmallPixelFallback;
+	const auto find = [](const auto& table, char32_t code) -> const Glyph* {
+		auto it = std::lower_bound(table.begin(), table.end(), code,
+			[](const Glyph& item, char32_t code) { return item.code < code; });
+		return it != table.end() && it->code == code ? &*it : nullptr;
+	};
+	const int size = std::max(8, current_style.size);
+	const auto* native = size == 8 ? find(font_8, glyph) : size == 9 ? find(font_9, glyph)
+		: size == 10 ? find(font_10, glyph) : find(font_11, glyph);
+	if (native) return {native, size};
+	// 10px covers GBK Han missing from 8px/9px. Keep every fallback in Zfull.
+	if (auto* small = find(font_10, glyph)) return {small, 10};
+	if (auto* small = find(font_11, glyph)) return {small, 11};
+	if (auto* small = find(font_9, glyph)) return {small, 9};
+	if (auto* small = find(font_8, glyph)) return {small, 8};
+	return {find(font_10, U'?'), 10};
+}
 
+Font::GlyphRet BitmapFont::vRender(char32_t glyph) const {
 	if (EP_UNLIKELY(!glyph_bm)) {
 		glyph_bm = Bitmap::Create(nullptr, FULL_WIDTH, HEIGHT, 0, DynamicFormat(8, 8, 0, 8, 0, 8, 0, 8, 0, PF::Alpha));
+	}
+	if (current_style.size > 0 && current_style.size < HEIGHT) {
+		const auto small = GetSmallGlyph(glyph);
+		const int native_height = small.second;
+		const int native_width = small.first->width;
+		const int height = current_style.size;
+		const int width = vGetSize(glyph).width;
+		glyph_bm->Clear();
+		auto* data = reinterpret_cast<uint8_t*>(glyph_bm->pixels());
+		const int pitch = glyph_bm->pitch();
+		for (int y = 0; y < height; ++y) {
+			const int sy = height >= native_height ? y - (height - native_height) / 2 : y * native_height / height;
+			if (sy < 0 || sy >= native_height) continue;
+			const auto row = small.first->rows[sy];
+			for (int x = 0; x < width; ++x) {
+				const int sx = width >= native_width ? x - (width - native_width) / 2 : x * native_width / width;
+				if (sx >= 0 && sx < native_width && (row & (1 << sx))) data[y * pitch + x] = 255;
+			}
+		}
+		return {glyph_bm, {width, 0}, {0, 0}};
 	}
 	auto bm_glyph = func(glyph);
 	auto width = bm_glyph->is_full ? FULL_WIDTH : HALF_WIDTH;
@@ -340,6 +386,7 @@ Rect FTFont::vGetSize(char32_t glyph) const {
 
 	if (glyph_index == 0) {
 		if (fallback_font) {
+			auto guard = fallback_font->ApplyStyle(current_style);
 			return fallback_font->vGetSize(glyph);
 		} else {
 			return {0, 0, 0, current_style.size};
@@ -367,6 +414,7 @@ Rect FTFont::vGetSize(char32_t glyph) const {
 	} else {
 		if (!load_glyph(FT_LOAD_MONOCHROME | FT_LOAD_TARGET_MONO)) {
 			if (fallback_font) {
+				auto guard = fallback_font->ApplyStyle(current_style);
 				return fallback_font->vGetSize(glyph);
 			} else {
 				return {0, 0, 0, current_style.size};
@@ -392,6 +440,7 @@ Font::GlyphRet FTFont::vRender(char32_t glyph) const {
 
 	if (glyph_index == 0) {
 		if (fallback_font) {
+			auto guard = fallback_font->ApplyStyle(current_style);
 			return fallback_font->vRender(glyph);
 		} else {
 			return { {}, {0, current_style.size}, {0, 0}, false };
@@ -404,6 +453,7 @@ Font::GlyphRet FTFont::vRender(char32_t glyph) const {
 Font::GlyphRet FTFont::vRenderShaped(char32_t glyph) const {
 	if (glyph == 0) {
 		if (fallback_font) {
+			auto guard = fallback_font->ApplyStyle(current_style);
 			return fallback_font->vRender(glyph);
 		} else {
 			return { {}, {0, current_style.size}, {0, 0}, false };
@@ -438,6 +488,7 @@ Font::GlyphRet FTFont::vRenderShaped(char32_t glyph) const {
 	} else {
 		if (!render_glyph(FT_LOAD_MONOCHROME | FT_LOAD_TARGET_MONO, FT_RENDER_MODE_MONO)) {
 			if (fallback_font) {
+				auto guard = fallback_font->ApplyStyle(current_style);
 				return fallback_font->vRender(glyph);
 			} else {
 				return { {}, {0, current_style.size}, {0, 0}, false };
@@ -1018,14 +1069,16 @@ Font::Style Font::GetCurrentStyle() const {
 }
 
 Font::StyleScopeGuard Font::ApplyStyle(Style new_style) {
+	const auto previous_style = current_style;
+	const bool previously_applied = style_applied;
 	vApplyStyle(new_style);
 	current_style = new_style;
 	style_applied = true;
 
-	return lcf::ScopeGuard<std::function<void()>>([&]() {
-		vApplyStyle(original_style);
-		current_style = original_style;
-		style_applied = false;
+	return lcf::ScopeGuard<std::function<void()>>([this, previous_style, previously_applied]() {
+		vApplyStyle(previous_style);
+		current_style = previous_style;
+		style_applied = previously_applied;
 	});
 }
 

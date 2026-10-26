@@ -218,7 +218,7 @@ class Font {
 
 	/**
 	 * Applies a new text style for rendering.
-	 * The style is reverted to the original style afterwards through the returned scope guard.
+	 * The previous style is restored afterwards through the returned scope guard.
 	 *
 	 * @param new_style new style to apply
 	 * @return StyleScopeGuard When destroyed, reverts to the old style
