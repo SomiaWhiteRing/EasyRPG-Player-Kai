@@ -13,21 +13,12 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 
 这些开关默认启用，也会写入配置文件的 `[Player]` 段：
 
-- `ExtraMoviePlayback`：兼容视频播放
 
 ### 加速倍率支持小数
 
 `Fast Forward A/B` 的倍率现在支持一位小数，范围为 `0.1` 到 `100.0`。
 
 小于 `1.0` 时会作为减速使用，例如 `0.1` 表示十分之一速度。
-
-### 兼容视频播放
-
-兼容RPG Maker事件中的播放视频功能。  
-会从游戏目录下的`Movie`文件夹查找`.avi`和`.mpg`文件，并在游戏窗口内播放。  
-视频播放结束后会继续执行后续事件。
-
-Web 版优先使用浏览器原生视频播放，失败时按需加载精简的 FFmpeg/WASM 解码器，支持 AVI 中的 DivX/Xvid、Microsoft Video 1、Cinepak、Indeo 3、Motion JPEG，以及 MPEG-1/2 等旧格式。解码器不包含编码器或转码流程，在独立 Worker 中逐帧解码，直接读取本地 Blob 切片；无需修改原游戏资源。Web 还会查找 `.mpeg`、`.mp4`、`.webm`、`.ogv` 和 `.mov`。具体范围、内存限制和构建方法见[Web 视频说明](docs/web-movies.md)。Android 尚未实现对应的视频播放后端。
 
 ### 兼容 `ChangePartyMember(actor 0)`
 

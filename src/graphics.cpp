@@ -119,9 +119,6 @@ void Graphics::Draw(Bitmap& dst) {
 		dst.Clear();
 	}
 	LocalDraw(dst, min_z, max_z);
-#ifdef HAVE_ANDROID_MOVIE_PLAYER
-	if (Main_Data::game_screen) Main_Data::game_screen->DrawMovie(dst);
-#endif
 }
 
 void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) {

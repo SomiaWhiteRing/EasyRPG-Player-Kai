@@ -464,7 +464,6 @@ void Window_Settings::RefreshEngine() {
 void Window_Settings::RefreshExtra() {
 	auto& cfg = Player::player_config;
 
-	AddOption(cfg.extra_movie_playback, [&cfg]() { cfg.extra_movie_playback.Toggle(); });
 }
 
 void Window_Settings::RefreshEngineFont(bool mincho) {

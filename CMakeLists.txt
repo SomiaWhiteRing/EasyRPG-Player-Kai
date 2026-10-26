@@ -164,8 +164,6 @@ add_library(${PROJECT_NAME} OBJECT
 	src/fps_overlay.h
 	src/frame.cpp
 	src/frame.h
-	src/movie_player.cpp
-	src/movie_player.h
 	src/game_actor.cpp
 	src/game_actor.h
 	src/game_actors.cpp
@@ -889,20 +887,16 @@ endif()
 
 if(ANDROID)
 	target_link_libraries(${PROJECT_NAME} android log)
-	include(builds/cmake/Modules/PlayerAndroidMovie.cmake)
 endif()
 
 if(WIN32)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_DIRECTSHOW=1)
 	target_sources(${PROJECT_NAME} PRIVATE
 		src/registry.cpp
 		src/platform/windows/utils.cpp
 		src/platform/windows/utils.h
-		src/platform/windows/movie_player_dshow.cpp
-		src/platform/windows/movie_player_dshow.h
 		src/platform/windows/midiout_device_win32.cpp
 		src/platform/windows/midiout_device_win32.h)
-	target_link_libraries(${PROJECT_NAME} ole32 strmiids gdi32)
+	target_link_libraries(${PROJECT_NAME} ole32 gdi32)
 endif()
 
 if(APPLE)
@@ -1271,17 +1265,13 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 		target_compile_options(lcf PRIVATE -fexceptions)
 		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
 
-		target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_WEB_MOVIE_PLAYER=1)
 		target_sources(${PROJECT_NAME} PRIVATE
 				src/platform/emscripten/clock.h
 				src/platform/emscripten/interface.cpp
-				src/platform/emscripten/interface.h
-				src/platform/emscripten/movie_player_web.cpp
-				src/platform/emscripten/movie_player_web.h)
+				src/platform/emscripten/interface.h)
 
 		target_link_libraries(${EXE_NAME} "idbfs.js" "workerfs.js")
-		include(builds/cmake/Modules/PlayerWebMovie.cmake)
-		foreach(web_file player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js)
+		foreach(web_file player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js)
 			configure_file(resources/emscripten/${web_file} ${CMAKE_CURRENT_BINARY_DIR}/${web_file} COPYONLY)
 		endforeach()
 
@@ -1317,11 +1307,6 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 			${CMAKE_CURRENT_BINARY_DIR}/player-audio.js
 			${CMAKE_CURRENT_BINARY_DIR}/player-audio-worker.js
 			${CMAKE_CURRENT_BINARY_DIR}/player-files.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-movie.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-movie-worker.js
-			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.js
-			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.wasm
-			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.LICENSE.txt
 			DESTINATION ${CMAKE_INSTALL_BINDIR})
 	endif()
 elseif(PLAYER_CONSOLE_PORT AND NOT PLAYER_TARGET_PLATFORM STREQUAL "libretro")

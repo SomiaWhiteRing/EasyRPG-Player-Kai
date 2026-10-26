@@ -193,7 +193,7 @@ package_web() {
 	)
 
 	log "Verifying Web outputs"
-	for file in easyrpg-player.js easyrpg-player.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
+	for file in easyrpg-player.js easyrpg-player.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js; do
 		test -s "$build_dir/$file" || {
 			echo "Missing build output: $build_dir/$file"
 			exit 1

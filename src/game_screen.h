@@ -34,7 +34,6 @@
 class Game_Battler;
 class Screen;
 class Weather;
-class MoviePlayer;
 
 class Game_Screen {
 
@@ -58,11 +57,8 @@ public:
 	void SetWeatherEffect(int type, int strength);
 	int ZoomScreen(int x, int y, int scale, int frames, int layer);
 	void DrawZoom(Bitmap& dst);
-	bool PlayMovie(std::string filename,
+	void PlayMovie(std::string filename,
 			int pos_x, int pos_y, int res_x, int res_y);
-	bool IsMoviePlaying() const;
-	bool ConsumeMovieFinished();
-	void DrawMovie(Bitmap& dst);
 	void Update();
 
 	/**
@@ -196,7 +192,6 @@ private:
 	void SaveManiacAnimations();
 	void RestoreManiacAnimations();
 	std::unique_ptr<Weather> weather;
-	std::unique_ptr<MoviePlayer> movie_player;
 
 	lcf::rpg::SaveScreen data;
 	bool zoom_initialized = false;
@@ -209,10 +204,6 @@ private:
 	int movie_pos_y;
 	int movie_res_x;
 	int movie_res_y;
-	bool movie_finished = false;
-#ifdef EMSCRIPTEN
-	bool movie_pending = false;
-#endif
 
 protected:
 	std::vector<Particle> particles;
@@ -227,9 +218,6 @@ protected:
 	void UpdateWeather();
 	void UpdateFog(int dx, int dy);
 	void OnWeatherChanged();
-	void StopMovie(bool finished);
-	bool OpenMovie(std::string movie_path);
-	Rect GetMovieOutputRect() const;
 
 	void InitParticles(int n);
 };

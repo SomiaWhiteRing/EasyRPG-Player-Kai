@@ -55,14 +55,6 @@
 #endif
 
 namespace {
-#ifdef SUPPORT_MOVIES
-#  if defined(HAVE_WEB_MOVIE_PLAYER) || defined(HAVE_ANDROID_MOVIE_PLAYER)
-	constexpr std::array<std::string_view, 7> MOVIE_TYPES = { ".avi", ".mpg", ".mpeg", ".mp4", ".webm", ".ogv", ".mov" };
-#  else
-	constexpr std::array<std::string_view, 2> MOVIE_TYPES = { ".avi", ".mpg" };
-#  endif
-#endif
-
 	std::shared_ptr<Filesystem> root_fs;
 	FilesystemView game_fs;
 	FilesystemView save_fs;
@@ -459,16 +451,6 @@ std::string FileFinder::FindMusic(std::string_view name) {
 std::string FileFinder::FindSound(std::string_view name) {
 	DirectoryTree::Args args = { MakePath("Sound", name), SOUND_TYPES, 1, false };
 	return find_generic(args);
-}
-
-std::string FileFinder::FindMovie(std::string_view name) {
-#ifdef SUPPORT_MOVIES
-	DirectoryTree::Args args = { MakePath("Movie", name), MOVIE_TYPES, 1, false };
-	return find_generic(args);
-#else
-	(void)name;
-	return {};
-#endif
 }
 
 std::string FileFinder::FindFont(std::string_view name) {
