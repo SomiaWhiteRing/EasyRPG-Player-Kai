@@ -38,21 +38,7 @@
 #include "window_numberinput.h"
 #include "window_selectable.h"
 #include "window_settings.h"
-#include <cmath>
 #include <memory>
-
-namespace {
-	double ClampOptionValue(double value, const Window_Settings::Option& option) {
-		return Utils::Clamp<double>(value, option.min_value, option.max_value);
-	}
-
-	double NormalizeOptionValue(double value, const Window_Settings::Option& option) {
-		if (option.step_value < 1.0) {
-			value = std::round(value / option.step_value) * option.step_value;
-		}
-		return ClampOptionValue(value, option);
-	}
-}
 
 #ifdef EMSCRIPTEN
 #  include <emscripten.h>
@@ -81,7 +67,6 @@ void Scene_Settings::CreateMainWindow() {
 		{ Window_Settings::eAudio,	"Audio" },
 		{ Window_Settings::eInput,	"Input"},
 		{ Window_Settings::eEngine,	"Engine"},
-		{ Window_Settings::eExtra,	"追加功能"},
 		{ Window_Settings::eLicense,"License"},
 		{ Window_Settings::eSave,	"<Save Settings>"}
 	});
@@ -287,7 +272,6 @@ void Scene_Settings::vUpdate() {
 		case Window_Settings::eAudioSoundfont:
 		case Window_Settings::eLicense:
 		case Window_Settings::eEngine:
-		case Window_Settings::eExtra:
 		case Window_Settings::eInputButtonCategory:
 		case Window_Settings::eInputListButtonsGame:
 		case Window_Settings::eInputListButtonsEngine:
@@ -366,7 +350,7 @@ void Scene_Settings::UpdateOptions() {
 	if (number_window) {
 		number_window->Update();
 		auto& option = options_window->GetCurrentOption();
-		option.current_value = ClampOptionValue(static_cast<double>(number_window->GetNumber()), option);
+		option.current_value = Utils::Clamp(number_window->GetNumber(), option.min_value, option.max_value);
 		option.action();
 
 		if (Input::IsTriggered(Input::DECISION)) {
@@ -399,12 +383,9 @@ void Scene_Settings::UpdateOptions() {
 				option.action();
 				options_window->Refresh();
 			} else if (option.mode == Window_Settings::eOptionRangeInput) {
-				if (option.step_value < 1.0) {
-					return;
-				}
 				number_window.reset(new Window_NumberInput(0, 0, 128, 32));
-				number_window->SetNumber(static_cast<int>(option.current_value));
-				number_window->SetMaxDigits(static_cast<int>(std::log10(option.max_value)) + 1);
+				number_window->SetNumber(option.current_value);
+				number_window->SetMaxDigits(std::log10(option.max_value) + 1);
 				number_window->SetX(options_window->GetX() + options_window->GetWidth() / 2 - number_window->GetWidth() / 2);
 				number_window->SetY(options_window->GetY() + options_window->GetHeight() / 2 - number_window->GetHeight() / 2);
 				number_window->SetZ(options_window->GetZ() + 1);
@@ -417,7 +398,7 @@ void Scene_Settings::UpdateOptions() {
 				picker_window->SetX(options_window->GetX() + options_window->GetWidth() / 2 - picker_window->GetWidth() / 2);
 				picker_window->SetY(options_window->GetY() + options_window->GetHeight() / 2 - picker_window->GetHeight() / 2);
 				picker_window->SetZ(options_window->GetZ() + 1);
-				picker_window->SetIndex(static_cast<int>(option.current_value));
+				picker_window->SetIndex(option.current_value);
 				picker_window->SetHelpWindow(help_window.get());
 				picker_window->SetActive(true);
 				options_window->SetActive(false);
@@ -435,14 +416,13 @@ void Scene_Settings::UpdateOptions() {
 		if (options_window->IsCurrentActionEnabled()) {
 			auto& option = options_window->GetCurrentOption();
 			if (option.mode == Window_Settings::eOptionRangeInput) {
-				auto next_value = option.current_value - option.step_value;
-				if (next_value < option.min_value) {
+				--option.current_value;
+				if (option.current_value < option.min_value) {
 					option.current_value = option.max_value;
-				} else {
-					option.current_value = NormalizeOptionValue(next_value, option);
 				}
+				option.action();
 			} else if (option.mode == Window_Settings::eOptionPicker) {
-				auto it = std::find(option.options_index.begin(), option.options_index.end(), static_cast<int>(option.current_value));
+				auto it = std::find(option.options_index.begin(), option.options_index.end(), option.current_value);
 				assert(it != option.options_index.end());
 
 				if (it == option.options_index.begin()) {
@@ -462,14 +442,13 @@ void Scene_Settings::UpdateOptions() {
 		if (options_window->IsCurrentActionEnabled()) {
 			auto& option = options_window->GetCurrentOption();
 			if (option.mode == Window_Settings::eOptionRangeInput) {
-				auto next_value = option.current_value + option.step_value;
-				if (next_value > option.max_value) {
+				++option.current_value;
+				if (option.current_value > option.max_value) {
 					option.current_value = option.min_value;
-				} else {
-					option.current_value = NormalizeOptionValue(next_value, option);
 				}
+				option.action();
 			} else if (option.mode == Window_Settings::eOptionPicker) {
-				auto it = std::find(option.options_index.begin(), option.options_index.end(), static_cast<int>(option.current_value));
+				auto it = std::find(option.options_index.begin(), option.options_index.end(), option.current_value);
 				assert(it != option.options_index.end());
 
 				std::advance(it, 1);

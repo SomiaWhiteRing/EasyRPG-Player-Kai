@@ -16,8 +16,6 @@
  */
 
 #include <sstream>
-#include <cmath>
-#include <fmt/format.h>
 
 #include "fps_overlay.h"
 #include "game_clock.h"
@@ -46,8 +44,8 @@ void FpsOverlay::UpdateText() {
 }
 
 bool FpsOverlay::Update() {
-	auto mod = Game_Clock::GetGameSpeedFactor();
-	if (std::abs(mod - last_speed_mod) > 0.001f) {
+	int mod = static_cast<int>(Game_Clock::GetGameSpeedFactor());
+	if (mod != last_speed_mod) {
 		speedup_dirty = true;
 		last_speed_mod = mod;
 	}
@@ -87,9 +85,9 @@ void FpsOverlay::Draw(Bitmap& dst) {
 	}
 
 	// Always drawn when speedup is on independent of FPS
-	if (std::abs(last_speed_mod - 1.0f) > 0.001f) {
+	if (last_speed_mod > 1) {
 		if (speedup_dirty) {
-			std::string text = fmt::format("> x{:.1f}", last_speed_mod);
+			std::string text = "> x" + std::to_string(last_speed_mod);
 
 			Rect rect = Text::GetSize(*Font::DefaultBitmapFont(), text);
 

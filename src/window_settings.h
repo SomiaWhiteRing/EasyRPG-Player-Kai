@@ -46,7 +46,6 @@ public:
 		eAudioSoundfont,
 		eLicense,
 		eEngine,
-		eExtra,
 		eEngineFont1,
 		eEngineFont2,
 		eSave,
@@ -70,11 +69,10 @@ public:
 		std::function<void(void)> action;
 		OptionMode mode;
 		Font::SystemColor color = Font::ColorDefault;
-		double current_value;
-		double original_value;
-		double min_value;
-		double max_value;
-		double step_value = 1.0;
+		int current_value;
+		int original_value;
+		int min_value;
+		int max_value;
 		std::vector<int> options_index;
 		std::vector<std::string> options_text;
 		std::vector<std::string> options_help;
@@ -149,7 +147,6 @@ private:
 	void RefreshAudioMidi();
 	void RefreshAudioSoundfont();
 	void RefreshEngine();
-	void RefreshExtra();
 	void RefreshEngineFont(bool mincho);
 	void RefreshLicense();
 

@@ -157,8 +157,8 @@ struct Game_ConfigAudio {
 };
 
 struct Game_ConfigInput {
-	RangeConfigParam<double> speed_modifier_a{ "Fast Forward A: Speed", "Set fast forward A speed", "Input", "SpeedModifierA", 3.0, 0.1, 100.0 };
-	RangeConfigParam<double> speed_modifier_b{ "Fast Forward B: Speed", "Set fast forward B speed", "Input", "SpeedModifierB", 10.0, 0.1, 100.0 };
+	RangeConfigParam<int> speed_modifier_a{ "Fast Forward A: Speed", "Set fast forward A speed", "Input", "SpeedModifierA", 3, 2, 100 };
+	RangeConfigParam<int> speed_modifier_b{ "Fast Forward B: Speed", "Set fast forward B speed", "Input", "SpeedModifierB", 10, 2, 100 };
 	BoolConfigParam gamepad_swap_analog{ "Gamepad: Swap Analog Sticks", "Swap left and right stick", "Input", "GamepadSwapAnalog", false };
 	BoolConfigParam gamepad_swap_dpad_with_buttons{ "Gamepad: Swap D-Pad with buttons", "Swap D-Pad with ABXY-Buttons", "Input", "GamepadSwapDpad", false };
 	BoolConfigParam gamepad_swap_ab_and_xy{ "Gamepad: Swap AB and XY", "Swap A and B with X and Y", "Input", "GamepadSwapAbxy", false };

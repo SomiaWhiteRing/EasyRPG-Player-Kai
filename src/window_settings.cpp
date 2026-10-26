@@ -17,10 +17,8 @@
 
 // Headers
 #include <sstream>
-#include <type_traits>
 #include <utility>
 #include "game_map.h"
-#include "game_message.h"
 #include "input.h"
 #include "text.h"
 #include "window_settings.h"
@@ -145,9 +143,6 @@ void Window_Settings::Refresh() {
 		case eEngine:
 			RefreshEngine();
 			break;
-		case eExtra:
-			RefreshExtra();
-			break;
 		case eEngineFont1:
 			RefreshEngineFont(false);
 			break;
@@ -229,13 +224,10 @@ void Window_Settings::AddOption(const RangeConfigParam<T>& param,
 	opt.help = ToString(param.GetDescription());
 	opt.value_text = param.ValueToString();
 	opt.mode = eOptionRangeInput;
-	opt.current_value = static_cast<double>(param.Get());
+	opt.current_value = static_cast<int>(param.Get());
 	opt.original_value = opt.current_value;
-	opt.min_value = static_cast<double>(param.GetMin());
-	opt.max_value = static_cast<double>(param.GetMax());
-	if constexpr (std::is_floating_point_v<T>) {
-		opt.step_value = 0.1;
-	}
+	opt.min_value = param.GetMin();
+	opt.max_value = param.GetMax();
 	if (!param.IsLocked()) {
 		opt.action = std::forward<Action>(action);
 	}
@@ -284,21 +276,21 @@ void Window_Settings::RefreshVideo() {
 	AddOption(cfg.renderer,	[](){});
 	AddOption(cfg.fullscreen, [](){ DisplayUi->ToggleFullscreen(); });
 	AddOption(cfg.window_zoom, [](){ DisplayUi->ToggleZoom(); });
-	AddOption(cfg.fps, [this](){ DisplayUi->SetShowFps(static_cast<ConfigEnum::ShowFps>(static_cast<int>(GetCurrentOption().current_value))); });
+	AddOption(cfg.fps, [this](){ DisplayUi->SetShowFps(static_cast<ConfigEnum::ShowFps>(GetCurrentOption().current_value)); });
 	AddOption(cfg.vsync, [](){ DisplayUi->ToggleVsync(); });
-	AddOption(cfg.fps_limit, [this](){ DisplayUi->SetFrameLimit(static_cast<int>(GetCurrentOption().current_value)); });
+	AddOption(cfg.fps_limit, [this](){ DisplayUi->SetFrameLimit(GetCurrentOption().current_value); });
 	AddOption(cfg.stretch, []() { DisplayUi->ToggleStretch(); });
-	AddOption(cfg.scaling_mode, [this](){ DisplayUi->SetScalingMode(static_cast<ConfigEnum::ScalingMode>(static_cast<int>(GetCurrentOption().current_value))); });
+	AddOption(cfg.scaling_mode, [this](){ DisplayUi->SetScalingMode(static_cast<ConfigEnum::ScalingMode>(GetCurrentOption().current_value)); });
 	AddOption(cfg.pause_when_focus_lost, [cfg]() mutable { DisplayUi->SetPauseWhenFocusLost(cfg.pause_when_focus_lost.Toggle()); });
 	AddOption(cfg.touch_ui, [](){ DisplayUi->ToggleTouchUi(); });
-	AddOption(cfg.game_resolution, [this]() { DisplayUi->SetGameResolution(static_cast<ConfigEnum::GameResolution>(static_cast<int>(GetCurrentOption().current_value))); });
+	AddOption(cfg.game_resolution, [this]() { DisplayUi->SetGameResolution(static_cast<ConfigEnum::GameResolution>(GetCurrentOption().current_value)); });
 }
 
 void Window_Settings::RefreshAudio() {
 	auto cfg = Audio().GetConfig();
 
-	AddOption(cfg.music_volume, [this](){ Audio().BGM_SetGlobalVolume(static_cast<int>(GetCurrentOption().current_value)); });
-	AddOption(cfg.sound_volume, [this](){ Audio().SE_SetGlobalVolume(static_cast<int>(GetCurrentOption().current_value)); });
+	AddOption(cfg.music_volume, [this](){ Audio().BGM_SetGlobalVolume(GetCurrentOption().current_value); });
+	AddOption(cfg.sound_volume, [this](){ Audio().SE_SetGlobalVolume(GetCurrentOption().current_value); });
 	if (cfg.fluidsynth_midi.IsOptionVisible() || cfg.wildmidi_midi.IsOptionVisible() || cfg.native_midi.IsOptionVisible() || cfg.fmmidi_midi.IsOptionVisible()) {
 		AddOption(MenuItem("MIDI drivers", "Configure MIDI playback", ""), [this]() { Push(eAudioMidi); });
 	}
@@ -431,14 +423,14 @@ void Window_Settings::RefreshEngine() {
 		}
 	}
 
-	AddOption(cfg.show_startup_logos, [this, &cfg](){ cfg.show_startup_logos.Set(static_cast<ConfigEnum::StartupLogos>(static_cast<int>(GetCurrentOption().current_value))); });
+	AddOption(cfg.show_startup_logos, [this, &cfg](){ cfg.show_startup_logos.Set(static_cast<ConfigEnum::StartupLogos>(GetCurrentOption().current_value)); });
 	AddOption(cfg.settings_autosave, [&cfg](){ cfg.settings_autosave.Toggle(); });
 	AddOption(cfg.settings_in_title, [&cfg](){ cfg.settings_in_title.Toggle(); });
 	AddOption(cfg.settings_in_menu, [&cfg](){ cfg.settings_in_menu.Toggle(); });
-	AddOption(cfg.lang_select_on_start, [this, &cfg]() { cfg.lang_select_on_start.Set(static_cast<ConfigEnum::StartupLangSelect>(static_cast<int>(GetCurrentOption().current_value))); });
+	AddOption(cfg.lang_select_on_start, [this, &cfg]() { cfg.lang_select_on_start.Set(static_cast<ConfigEnum::StartupLangSelect>(GetCurrentOption().current_value)); });
 	AddOption(cfg.lang_select_in_title, [&cfg](){ cfg.lang_select_in_title.Toggle(); });
 	AddOption(cfg.log_enabled, [&cfg]() { cfg.log_enabled.Toggle(); });
-	AddOption(cfg.screenshot_scale, [this, &cfg](){ cfg.screenshot_scale.Set(static_cast<int>(GetCurrentOption().current_value)); });
+	AddOption(cfg.screenshot_scale, [this, &cfg](){ cfg.screenshot_scale.Set(GetCurrentOption().current_value); });
 
 	GetFrame().options.back().help2 = fmt::format("Screenshot size: {}x{}",
 		Player::screen_width * cfg.screenshot_scale.Get(), Player::screen_height * cfg.screenshot_scale.Get());
@@ -458,12 +450,7 @@ void Window_Settings::RefreshEngine() {
 	if (Player::player_config.automatic_screenshots.Get()) {
 		GetFrame().options.back().help2 = fmt::format("Sample name: {}", fmt_sample_name(true));
 	}
-	AddOption(cfg.automatic_screenshots_interval, [this, &cfg]() { cfg.automatic_screenshots_interval.Set(static_cast<int>(GetCurrentOption().current_value)); });
-}
-
-void Window_Settings::RefreshExtra() {
-	auto& cfg = Player::player_config;
-
+	AddOption(cfg.automatic_screenshots_interval, [this, &cfg]() { cfg.automatic_screenshots_interval.Set(GetCurrentOption().current_value); });
 }
 
 void Window_Settings::RefreshEngineFont(bool mincho) {
@@ -534,11 +521,11 @@ void Window_Settings::RefreshEngineFont(bool mincho) {
 	}
 
 	/*AddOption(font_size, [this]() mutable {
-		font_size.Set(static_cast<int>(GetCurrentOption().current_value));
+		font_size.Set(GetCurrentOption().current_value);
 	});*/
 
 	AddOption(sample_text, [this]() {
-		sample_text.Set(static_cast<SampleText>(static_cast<int>(GetCurrentOption().current_value)));
+		sample_text.Set(static_cast<SampleText>(GetCurrentOption().current_value));
 	});
 	set_help2();
 

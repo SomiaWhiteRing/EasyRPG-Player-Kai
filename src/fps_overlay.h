@@ -69,7 +69,7 @@ private:
 
 	std::string text;
 
-	float last_speed_mod = 1.0f;
+	int last_speed_mod = 1;
 	bool speedup_dirty = true;
 	bool fps_dirty = true;
 	bool draw_fps = true;
