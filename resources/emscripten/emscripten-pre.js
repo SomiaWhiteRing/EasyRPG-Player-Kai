@@ -90,6 +90,15 @@ function parseArgs () {
 }
 
 function onPreRun () {
+  // Each game needs its own working directory before its save mount is created.
+  FS.mkdir('easyrpg');
+  FS.chdir('easyrpg');
+  if (Module.game.length > 0) {
+    FS.mkdir(Module.game);
+    FS.chdir(Module.game);
+  }
+  if (Module.saveFs === undefined) Module.saveFs = IDBFS;
+
   // Retrieve save directory from persistent storage before using it
   FS.mkdir("Save");
   FS.mount(Module.saveFs, {}, 'Save');

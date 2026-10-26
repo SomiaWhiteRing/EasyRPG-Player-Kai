@@ -6266,7 +6266,7 @@ bool Game_Interpreter::CommandManiacGetMousePosition(lcf::rpg::EventCommand cons
 	const auto write_number = [&](int32_t id, int32_t value) {
 		if (id == 0) return;
 		if (id > 0) {
-			Main_Data::game_variables->Set(id, value);
+			*Main_Data::game_variables->GetManiacWritable(id) = value;
 		} else {
 			const auto* frame = GetFramePtr();
 			auto* state = Main_Data::game_maniac_self_variables.get();
@@ -6672,6 +6672,24 @@ bool Game_Interpreter::CommandManiacKeyInputProcEx(lcf::rpg::EventCommand const&
 
 	int operation = com.parameters[0];
 	int start_var_id = com.parameters[1];
+	if (start_var_id == 0) return true;
+
+	const auto* frame = GetFramePtr();
+	auto* state = Main_Data::game_maniac_self_variables.get();
+	Game_ManiacSelfVariables::Bank* bank = nullptr;
+	const auto write_key = [&](int offset, bool pressed) {
+		if (start_var_id > 0) {
+			*Main_Data::game_variables->GetManiacWritable(start_var_id + offset) = pressed;
+		} else {
+			if (!bank && frame && state) {
+				bank = state->Ensure(frame->easyrpg_self_scope, frame->easyrpg_self_map_id, frame->easyrpg_self_event_id);
+			}
+			if (!bank) return;
+			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(start_var_id)) + offset;
+			if (bank->numbers.size() <= slot) bank->numbers.resize(slot + 1);
+			bank->numbers[slot] = pressed;
+		}
+	};
 
 	if (operation == 0 || operation == 1) {
 		// The difference between 0 and 1 is whether the Joypad is checked
@@ -6679,12 +6697,12 @@ bool Game_Interpreter::CommandManiacKeyInputProcEx(lcf::rpg::EventCommand const&
 		auto keys = ManiacPatch::GetKeyRange();
 
 		for (int i = 0; i < static_cast<int>(keys.size()); ++i) {
-			Main_Data::game_variables->Set(start_var_id + i, keys[i] ? 1 : 0);
+			write_key(i, keys[i]);
 		}
 	} else if (operation == 2) {
 		int key_id = ValueOrVariable(com.parameters[2], com.parameters[3]);
 		bool key_state = ManiacPatch::GetKeyState(key_id);
-		Main_Data::game_variables->Set(start_var_id, key_state ? 1 : 0);
+		write_key(0, key_state);
 	} else {
 		Output::Warning("Maniac KeyInputProcEx: Joypad not supported");
 	}
