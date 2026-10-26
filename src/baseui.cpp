@@ -29,9 +29,7 @@
 #include <windows.h>
 #endif
 
-#if defined(PLAYER_WEB)
-#  include "platform/emscripten/ui.h"
-#elif USE_SDL==3
+#if USE_SDL==3
 #  include "platform/sdl/sdl3_ui.h"
 #elif USE_SDL==2
 #  include "platform/sdl/sdl2_ui.h"
@@ -105,9 +103,7 @@ bool BaseUi::ShouldPauseWhenFocusLost() const {
 }
 
 std::shared_ptr<BaseUi> BaseUi::CreateUi(long width, long height, const Game_Config& cfg) {
-#if defined(PLAYER_WEB)
-	return std::make_shared<WebUi>(width, height, cfg);
-#elif USE_SDL==3
+#if USE_SDL==3
 	return std::make_shared<Sdl3Ui>(width, height, cfg);
 #elif USE_SDL==2
 	return std::make_shared<Sdl2Ui>(width, height, cfg);
@@ -132,8 +128,8 @@ BaseUi::BaseUi(const Game_Config& cfg)
 
 void BaseUi::LoadManiacVideoDefaults(int fullscreen_override) {
 	if (maniac_video_defaults_loaded) return;
-#if defined(PLAYER_WEB)
-	// The embedding page owns its layout and startup video preferences.
+#if defined(EMSCRIPTEN)
+	// The browser owns its layout and startup video preferences.
 	(void)fullscreen_override;
 	return;
 #else

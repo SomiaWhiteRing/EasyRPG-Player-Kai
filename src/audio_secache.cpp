@@ -26,9 +26,6 @@
 #include "game_clock.h"
 #include "filefinder.h"
 #include "output.h"
-#ifdef EMSCRIPTEN
-#include "platform/emscripten/audio.h"
-#endif
 
 using namespace std::chrono_literals;
 
@@ -74,14 +71,6 @@ namespace {
 std::unique_ptr<AudioSeCache> AudioSeCache::Create(Filesystem_Stream::InputStream stream, std::string_view name) {
 	auto se = std::make_unique<AudioSeCache>();
 	se->name = ToString(name);
-#ifdef EMSCRIPTEN
-	// The audio Worker resolves and decodes this file; the game only sends its name.
-	if (WebAudio::IsProxy()) {
-		if (!stream) return {};
-		se->name = stream.GetName();
-		return se;
-	}
-#endif
 
 	auto const it = cache.find(ToString(name));
 	if (it == cache.end()) {

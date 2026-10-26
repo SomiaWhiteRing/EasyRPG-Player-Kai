@@ -96,14 +96,7 @@ int ManiacSessionVolume(int* requested) {
 }
 }
 #endif
-#ifdef EMSCRIPTEN
-#include "platform/emscripten/audio.h"
-#endif
-
 AudioInterface& Audio() {
-#ifdef EMSCRIPTEN
-	if (auto* mixer = WebAudio::Mixer()) return *mixer;
-#endif
 	static Game_ConfigAudio cfg;
 	static EmptyAudio default_(cfg);
 #ifdef SUPPORT_AUDIO

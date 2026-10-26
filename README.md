@@ -11,8 +11,10 @@ available at the project website: https://easyrpg.org/
 This branch keeps the Maniac compatibility implementation from the original
 Kai branch. Its scope and host-platform requirements are documented in
 [the Maniac action guidelines](docs/research/maniac-250921/ACTION-GUIDELINES.md).
-The archive-site-specific Web host is still present while its Maniac platform
-interfaces are being separated.
+The Web build uses the standard EasyRPG browser shell with a Maniac console
+adapter and browser-backed saves. Saves previously kept by the archive-site
+host use a separate storage location; export them from that host and import the
+LSD files through the Web save menu when needed.
 
 
 ## Documentation

@@ -31,8 +31,26 @@ namespace {
 static void LogCallback(LogLevel lvl, std::string const& msg, LogCallbackUserData /* userdata */) {
 // Allow pretty log output and filtering in browser console
 EM_ASM({
-  const level = (["error", "warn", "info", "debug"][$0] || "log");
-  postMessage({type: 'log', level, message: UTF8ToString($1)});
+  const lvl = $0;
+  const msg = UTF8ToString($1);
+
+  switch (lvl) {
+	case 0:
+	  console.error(msg);
+	  break;
+	case 1:
+	  console.warn(msg);
+	  break;
+	case 2:
+	  console.info(msg);
+	  break;
+	case 3:
+	  console.debug(msg);
+	  break;
+	default:
+	  console.log(msg);
+	  break;
+  }
 }, static_cast<int>(lvl), msg.c_str());
 }
 
@@ -47,9 +65,8 @@ void main_loop() {
 		Player::Run();
 		++counter;
 	} else if (counter == 6) {
-		if (!EM_ASM_INT({ return Module.paused ? 1 : 0; })) Player::MainLoop();
+		Player::MainLoop();
 		if (!DisplayUi.get()) {
-			EM_ASM({ Module.stopping = true; });
 			// Yield on shutdown to ensure async operations (e.g. IDBFS saving) can finish
 			counter = -10;
 		}
@@ -60,10 +77,7 @@ void main_loop() {
 			return;
 		}
 		emscripten_cancel_main_loop();
-		EM_ASM({
-			Module.stopped = true;
-			Module.syncSaves().then(() => postMessage({type: "stopped"})).catch(() => {});
-		});
+		EM_ASM({ Module.syncSaves(); });
 	}
 }
 

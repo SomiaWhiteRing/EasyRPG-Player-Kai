@@ -30,6 +30,7 @@
 #  include <SDL_system.h>
 #elif defined(EMSCRIPTEN)
 #  include <emscripten.h>
+#  include "platform/emscripten/interface.h"
 #elif defined(__WIIU__)
 #  include "platform/wiiu/main.h"
 #endif
@@ -520,6 +521,13 @@ bool Sdl2Ui::SetManiacWindowZoom(int zoom) {
 	maniac_window_zoom = zoom;
 	vcfg.window_zoom.Set(current_display_mode.zoom);
 	return current_display_mode.zoom == effective_zoom;
+#elif defined(EMSCRIPTEN)
+	const bool applied = EM_ASM_INT({
+		return Module.setManiacWindowZoom($0, $1, $2, !!$3);
+	}, zoom, main_surface->width(), main_surface->height(), maniac_window_fit) != 0;
+	if (!applied) return false;
+	maniac_window_zoom = zoom;
+	return true;
 #else
 	return false;
 #endif
@@ -619,6 +627,25 @@ bool Sdl2Ui::HasInputFocus() const {
 	return sdl_window && (SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS);
 }
 
+#ifdef EMSCRIPTEN
+void Sdl2Ui::RefreshFocusPolicy() {
+	const bool paused = !Player::exit_flag && ShouldPauseWhenFocusLost() && !HasInputFocus();
+	if (paused == web_focus_paused) return;
+	web_focus_paused = paused;
+	if (paused) {
+		Player::Pause();
+		ResetKeys();
+	} else {
+		Player::Resume();
+		ResetKeys();
+	}
+}
+
+bool Sdl2Ui::IsFocusPaused() const {
+	return !Player::exit_flag && web_focus_paused;
+}
+#endif
+
 bool Sdl2Ui::IsJoystickAvailable() const {
 #if defined(USE_JOYSTICK) && defined(SUPPORT_JOYSTICK)
 	for (int i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -632,6 +659,9 @@ bool Sdl2Ui::IsJoystickAvailable() const {
 }
 
 bool Sdl2Ui::ConfirmManiacFileOutput() {
+#ifdef EMSCRIPTEN
+	return Emscripten_Interface::ConfirmManiacFileOutput();
+#else
 	const SDL_MessageBoxButtonData buttons[] = {
 		{SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes"},
 		{SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No"}
@@ -642,6 +672,7 @@ bool Sdl2Ui::ConfirmManiacFileOutput() {
 	int answer = 0;
 	if (SDL_ShowMessageBox(&box, &answer) < 0) Output::Error("File output confirmation failed: {}", SDL_GetError());
 	return answer == 1;
+#endif
 }
 
 bool Sdl2Ui::ProcessEvents() {
@@ -667,12 +698,16 @@ bool Sdl2Ui::ProcessEvents() {
 			break;
 	}
 
+#ifdef EMSCRIPTEN
+	RefreshFocusPolicy();
+#else
 	// The command can disable inactive execution after the focus-lost event.
 	// Only wait here: audio suspension belongs to the original focus event.
 	if (Player::IsPatchManiac() && !Player::exit_flag && ShouldPauseWhenFocusLost()
 			&& !(SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_INPUT_FOCUS)) {
 		WaitForFocus();
 	}
+#endif
 
 	return true;
 }
@@ -960,6 +995,10 @@ void Sdl2Ui::ProcessWindowEvent(SDL_Event &evnt) {
 	int state = evnt.window.event;
 
 	if (state == SDL_WINDOWEVENT_FOCUS_LOST) {
+#ifdef EMSCRIPTEN
+		ResetKeys();
+		return;
+#else
 		if (!ShouldPauseWhenFocusLost()) {
 			return;
 		}
@@ -969,6 +1008,7 @@ void Sdl2Ui::ProcessWindowEvent(SDL_Event &evnt) {
 		WaitForFocus();
 
 		return;
+#endif
 	}
 
 #if defined(USE_MOUSE_OR_TOUCH) && defined(SUPPORT_MOUSE_OR_TOUCH)

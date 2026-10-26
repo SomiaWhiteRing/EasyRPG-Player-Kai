@@ -28,12 +28,18 @@ class FileRequestAsync;
 struct FileRequestResult;
 
 /**
- * Resource request bindings. Native and site-local Web files are available
- * synchronously; bindings also support simulated delays during development.
+ * AsyncHandler supports asynchronous file requests for platforms that don't
+ * support synchronous IO (e.g. Emscripten).
  */
 namespace AsyncHandler {
 	/**
-	 * Clears cached request bindings.
+	 * Parses the specified JSON file. The file mapping read from this file
+	 * will be used for further ajax requests.
+	 */
+	void CreateRequestMapping(const std::string& file);
+
+	/**
+	 * Clears all finished requests. They will hit the server again.
 	 * Called after changing the language to ensure the assets are replaced.
 	 */
 	void ClearRequests();
@@ -124,11 +130,7 @@ public:
 	 */
 	bool IsReady() const;
 
-	/**
-	 * Checks if a request finished successfully.
-	 *
-	 * @return True when request succeeded, false otherwise.
-	 */
+	/** @return True when the request completed successfully. */
 	bool IsSuccess() const;
 
 	/**

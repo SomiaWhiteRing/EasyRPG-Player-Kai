@@ -590,9 +590,7 @@ set_property(SOURCE src/version.cpp PROPERTY COMPILE_DEFINITIONS
 )
 
 # Platform setup
-if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-	set(PLAYER_TARGET_PLATFORM "Web" CACHE STRING "Site-local Web Worker platform" FORCE)
-elseif(NINTENDO_3DS)
+if(NINTENDO_3DS)
 	set(PLAYER_TARGET_PLATFORM "3ds" CACHE STRING "Platform to compile for.")
 elseif(NINTENDO_SWITCH)
 	set(PLAYER_TARGET_PLATFORM "switch" CACHE STRING "Platform to compile for.")
@@ -625,11 +623,7 @@ if(APPLE AND NOT IOS AND NOT CMAKE_SYSTEM_NAME STREQUAL "tvOS")
 	set(MACOS TRUE)
 endif()
 
-if(PLAYER_TARGET_PLATFORM STREQUAL "Web")
-	target_sources(${PROJECT_NAME} PRIVATE src/platform/emscripten/ui.cpp src/platform/emscripten/ui.h
-		src/platform/emscripten/audio.cpp src/platform/emscripten/audio.h)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC PLAYER_WEB=1)
-elseif(PLAYER_TARGET_PLATFORM STREQUAL "SDL3")
+if(PLAYER_TARGET_PLATFORM STREQUAL "SDL3")
 	target_sources(${PROJECT_NAME} PRIVATE
 		src/platform/sdl/sdl3_ui.cpp
 		src/platform/sdl/sdl3_ui.h)
@@ -764,10 +758,7 @@ else()
 endif()
 
 # Sound system to use
-if(PLAYER_TARGET_PLATFORM STREQUAL "Web")
-	set(PLAYER_AUDIO_BACKEND "Web" CACHE STRING "Web Worker audio" FORCE)
-	set_property(CACHE PLAYER_AUDIO_BACKEND PROPERTY STRINGS Web)
-elseif(PLAYER_TARGET_PLATFORM STREQUAL "SDL3")
+if(PLAYER_TARGET_PLATFORM STREQUAL "SDL3")
 	set(PLAYER_AUDIO_BACKEND "SDL3" CACHE STRING "Audio system to use. Options: SDL3 OFF")
 	set_property(CACHE PLAYER_AUDIO_BACKEND PROPERTY STRINGS SDL3 OFF)
 elseif(PLAYER_TARGET_PLATFORM STREQUAL "SDL2")
@@ -918,7 +909,10 @@ if(APPLE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+	option(PLAYER_JS_BUILD_SHELL "Build an HTML shell alongside the Web player" OFF)
+	set(PLAYER_JS_GAME_URL "games/" CACHE STRING "Game URL/directory where the web player searches for games")
 	set(PLAYER_JS_OUTPUT_NAME "easyrpg-player" CACHE STRING "Output name of the js, html and wasm files")
+	set_property(SOURCE src/async_handler.cpp APPEND PROPERTY COMPILE_DEFINITIONS "EM_GAME_URL=\"${PLAYER_JS_GAME_URL}\"")
 endif()
 
 # Endianess check
@@ -1200,11 +1194,8 @@ if(PLAYER_HAS_AUDIO)
 endif()
 
 # Executable
-if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAYER_TARGET_PLATFORM STREQUAL "Web") AND NOT PLAYER_CONSOLE_PORT)
-	if(PLAYER_TARGET_PLATFORM STREQUAL "Web")
-		set(EXE_NAME "easyrpg-player")
-		add_executable(${EXE_NAME} src/platform/emscripten/main.cpp)
-	elseif(APPLE)
+if(PLAYER_BUILD_EXECUTABLE AND PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" AND NOT PLAYER_CONSOLE_PORT)
+	if(APPLE)
 		set(EXE_NAME "EasyRPG-Player.app")
 		set_source_files_properties(${${PROJECT_NAME}_BUNDLE_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 		add_executable(${EXE_NAME} MACOSX_BUNDLE "src/platform/sdl/main.cpp" ${${PROJECT_NAME}_BUNDLE_ICON})
@@ -1250,19 +1241,29 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		set(PLAYER_JS_PREJS "${CMAKE_CURRENT_SOURCE_DIR}/resources/emscripten/emscripten-pre.js")
 		set(PLAYER_JS_POSTJS "${CMAKE_CURRENT_SOURCE_DIR}/resources/emscripten/emscripten-post.js")
+		set(PLAYER_JS_CONSOLE "${CMAKE_CURRENT_SOURCE_DIR}/resources/emscripten/maniac-console.js")
+		set(PLAYER_JS_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/resources/emscripten/emscripten-shell.html")
 
 		set_property(TARGET ${EXE_NAME} PROPERTY LINK_FLAGS
-			"-sALLOW_MEMORY_GROWTH -sENVIRONMENT=worker -sMODULARIZE -sEXPORT_NAME=createEasyRpgEngine \
-			 -sASYNCIFY=1 -sSTACK_SIZE=524288 -sASYNCIFY_STACK_SIZE=524288 \
-			 --bind --pre-js ${PLAYER_JS_PREJS} --post-js ${PLAYER_JS_POSTJS} \
+			"-sALLOW_MEMORY_GROWTH -sMINIFY_HTML=0 -sMODULARIZE -sEXPORT_NAME=createEasyRpgPlayer \
+			 -sEXIT_RUNTIME -sASYNCIFY=1 -sASYNCIFY_STACK_SIZE=524288 \
+			 --bind --pre-js ${PLAYER_JS_PREJS} --pre-js ${PLAYER_JS_CONSOLE} --post-js ${PLAYER_JS_POSTJS} \
+			 -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall'] \
 			 -sEXPORTED_RUNTIME_METHODS=['FS','HEAPU8','HEAP16'] \
 			 -sEXPORTED_FUNCTIONS=_main,_malloc,_free")
-		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_DEPENDS "${PLAYER_JS_PREJS}" "${PLAYER_JS_POSTJS}")
+		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_DEPENDS
+			"${PLAYER_JS_PREJS}" "${PLAYER_JS_CONSOLE}" "${PLAYER_JS_POSTJS}" "${PLAYER_JS_SHELL}")
+		if(PLAYER_JS_BUILD_SHELL)
+			set_target_properties(${EXE_NAME} PROPERTIES SUFFIX ".html")
+			set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " --shell-file ${PLAYER_JS_SHELL}")
+		endif()
 
 		# Shared STL container instantiations must all preserve allocation errors.
 		# Mixing exception modes can select a weak resize implementation that aborts.
 		target_compile_options(${PROJECT_NAME} PUBLIC -fexceptions)
-		target_compile_options(lcf PRIVATE -fexceptions)
+		if(PLAYER_BUILD_LIBLCF)
+			target_compile_options(lcf PRIVATE -fexceptions)
+		endif()
 		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
 
 		target_sources(${PROJECT_NAME} PRIVATE
@@ -1270,10 +1271,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 				src/platform/emscripten/interface.cpp
 				src/platform/emscripten/interface.h)
 
-		target_link_libraries(${EXE_NAME} "idbfs.js" "workerfs.js")
-		foreach(web_file player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js)
-			configure_file(resources/emscripten/${web_file} ${CMAKE_CURRENT_BINARY_DIR}/${web_file} COPYONLY)
-		endforeach()
+		target_link_libraries(${EXE_NAME} "idbfs.js")
 
 		set_target_properties(${EXE_NAME} PROPERTIES OUTPUT_NAME "${PLAYER_JS_OUTPUT_NAME}")
 	endif()
@@ -1300,13 +1298,10 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 	endif()
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
-		install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PLAYER_JS_OUTPUT_NAME}.wasm
-			${CMAKE_CURRENT_BINARY_DIR}/player-host.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-worker.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-audio.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-audio-worker.js
-			${CMAKE_CURRENT_BINARY_DIR}/player-files.js
-			DESTINATION ${CMAKE_INSTALL_BINDIR})
+		if(PLAYER_JS_BUILD_SHELL)
+			install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PLAYER_JS_OUTPUT_NAME}.js DESTINATION ${CMAKE_INSTALL_BINDIR})
+		endif()
+		install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PLAYER_JS_OUTPUT_NAME}.wasm DESTINATION ${CMAKE_INSTALL_BINDIR})
 	endif()
 elseif(PLAYER_CONSOLE_PORT AND NOT PLAYER_TARGET_PLATFORM STREQUAL "libretro")
 	set(CPACK_PLATFORM "${PLAYER_TARGET_PLATFORM}")

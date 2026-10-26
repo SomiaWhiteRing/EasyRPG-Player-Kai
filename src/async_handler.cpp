@@ -21,6 +21,9 @@
 
 #ifdef EMSCRIPTEN
 #  include <emscripten.h>
+#  include <lcf/reader_util.h>
+#  include <nlohmann/json.hpp>
+   using json = nlohmann::json;
 #endif
 
 #include "async_handler.h"
@@ -40,7 +43,11 @@
 
 namespace {
 	std::unordered_map<std::string, FileRequestAsync> async_requests;
+	std::unordered_map<std::string, std::string> file_mapping;
 	int next_id = 0;
+#ifdef EMSCRIPTEN
+	int index_version = 1;
+#endif
 
 	FileRequestAsync* GetRequest(const std::string& path) {
 		auto it = async_requests.find(path);
@@ -62,6 +69,154 @@ namespace {
 		return std::make_shared<int>(next_id++);
 	}
 
+#ifdef EMSCRIPTEN
+	constexpr size_t ASYNC_MAX_RETRY_COUNT{ 16 };
+
+	struct async_download_context {
+		std::string url, file, param;
+		FileRequestAsync* obj;
+		size_t count;
+
+		async_download_context(
+			std::string u,
+			std::string f,
+			std::string p,
+			FileRequestAsync* o
+		) : url{ std::move(u) }, file{ std::move(f) }, param{ std::move(p) }, obj{ o }, count{} {}
+	};
+
+	void download_success_retry(unsigned, void* userData, const char*) {
+		auto ctx = static_cast<async_download_context*>(userData);
+		ctx->obj->DownloadDone(true);
+		delete ctx;
+	}
+
+	void start_async_wget_with_retry(async_download_context* ctx);
+
+	void download_failure_retry(unsigned, void* userData, int status) {
+		auto ctx = static_cast<async_download_context*>(userData);
+		++ctx->count;
+		if (ctx->count >= ASYNC_MAX_RETRY_COUNT) {
+			Output::Warning("DL Failure: max retries exceeded: {}", ctx->obj->GetPath());
+			ctx->obj->DownloadDone(false);
+			delete ctx;
+			return;
+		}
+		if (status >= 400) {
+			Output::Warning("DL Failure: file not available: {}", ctx->obj->GetPath());
+			ctx->obj->DownloadDone(false);
+			delete ctx;
+			return;
+		}
+		Output::Debug("DL Failure: {}. Retrying", ctx->obj->GetPath());
+		start_async_wget_with_retry(ctx);
+	}
+
+	void start_async_wget_with_retry(async_download_context* ctx) {
+		emscripten_async_wget2(
+			ctx->url.data(),
+			ctx->file.data(),
+			"GET",
+			ctx->param.data(),
+			ctx,
+			download_success_retry,
+			download_failure_retry,
+			nullptr
+		);
+	}
+
+	void async_wget_with_retry(
+		std::string url,
+		std::string file,
+		std::string param,
+		FileRequestAsync* obj
+	) {
+		// ctx will be deleted when download succeeds
+		auto ctx = new async_download_context{ url, file, param, obj };
+		start_async_wget_with_retry(ctx);
+	}
+
+#endif
+}
+
+void AsyncHandler::CreateRequestMapping(const std::string& file) {
+#ifdef EMSCRIPTEN
+	auto f = FileFinder::Game().OpenInputStream(file);
+	if (!f) {
+		Output::Error("Emscripten: Reading index.json failed");
+		return;
+	}
+
+	json j = json::parse(f, nullptr, false);
+	if (j.is_discarded()) {
+		Output::Error("Emscripten: index.json is not a valid JSON file");
+		return;
+	}
+
+	if (j.contains("metadata") && j["metadata"].is_object()) {
+		const auto& metadata = j["metadata"];
+		if (metadata.contains("version") && metadata["version"].is_number()) {
+			index_version = metadata["version"].get<int>();
+		}
+	}
+
+	Output::Debug("Parsing index.json version {}", index_version);
+
+	if (index_version <= 1) {
+		// legacy format
+		for (const auto& value : j.items()) {
+			file_mapping[value.key()] = value.value().get<std::string>();
+		}
+		// Legacy indexgen uses ./ for root files; make Maniac detectable before
+		// Player starts without downloading the DLL itself.
+		if (file_mapping.find("accord.dll") != file_mapping.end()
+				|| file_mapping.find("./accord.dll") != file_mapping.end()) {
+			FileFinder::Game().OpenOutputStream("accord.dll");
+		}
+	} else {
+		using fn = std::function<void(const json&, const std::string&)>;
+		fn parse = [&] (const json& obj, const std::string& path) {
+			std::string dirname;
+			if (obj.contains("_dirname") && obj["_dirname"].is_string()) {
+				dirname = obj["_dirname"].get<std::string>();
+			}
+			dirname = FileFinder::MakePath(path, dirname);
+
+			for (const auto& value : obj.items()) {
+				const auto& second = value.value();
+				if (second.is_object()) {
+					parse(second, dirname);
+				} else if (second.is_string()){
+					file_mapping[FileFinder::MakePath(Utils::LowerCase(dirname), value.key())] = FileFinder::MakePath(dirname, second.get<std::string>());
+				}
+			}
+		};
+
+		if (j.contains("cache") && j["cache"].is_object()) {
+			parse(j["cache"], "");
+		}
+
+		// Create some empty DLL files. Engine & patch detection depend on them.
+		for (const auto& s : {"harmony.dll", "ultimate_rt_eb.dll", "dynloader.dll", "accord.dll"}) {
+			auto it = file_mapping.find(s);
+			if (it != file_mapping.end()) {
+				FileFinder::Game().OpenOutputStream(s);
+			}
+		}
+
+		// Look for Meta.ini files and fetch them. They are required for detecting the translations.
+		for (const auto& item: file_mapping) {
+			if (EndsWith(item.first, "meta.ini")) {
+				auto* request = AsyncHandler::RequestFile(item.second);
+				request->SetImportantFile(true);
+				request->Start();
+			}
+		}
+	}
+#else
+	// no-op
+	(void)file;
+#endif
 }
 
 void AsyncHandler::ClearRequests() {
@@ -166,9 +321,74 @@ void FileRequestAsync::Start() {
 
 	state = State_Pending;
 
-// The site mounts every installed file before starting the engine.
-#ifndef EP_DEBUG_SIMULATE_ASYNC
+#ifdef EMSCRIPTEN
+	std::string request_path;
+#  ifdef EM_GAME_URL
+	request_path = EM_GAME_URL;
+#  else
+	request_path = "games/";
+#  endif
+
+	if (!Player::emscripten_game_name.empty()) {
+		request_path += Player::emscripten_game_name + "/";
+	} else {
+		request_path += "default/";
+	}
+
+	std::string modified_path;
+	if (index_version >= 2) {
+		modified_path = lcf::ReaderUtil::Normalize(path);
+		modified_path = FileFinder::MakeCanonical(modified_path, 1);
+	} else {
+		modified_path = Utils::LowerCase(path);
+		if (directory != ".") {
+			modified_path = FileFinder::MakeCanonical(modified_path, 1);
+		} else {
+			auto it = file_mapping.find(modified_path);
+			if (it == file_mapping.end()) {
+				modified_path = FileFinder::MakeCanonical(modified_path, 1);
+			}
+		}
+	}
+
+	if (graphic && Tr::HasActiveTranslation()) {
+		std::string modified_path_trans = FileFinder::MakePath(lcf::ReaderUtil::Normalize(Tr::GetCurrentTranslationFilesystem().GetFullPath()), modified_path);
+		auto it = file_mapping.find(modified_path_trans);
+		if (it != file_mapping.end()) {
+			modified_path = modified_path_trans;
+		}
+	}
+
+	auto it = file_mapping.find(modified_path);
+	if (it != file_mapping.end()) {
+		request_path += it->second;
+	} else {
+		if (file_mapping.empty()) {
+			// index.json not fetched yet, fallthrough and fetch
+			request_path += path;
+		} else {
+			// Fire immediately (error)
+			Output::Debug("{} not in index.json", modified_path);
+			DownloadDone(false);
+			return;
+		}
+	}
+
+	// URL encode %, # and +
+	request_path = Utils::ReplaceAll(request_path, "%", "%25");
+	request_path = Utils::ReplaceAll(request_path, "#", "%23");
+	request_path = Utils::ReplaceAll(request_path, "+", "%2B");
+
+	auto request_file = (it != file_mapping.end() ? it->second : path);
+	async_wget_with_retry(request_path, std::move(request_file), "", this);
+#else
+#  ifdef EM_GAME_URL
+#    warning EM_GAME_URL set and not an Emscripten build!
+#  endif
+
+#  ifndef EP_DEBUG_SIMULATE_ASYNC
 	DownloadDone(true);
+#  endif
 #endif
 }
 
@@ -220,7 +440,14 @@ void FileRequestAsync::DownloadDone(bool success) {
 	}
 
 	if (success) {
-
+#ifdef EMSCRIPTEN
+		if (state == State_Pending) {
+			// Update directory structure (new file was added)
+			if (FileFinder::Game()) {
+				FileFinder::Game().ClearCache();
+			}
+		}
+#endif
 
 		state = State_DoneSuccess;
 

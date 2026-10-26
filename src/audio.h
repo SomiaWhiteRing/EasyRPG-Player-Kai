@@ -157,7 +157,7 @@ struct AudioInterface {
 	void SetNativeMidiEnabled(bool enable);
 
 	std::string GetFluidsynthSoundfont() const;
-	virtual void SetFluidsynthSoundfont(std::string_view sf);
+	void SetFluidsynthSoundfont(std::string_view sf);
 
 protected:
 	Game_ConfigAudio cfg;

@@ -218,8 +218,7 @@ void Output::BeginManiacFileOutput() {
 #ifdef EMSCRIPTEN
 			emscripten_cancel_main_loop();
 			EM_ASM({
-				Module.stopping = Module.stopped = true;
-				Module.syncSaves().then(() => postMessage({type: 'stopped'})).catch(() => {});
+				Module.syncSaves();
 			});
 			emscripten_exit_with_live_runtime();
 #else
@@ -523,12 +522,9 @@ void Output::ErrorStr(std::string const& err) {
 
 	// FIXME: No idea how to indicate error from core in libretro
 #ifdef EMSCRIPTEN
-	// Keep the Worker alive for IDBFS, but never run the failed game again.
+	// Keep the browser runtime alive while IDBFS writes are flushed.
 	emscripten_cancel_main_loop();
-	EM_ASM({
-		Module.stopping = Module.stopped = true;
-		Module.syncSaves().then(() => postMessage({type: 'stopped'})).catch(() => {});
-	});
+	EM_ASM({ Module.syncSaves(); });
 	emscripten_exit_with_live_runtime();
 #else
 	exit(Player::exit_code);

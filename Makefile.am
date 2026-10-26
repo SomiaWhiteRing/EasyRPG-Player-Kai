@@ -560,8 +560,6 @@ EXTRA_DIST += \
 	src/platform/android/org_easyrpg_player_player_EasyRpgPlayerActivity.cpp \
 	src/platform/android/org_easyrpg_player_player_EasyRpgPlayerActivity.h \
 	src/platform/emscripten/clock.h \
-	src/platform/emscripten/audio.cpp \
-	src/platform/emscripten/audio.h \
 	src/platform/emscripten/interface.cpp \
 	src/platform/emscripten/interface.h \
 	src/platform/emscripten/main.cpp \

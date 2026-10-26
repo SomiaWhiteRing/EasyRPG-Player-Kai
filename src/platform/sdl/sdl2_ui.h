@@ -70,6 +70,10 @@ public:
 	void SetTitle(const std::string &title) override;
 	bool ShowCursor(bool flag) override;
 	bool ProcessEvents() override;
+#ifdef EMSCRIPTEN
+	void RefreshFocusPolicy() override;
+	bool IsFocusPaused() const override;
+#endif
 	bool HasInputFocus() const override;
 	bool IsJoystickAvailable() const override;
 	bool ConfirmManiacFileOutput() override;
@@ -141,6 +145,9 @@ private:
 	SDL_Texture* sdl_texture_game = nullptr;
 	SDL_Texture* sdl_texture_scaled = nullptr;
 	SDL_Window* sdl_window = nullptr;
+#ifdef EMSCRIPTEN
+	bool web_focus_paused = false;
+#endif
 	SDL_Renderer* sdl_renderer = nullptr;
 	SDL_Joystick *sdl_joystick = nullptr;
 

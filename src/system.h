@@ -26,7 +26,7 @@
 #  include <config.h>
 #endif
 
-#if !(defined(USE_SDL) || defined(PLAYER_UI) || defined(PLAYER_WEB))
+#if !(defined(USE_SDL) || defined(PLAYER_UI))
 #  error "This build doesn't target a backend"
 #endif
 
@@ -103,7 +103,7 @@
 #  define SYSTEM_DESKTOP_LINUX_BSD_MACOS
 #endif
 
-#if defined(USE_SDL) || defined(PLAYER_WEB)
+#ifdef USE_SDL
 #  define SUPPORT_KEYBOARD
 #endif
 
