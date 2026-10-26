@@ -126,11 +126,6 @@ namespace {
 	LogCallbackFn log_cb = LogCallback;
 	LogCallbackUserData log_cb_udata = nullptr;
 
-	bool ShouldHideManiacLog(std::string const& msg) {
-		return Player::player_config.extra_hide_maniac_logs.Get()
-			&& msg.size() >= 6
-			&& msg.substr(0, 6) == "Maniac";
-	}
 }
 
 std::string Output::LogLevelToString(LogLevel lvl) {
@@ -544,9 +539,6 @@ void Output::WarningStr(std::string const& warn) {
 	if (log_level < LogLevel::Warning) {
 		return;
 	}
-	if (ShouldHideManiacLog(warn)) {
-		return;
-	}
 	WriteLog(LogLevel::Warning, warn, Color(255, 255, 0, 255));
 }
 
@@ -554,17 +546,11 @@ void Output::InfoStr(std::string const& msg) {
 	if (log_level < LogLevel::Info) {
 		return;
 	}
-	if (ShouldHideManiacLog(msg)) {
-		return;
-	}
 	WriteLog(LogLevel::Info, msg, Color(255, 255, 255, 255));
 }
 
 void Output::DebugStr(std::string const& msg) {
 	if (log_level < LogLevel::Debug) {
-		return;
-	}
-	if (ShouldHideManiacLog(msg)) {
 		return;
 	}
 	WriteLog(LogLevel::Debug, msg, Color(128, 128, 128, 255));

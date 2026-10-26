@@ -725,7 +725,7 @@ Game_Config Player::ParseCommandLine() {
 
 void Player::UpdateDebugFlag() {
 	debug_flag = IsPatchManiac() && maniac_testplay_selector > 0
-		? maniac_testplay_selector - 1 : startup_debug_flag || player_config.extra_force_testplay.Get();
+		? maniac_testplay_selector - 1 : startup_debug_flag;
 }
 
 void Player::SetTargetFps(int fps) {

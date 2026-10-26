@@ -346,7 +346,7 @@ namespace Player {
 	/** Debug flag requested by the startup configuration. */
 	extern bool startup_debug_flag;
 
-	/** Recomputes the effective debug flag from startup and player settings. */
+	/** Recomputes the effective debug flag from startup and Maniac settings. */
 	void UpdateDebugFlag();
 
 	/** Hide Title flag, if true title scene will run without image and music. */

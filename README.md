@@ -15,18 +15,6 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 
 - `ExtraMoviePlayback`：兼容视频播放
 - `ExtraRecommendedSoundFont`：使用作者推荐的SoundFont
-- `ExtraHideManiacLogs`：隐藏 Maniac 相关日志
-- `ExtraForceTestPlay`：强制启用 EasyRPG 调试模式
-
-### 隐藏Maniac相关的错误提示
-
-顾名思义。毫无意义又烦人。
-
-### 强制TestPlay
-
-开启 `ExtraForceTestPlay` 后，会强制启用 EasyRPG 的 TestPlay / Debug 模式，效果等同于启动时传入 `--test-play`。
-
-关闭该开关后，仅在显式使用 `--test-play`、`TestPlay` 或在游戏浏览器中以调试方式启动游戏时启用调试模式。
 
 ### Web 随附 SoundFont
 

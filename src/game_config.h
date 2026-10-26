@@ -90,8 +90,6 @@ struct Game_ConfigPlayer {
 	BoolConfigParam settings_in_menu{ "Show settings in menu", "Display settings menu item on the menu screen", "Player", "SettingsInMenu", false };
 	BoolConfigParam extra_movie_playback{ "兼容视频播放", "使用平台内置解码器播放游戏中插入的视频", "Player", "ExtraMoviePlayback", true };
 	BoolConfigParam extra_recommended_soundfont{ "MIDI音效改良", "使用作者推荐的SoundFont", "Player", "ExtraRecommendedSoundFont", true };
-	BoolConfigParam extra_hide_maniac_logs{ "隐藏Maniac日志", "隐藏 Maniac 相关诊断提示", "Player", "ExtraHideManiacLogs", true };
-	BoolConfigParam extra_force_testplay{ "强制TestPlay", "强制启用EasyRPG的调试模式", "Player", "ExtraForceTestPlay", true };
 	EnumConfigParam<ConfigEnum::StartupLogos, 3> show_startup_logos{
 		"Startup Logos", "Logos that are displayed on startup", "Player", "StartupLogos", ConfigEnum::StartupLogos::Custom,
 		Utils::MakeSvArray("None", "Custom", "All"),

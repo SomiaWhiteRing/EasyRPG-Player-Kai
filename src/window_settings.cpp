@@ -476,11 +476,6 @@ void Window_Settings::RefreshExtra() {
 		cfg.extra_recommended_soundfont.Toggle();
 		RecommendedSoundFont::Refresh();
 	});
-	AddOption(cfg.extra_hide_maniac_logs, [&cfg]() { cfg.extra_hide_maniac_logs.Toggle(); });
-	AddOption(cfg.extra_force_testplay, [&cfg]() {
-		cfg.extra_force_testplay.Toggle();
-		Player::UpdateDebugFlag();
-	});
 }
 
 void Window_Settings::RefreshEngineFont(bool mincho) {
