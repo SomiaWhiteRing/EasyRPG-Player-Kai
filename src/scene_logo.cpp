@@ -36,6 +36,9 @@
 #include "version.h"
 #include <ctime>
 #include <memory>
+#ifdef PLAYER_WEB
+#include <emscripten.h>
+#endif
 
 Scene_Logo::Scene_Logo() :
 	frame_counter(0) {
@@ -130,26 +133,13 @@ bool Scene_Logo::DetectGame() {
 		}
 		FileFinder::SetGameFilesystem(fs);
 	}
-
-#ifdef EMSCRIPTEN
-	static bool once = true;
-	if (once) {
-		FileRequestAsync* index = AsyncHandler::RequestFile("index.json");
-		index->SetImportantFile(true);
-		request_id = index->Bind(&Scene_Logo::OnIndexReady, this);
-		once = false;
-		index->Start();
-		return false;
-	}
-	if (!async_ready) {
-		return false;
-	}
-#endif
-
 	if (FileFinder::IsValidProject(fs) || FileFinder::OpenViewToEasyRpgFile(fs)) {
 		FileFinder::SetGameFilesystem(fs);
 		Player::CreateGameObjects();
 		detected_game = true;
+#ifdef PLAYER_WEB
+		EM_ASM({ Module.gameReady = true; });
+#endif
 	}
 
 	return true;
@@ -238,36 +228,4 @@ std::vector<std::vector<uint8_t>> Scene_Logo::LoadLogos() {
 #endif
 
 	return logos;
-}
-
-void Scene_Logo::OnIndexReady(FileRequestResult*) {
-	async_ready = true;
-
-	if (!FileFinder::Game().Exists("index.json")) {
-		Output::Debug("index.json not found. The game does not exist or was not correctly deployed.");
-		return;
-	}
-
-	AsyncHandler::CreateRequestMapping("index.json");
-
-	auto startup_files = Utils::MakeSvArray(
-		DATABASE_NAME, // Essential game files
-		TREEMAP_NAME,
-		INI_NAME,
-		EASYRPG_INI_NAME, // EasyRPG specific configuration
-		"Font/ExFont", // Custom ExFont
-		"Font/Font", // Custom Gothic Font
-		"Font/Font2", // Custom Mincho Font
-		"easyrpg.soundfont", // Custom SF2 soundfont
-		"autorun.script", // Key Patch Startup script,
-		"Logo/Logo1", // up to 3 custom startup logos
-		"Logo/Logo2",
-		"Logo/Logo3"
-	);
-
-	for (auto file: startup_files) {
-		FileRequestAsync* req = AsyncHandler::RequestFile(file);
-		req->SetImportantFile(true);
-		req->Start();
-	}
 }
