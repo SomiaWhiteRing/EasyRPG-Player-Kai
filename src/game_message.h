@@ -27,7 +27,6 @@
 #include <optional>
 #include "string_view.h"
 #include "pending_message.h"
-#include "message_history.h"
 #include "memory_management.h"
 
 class Window_Message;
@@ -210,20 +209,6 @@ namespace Game_Message {
 	Game_Message::ParseParamResult ParseParam(char upper, char lower, const char* iter, const char* end, uint32_t escape_char, bool skip_prefix = false, int max_recursion = default_max_recursion);
 	// same as ParseParam but the parameter is of structure \x[some_word] instead of \x[1]
 	Game_Message::ParseParamStringResult ParseStringParam(char upper, char lower, const char* iter, const char* end, uint32_t escape_char, bool skip_prefix = false, int max_recursion = default_max_recursion);
-	/** Get the global message history instance */
-	MessageHistory& GetMessageHistory();
-
-	/** Clear all message history */
-	void ClearMessageHistory();
-
-	/**
-	 * Process message text for history display.
-	 * Removes timing control characters and processes content display characters.
-	 *
-	 * @param text Original text (including control characters)
-	 * @return Processed text
-	 */
-	std::string ProcessTextForHistory(const std::string& text);
 }
 
 #endif

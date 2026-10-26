@@ -192,8 +192,7 @@ void Scene_File::vUpdate() {
 	if (Input::IsTriggered(Input::CANCEL)) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 		Scene::Pop();
-	} else if (Input::IsTriggered(Input::DECISION)
-			|| (Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
+	} else if (Input::IsTriggered(Input::DECISION)) {
 		if (IsSlotValid(index)) {
 			Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
 			Action(index);

@@ -21,7 +21,6 @@
 #include "scene_menu.h"
 #include "scene_save.h"
 #include "scene_debug.h"
-#include "scene_history.h"
 #include "scene_settings.h"
 #include "main_data.h"
 #include "game_map.h"
@@ -326,25 +325,6 @@ void Scene_Map::UpdateSceneCalling() {
 	if (call == nullptr) {
 		if (Input::IsTriggered(Input::SETTINGS_MENU)) {
 			call = std::make_shared<Scene_Settings>();
-		}
-	}
-
-	if (call == nullptr && Player::player_config.extra_message_history.Get() && Input::IsTriggered(Input::HISTORY_MENU)) {
-		// 只有在对话正在显示时才能打开历史记录
-		if (Game_Message::IsMessageActive() || Game_Message::IsMessagePending()) {
-			call = std::make_shared<Scene_History>();
-		}
-	}
-
-	// 鼠标滚轮上滚打开历史记录（只在等待输入状态下）
-	if (call == nullptr
-			&& Player::player_config.extra_message_history.Get()
-			&& Player::player_config.extra_mouse_support.Get()
-			&& Input::IsTriggered(Input::SCROLL_UP)) {
-		Window_Message* msgWindow = Game_Message::GetWindow();
-		if (msgWindow && msgWindow->GetPause()) {
-			// 只在等待输入状态（暂停状态）下生效
-			call = std::make_shared<Scene_History>();
 		}
 	}
 

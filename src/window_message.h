@@ -225,8 +225,6 @@ protected:
 	void SetWait(int frames);
 
 	bool IsFaceEnabled() const;
-	/** Captures current message state for history */
-	void CaptureMessageForHistory();
 };
 
 inline const PendingMessage& Window_Message::GetPendingMessage() const {

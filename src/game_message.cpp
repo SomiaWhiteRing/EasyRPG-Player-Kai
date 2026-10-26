@@ -18,7 +18,6 @@
 // Headers
 #include "game_message.h"
 #include "game_actor.h"
-#include "game_actors.h"
 #include "game_party.h"
 #include "game_player.h"
 #include "game_battle.h"
@@ -452,7 +451,6 @@ const char* Game_Message::ParseManiacUserHook(const char* iter, const char* end,
 	return parser.pos;
 }
 
-static MessageHistory message_history;
 static Window_Message* window = nullptr;
 
 void Game_Message::SetWindow(Window_Message* w) {
@@ -842,99 +840,4 @@ Game_Message::ParseParamResult Game_Message::ParseSpeed(const char* iter, const 
 
 Game_Message::ParseParamResult Game_Message::ParseActor(const char* iter, const char* end, uint32_t escape_char, bool skip_prefix, int max_recursion) {
 	return ParseParam('N', 'n', iter, end, escape_char, skip_prefix, max_recursion);
-}
-
-MessageHistory& Game_Message::GetMessageHistory() {
-	return message_history;
-}
-
-void Game_Message::ClearMessageHistory() {
-	message_history.Clear();
-}
-
-std::string Game_Message::ProcessTextForHistory(const std::string& text) {
-	std::string result;
-	result.reserve(text.size());
-
-	for (size_t i = 0; i < text.size(); ++i) {
-		if (text[i] == '\\' && i + 1 < text.size()) {
-			char cmd = text[i + 1];
-
-			// Remove timing control characters
-			if (cmd == '$' || cmd == '.' || cmd == '|' || cmd == '!' ||
-				cmd == '>' || cmd == '<' || cmd == '^') {
-				i++;  // Skip '\' and command character
-				continue;
-			}
-
-			// Process content display characters
-			if (cmd == 'V' || cmd == 'v' || cmd == 'N' || cmd == 'n' || cmd == 'P' || cmd == 'p') {
-				// Find [n]
-				if (i + 2 < text.size() && text[i + 2] == '[') {
-					size_t end = text.find(']', i + 3);
-					if (end != std::string::npos) {
-						std::string num_str = text.substr(i + 3, end - i - 3);
-						int id = atoi(num_str.c_str());
-
-						if (cmd == 'V' || cmd == 'v') {
-							// \V[n] - Variable value
-							int value = Main_Data::game_variables->Get(id);
-							result += std::to_string(value);
-						} else if (cmd == 'N' || cmd == 'n') {
-							// \N[n] - Actor name
-							auto* actor = Main_Data::game_actors->GetActor(id);
-							if (actor) {
-								result += ToString(actor->GetName());
-							}
-						} else if (cmd == 'P' || cmd == 'p') {
-							// \P[n] - Party member name
-							auto* actor = Main_Data::game_party->GetActor(id);
-							if (actor) {
-								result += ToString(actor->GetName());
-							}
-						}
-
-						i = end;  // Jump to ']' position
-						continue;
-					}
-				}
-			}
-
-			if (cmd == 'G' || cmd == 'g') {
-				// \G - Currency unit
-				result += ToString(lcf::Data::terms.gold);
-				i++;
-				continue;
-			}
-
-			// Preserve formatting control characters (color, font size, etc.)
-			if (cmd == 'C' || cmd == 'c' || cmd == 'I' || cmd == 'i' ||
-				cmd == '{' || cmd == '}' || cmd == '\\') {
-				result += text[i];  // Preserve '\'
-				result += text[i + 1];  // Preserve command character
-
-				// If it's \C[n] or \I[n], preserve the complete [n] part
-				if ((cmd == 'C' || cmd == 'c' || cmd == 'I' || cmd == 'i') &&
-					i + 2 < text.size() && text[i + 2] == '[') {
-					i += 2;  // Jump to '['
-					result += text[i];  // Add '['
-					while (i + 1 < text.size() && text[i + 1] != ']') {
-						i++;
-						result += text[i];
-					}
-					if (i + 1 < text.size() && text[i + 1] == ']') {
-						i++;
-						result += text[i];  // Add ']'
-					}
-				} else {
-					i++;  // Skip command character
-				}
-				continue;
-			}
-		}
-
-		result += text[i];
-	}
-
-	return result;
 }

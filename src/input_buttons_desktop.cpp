@@ -87,7 +87,6 @@ Input::ButtonMappingArray Input::GetDefaultButtonMappings() {
 		{PERIOD, Keys::PERIOD},
 		{SETTINGS_MENU, Keys::F1},
 		{DEBUG_MENU, Keys::F9},
-		{HISTORY_MENU, Keys::BACKTICK},
 		{DEBUG_THROUGH, Keys::LCTRL},
 		{DEBUG_THROUGH, Keys::RCTRL},
 		{DEBUG_SAVE, Keys::F11},

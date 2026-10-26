@@ -667,8 +667,6 @@ void Game_Config::LoadFromStream(Filesystem_Stream::InputStream& is) {
 	player.settings_autosave.FromIni(ini);
 	player.settings_in_title.FromIni(ini);
 	player.settings_in_menu.FromIni(ini);
-	player.extra_message_history.FromIni(ini);
-	player.extra_mouse_support.FromIni(ini);
 	player.extra_movie_playback.FromIni(ini);
 	player.extra_recommended_soundfont.FromIni(ini);
 	player.extra_hide_maniac_logs.FromIni(ini);
@@ -765,8 +763,6 @@ void Game_Config::WriteToStream(Filesystem_Stream::OutputStream& os) const {
 	player.settings_autosave.ToIni(os);
 	player.settings_in_title.ToIni(os);
 	player.settings_in_menu.ToIni(os);
-	player.extra_message_history.ToIni(os);
-	player.extra_mouse_support.ToIni(os);
 	player.extra_movie_playback.ToIni(os);
 	player.extra_recommended_soundfont.ToIni(os);
 	player.extra_hide_maniac_logs.ToIni(os);

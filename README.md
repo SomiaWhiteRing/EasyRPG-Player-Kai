@@ -13,11 +13,8 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 
 这些开关默认启用，也会写入配置文件的 `[Player]` 段：
 
-- `ExtraMessageHistory`：对话历史记录
-- `ExtraMouseSupport`：鼠标功能补完
 - `ExtraMoviePlayback`：兼容视频播放
 - `ExtraRecommendedSoundFont`：使用作者推荐的SoundFont
-- `ExtraNameInputChoices`：输入式解谜自动选项化
 - `ExtraHideManiacLogs`：隐藏 Maniac 相关日志
 - `ExtraForceTestPlay`：强制启用 EasyRPG 调试模式
 
@@ -40,17 +37,6 @@ Web 版默认启用 `ExtraRecommendedSoundFont`，使用 `resources/soundfonts/r
 初始化脚本保留 Emscripten 音色库预加载回调，等待资源挂载后才启动播放器。浏览器已保存的设置仍然有效：若之前关闭过额外功能中的「MIDI音效改良」或音频设置中的 FluidSynth，请在 `F1` 设置中重新启用；首次使用默认开启。
 
 初始化 MIDI 合成器后，调试日志中的 `Fluidsynth: Using soundfont /builtin/recommended.sf2` 表示随附音色库已成功加载。
-
-### 添加对话历史记录
-
-在对话状态下，按下`~`键（ESC键下方的那个）或鼠标滚轮上滚可以打开对话历史记录界面，查看之前的对话内容。  
-支持键盘和鼠标滚轮翻页。取消键和鼠标右键退出。
-
-### 鼠标功能补完
-
-开启 `ExtraMouseSupport` 后，在对话状态/标题界面/存读档界面下，鼠标左键能够起到和确定键相同的效果。
-
-普通对话等待继续时，鼠标滚轮下滚也等同于确定；选项选择和数值输入不会把滚轮下滚当作确定。
 
 ### 加速倍率支持小数
 

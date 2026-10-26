@@ -471,12 +471,6 @@ void Window_Settings::RefreshEngine() {
 void Window_Settings::RefreshExtra() {
 	auto& cfg = Player::player_config;
 
-	AddOption(cfg.extra_message_history, [&cfg]() {
-		if (!cfg.extra_message_history.Toggle()) {
-			Game_Message::ClearMessageHistory();
-		}
-	});
-	AddOption(cfg.extra_mouse_support, [&cfg]() { cfg.extra_mouse_support.Toggle(); });
 	AddOption(cfg.extra_movie_playback, [&cfg]() { cfg.extra_movie_playback.Toggle(); });
 	AddOption(cfg.extra_recommended_soundfont, [&cfg]() {
 		cfg.extra_recommended_soundfont.Toggle();

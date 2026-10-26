@@ -143,8 +143,7 @@ void Scene_Title::vUpdate() {
 
 	command_window->Update();
 
-	if (Input::IsTriggered(Input::DECISION)
-			|| (Player::player_config.extra_mouse_support.Get() && Input::IsTriggered(Input::MOUSE_LEFT))) {
+	if (Input::IsTriggered(Input::DECISION)) {
 		int index = command_window->GetIndex();
 		if (index == indices.new_game) {  // New Game
 			CommandNewGame();
