@@ -18,6 +18,7 @@
 // Headers
 #include "game_message.h"
 #include "game_actor.h"
+#include "game_actors.h"
 #include "game_party.h"
 #include "game_player.h"
 #include "game_battle.h"
