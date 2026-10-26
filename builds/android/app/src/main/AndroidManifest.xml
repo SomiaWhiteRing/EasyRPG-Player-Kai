@@ -31,11 +31,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Allow access to the vibrator -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -69,26 +64,6 @@
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
         </activity>
-
-        <!-- Website imports have their own task so a running game is not destroyed. -->
-        <activity
-            android:name=".imports.WebImportActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity="${applicationId}.import"
-            android:label="@string/web_import_title">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="easyrpg-kai" android:host="import" />
-            </intent-filter>
-        </activity>
-
-        <service
-            android:name=".imports.WebImportService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
 
         <!-- GameBrowsers' Activity -->
         <activity
