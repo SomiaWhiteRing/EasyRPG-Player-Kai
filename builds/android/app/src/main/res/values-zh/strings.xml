@@ -90,7 +90,6 @@
     <string name="error_games_no_rw">\"games\" 文件夹不可读写。请选择其他位置作为 EasyRPG 文件夹。EasyRPG 文件夹可在设置中更改。</string>
     <string name="key_debug_walk_through_walls">穿墙（需要进入调试模式）</string>
     <string name="key_debug_menu">打开调试菜单（需要进入调试模式）</string>
-    <string name="key_history">查看历史记录</string>
     <string name="settings_resolution">游戏分辨率：</string>
     <string name="settings_resolution_desc">警告！更改分辨率可能会导致图像故障甚至游戏损坏！</string>
     <string name="settings_resolution_original">原始（320x240，4:3，推荐）</string>

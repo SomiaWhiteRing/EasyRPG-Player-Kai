@@ -64,7 +64,6 @@ const char Scene::scene_names[SceneMax][12] =
 	"Name",
 	"Gameover",
 	"Debug",
-	"History",
 	"Logo",
 	"Order",
 	"GameBrowser",
@@ -87,7 +86,6 @@ lcf::rpg::SaveSystem::Scene Scene::rpgRtSceneFromSceneType(SceneType t) {
 		case GameBrowser:
 		case SceneMax:
 		case Logo:
-		case History:
 			break;
 		case Title:
 			return lcf::rpg::SaveSystem::Scene_title;
