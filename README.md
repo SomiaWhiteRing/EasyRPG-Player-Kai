@@ -1,63 +1,136 @@
-# EasyRPG Player - Kai
+# EasyRPG Player
 
-EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1。
+EasyRPG Player is a game interpreter to play RPG Maker 2000, 2003 and EasyRPG
+games. It uses the LCF parser library (liblcf) to read RPG Maker game data.
 
-当前维护 Windows 11 x64、Web/Emscripten 和 Android 版。
-软件本身的功能请参阅[官方项目](https://easyrpg.org/)说明。
+EasyRPG Player is part of the EasyRPG Project. More information is
+available at the project website: https://easyrpg.org/
 
-## 主要改动
+## Maniac compatibility
 
-### 兼容 `ChangePartyMember(actor 0)`
+This branch keeps the Maniac compatibility implementation from the original
+Kai branch. Its scope and host-platform requirements are documented in
+[the Maniac action guidelines](docs/research/maniac-250921/ACTION-GUIDELINES.md).
+The archive-site-specific Web host is still present while its Maniac platform
+interfaces are being separated.
 
-部分 RM2000 游戏会在“重建队伍”时先批量执行“移除队伍成员”，并且从 `actor 0` 开始。  
-原版 `RPG_RT` 会静默忽略这条无效命令；本分支现在也按同样方式处理，不再在顶部弹出
-`ChangePartyMember: Invalid actor ID 0` 警告。
 
-已确认这能兼容 `もしもコレクション7` 一类使用该写法的工程。
+## Documentation
 
-## 版本与自动发布
+Documentation is available at the documentation wiki: https://wiki.easyrpg.org
 
-在仓库根目录编辑 [RELEASE.md](RELEASE.md)：第一行填写 `# 年.月.当月序号`（例如 `# 2026.9.1`），下面填写当前版本的 Markdown 更新日志。月份为 1–12，序号从 1 开始，均不补零；CI 会校验格式和非空日志。
 
-每次提交到 `my-feature-stable`，或在该分支手动运行 **Build and Release**，都会构建并更新两类 GitHub Release：
+## Requirements
 
-- `nightly`：始终跟随发布分支的最新成功构建，标记为预发布。
-- `RELEASE.md` 指定的版本：只有版本号高于已发布的最高正式版本时才新建正式 Release，并标记为 GitHub **Latest**。版本号不变或降低时只更新 Nightly；已有正式版的标签、日志和下载文件保持不变。
+### minimal / required
 
-三个平台固定使用同一个提交，全部成功后才发布；过时构建会跳过发布，等待新提交的构建。升级版本时，正式版和 Nightly 使用同一批二进制；其余构建只更新 Nightly。Web ZIP 与 Android APK 的正式版文件名包含版本号，Windows 保持 `Player.exe`。
+- [liblcf] for RPG Maker data reading.
+- SDL3 or SDL2 >= 2.0.14 for screen backend support.
+- Pixman for low level pixel manipulation.
+- libpng for PNG image support.
+- zlib for XYZ image and ZIP archive support.
+- fmtlib >= 6 for text formatting/coloring and internal logging.
 
-每个 Release 附带 `release-manifest.json`，记录提交 SHA、工作流运行、版本、文件大小和 SHA-256，发布日志也包含这些校验值。Nightly 覆盖不会保留旧包，复现问题时请同时记录版本号与提交 SHA；历史构建另受 GitHub Actions 产物保留期限制。单个附件上传限时 5 分钟、最多尝试 3 次，发布任务总限时 30 分钟；仍失败时工作流会失败，可在分支仍指向该提交时重跑失败任务；正式版草稿只允许在标签仍指向同一提交时继续上传，已发布正式版不覆盖。GitHub 对 Nightly 的多个附件替换不提供原子操作。
+### extended / recommended
 
-这里的年月版本表示 Kai 分发版本；EasyRPG 上游基础版本以及 Android 的递增 versionCode 仍由各自构建配置管理。Android 自动发版使用 Release 构建和独立的正式签名，配置方法见 [Android 发布签名](builds/android/release-signing.md)。
+- FreeType2 for external font support (+ HarfBuzz for Unicode text shaping).
+- mpg123 for MP3 audio support.
+- WildMIDI for MIDI audio support using GUS patches.
+- FluidSynth for MIDI audio support using soundfonts.
+- Libvorbis / Tremor for Ogg Vorbis audio support.
+- opusfile for Opus audio support.
+- libsndfile for better WAVE audio support.
+- libxmp for tracker music support.
+- SpeexDSP or libsamplerate for proper audio resampling.
+- lhasa for LHA (.lzh) archive support.
+- nlohmann_json for processing JSON files (required when targeting Emscripten)
 
-Android 从旧 Debug 签名切换到正式签名后，首次安装不能覆盖旧版。请先备份存档及需要保留的数据，再卸载旧版并安装新版；此后的正式签名版本可继续覆盖更新。
+The older SDL version 1.2 is still supported, but deprecated.
+Please do not add new platform code for this library.
 
-## 本地打包
 
-本地标准打包入口以 Docker Desktop 为准，和 `.github/workflows/nightly-release.yml` 共用同一套仓库内脚本，不再维护旧的本地 VS / CMake 手动 zip 流程。先启动 Docker Desktop，然后在仓库根目录运行：
+## Daily builds
 
-```powershell
-.\builds\package-docker.ps1 all
-```
+Up to date binaries for assorted platforms are available at our continuous
+integration service:
 
-也可以只打某个平台：
+https://ci.easyrpg.org/view/Player/
 
-```powershell
-.\builds\package-docker.ps1 web
-.\builds\package-docker.ps1 android
-```
 
-脚本会先构建本地打包镜像 `easyrpg-player-kai-package:ubuntu24.04`，再把仓库挂载到容器里的 `/workspace`，调用 `builds/ci/package-ubuntu-nightly.sh` 执行和 GitHub Workflow 相同的 Web / Android Nightly 构建、校验和打包逻辑。首次构建会下载并生成 EasyRPG 工具链，时间会比较长；后续会复用 `external/local-docker/` 下的工具链缓存。
+## Source code
 
-默认输出到 `build/artifacts/`：
+EasyRPG Player development is hosted by GitHub, project files are available
+in this git repository:
 
-- `EasyRPG-Player-Kai-nightly-web.zip`
-- `EasyRPG-Player-Kai-nightly-android.apk`
+https://github.com/EasyRPG/Player
 
-Web ZIP 由 VIPRPG-ZH-Archive 的运行时导入脚本接入网站。网站负责将游戏安装到 OPFS，并把 pack 与文件切片索引交给 `createEasyRpgPlayer`；不再提供独立的 `games/default/` 页面或 `indexgen.php`。
+Released versions are also available at our Download Archive:
 
-Windows x64 的 `Player.exe` 由 GitHub Workflow 的 `windows-2022` job 调用 `builds/ci/package-windows-nightly.ps1` 生成；它依赖 Visual Studio 2022 runner 和 `x64-windows-static` vcpkg 工具链，不在本地 Linux Docker 容器里另建一套交叉编译流程。标准分发产物以 Nightly Action 上传的 `Player.exe` 为准。
+https://easyrpg.org/downloads/player/
 
-Android 本地打包和 CI 均需要四个 `ANDROID_RELEASE_*` 签名环境变量，见 [Android 发布签名](builds/android/release-signing.md)。缺少签名配置时构建会直接报错。普通开发仍可在 `builds/android` 中使用 `assembleDebug`。
 
-Android APK 保留 armeabi-v7a、arm64-v8a、x86 和 x86_64 四种架构，使用压缩的原生库将下载体积控制在 100 MB 以下；构建步骤会检查压缩方式与包大小。Android 安装时会解压原生库，因此下载体积减小不代表安装后占用按同比例减小。
+## Building
+
+See [BUILDING document].
+
+
+## Running EasyRPG Player
+
+Run the `easyrpg-player` executable from a RPG Maker 2000 or 2003 game
+project folder (same place as `RPG_RT.exe`).
+
+
+## Bug reporting
+
+Available options:
+
+* File an issue at https://github.com/EasyRPG/Player/issues
+* Open a thread at https://community.easyrpg.org/
+* Chat with us via IRC: [#easyrpg at irc.libera.chat]
+
+
+## License
+
+EasyRPG Player is free software available under the GPLv3 license. See the file
+[COPYING] for license conditions. For Author information see [AUTHORS document].
+
+EasyRPG [Logo] and [Logo2] are licensed under the CC-BY-SA 4.0 license.
+
+
+### 3rd party software
+
+EasyRPG Player makes use of the following 3rd party software:
+
+* [FMMidi] YM2608 FM synthesizer emulator - Copyright (c) 2003-2006 yuno
+  (Yoshio Uno), provided under the (3-clause) BSD license
+* [dr_wav] WAV audio loader and writer - Copyright (c) David Reid, provided
+  under public domain or MIT-0
+
+### 3rd party resources
+
+* [Baekmuk] font family (Korean) - Copyright (c) 1986-2002 Kim Jeong-Hwan,
+  provided under the Baekmuk License
+* [Shinonome] font family (Japanese) - Copyright (c) 1999-2000 Yasuyuki
+  Furukawa and contributors, provided under public domain. Glyphs were added
+  and modified for use in EasyRPG Player, all changes under public domain.
+* [ttyp0] font family - Copyright (c) 2012-2015 Uwe Waldmann, provided under
+  ttyp0 license
+* [WenQuanYi] font family (CJK) - Copyright (c) 2004-2010 WenQuanYi Project
+  Contributors provided under the GPLv2 or later with Font Exception
+* [Teenyicons] Tiny minimal 1px icons - Copyright (c) 2020 Anja van Staden,
+  provided under the MIT license (only used by the Emscripten web shell)
+
+[liblcf]: https://github.com/EasyRPG/liblcf
+[BUILDING document]: docs/BUILDING.md
+[#easyrpg at irc.libera.chat]: https://kiwiirc.com/nextclient/#ircs://irc.libera.chat/#easyrpg?nick=rpgguest??
+[COPYING]: COPYING
+[AUTHORS document]: docs/AUTHORS.md
+[Logo]: resources/logo.png
+[Logo2]: resources/logo2.png
+[FMMidi]: http://unhaut.epizy.com/fmmidi
+[dr_wav]: https://github.com/mackron/dr_libs
+[baekmuk]: https://kldp.net/baekmuk
+[Shinonome]: http://openlab.ring.gr.jp/efont/shinonome
+[ttyp0]: https://people.mpi-inf.mpg.de/~uwe/misc/uw-ttyp0
+[WenQuanYi]: http://wenq.org
+[Teenyicons]: https://github.com/teenyicons/teenyicons
