@@ -350,16 +350,13 @@ BitmapRef Render(const Parsed& parsed, const Format& format) {
     int64_t width = margin_x * 2;
     int64_t height = margin_y * 2 + size;
     for (const auto& row : parsed.rows) {
-        int64_t measured = 0, icons = 0, glyphs = 0;
+        int64_t measured = 0, icons = 0, colors = 0;
         for (const auto& token : row) {
             if (token.kind == Token::Icon) ++icons;
-            else if (token.kind == Token::Glyph) {
-                const int advance = font->GetSize(static_cast<char32_t>(token.unit)).width;
-                measured += advance;
-                if (advance > 0) ++glyphs;
-            }
+            else if (token.kind == Token::ColorChange) ++colors;
+            else measured += font->GetSize(static_cast<char32_t>(token.unit)).width;
         }
-        const int64_t spacing_units = std::max<int64_t>(glyphs + icons - 1, 0);
+        const int64_t spacing_units = std::max<int64_t>(static_cast<int64_t>(row.size()) - colors - 1, 0);
         width = std::max(width, margin_x * 2 + measured + icons * size + spacing_units * format.LetterSpacing());
     }
     if (!parsed.rows.empty()) {
@@ -404,7 +401,6 @@ BitmapRef Render(const Parsed& parsed, const Format& format) {
             }
             const auto unit = static_cast<char32_t>(token.unit);
             const int advance = font->GetSize(unit).width;
-            if (advance == 0) continue;
             font->RenderManiacTextGlyph(*bitmap, static_cast<int>(x), static_cast<int>(y), *system, color, unit);
             x += advance + format.LetterSpacing();
         }

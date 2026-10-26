@@ -23,8 +23,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   let movie, movieId, movieRect, movieLoadTimer;
   let consoleInput, consoleWindow, startupTimer;
   let fileOutputConfirmation;
-  let nameInput;
-  const systemNameInput = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
   let windowInterpolation = false;
   let windowFit = true, windowZoom = 0, windowFitRequested = false;
   let screenMode, screenModeButton, screenModeRoot;
@@ -111,7 +109,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   void ready.catch(() => {});
   const send = data => { if (!closed) worker.postMessage(data); };
   const report = message => {
-    nameInput?.finish(null);
     closeConsoleWindow(true);
     console.error(message);
     const error = new Error(message);
@@ -122,78 +119,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   const listen = (element, event, callback) => element.addEventListener(event, callback, {signal});
   function cancelConsoleInput() { consoleInput?.controller.abort(); }
-
-  function requestNameInput(data) {
-    if (closed || stopping || nameInput) {
-      send({type: 'name-input-result', id: data.id, value: null});
-      return;
-    }
-    const dialog = document.createElement('dialog');
-    dialog.setAttribute('aria-label', '输入角色名字');
-    dialog.style.cssText = 'width:min(24rem,calc(100vw - 32px));box-sizing:border-box';
-    const form = document.createElement('form');
-    const label = document.createElement('label');
-    label.textContent = '输入角色名字';
-    const input = document.createElement('input');
-    input.type = 'text'; input.inputMode = 'text'; input.enterKeyHint = 'done';
-    input.autocomplete = 'off'; input.autocapitalize = 'off'; input.spellcheck = false;
-    input.value = data.initial || '';
-    input.style.cssText = 'display:block;width:100%;box-sizing:border-box;font-size:18px;margin:12px 0';
-    label.append(input);
-    const submit = document.createElement('button');
-    submit.type = 'submit'; submit.textContent = '确定';
-    const cancel = document.createElement('button');
-    cancel.type = 'button'; cancel.textContent = '取消';
-    const events = new AbortController();
-    const viewport = page.visualViewport || window.visualViewport;
-    const initialHeight = viewport?.height || page.innerHeight;
-    let keyboardWasVisible = false;
-    const finish = value => {
-      if (nameInput?.dialog !== dialog) return;
-      nameInput = undefined;
-      events.abort(); dialog.remove();
-      send({type: 'name-input-result', id: data.id, value});
-      if (!closed && !stopping) { canvas.focus(); focus(); }
-    };
-    form.onsubmit = event => { event.preventDefault(); if (!composing) finish(input.value); };
-    let composing = false;
-    input.addEventListener('compositionstart', () => { composing = true; }, {signal: events.signal});
-    input.addEventListener('compositionend', () => { composing = false; }, {signal: events.signal});
-    input.onkeydown = event => {
-      if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
-      if (event.key === 'Escape' && !event.isComposing) {
-        event.preventDefault(); event.stopPropagation(); finish(null);
-      }
-    };
-    // Back/dismiss can hide a mobile IME without blurring its text field.
-    const keyboardChanged = visible => {
-      if (visible) keyboardWasVisible = true;
-      else if (keyboardWasVisible) finish(null);
-    };
-    viewport?.addEventListener('resize', () => {
-      // Pinch zoom is not an IME visibility change.
-      if (Math.abs(viewport.scale - 1) < 0.01)
-        keyboardChanged(viewport.height < initialHeight - Math.max(100, initialHeight * 0.15));
-    }, {signal: events.signal});
-    navigator.virtualKeyboard?.addEventListener('geometrychange', () => {
-      keyboardChanged(navigator.virtualKeyboard.boundingRect.height > 0);
-    }, {signal: events.signal});
-    input.onblur = event => {
-      // activeElement can temporarily be body while focus moves to a button.
-      if (event.relatedTarget && !dialog.contains(event.relatedTarget)) finish(null);
-    };
-    window.addEventListener('blur', () => finish(null), {signal: events.signal});
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) finish(null);
-    }, {signal: events.signal});
-    cancel.onclick = () => finish(null);
-    dialog.oncancel = event => { event.preventDefault(); finish(null); };
-    dialog.onclose = () => finish(null);
-    form.append(label, submit, cancel); dialog.append(form); document.body.append(dialog);
-    nameInput = {id: data.id, dialog, finish};
-    try { dialog.showModal(); input.focus(); input.setSelectionRange(input.value.length, input.value.length); focus(); }
-    catch (error) { console.error(error); finish(null); }
-  }
 
   function requestFileOutputConfirmation(data) {
     if (closed || stopping || fileOutputConfirmation) {
@@ -544,17 +469,12 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     }
     else if (data.type === 'stopped') {
       stopping = true;
-      nameInput?.finish(null);
       fileOutputConfirmation?.cancel();
       closeConsoleWindow();
       stopMovie();
       if (stoppedResolve) stoppedResolve();
       else if (started) options.onExit?.();
       else readyReject(new Error('播放器在游戏启动前退出，请检查运行日志。'));
-    }
-    else if (data.type === 'name-input') requestNameInput(data);
-    else if (data.type === 'name-input-cancel') {
-      if (nameInput?.id === data.id) nameInput.finish(null);
     }
     else if (data.type === 'console-input') requestConsoleInput(data);
     else if (data.type === 'file-output-confirmation') requestFileOutputConfirmation(data);
@@ -606,14 +526,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     Backquote: 'BACKTICK', BracketLeft: 'LEFT_BRACKET', BracketRight: 'RIGHT_BRACKET',
     Backslash: 'BACKSLASH', Quote: 'APOSTROPH', Semicolon: 'SEMICOLON', Comma: 'COMMA',
     Period: 'PERIOD', Slash: 'SLASH', CapsLock: 'CAPS_LOCK', NumLock: 'NUM_LOCK', ScrollLock: 'SCROLL_LOCK',
-    Equal: 'EQUALS', Minus: 'MINUS', NumpadMultiply: 'KP_MULTIPLY', NumpadAdd: 'KP_ADD',
+    NumpadMultiply: 'KP_MULTIPLY', NumpadAdd: 'KP_ADD',
     NumpadSubtract: 'KP_SUBTRACT', NumpadDecimal: 'KP_PERIOD', NumpadDivide: 'KP_DIVIDE'};
   const keyEvent = event => {
     const name = special[event.code] || (/^Key[A-Z]$/.test(event.code) ? event.code.slice(3) :
       /^Digit\d$/.test(event.code) ? `N${event.code.slice(5)}` :
       /^Numpad\d$/.test(event.code) ? `KP${event.code.slice(6)}` : event.code);
     if (!keys[name]) return;
-    if (nameInput || consoleInput || consoleWindow?.dialog.contains(document.activeElement)) {
+    if (consoleInput || consoleWindow?.dialog.contains(document.activeElement)) {
       if (event.type === 'keyup') send({type: 'key', key: keys[name], pressed: false});
       return;
     }
@@ -623,7 +543,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   listen(document, 'keydown', keyEvent); listen(document, 'keyup', keyEvent);
   // The site's touch controls live outside the iframe, but belong to the same player.
-  const gameFocused = () => !page.document.hidden && page.document.hasFocus() && !nameInput && !consoleWindow?.dialog.contains(document.activeElement);
+  const gameFocused = () => !page.document.hidden && page.document.hasFocus() && !consoleWindow?.dialog.contains(document.activeElement);
   const focus = () => send({type: 'focus', focused: gameFocused(), fullscreen: !!page.document.fullscreenElement});
   // Firefox's blur precedes the settled focus state when entering the iframe.
   // Focus can also return directly to the iframe after switching tabs.
@@ -706,7 +626,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
 
   startStartupTimer();
   const shutdown = async () => {
-    nameInput?.finish(null);
     fileOutputConfirmation?.cancel();
     closeConsoleWindow();
     screenModeButton?.remove(); screenModeButton = undefined;
@@ -733,7 +652,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     worker.postMessage({type: 'start', canvas: offscreen, runtimeBase: base, packages: options.packages,
       workId: options.workId, sampleRate: context.sampleRate, arguments: options.arguments || [],
       joystickAvailable: joystickAvailable(),
-      systemNameInput,
       audioPort: controlChannel.port2, audioCapabilities}, [offscreen, controlChannel.port2]);
     await ready;
     focus();
@@ -755,7 +673,6 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     stop() {
       return stopPromise ||= (async () => {
         stopping = true;
-        nameInput?.finish(null);
         fileOutputConfirmation?.cancel();
         closeConsoleWindow();
         stopMovie();

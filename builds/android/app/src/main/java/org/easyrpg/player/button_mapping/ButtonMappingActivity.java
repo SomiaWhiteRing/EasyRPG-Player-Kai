@@ -201,8 +201,7 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                 ctx.getString(R.string.key_fast_forward),
                 ctx.getString(R.string.key_debug_menu),
                 ctx.getString(R.string.key_debug_walk_through_walls),
-                ctx.getString(R.string.key_history),
-                ctx.getString(R.string.key_highlight)
+                ctx.getString(R.string.key_history)
         };
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getResources().getString(R.string.add_a_button));
@@ -262,8 +261,6 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
             keyCode = KeyEvent.KEYCODE_CTRL_LEFT;
         } else if (s.equals(ctx.getString(R.string.key_history))) {
             keyCode = VirtualButton.KEY_HISTORY;
-        } else if (s.equals(ctx.getString(R.string.key_highlight))) {
-            keyCode = VirtualButton.KEY_HIGHLIGHT;
         }
 
         VirtualButton vb = null;

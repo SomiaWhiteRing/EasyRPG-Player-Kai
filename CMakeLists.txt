@@ -227,8 +227,6 @@ add_library(${PROJECT_NAME} OBJECT
 	src/game_message.h
 	src/message_history.cpp
 	src/message_history.h
-	src/name_input_candidate.cpp
-	src/name_input_candidate.h
 	src/game_message_terms.cpp
 	src/game_message_terms.h
 	src/game_party_base.cpp
@@ -260,10 +258,8 @@ add_library(${PROJECT_NAME} OBJECT
 	src/generated/bitmapfont_rmg2000.h
 	src/generated/bitmapfont_ttyp0.h
 	src/generated/bitmapfont_wqy.h
-	src/generated/bitmapfont_small.h
 	src/generated/logo.h
 	src/generated/logo2.h
-	src/generated/pinyin_simp_dict.h
 	src/generated/shinonome_gothic.h
 	src/generated/shinonome_mincho.h
 	src/graphics.cpp
@@ -312,8 +308,6 @@ add_library(${PROJECT_NAME} OBJECT
 	src/output.h
 	src/pending_message.h
 	src/pending_message.cpp
-	src/pinyin_input.cpp
-	src/pinyin_input.h
 	src/pixel_format.h
 	src/pixman_image_ptr.h
 	src/plane.cpp
@@ -502,8 +496,6 @@ add_library(${PROJECT_NAME} OBJECT
 	src/window_numberinput.h
 	src/window_paramstatus.cpp
 	src/window_paramstatus.h
-	src/window_pinyin.cpp
-	src/window_pinyin.h
 	src/window_savefile.cpp
 	src/window_savefile.h
 	src/window_selectable.cpp
@@ -1319,10 +1311,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 		# Shared STL container instantiations must all preserve allocation errors.
 		# Mixing exception modes can select a weak resize implementation that aborts.
 		target_compile_options(${PROJECT_NAME} PUBLIC -fexceptions)
-		# A prebuilt liblcf must be compiled with the same exception mode.
-		if(TARGET lcf)
-			target_compile_options(lcf PRIVATE -fexceptions)
-		endif()
+		target_compile_options(lcf PRIVATE -fexceptions)
 		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
 
 		target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_WEB_MOVIE_PLAYER=1)

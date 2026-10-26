@@ -37,11 +37,6 @@ namespace EpAndroid {
 	bool ConsoleFocus(bool console);
 	uint32_t ConsoleGeneration();
 	bool ReadConsoleLine(std::u16string& line);
-	bool UseSystemNameInput();
-	bool BeginNameInput(std::string_view text);
-	// 0: pending, 1: submitted, 2: cancelled (also when the Activity is gone).
-	int PollNameInput(std::string& text);
-	void CancelNameInput();
 
 	inline void invoke() {
 		if (!android_fn) {

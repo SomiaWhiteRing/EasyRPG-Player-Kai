@@ -33,41 +33,6 @@
 #include "scene_save.h"
 #include "output.h"
 
-EM_JS(bool, UseSystemNameInputJs, (), {
-	return Module.useSystemNameInput();
-});
-
-EM_JS(bool, BeginNameInputJs, (const char* text, size_t size), {
-	return Module.beginNameInput(new TextDecoder().decode(HEAPU8.subarray(text, text + size)));
-});
-
-EM_JS(uintptr_t, PollNameInputJs, (), {
-	const result = Module.pollNameInput();
-	if (!result) return 0;
-	const value = typeof result.value === 'string' ? result.value : '';
-	const size = lengthBytesUTF8(value) + 1;
-	const pointer = _malloc(4 + size);
-	if (!pointer) throw new Error('Unable to allocate name input result');
-	HEAPU32[pointer >>> 2] = result.value === null ? 2 : 1;
-	stringToUTF8(value, pointer + 4, size);
-	return pointer;
-});
-
-EM_JS(void, CancelNameInputJs, (), { Module.cancelNameInput(); });
-
-bool Emscripten_Interface::UseSystemNameInput() { return UseSystemNameInputJs(); }
-bool Emscripten_Interface::BeginNameInput(std::string_view text) { return BeginNameInputJs(text.data(), text.size()); }
-void Emscripten_Interface::CancelNameInput() { CancelNameInputJs(); }
-
-int Emscripten_Interface::PollNameInput(std::string& text) {
-	const auto pointer = PollNameInputJs();
-	if (!pointer) return 0;
-	const auto result = *reinterpret_cast<const uint32_t*>(pointer);
-	if (result == 1) text = reinterpret_cast<const char*>(pointer + 4);
-	std::free(reinterpret_cast<void*>(pointer));
-	return result;
-}
-
 EM_JS(bool, ConsoleCommandJs, (const char* op, const char* text, size_t size, int options, int foreground, int background), {
 	return Module.consoleCommand({op: UTF8ToString(op),
 		text: text ? new TextDecoder().decode(HEAPU8.subarray(text, text + size)) : '',

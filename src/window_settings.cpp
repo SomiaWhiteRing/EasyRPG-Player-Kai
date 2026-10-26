@@ -482,9 +482,6 @@ void Window_Settings::RefreshExtra() {
 		cfg.extra_recommended_soundfont.Toggle();
 		RecommendedSoundFont::Refresh();
 	});
-	AddOption(cfg.extra_name_input_choices, [&cfg]() { cfg.extra_name_input_choices.Toggle(); });
-	AddOption(cfg.extra_pinyin_input, [&cfg]() { cfg.extra_pinyin_input.Toggle(); });
-	AddOption(cfg.extra_interaction_highlight, [&cfg]() { cfg.extra_interaction_highlight.Toggle(); });
 	AddOption(cfg.extra_hide_maniac_logs, [&cfg]() { cfg.extra_hide_maniac_logs.Toggle(); });
 	AddOption(cfg.extra_force_testplay, [&cfg]() {
 		cfg.extra_force_testplay.Toggle();
@@ -695,7 +692,7 @@ void Window_Settings::RefreshButtonList() {
 		case 1:
 			buttons = {Input::SETTINGS_MENU, Input::TOGGLE_FPS, Input::TOGGLE_FULLSCREEN, Input::TOGGLE_ZOOM,
 				Input::TAKE_SCREENSHOT, Input::RESET, Input::FAST_FORWARD_A, Input::FAST_FORWARD_B,
-				Input::PAGE_UP, Input::PAGE_DOWN, Input::HIGHLIGHT_INTERACTIONS };
+				Input::PAGE_UP, Input::PAGE_DOWN };
 			break;
 		case 2:
 			buttons = {	Input::DEBUG_MENU, Input::DEBUG_THROUGH, Input::DEBUG_SAVE, Input::DEBUG_ABORT_EVENT,

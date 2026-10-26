@@ -18,15 +18,10 @@
 #ifndef EP_SCENE_NAME_H
 #define EP_SCENE_NAME_H
 
-#include <bitset>
-#include "keys.h"
-#include "name_input_candidate.h"
 #include "scene.h"
-#include "window_command.h"
 #include "window_name.h"
 #include "window_face.h"
 #include "window_keyboard.h"
-#include "window_pinyin.h"
 
 /**
  * Scene_Item class.
@@ -37,12 +32,9 @@ public:
 	/**
 	 * Constructor.
 	 */
-	Scene_Name(Game_Actor& actor, int charset, bool use_default_name, std::vector<NameInputCandidate> candidates = {});
-	~Scene_Name() override;
+	Scene_Name(Game_Actor& actor, int charset, bool use_default_name);
 
 	void Start() override;
-	void Continue(SceneType prev_scene) override;
-	void Suspend(SceneType next_scene) override;
 	void vUpdate() override;
 
 protected:
@@ -51,50 +43,9 @@ protected:
 	bool use_default_name = false;
 
 private:
-	enum class Mode {
-		Choice,
-		Input,
-	};
-
-	void CreateFaceWindow();
-	void CreateNameWindow();
-	void SetupLayouts();
-	void CreateKeyboardWindow();
-	void CreateChoiceWindow();
-	void EnterChoiceMode();
-	void EnterKeyboardInputMode();
-	std::vector<std::string> GetChoiceLabels() const;
-	bool IsPinyinMode() const;
-	void RefreshPinyinWindow();
-	void RefreshKeyboardHint();
-	void ResetPinyinInput();
-	void AppendPinyinLetter(std::string_view key);
-	bool CommitPinyinSelection();
-	bool SelectPinyinCandidateByNumber(std::string_view key);
-	void SetPhysicalKeyboardInput(bool enabled);
-	void StartTextInput();
-	bool HandleSystemTextInput();
-	void RestoreInputMask();
-	bool HandlePhysicalKeyboardInput();
-	void EraseInput();
-	void FinishNameInput();
-
 	Game_Actor& actor;
-	Mode mode = Mode::Input;
-	const char* keyboard_done = Window_Keyboard::DONE;
-	std::vector<NameInputCandidate> candidates;
-	std::string pinyin_query;
-	std::bitset<Input::Keys::KEYS_COUNT> previous_keymask;
-	bool keyboard_input = false;
-	bool system_input = false;
-	bool input_masked = false;
-	bool wait_for_key_release = false;
-	int backspace_frames = 0;
 
 	std::unique_ptr<Window_Keyboard> kbd_window;
-	std::unique_ptr<Window_Pinyin> pinyin_window;
-	std::unique_ptr<Window_Base> keyboard_hint_window;
-	std::unique_ptr<Window_Command> choice_window;
 	std::unique_ptr<Window_Name> name_window;
 	std::unique_ptr<Window_Face> face_window;
 };

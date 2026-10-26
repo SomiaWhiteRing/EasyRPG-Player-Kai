@@ -31,98 +31,6 @@
 #include "player.h"
 #include "drawable_list.h"
 #include "map_data.h"
-#include "drawable_mgr.h"
-#include "game_event.h"
-#include "game_message.h"
-#include "input.h"
-#include "scene.h"
-
-namespace {
-	constexpr Drawable::Z_t interaction_highlight_z = Priority_Maximum;
-
-	Drawable::Z_t InteractionZoomZ() {
-		if (!Player::IsPatchManiac()) {
-			return 0;
-		}
-		const auto layer = Drawable::GetPriorityForMapLayer(Main_Data::game_screen->GetSaveData().maniac_zoom_layer);
-		return layer ? layer + (1ULL << z_offset) - 1 : 0;
-	}
-
-	class InteractionHighlight final : public Drawable {
-	public:
-		InteractionHighlight(const Spriteset_Map& spriteset) :
-			Drawable(interaction_highlight_z), spriteset(spriteset) {
-			DrawableMgr::Register(this);
-		}
-
-		void Draw(Bitmap& dst) override {
-			if (!Player::player_config.extra_interaction_highlight.Get()
-					|| !Input::IsSystemPressed(Input::HIGHLIGHT_INTERACTIONS)
-					|| !Scene::instance || Scene::instance->type != Scene::Map
-					|| Game_Map::GetInterpreter().IsRunning()
-					|| Game_Message::IsMessageActive() || Game_Message::IsMessagePending()
-					|| Main_Data::game_player->IsPaused()
-					|| Main_Data::game_player->IsMoveRouteOverwritten()
-					|| Main_Data::game_player->IsPendingTeleport()
-					|| Main_Data::game_player->InAirship()) {
-				return;
-			}
-
-			const auto zoom_z = InteractionZoomZ();
-			const auto zoom_rect = zoom_z ? Main_Data::game_screen->GetZoomSourceRect(dst) : dst.GetRect();
-
-			const int copies_x = Game_Map::LoopHorizontal() ? 1 : 0;
-			const int copies_y = Game_Map::LoopVertical() ? 1 : 0;
-			const int width = std::max<int>(Game_Map::GetTilesX(), 20) * TILE_SIZE;
-			const int height = std::max<int>(Game_Map::GetTilesY(), 15) * TILE_SIZE;
-			for (const auto& event : Game_Map::GetEvents()) {
-				if (!event.IsInteractionCandidate()) {
-					continue;
-				}
-				const int x = event.GetScreenX() - TILE_SIZE / 2 + spriteset.GetRenderOx();
-				const int y = event.GetScreenY(false) - TILE_SIZE + spriteset.GetRenderOy();
-				for (int cy = -copies_y; cy <= copies_y; ++cy) {
-					for (int cx = -copies_x; cx <= copies_x; ++cx) {
-						Rect rect(x + cx * width, y + cy * height, TILE_SIZE, TILE_SIZE);
-						// Draw above pictures while matching the event's screen zoom.
-						if (zoom_z && event.GetScreenZ(0, 0) <= zoom_z && !zoom_rect.IsEmpty()) {
-							const int right = (rect.x + rect.width - zoom_rect.x) * dst.GetWidth() / zoom_rect.width;
-							const int bottom = (rect.y + rect.height - zoom_rect.y) * dst.GetHeight() / zoom_rect.height;
-							rect.x = (rect.x - zoom_rect.x) * dst.GetWidth() / zoom_rect.width;
-							rect.y = (rect.y - zoom_rect.y) * dst.GetHeight() / zoom_rect.height;
-							rect.width = right - rect.x;
-							rect.height = bottom - rect.y;
-						}
-						if (rect.IsOutOfBounds(dst.GetRect())) {
-							continue;
-						}
-						const bool action = event.GetTrigger() == lcf::rpg::EventPage::Trigger_action;
-						auto& marker = action ? action_marker : touch_marker;
-						if (!marker) {
-							marker = CreateMarker(action ? Color(64, 232, 255, 255) : Color(255, 184, 48, 255));
-						}
-						dst.StretchBlit(rect, *marker, marker->GetRect(), Opacity::Opaque());
-					}
-				}
-			}
-		}
-
-	private:
-		static BitmapRef CreateMarker(Color color) {
-			auto marker = Bitmap::Create(TILE_SIZE, TILE_SIZE, true);
-			marker->Fill(Color(color.red, color.green, color.blue, 48));
-			marker->FillRect({0, 0, TILE_SIZE, 1}, color);
-			marker->FillRect({0, TILE_SIZE - 1, TILE_SIZE, 1}, color);
-			marker->FillRect({0, 1, 1, TILE_SIZE - 2}, color);
-			marker->FillRect({TILE_SIZE - 1, 1, 1, TILE_SIZE - 2}, color);
-			return marker;
-		}
-
-		const Spriteset_Map& spriteset;
-		BitmapRef action_marker;
-		BitmapRef touch_marker;
-	};
-}
 
 Spriteset_Map::Spriteset_Map() {
 	panorama = std::make_unique<Plane>();
@@ -132,7 +40,6 @@ Spriteset_Map::Spriteset_Map() {
 	timer2 = std::make_unique<Sprite_Timer>(1);
 
 	screen = std::make_unique<Screen>();
-	interaction_highlight = std::make_unique<InteractionHighlight>(*this);
 
 	if (Player::IsRPG2k3()) {
 		frame = std::make_unique<Frame>();

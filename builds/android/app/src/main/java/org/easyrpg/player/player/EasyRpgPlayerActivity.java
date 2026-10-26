@@ -35,7 +35,6 @@ import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Insets;
 import android.graphics.Typeface;
-import android.hardware.input.InputManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -50,7 +49,6 @@ import android.text.style.ForegroundColorSpan;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.InputDevice;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
@@ -71,8 +69,6 @@ import android.window.OnBackInvokedDispatcher;
 import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 import androidx.core.view.GravityCompat;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
@@ -114,121 +110,6 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     private boolean uiVisible = true;
 
     private int topInset = 0;
-
-    private static class NameInputRequest {
-        volatile boolean finished;
-        String value;
-        AlertDialog dialog;
-        boolean imeWasVisible;
-    }
-
-    private volatile NameInputRequest nameInputRequest;
-    private volatile boolean physicalTextKeyboard;
-    private InputManager nameKeyboardDevices;
-    private final InputManager.InputDeviceListener nameKeyboardListener = new InputManager.InputDeviceListener() {
-        @Override public void onInputDeviceAdded(int id) { refreshPhysicalTextKeyboard(); }
-        @Override public void onInputDeviceRemoved(int id) { refreshPhysicalTextKeyboard(); }
-        @Override public void onInputDeviceChanged(int id) { refreshPhysicalTextKeyboard(); }
-    };
-
-    public boolean hasPhysicalTextKeyboard() {
-        return physicalTextKeyboard;
-    }
-
-    private void refreshPhysicalTextKeyboard() {
-        boolean found = false;
-        for (int id : InputDevice.getDeviceIds()) {
-            InputDevice device = InputDevice.getDevice(id);
-            if (device != null && !device.isVirtual()
-                    && (Build.VERSION.SDK_INT < 27 || device.isEnabled())
-                    && device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC
-                    && (device.getSources() & InputDevice.SOURCE_KEYBOARD) == InputDevice.SOURCE_KEYBOARD) {
-                found = true; break;
-            }
-        }
-        physicalTextKeyboard = found;
-    }
-
-    private void finishNameInput(NameInputRequest request, String value) {
-        if (nameInputRequest != request || request.finished) return;
-        request.value = value;
-        request.finished = true;
-        if (request.dialog != null) request.dialog.dismiss();
-        if (!consoleInputClosed && mSurface != null) mSurface.requestFocus();
-        updateConsoleFocus();
-    }
-
-    public boolean beginNameInput(String initial) {
-        if (consoleInputClosed || nameInputRequest != null) return false;
-        NameInputRequest request = new NameInputRequest();
-        nameInputRequest = request;
-        runOnUiThread(() -> {
-            if (nameInputRequest != request) return;
-            if (isFinishing() || isDestroyed()) { finishNameInput(request, null); return; }
-            EditText input = new EditText(this) {
-                @Override public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-                    if (keyCode == KeyEvent.KEYCODE_BACK) {
-                        if (event.getAction() == KeyEvent.ACTION_UP) finishNameInput(request, null);
-                        return true;
-                    }
-                    return super.onKeyPreIme(keyCode, event);
-                }
-            };
-            input.setSingleLine(true);
-            input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-            input.setImeOptions(EditorInfo.IME_ACTION_DONE | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-            input.setText(initial);
-            input.setSelection(input.length());
-            AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle(R.string.name_input_title).setView(input)
-                    .setPositiveButton(android.R.string.ok, (unused, which) -> finishNameInput(request, input.getText().toString()))
-                    .setNegativeButton(android.R.string.cancel, (unused, which) -> finishNameInput(request, null)).create();
-            request.dialog = dialog;
-            input.setOnEditorActionListener((view, action, event) -> {
-                if (action == EditorInfo.IME_ACTION_DONE) {
-                    finishNameInput(request, input.getText().toString()); return true;
-                }
-                return false;
-            });
-            dialog.setOnDismissListener(unused -> finishNameInput(request, null));
-            dialog.setOnShowListener(unused -> {
-                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-                        | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-                ViewCompat.setOnApplyWindowInsetsListener(dialog.getWindow().getDecorView(), (view, insets) -> {
-                    boolean visible = insets.isVisible(WindowInsetsCompat.Type.ime());
-                    if (visible) request.imeWasVisible = true;
-                    else if (request.imeWasVisible) finishNameInput(request, null);
-                    return insets;
-                });
-                input.requestFocus();
-                input.post(() -> {
-                    if (nameInputRequest == request && !request.finished) {
-                        InputMethodManager keyboard = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                        if (keyboard != null) keyboard.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
-                    }
-                });
-            });
-            dialog.show();
-        });
-        return true;
-    }
-
-    // null = pending, [] = cancelled, [text] = submitted (including an empty name).
-    public String[] pollNameInput() {
-        NameInputRequest request = nameInputRequest;
-        if (request == null) return new String[0];
-        if (!request.finished) return null;
-        nameInputRequest = null;
-        return request.value == null ? new String[0] : new String[]{request.value};
-    }
-
-    public void cancelNameInput() {
-        NameInputRequest request = nameInputRequest;
-        nameInputRequest = null;
-        if (request != null) runOnUiThread(() -> {
-            if (request.dialog != null) request.dialog.dismiss();
-        });
-    }
 
     private static class ConsoleRequest {
         final CountDownLatch done = new CountDownLatch(1);
@@ -604,8 +485,6 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     @Override
     protected void onDestroy() {
         consoleInputClosed = true; consoleGeneration++;
-        cancelNameInput();
-        if (nameKeyboardDevices != null) nameKeyboardDevices.unregisterInputDeviceListener(nameKeyboardListener);
         ConsoleRequest read = consoleRead; consoleRead = null;
         if (read != null) { read.value = null; read.done.countDown(); }
         ConsoleRequest request = consoleCommand;
@@ -645,9 +524,6 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
         }
 
         SettingsManager.init(getApplicationContext());
-        refreshPhysicalTextKeyboard();
-        nameKeyboardDevices = (InputManager) getSystemService(INPUT_SERVICE);
-        if (nameKeyboardDevices != null) nameKeyboardDevices.registerInputDeviceListener(nameKeyboardListener, null);
 
         // Load our custom activity layout
         setContentView(R.layout.activity_player);
@@ -744,13 +620,6 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
         updateScreenPosition();
         showInputLayout();
         layoutConsolePanel();
-    }
-
-    @Override
-    protected void onPause() {
-        NameInputRequest request = nameInputRequest;
-        if (request != null) finishNameInput(request, null);
-        super.onPause();
     }
 
     @Override
@@ -887,7 +756,6 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     }
 
     public void backPressed() {
-        if (nameInputRequest != null && !nameInputRequest.finished) { finishNameInput(nameInputRequest, null); return; }
         if (consoleRead != null) { finishConsoleRead(null); return; }
         if (consoleHasFocus()) { closeConsolePanel(); return; }
         openOrCloseMenu();

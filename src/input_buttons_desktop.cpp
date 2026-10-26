@@ -102,7 +102,6 @@ Input::ButtonMappingArray Input::GetDefaultButtonMappings() {
 		{RESET, Keys::F12},
 		{FAST_FORWARD_A, Keys::F},
 		{FAST_FORWARD_B, Keys::G},
-		{HIGHLIGHT_INTERACTIONS, Keys::E},
 
 #if defined(USE_MOUSE) && defined(SUPPORT_MOUSE)
 		{MOUSE_LEFT, Keys::MOUSE_LEFT},

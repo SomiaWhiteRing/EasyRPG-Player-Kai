@@ -11,19 +11,15 @@ EasyRPG Player 的苍旻白轮个人魔改造版。基于 EasyRPG Player 0.8.1.1
 
 按 `F1` 打开系统设置菜单后，可以进入 `追加功能` 单独开关本分支新增功能。
 
-以下开关默认启用，也会写入配置文件的 `[Player]` 段：
+这些开关默认启用，也会写入配置文件的 `[Player]` 段：
 
 - `ExtraMessageHistory`：对话历史记录
 - `ExtraMouseSupport`：鼠标功能补完
 - `ExtraMoviePlayback`：兼容视频播放
 - `ExtraRecommendedSoundFont`：使用作者推荐的SoundFont
 - `ExtraNameInputChoices`：输入式解谜自动选项化
-- `ExtraPinyinInput`：[拼音输入法](#拼音输入法)
-- `ExtraInteractionHighlight`：[场景交互高亮](#场景交互高亮)
 - `ExtraHideManiacLogs`：隐藏 Maniac 相关日志
 - `ExtraForceTestPlay`：强制启用 EasyRPG 调试模式
-
-若旧配置已关闭拼音输入法或场景交互高亮，更新后会沿用原设置，可在 `F1 → 追加功能` 中重新开启。
 
 ### 隐藏Maniac相关的错误提示
 
@@ -56,21 +52,6 @@ Web 版默认启用 `ExtraRecommendedSoundFont`，使用 `resources/soundfonts/r
 
 普通对话等待继续时，鼠标滚轮下滚也等同于确定；选项选择和数值输入不会把滚轮下滚当作确定。
 
-### 场景交互高亮
-
-“场景交互高亮”（`ExtraInteractionHighlight`）默认开启。在可自由操作的地图场景中，按住 `E` 显示交互位置，松开即隐藏。
-
-| 标记 | 交互类型 |
-| --- | --- |
-| 青色框 | 确认键触发，例如 NPC 对话、宝箱和调查点 |
-| 橙色框 | 玩家或事件接触触发，例如门和传送点 |
-
-没有图像的调查点也会显示。标记随事件移动和当前生效事件页更新；例如宝箱打开后切换到空白页，便不再高亮。对话、菜单、前台剧情、转场及乘坐飞艇期间隐藏标记，并支持 Maniac 分层缩放。
-
-可在 `Input → Key/Button mapping → Engine → Highlight Interactions` 修改高亮键。Android 可在虚拟按键布局中添加“高亮交互位置（按住）”按钮，按住显示、松开隐藏。
-
-高亮依据当前生效事件页，排除已擦除、无生效页、自动执行、并行处理、空白页和普通注释页。标记表示该事件页存在交互入口，不保证当前站位能触发，或事件内部的条件分支一定产生可见反应；通过并行事件、原始键码或鼠标自行实现的交互系统无法通用识别。
-
 ### 加速倍率支持小数
 
 `Fast Forward A/B` 的倍率现在支持一位小数，范围为 `0.1` 到 `100.0`。
@@ -84,20 +65,6 @@ Web 版默认启用 `ExtraRecommendedSoundFont`，使用 `resources/soundfonts/r
 视频播放结束后会继续执行后续事件。
 
 Web 版优先使用浏览器原生视频播放，失败时按需加载精简的 FFmpeg/WASM 解码器，支持 AVI 中的 DivX/Xvid、Microsoft Video 1、Cinepak、Indeo 3、Motion JPEG，以及 MPEG-1/2 等旧格式。解码器不包含编码器或转码流程，在独立 Worker 中逐帧解码，直接读取本地 Blob 切片；无需修改原游戏资源。Web 还会查找 `.mpeg`、`.mp4`、`.webm`、`.ogv` 和 `.mov`。具体范围、内存限制和构建方法见[Web 视频说明](docs/web-movies.md)。Android 尚未实现对应的视频播放后端。
-
-### 输入式解谜自动选项化
-
-当RPG Maker事件使用“角色改名 + 立刻判断名字”的方式做输入式解谜时，会在进入输入前自动弹出候选列表。  
-可以直接从答案中选择，或选择最后一项`主动输入`回退到原本的键盘输入界面。  
-适合汉化后默认选字式输入法难以覆盖答案名称的场景。
-
-### 拼音输入法
-
-“拼音输入法”（`ExtraPinyinInput`）默认开启，可在角色名输入界面切换到 `<拼音>` 页，使用内置词库离线选字。
-
-选择“键盘”后，Android 根据实体键盘情况、Web 根据电脑/移动端 UA 自动选择键盘或系统输入器。实体键盘下用数字或空格选词，`+/-` 或 `PgUp/PgDn` 翻页，`Esc` 退出。名字空间不足时保留输入并提示。
-
-拼音候选词库来自 [rime-pinyin-simp](https://github.com/rime/rime-pinyin-simp) 的袖珍简化字拼音词典，按 Apache-2.0 授权分发；许可文本见 `resources/pinyin/LICENSE-rime-pinyin-simp.txt`。
 
 ### 兼容 `ChangePartyMember(actor 0)`
 

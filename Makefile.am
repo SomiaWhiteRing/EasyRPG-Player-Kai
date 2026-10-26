@@ -170,8 +170,6 @@ libeasyrpg_player_a_SOURCES = \
 	src/game_message.h \
 	src/game_message_terms.cpp \
 	src/game_message_terms.h \
-	src/name_input_candidate.cpp \
-	src/name_input_candidate.h \
 	src/game_party.cpp \
 	src/game_party.h \
 	src/game_party_base.cpp \
@@ -199,10 +197,8 @@ libeasyrpg_player_a_SOURCES = \
 	src/generated/bitmapfont_rmg2000.h \
 	src/generated/bitmapfont_ttyp0.h \
 	src/generated/bitmapfont_wqy.h \
-	src/generated/bitmapfont_small.h \
 	src/generated/logo.h \
 	src/generated/logo2.h \
-	src/generated/pinyin_simp_dict.h \
 	src/generated/shinonome_gothic.h \
 	src/generated/shinonome_mincho.h \
 	src/graphics.cpp \
@@ -251,8 +247,6 @@ libeasyrpg_player_a_SOURCES = \
 	src/output.h \
 	src/pending_message.h \
 	src/pending_message.cpp \
-	src/pinyin_input.cpp \
-	src/pinyin_input.h \
 	src/pixel_format.h \
 	src/pixman_image_ptr.h \
 	src/plane.cpp \
@@ -435,8 +429,6 @@ libeasyrpg_player_a_SOURCES = \
 	src/window_numberinput.h \
 	src/window_paramstatus.cpp \
 	src/window_paramstatus.h \
-	src/window_pinyin.cpp \
-	src/window_pinyin.h \
 	src/window_savefile.cpp \
 	src/window_savefile.h \
 	src/window_selectable.cpp \
@@ -785,14 +777,12 @@ test_runner_SOURCES = \
 	tests/game_player_pan.cpp \
 	tests/game_player_savecount.cpp \
 	tests/json.cpp \
-	tests/name_input_candidate.cpp \
 	tests/mock_game.cpp \
 	tests/mock_game.h \
 	tests/move_route.cpp \
 	tests/output.cpp \
 	tests/parse.cpp \
 	tests/platform.cpp \
-	tests/pinyin_input.cpp \
 	tests/rand.cpp \
 	tests/rtp.cpp \
 	tests/switches.cpp \

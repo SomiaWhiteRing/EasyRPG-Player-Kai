@@ -98,7 +98,7 @@
         <!-- Player's Activity -->
         <activity
             android:name=".player.EasyRpgPlayerActivity"
-            android:configChanges="orientation|keyboard|keyboardHidden|screenSize"
+            android:configChanges="orientation|screenSize"
             android:theme="@style/AppThemePlayerActivity"/>
         <!-- Settings' Activity -->
         <activity

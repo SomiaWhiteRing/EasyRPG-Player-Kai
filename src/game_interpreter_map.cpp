@@ -59,7 +59,6 @@
 #include "graphics.h"
 #include "input.h"
 #include "main_data.h"
-#include "name_input_candidate.h"
 #include "output.h"
 #include "player.h"
 #include "util_macro.h"
@@ -586,7 +585,6 @@ bool Game_Interpreter_Map::CommandEnterHeroName(lcf::rpg::EventCommand const& co
 
 	auto& frame = GetFrame();
 	auto& index = frame.current_command;
-	const auto& commands = frame.commands;
 
 	auto actor_id = com.parameters[0];
 	auto charset = com.parameters[1];
@@ -598,11 +596,7 @@ bool Game_Interpreter_Map::CommandEnterHeroName(lcf::rpg::EventCommand const& co
 		return true;
 	}
 
-	std::vector<NameInputCandidate> candidates;
-	if (Player::player_config.extra_name_input_choices.Get()) {
-		candidates = NameInputCandidates::Collect(commands, index, actor_id);
-	}
-	auto scene = std::make_shared<Scene_Name>(*actor, charset, use_default_name, std::move(candidates));
+	auto scene = std::make_shared<Scene_Name>(*actor, charset, use_default_name);
 	Scene::instance->SetRequestedScene(std::move(scene));
 
 	++index;

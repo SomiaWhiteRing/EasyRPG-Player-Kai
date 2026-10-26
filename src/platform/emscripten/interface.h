@@ -31,10 +31,6 @@ public:
 	static bool ConsoleFocus(bool console);
 	static uint32_t ConsoleGeneration();
 	static bool ReadConsoleLine(std::u16string& line);
-	static bool UseSystemNameInput();
-	static bool BeginNameInput(std::string_view text);
-	static int PollNameInput(std::string& text);
-	static void CancelNameInput();
 	static bool ConfirmManiacFileOutput();
 	static bool DownloadSavegame(int slot);
 	static void UploadSavegame(int slot);
