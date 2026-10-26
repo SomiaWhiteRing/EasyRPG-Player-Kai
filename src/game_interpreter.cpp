@@ -6056,7 +6056,7 @@ bool Game_Interpreter::CommandManiacGetSaveInfo(lcf::rpg::EventCommand const& co
 	const auto write_number = [&](int id, int32_t value) {
 		if (id == 0) return;
 		if (id > 0) {
-			Main_Data::game_variables->Set(id, value);
+			*Main_Data::game_variables->GetManiacWritable(id) = value;
 		} else {
 			auto* bank = self_bank();
 			const size_t slot = static_cast<size_t>(-static_cast<int64_t>(id));
@@ -6170,7 +6170,7 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		Output::Debug("ManiacSave: Invalid save slot {}", slot);
 		// The original still writes result 0 after skipping the save.
 		if (result_enabled) {
-			if (out_var > 0) Main_Data::game_variables->Set(out_var, 0);
+			if (out_var > 0) *Main_Data::game_variables->GetManiacWritable(out_var) = 0;
 			else ApplyManiacSaveResult(operation, false, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
@@ -6184,7 +6184,7 @@ bool Game_Interpreter::CommandManiacSave(lcf::rpg::EventCommand const& com) {
 		// RPG_RT saves here, writes the result, then dispatches the next command.
 		const bool success = Scene_Save::Save(FileFinder::Save(), slot, true, slot <= 15);
 		if (result_enabled) {
-			if (out_var > 0) Main_Data::game_variables->Set(out_var, success ? 1 : 0);
+			if (out_var > 0) *Main_Data::game_variables->GetManiacWritable(out_var) = success ? 1 : 0;
 			else ApplyManiacSaveResult(operation, success, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
@@ -6453,7 +6453,7 @@ bool Game_Interpreter::CommandManiacGetPictureInfo(lcf::rpg::EventCommand const&
 	const auto write_number = [&](int32_t id, int32_t value) {
 		if (id == 0) return;
 		if (id > 0) {
-			Main_Data::game_variables->Set(id, value);
+			*Main_Data::game_variables->GetManiacWritable(id) = value;
 		} else {
 			const auto* frame = GetFramePtr();
 			auto* state = Main_Data::game_maniac_self_variables.get();
@@ -7581,7 +7581,7 @@ bool Game_Interpreter::CommandManiacControlMediaOption(lcf::rpg::EventCommand co
 		result = DisplayUi->RenderFps() || DisplayUi->ShowFpsOnTitle();
 	}
 	if (value > 0) {
-		Main_Data::game_variables->Set(value, result);
+		*Main_Data::game_variables->GetManiacWritable(value) = result;
 	} else if (value < 0) {
 		const auto* frame = GetFramePtr();
 		auto* state = Main_Data::game_maniac_self_variables.get();
