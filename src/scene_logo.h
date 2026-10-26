@@ -58,6 +58,9 @@ private:
 	bool skip_logos = false;
 	bool detected_game = false;
 
+	void OnIndexReady(FileRequestResult* result);
+	FileRequestBinding request_id;
+	bool async_ready = false;
 };
 
 #endif
