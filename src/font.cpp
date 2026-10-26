@@ -260,6 +260,9 @@ Rect BitmapFont::vGetSize(char32_t glyph) const {
 	}
 	auto bm_glyph = func(glyph);
 	size_t units = bm_glyph->is_full ? 2 : 1;
+	if (current_style.size > HEIGHT) {
+		return {0, 0, bm_glyph->is_full ? current_style.size : current_style.size / 2, current_style.size};
+	}
 	return {0, 0, static_cast<int>(units * HALF_WIDTH), HEIGHT};
 }
 
@@ -283,40 +286,32 @@ std::pair<const SmallPixelFallback::Glyph*, int> BitmapFont::GetSmallGlyph(char3
 }
 
 Font::GlyphRet BitmapFont::vRender(char32_t glyph) const {
-	if (EP_UNLIKELY(!glyph_bm)) {
-		glyph_bm = Bitmap::Create(nullptr, FULL_WIDTH, HEIGHT, 0, DynamicFormat(8, 8, 0, 8, 0, 8, 0, 8, 0, PF::Alpha));
+	const auto small = current_style.size > 0 && current_style.size < HEIGHT
+		? GetSmallGlyph(glyph) : std::pair<const SmallPixelFallback::Glyph*, int>{nullptr, HEIGHT};
+	const auto* legacy = small.first ? nullptr : func(glyph);
+	const int native_height = small.second;
+	const int native_width = small.first ? small.first->width : legacy->is_full ? FULL_WIDTH : HALF_WIDTH;
+	const int height = current_style.size > 0 ? current_style.size : HEIGHT;
+	const int width = vGetSize(glyph).width;
+	const int bitmap_width = std::max(height, width);
+	if (!glyph_bm || glyph_bm->GetWidth() != bitmap_width || glyph_bm->GetHeight() != height) {
+		glyph_bm = Bitmap::Create(nullptr, bitmap_width, height, 0, DynamicFormat(8, 8, 0, 8, 0, 8, 0, 8, 0, PF::Alpha));
 	}
-	if (current_style.size > 0 && current_style.size < HEIGHT) {
-		const auto small = GetSmallGlyph(glyph);
-		const int native_height = small.second;
-		const int native_width = small.first->width;
-		const int height = current_style.size;
-		const int width = vGetSize(glyph).width;
-		glyph_bm->Clear();
-		auto* data = reinterpret_cast<uint8_t*>(glyph_bm->pixels());
-		const int pitch = glyph_bm->pitch();
-		for (int y = 0; y < height; ++y) {
-			const int sy = height >= native_height ? y - (height - native_height) / 2 : y * native_height / height;
-			if (sy < 0 || sy >= native_height) continue;
-			const auto row = small.first->rows[sy];
-			for (int x = 0; x < width; ++x) {
-				const int sx = width >= native_width ? x - (width - native_width) / 2 : x * native_width / width;
-				if (sx >= 0 && sx < native_width && (row & (1 << sx))) data[y * pitch + x] = 255;
-			}
-		}
-		return {glyph_bm, {width, 0}, {0, 0}};
-	}
-	auto bm_glyph = func(glyph);
-	auto width = bm_glyph->is_full ? FULL_WIDTH : HALF_WIDTH;
-
 	glyph_bm->Clear();
-	uint8_t* data = reinterpret_cast<uint8_t*>(glyph_bm->pixels());
-	int pitch = glyph_bm->pitch();
-	for (size_t y_ = 0; y_ < HEIGHT; ++y_)
-		for (size_t x_ = 0; x_ < width; ++x_)
-			data[y_ * pitch + x_] = (bm_glyph->data[y_] & (0x1 << x_)) ? 255 : 0;
-
-	return { glyph_bm, {width, 0}, {0, 0} };
+	auto* data = reinterpret_cast<uint8_t*>(glyph_bm->pixels());
+	const int pitch = glyph_bm->pitch();
+	const bool keep_pixels = small.first && height >= native_height;
+	for (int y = 0; y < height; ++y) {
+		const int sy = keep_pixels ? y - (height - native_height) / 2 : y * native_height / height;
+		if (sy < 0 || sy >= native_height) continue;
+		const auto row = small.first ? small.first->rows[sy] : legacy->data[sy];
+		for (int x = 0; x < width; ++x) {
+			const int sx = keep_pixels && width >= native_width
+				? x - (width - native_width) / 2 : x * native_width / width;
+			if (sx >= 0 && sx < native_width && (row & (1 << sx))) data[y * pitch + x] = 255;
+		}
+	}
+	return {glyph_bm, {width, 0}, {0, 0}};
 }
 
 #ifdef HAVE_FREETYPE

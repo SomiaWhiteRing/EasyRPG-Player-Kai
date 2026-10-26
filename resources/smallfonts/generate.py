@@ -77,6 +77,11 @@ def main():
         for size in (8, 9, 10, 11):
             name = f'Zfull-GB-{size}px.otf.woff2'
             table = rasterize(archive.read(name), size)
+            # Zfull omits ordinary spaces from its cmap. Missing whitespace
+            # must advance the cursor without becoming a replacement glyph.
+            for code, width in ((0x20, size // 2), (0xa0, size // 2),
+                                (0x3000, 8 if size == 9 else size)):
+                table.setdefault(code, (width, (0,) * 11))
             assert ord('?') in table, f'{name}: replacement glyph unavailable'
             out.write(f'constexpr std::array<Glyph, {len(table)}> font_{size} = {{{{\n')
             for code, (width, rows) in sorted(table.items()):
