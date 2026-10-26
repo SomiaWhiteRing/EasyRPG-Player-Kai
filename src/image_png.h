@@ -23,20 +23,6 @@
 #include "filesystem_stream.h"
 
 namespace ImagePNG {
-	class PictureLoader {
-	public:
-		static std::unique_ptr<PictureLoader> Create(Filesystem_Stream::InputStream stream, bool transparent);
-		~PictureLoader();
-		bool ReadRows(int count);
-		bool IsComplete() const;
-		BitmapRef GetBitmap() const;
-	private:
-		struct Data;
-		PictureLoader();
-		bool Init(Filesystem_Stream::InputStream stream, bool transparent);
-		std::unique_ptr<Data> data;
-	};
-
 	bool Read(const void* buffer, bool transparent, ImageOut& output);
 	bool Read(Filesystem_Stream::InputStream& is, bool transparent, ImageOut& output);
 	bool Write(std::ostream& os, uint32_t width, uint32_t height, uint32_t* data, bool include_alpha = false);

@@ -153,29 +153,12 @@ namespace {
 	// Overwritten by --encoding
 	std::string forced_encoding;
 
-	int DetectEncodingFromCurrentDirectory() {
-		auto gamefs = FileFinder::Root().Create("");
-		if (!FileFinder::IsRPG2kProject(gamefs)) {
-			std::cerr << "Not an RPG Maker 2000/2003 project in the current directory" << std::endl;
-			FileFinder::Quit();
-			return EXIT_FAILURE;
-		}
-		FileFinder::SetGameFilesystem(gamefs);
-		std::cout << Player::GetEncoding(true) << std::endl;
-		FileFinder::Quit();
-		return EXIT_SUCCESS;
-	}
-
 	FileRequestBinding system_request_id;
 	FileRequestBinding save_request_id;
 	FileRequestBinding map_request_id;
 }
 
 void Player::Init(std::vector<std::string> args) {
-	if (std::find(args.begin(), args.end(), "--detect-encoding") != args.end()) {
-		exit(DetectEncodingFromCurrentDirectory());
-	}
-
 	lcf::LogHandler::SetHandler([](lcf::LogHandler::Level level, std::string_view message, lcf::LogHandler::UserData) {
 		Output::Debug("lcf ({}): {}", lcf::LogHandler::kLevelTags.tag(level), message);
 	});
@@ -305,7 +288,6 @@ void Player::MainLoop() {
 		Input::UpdateSystem();
 	}
 
-	Cache::UpdatePicturePreload();
 	if (!maniac_skip_draw) Player::Draw();
 
 	Scene::old_instances.clear();
@@ -1446,11 +1428,11 @@ void Player::SetupBattleTest() {
 	Scene::Push(Scene_Battle::Create(std::move(args)), true);
 }
 
-std::string Player::GetEncoding(bool skip_ini) {
+std::string Player::GetEncoding() {
 	encoding = forced_encoding;
 
 	// command line > ini > detection > current locale
-	if (encoding.empty() && !skip_ini) {
+	if (encoding.empty()) {
 		std::string ini = FileFinder::Game().FindFile(INI_NAME);
 		auto ini_stream = FileFinder::Game().OpenInputStream(ini);
 		if (ini_stream) {
@@ -1559,7 +1541,6 @@ Engine options:
                       configuration folder in the users home directory is used.
  --encoding N         Instead of autodetecting the encoding or using the one in
                       RPG_RT.ini, the encoding N is used.
- --detect-encoding    Print the detected encoding and exit.
  --enemyai-algo A     Which EnemyAI algorithm to use.
                       Options:
                        RPG_RT  - The default RPG_RT compatible algo, including

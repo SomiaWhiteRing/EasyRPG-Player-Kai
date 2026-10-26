@@ -36,7 +36,6 @@
 #include <lcf/data.h>
 #include "game_clock.h"
 #include "translation.h"
-#include "image_png.h"
 
 using namespace std::chrono_literals;
 
@@ -92,10 +91,6 @@ namespace {
 
 	constexpr int cache_limit = 10 * 1024 * 1024;
 	size_t cache_size = 0;
-	std::string picture_preload_key;
-	std::unique_ptr<ImagePNG::PictureLoader> picture_preload;
-	Game_Clock::time_point picture_preload_started;
-	Game_Clock::duration picture_preload_work{};
 
 	void FreeBitmapMemory() {
 		auto cur_ticks = Game_Clock::GetFrameTime();
@@ -392,66 +387,7 @@ BitmapRef Cache::Panorama(std::string_view file) {
 }
 
 BitmapRef Cache::Picture(std::string_view file, bool transparent) {
-	if (picture_preload && picture_preload_key == MakeHashKey("Picture", file, transparent)) {
-		if (!picture_preload->IsComplete()) {
-			Output::Debug("Picture preload not ready: {}", file);
-		}
-		while (!picture_preload->IsComplete()) {
-			if (!picture_preload->ReadRows(256)) {
-				break;
-			}
-		}
-		auto bitmap = picture_preload->GetBitmap();
-		picture_preload.reset();
-		auto key = std::move(picture_preload_key);
-		picture_preload_key.clear();
-		if (bitmap) {
-			FreeBitmapMemory();
-			return AddToCache(key, std::move(bitmap));
-		}
-	}
 	return LoadBitmap<Material::Picture>(file, transparent);
-}
-
-void Cache::PreloadPicture(std::string_view filename, bool transparent) {
-	const auto key = MakeHashKey("Picture", filename, transparent);
-	if (key == picture_preload_key || picture_preload || cache.find(key) != cache.end()) {
-		return;
-	}
-	picture_preload_key = key;
-	picture_preload_started = Game_Clock::now();
-	picture_preload_work = {};
-	FreeBitmapMemory();
-	auto stream = FileFinder::OpenImage("Picture", filename);
-	picture_preload = ImagePNG::PictureLoader::Create(std::move(stream), transparent);
-}
-
-void Cache::UpdatePicturePreload() {
-	if (!picture_preload) {
-		return;
-	}
-	const auto start = Game_Clock::now();
-	if (start - picture_preload_started > 15s) {
-		picture_preload.reset();
-		picture_preload_key.clear();
-		return;
-	}
-	if (picture_preload->IsComplete()) {
-		return;
-	}
-	// Use spare render-frame time, with at most two milliseconds per slice.
-	const auto deadline = std::min(start + 2ms, Game_Clock::GetFrameTime() + Game_Clock::GetTargetGameTimeStep());
-	while (Game_Clock::now() < deadline && !picture_preload->IsComplete()) {
-		if (!picture_preload->ReadRows(16)) {
-			picture_preload.reset();
-			return;
-		}
-	}
-	picture_preload_work += Game_Clock::now() - start;
-	if (picture_preload->IsComplete()) {
-		Output::Debug("Picture preload ready: {} ({} ms decode)", picture_preload_key,
-			std::chrono::duration_cast<std::chrono::milliseconds>(picture_preload_work).count());
-	}
 }
 
 BitmapRef Cache::System2(std::string_view file) {
@@ -588,8 +524,6 @@ BitmapRef Cache::SpriteEffect(const BitmapRef& src_bitmap, const Rect& rect, boo
 }
 
 void Cache::Clear() {
-	picture_preload.reset();
-	picture_preload_key.clear();
 	cache_effects.clear();
 	cache.clear();
 	cache_size = 0;

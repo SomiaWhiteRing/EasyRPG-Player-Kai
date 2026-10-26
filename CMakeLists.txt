@@ -887,7 +887,7 @@ if(WIN32)
 		src/platform/windows/utils.h
 		src/platform/windows/midiout_device_win32.cpp
 		src/platform/windows/midiout_device_win32.h)
-	target_link_libraries(${PROJECT_NAME} ole32 gdi32)
+	target_link_libraries(${PROJECT_NAME} ole32 gdi32 winmm)
 endif()
 
 if(APPLE)
@@ -937,7 +937,7 @@ set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
 set(CMAKE_XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "org.easyrpg.player")
 
 # liblcf
-option(PLAYER_BUILD_LIBLCF "Build the pinned Maniac liblcf dependency, or an existing lib/liblcf checkout, along with Player." OFF)
+option(PLAYER_BUILD_LIBLCF "Build the pinned Maniac liblcf dependency, or an existing lib/liblcf checkout, along with Player." ON)
 
 if(PLAYER_BUILD_LIBLCF)
 	# liblcf is built as part of this cmake file
@@ -1045,9 +1045,7 @@ if(PLAYER_HAS_AUDIO)
 	CMAKE_DEPENDENT_OPTION(PLAYER_WITH_NATIVE_MIDI "Play MIDI audio using the API of the operating system" ON "SUPPORT_NATIVE_MIDI" OFF)
 	if(PLAYER_WITH_NATIVE_MIDI)
 		target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_NATIVE_MIDI=1)
-		if(WIN32)
-			target_link_libraries(${PROJECT_NAME} "winmm")
-		elseif(ALSA_FOUND)
+		if(ALSA_FOUND AND NOT WIN32)
 			target_compile_definitions(${PROJECT_NAME} PUBLIC HAVE_ALSA=1)
 			target_sources(${PROJECT_NAME} PRIVATE
 				src/platform/linux/midiout_device_alsa.cpp

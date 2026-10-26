@@ -2,7 +2,22 @@
 # published base plus the compatibility changes shipped with this Player.
 set(LIBLCF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lib/liblcf")
 if(EXISTS "${LIBLCF_PATH}/CMakeLists.txt")
-	return()
+	set(liblcf_data "${LIBLCF_PATH}/src/generated/lcf/rpg/saveeasyrpgdata.h")
+	set(liblcf_frame "${LIBLCF_PATH}/src/generated/lcf/rpg/saveeventexecframe.h")
+	set(liblcf_bank "${LIBLCF_PATH}/src/generated/lcf/rpg/saveeasyrpgselfvariablebank.h")
+	set(liblcf_reader "${LIBLCF_PATH}/src/lcf/lsd/reader.h")
+	if(EXISTS "${liblcf_data}" AND EXISTS "${liblcf_frame}" AND EXISTS "${liblcf_bank}" AND EXISTS "${liblcf_reader}")
+		file(READ "${liblcf_data}" liblcf_data_contents)
+		file(READ "${liblcf_frame}" liblcf_frame_contents)
+		file(READ "${liblcf_reader}" liblcf_reader_contents)
+		if(liblcf_data_contents MATCHES "maniac_self_variable_banks"
+				AND liblcf_data_contents MATCHES "maniac_global_string_raw_bytes"
+				AND liblcf_frame_contents MATCHES "easyrpg_maniac_return_type"
+				AND liblcf_reader_contents MATCHES "bool maniac")
+			return()
+		endif()
+	endif()
+	message(STATUS "Existing liblcf lacks the required Maniac fields; using the pinned dependency without modifying it: ${LIBLCF_PATH}")
 elseif(EXISTS "${LIBLCF_PATH}")
 	message(FATAL_ERROR "Existing liblcf is incomplete; inspect it without deleting local files: ${LIBLCF_PATH}")
 endif()

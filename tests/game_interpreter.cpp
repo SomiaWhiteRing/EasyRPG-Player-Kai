@@ -37,17 +37,6 @@
 #include "game_windows.h"
 #include "game_dynrpg.h"
 
-namespace {
-
-using CapturedLog = std::pair<LogLevel, std::string>;
-
-void CaptureLog(LogLevel lvl, std::string const& message, LogCallbackUserData userdata) {
-	auto* logs = static_cast<std::vector<CapturedLog>*>(userdata);
-	logs->emplace_back(lvl, message);
-}
-
-} // namespace
-
 TEST_SUITE_BEGIN("Game_Interpreter");
 
 TEST_CASE("Maniac global save copies UTF16 strings and short close discards cached banks") {
@@ -6300,38 +6289,6 @@ TEST_CASE("Maniac explicit return refreshes map pages during delivery") {
 	Player::game_config.patch_maniac.Set(previous_patch);
 	Main_Data::game_maniac_self_variables.reset();
 	Graphics::Quit();
-}
-
-TEST_CASE("ChangePartyMember ignores actor zero without warning") {
-	lcf::Data::actors.clear();
-	lcf::Data::actors.resize(1);
-	lcf::Data::actors[0].initial_level = 1;
-	lcf::Data::actors[0].Setup(true);
-
-	Graphics::Init();
-	MockGame game(MockMap::eNone);
-
-	Main_Data::game_party->AddActor(1);
-	REQUIRE(Main_Data::game_party->GetBattlerCount() == 1);
-
-	std::vector<CapturedLog> logs;
-	const auto old_level = Output::GetLogLevel();
-	Output::SetLogLevel(LogLevel::Warning);
-	Output::SetLogCallback(CaptureLog, &logs);
-
-	lcf::rpg::EventCommand cmd;
-	cmd.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::ChangePartyMembers);
-	cmd.parameters = {1, 0, 0};
-
-	Game_Interpreter interpreter;
-	CHECK(interpreter.ExecuteCommand(cmd));
-	CHECK(Main_Data::game_party->GetBattlerCount() == 1);
-
-	Output::SetLogCallback(nullptr);
-	Output::SetLogLevel(old_level);
-	Graphics::Quit();
-
-	CHECK(logs.empty());
 }
 
 TEST_CASE("Maniac return destinations survive native and private scene saves") {

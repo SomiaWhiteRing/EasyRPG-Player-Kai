@@ -2068,9 +2068,8 @@ bool Game_Interpreter::CommandChangePartyMember(lcf::rpg::EventCommand const& co
 	Game_Actor* actor;
 	int id = ValueOrVariable(com.parameters[1], com.parameters[2]);
 
-	// Some RM2k games clear or rebuild the party by issuing a remove-member
-	// sequence that starts at actor ID 0. RPG_RT ignores actor 0 silently.
-	if (id == 0) {
+	// Maniac ignores actor 0 without changing the party.
+	if (Player::IsPatchManiac() && id == 0) {
 		return true;
 	}
 
@@ -2404,28 +2403,6 @@ bool Game_Interpreter::CommandWait(lcf::rpg::EventCommand const& com) { // code 
 	auto& index = GetFrame().current_command;
 
 	bool maniac = Player::IsPatchManiac();
-	if (maniac || Player::IsRPG2k3ECommands()) {
-		// Look only through a short, straight sequence of waits and audio commands.
-		// Names depending on variables must be resolved when the command executes.
-		const auto& commands = GetFrame().commands;
-		for (size_t i = index + 1; i < commands.size() && i <= index + 16; ++i) {
-			const auto& next = commands[i];
-			const auto code = static_cast<Cmd>(next.code);
-			if (code == Cmd::ShowPicture) {
-				const auto& p = next.parameters;
-				if (p.size() >= 30 && (p[17] & 0xF00) == 0 && p[19] == 0
-						&& p[22] > 0 && p[23] > 0 && (p[22] > 1 || p[23] > 1)
-						&& p[24] == 2 && p[25] > 0 && !next.string.empty()) {
-					Cache::PreloadPicture(ToString(next.string), p[7] > 0);
-				}
-				break;
-			}
-			if (code != Cmd::Wait && code != Cmd::PlayBGM && code != Cmd::PlaySound
-					&& code != Cmd::Comment && code != Cmd::Comment_2) {
-				break;
-			}
-		}
-	}
 
 	// Wait a given time
 	if (com.parameters.size() <= 1 || (!maniac && !Player::IsRPG2k3Commands())) {
@@ -2965,7 +2942,7 @@ bool Game_Interpreter::CommandChangeEventLocation(lcf::rpg::EventCommand const& 
 	const int event_mode = Player::IsPatchManiac()
 		? (static_cast<uint32_t>(raw_mode) >> 8) & 0xF : 0;
 	const int coordinate_mode = Player::IsPatchManiac()
-		? static_cast<uint32_t>(raw_mode) & 0xFF : (raw_mode == 0x1000 ? 0 : raw_mode);
+		? static_cast<uint32_t>(raw_mode) & 0xFF : raw_mode;
 	const int event_id = Player::IsPatchManiac()
 		? ValueOrVariable(event_mode, com.parameters[0]) : com.parameters[0];
 	Game_Character *event = GetCharacter(event_id, "ChangeEventLocation");

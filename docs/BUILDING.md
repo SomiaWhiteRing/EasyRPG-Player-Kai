@@ -52,6 +52,12 @@ Step-by-step instructions:
 CMake is the only supported way to build Player for Windows. All dependencies
 must be installed with [vcpkg].
 
+By default, CMake reuses an existing `lib/liblcf` checkout only when it
+contains the required Maniac save and reader interfaces. Otherwise it builds
+the pinned, patched liblcf in the build directory without changing the existing
+checkout. Set `PLAYER_BUILD_LIBLCF=OFF` to use a system liblcf with the same
+Maniac interfaces.
+
 For local Windows builds, use the repository's PowerShell entry point:
 
 ```powershell

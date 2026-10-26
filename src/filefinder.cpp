@@ -26,7 +26,6 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <array>
 
 #ifdef _WIN32
 #  include <windows.h>

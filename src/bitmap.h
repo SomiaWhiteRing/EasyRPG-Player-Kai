@@ -38,7 +38,6 @@
 #include "string_view.h"
 
 struct Transform;
-namespace ImagePNG { class PictureLoader; }
 
 /**
  * Base Bitmap class.
@@ -629,7 +628,6 @@ public:
 	ImageOpacity ComputeImageOpacity(Rect rect) const;
 
 protected:
-	friend class ImagePNG::PictureLoader;
 	DynamicFormat format;
 
 	ImageOpacity image_opacity = ImageOpacity::Alpha_8Bit;

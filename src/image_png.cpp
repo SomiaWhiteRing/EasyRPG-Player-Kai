@@ -20,13 +20,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <csetjmp>
-#include <vector>
 #include <fstream>
-#include <array>
 
 #include "output.h"
 #include "image_png.h"
-#include "player.h"
 
 static void read_data(png_structp png_ptr, png_bytep data, png_size_t length) {
 	png_bytep* bufp = (png_bytep*) png_get_io_ptr(png_ptr);
@@ -48,147 +45,6 @@ static void on_png_warning(png_structp, png_const_charp warn_msg) {
 static void on_png_error(png_structp, png_const_charp error_msg) {
 	Output::Warning("libpng: {}", error_msg);
 }
-
-struct ImagePNG::PictureLoader::Data {
-	Filesystem_Stream::InputStream stream;
-	png_structp png = nullptr;
-	png_infop info = nullptr;
-	BitmapRef bitmap;
-	std::array<uint32_t, 256> palette{};
-	std::array<Color, 256> straight_palette{};
-	std::vector<uint8_t> row;
-	int next_row = 0;
-	int palette_size = 0;
-	bool transparent = false;
-	bool has_transparent = false;
-	bool has_opaque = false;
-	bool complete = false;
-	bool failed = false;
-	~Data() {
-		if (png) {
-			png_destroy_read_struct(&png, info ? &info : nullptr, nullptr);
-		}
-	}
-};
-
-ImagePNG::PictureLoader::PictureLoader() : data(std::make_unique<Data>()) {}
-ImagePNG::PictureLoader::~PictureLoader() = default;
-
-std::unique_ptr<ImagePNG::PictureLoader> ImagePNG::PictureLoader::Create(Filesystem_Stream::InputStream stream, bool transparent) {
-	auto loader = std::unique_ptr<PictureLoader>(new PictureLoader());
-	if (!loader->Init(std::move(stream), transparent)) {
-		return {};
-	}
-	return loader;
-}
-
-bool ImagePNG::PictureLoader::Init(Filesystem_Stream::InputStream stream, bool transparent) {
-	if (!stream || Bitmap::pixel_format.bits != 32) {
-		return false;
-	}
-	uint8_t signature[8];
-	stream.read(reinterpret_cast<char*>(signature), sizeof(signature));
-	if (stream.gcount() != sizeof(signature) || png_sig_cmp(signature, 0, sizeof(signature))) {
-		return false;
-	}
-	stream.seekg(0);
-	data->stream = std::move(stream);
-	data->transparent = transparent;
-	data->png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, on_png_error, on_png_warning);
-	if (!data->png) {
-		return false;
-	}
-	data->info = png_create_info_struct(data->png);
-	if (!data->info) {
-		return false;
-	}
-	if (setjmp(png_jmpbuf(data->png))) {
-		return false;
-	}
-	png_set_read_fn(data->png, &data->stream, [](png_structp png, png_bytep bytes, png_size_t length) {
-		auto& input = *static_cast<Filesystem_Stream::InputStream*>(png_get_io_ptr(png));
-		input.read(reinterpret_cast<char*>(bytes), length);
-		if (input.gcount() != static_cast<std::streamsize>(length)) {
-			png_error(png, "Truncated picture preload");
-		}
-	});
-	png_read_info(data->png, data->info);
-	png_uint_32 width, height;
-	int depth, type, interlace;
-	png_get_IHDR(data->png, data->info, &width, &height, &depth, &type, &interlace, nullptr, nullptr);
-	// Bound speculative memory and preserve the regular decoder for other PNG types.
-	const auto pixels = static_cast<uint64_t>(width) * height;
-	if (depth != 8 || type != PNG_COLOR_TYPE_PALETTE || interlace != PNG_INTERLACE_NONE
-			|| pixels < 4 * 1024 * 1024 || pixels > 128 * 1024 * 1024 / 4) {
-		return false;
-	}
-	png_colorp palette = nullptr;
-	if (!png_get_PLTE(data->png, data->info, &palette, &data->palette_size)) {
-		return false;
-	}
-	png_read_update_info(data->png, data->info);
-	// Every pixel is written before publication; avoid clearing a whole sheet here.
-	auto storage = std::unique_ptr<void, decltype(&std::free)>(std::malloc(pixels * 4), &std::free);
-	if (!storage) {
-		return false;
-	}
-	data->bitmap = Bitmap::Create(storage.get(), width, height, width * 4,
-		transparent ? Bitmap::pixel_format : Bitmap::opaque_pixel_format);
-	pixman_image_set_destroy_function(data->bitmap->bitmap.get(),
-		[](pixman_image_t*, void* buffer) { std::free(buffer); }, storage.get());
-	storage.release();
-	data->bitmap->original_bpp = 8;
-	if (Player::IsPatchManiac()) data->bitmap->maniac_pixels.resize(pixels);
-	data->bitmap->SetId(ToString(data->stream.GetName()));
-	data->row.resize(width);
-	for (int i = 0; i < data->palette_size; ++i) {
-		const auto& color = palette[i];
-		data->straight_palette[i] = Color(color.red, color.green, color.blue, (transparent && i == 0) ? 0 : 255);
-		// RPG pictures use palette index zero as the color key, ignoring PNG tRNS.
-		data->palette[i] = (transparent && i == 0) ? 0
-			: data->bitmap->format.rgba_to_uint32_t(color.red, color.green, color.blue, 255);
-	}
-	return true;
-}
-
-bool ImagePNG::PictureLoader::ReadRows(int count) {
-	if (data->failed || data->complete) {
-		return !data->failed;
-	}
-	if (setjmp(png_jmpbuf(data->png))) {
-		data->failed = true;
-		data->bitmap.reset();
-		return false;
-	}
-	const int end = std::min(data->bitmap->GetHeight(), data->next_row + count);
-	for (; data->next_row < end; ++data->next_row) {
-		png_read_row(data->png, data->row.data(), nullptr);
-		auto* dst = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(data->bitmap->pixels())
-			+ static_cast<size_t>(data->next_row) * data->bitmap->pitch());
-		for (size_t x = 0; x < data->row.size(); ++x) {
-			auto index = data->row[x];
-			if (index >= data->palette_size) {
-				png_error(data->png, "Invalid picture palette index");
-			}
-			dst[x] = data->palette[index];
-			if (!data->bitmap->maniac_pixels.empty()) data->bitmap->maniac_pixels[static_cast<size_t>(data->next_row) * data->row.size() + x] = data->straight_palette[index];
-			bool transparent = data->transparent && index == 0;
-			data->has_transparent |= transparent;
-			data->has_opaque |= !transparent;
-		}
-	}
-	if (data->next_row == data->bitmap->GetHeight()) {
-		png_read_end(data->png, nullptr);
-		data->bitmap->image_opacity = !data->has_opaque ? ImageOpacity::Transparent
-			: data->has_transparent ? ImageOpacity::Alpha_1Bit : ImageOpacity::Opaque;
-		data->bitmap->read_only = true;
-		data->complete = true;
-	}
-	return true;
-}
-
-bool ImagePNG::PictureLoader::IsComplete() const { return data->complete; }
-BitmapRef ImagePNG::PictureLoader::GetBitmap() const { return data->complete ? data->bitmap : BitmapRef{}; }
 
 static bool ReadPNGWithReadFunction(png_voidp,png_rw_ptr, bool, ImageOut&);
 static void ReadPalettedData(png_struct*, png_info*, png_uint_32, png_uint_32, bool, uint32_t*);
