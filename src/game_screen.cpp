@@ -213,7 +213,7 @@ int Game_Screen::ZoomScreen(int x, int y, int scale, int frames, int layer) {
 	return data.maniac_zoom_time_left;
 }
 
-void Game_Screen::DrawZoom(Bitmap& dst) {
+Rect Game_Screen::GetZoomSourceRect(const Bitmap& dst) const {
 	const double scale = std::max(100.0, data.maniac_zoom_current_scale);
 	const double width = dst.GetWidth() * 100.0 / scale;
 	const double height = dst.GetHeight() * 100.0 / scale;
@@ -221,10 +221,14 @@ void Game_Screen::DrawZoom(Bitmap& dst) {
 		? Main_Data::game_player->GetScreenX() : data.maniac_zoom_current_x;
 	const double y = data.maniac_zoom_current_y < 0 && Main_Data::game_player
 		? Main_Data::game_player->GetScreenY() : data.maniac_zoom_current_y;
-	const Rect source_rect(
+	return Rect(
 		std::clamp(static_cast<int>(x - width / 2), 0, static_cast<int>(dst.GetWidth() - width)),
 		std::clamp(static_cast<int>(y - height / 2), 0, static_cast<int>(dst.GetHeight() - height)),
 		static_cast<int>(width), static_cast<int>(height));
+}
+
+void Game_Screen::DrawZoom(Bitmap& dst) {
+	const auto source_rect = GetZoomSourceRect(dst);
 	if (source_rect.IsEmpty() || source_rect == dst.GetRect()) return;
 	if (!zoom_buffer || zoom_buffer->GetRect() != dst.GetRect()) {
 		zoom_buffer = Bitmap::Create(dst.GetWidth(), dst.GetHeight(), false);

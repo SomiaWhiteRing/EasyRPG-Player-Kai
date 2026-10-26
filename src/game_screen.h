@@ -28,6 +28,7 @@
 #include "game_character.h"
 #include "battle_animation.h"
 #include "flash.h"
+#include "rect.h"
 #include <lcf/rpg/savescreen.h>
 #include <player.h>
 
@@ -58,6 +59,7 @@ public:
 	void SetWeatherEffect(int type, int strength);
 	int ZoomScreen(int x, int y, int scale, int frames, int layer);
 	void DrawZoom(Bitmap& dst);
+	Rect GetZoomSourceRect(const Bitmap& dst) const;
 	bool PlayMovie(std::string filename,
 			int pos_x, int pos_y, int res_x, int res_y);
 	bool IsMoviePlaying() const;

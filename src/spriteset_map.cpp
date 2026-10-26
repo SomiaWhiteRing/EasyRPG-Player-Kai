@@ -38,7 +38,7 @@
 #include "scene.h"
 
 namespace {
-	constexpr Drawable::Z_t interaction_highlight_z = Priority_Weather - 1;
+	constexpr Drawable::Z_t interaction_highlight_z = Priority_Maximum;
 
 	Drawable::Z_t InteractionZoomZ() {
 		if (!Player::IsPatchManiac()) {
@@ -50,8 +50,8 @@ namespace {
 
 	class InteractionHighlight final : public Drawable {
 	public:
-		InteractionHighlight(const Spriteset_Map& spriteset, bool before_zoom) :
-			Drawable(interaction_highlight_z), spriteset(spriteset), before_zoom(before_zoom) {
+		InteractionHighlight(const Spriteset_Map& spriteset) :
+			Drawable(interaction_highlight_z), spriteset(spriteset) {
 			DrawableMgr::Register(this);
 		}
 
@@ -69,20 +69,13 @@ namespace {
 			}
 
 			const auto zoom_z = InteractionZoomZ();
-			const bool split_zoom = zoom_z && zoom_z < interaction_highlight_z;
-			if (before_zoom && !split_zoom) {
-				return;
-			}
+			const auto zoom_rect = zoom_z ? Main_Data::game_screen->GetZoomSourceRect(dst) : dst.GetRect();
 
 			const int copies_x = Game_Map::LoopHorizontal() ? 1 : 0;
 			const int copies_y = Game_Map::LoopVertical() ? 1 : 0;
 			const int width = std::max<int>(Game_Map::GetTilesX(), 20) * TILE_SIZE;
 			const int height = std::max<int>(Game_Map::GetTilesY(), 15) * TILE_SIZE;
 			for (const auto& event : Game_Map::GetEvents()) {
-				// Match the event's zoom pass, including events without a visible graphic.
-				if (split_zoom && (event.GetScreenZ(0, 0) <= zoom_z) != before_zoom) {
-					continue;
-				}
 				if (!event.IsInteractionCandidate()) {
 					continue;
 				}
@@ -90,7 +83,16 @@ namespace {
 				const int y = event.GetScreenY(false) - TILE_SIZE + spriteset.GetRenderOy();
 				for (int cy = -copies_y; cy <= copies_y; ++cy) {
 					for (int cx = -copies_x; cx <= copies_x; ++cx) {
-						const Rect rect(x + cx * width, y + cy * height, TILE_SIZE, TILE_SIZE);
+						Rect rect(x + cx * width, y + cy * height, TILE_SIZE, TILE_SIZE);
+						// Draw above pictures while matching the event's screen zoom.
+						if (zoom_z && event.GetScreenZ(0, 0) <= zoom_z && !zoom_rect.IsEmpty()) {
+							const int right = (rect.x + rect.width - zoom_rect.x) * dst.GetWidth() / zoom_rect.width;
+							const int bottom = (rect.y + rect.height - zoom_rect.y) * dst.GetHeight() / zoom_rect.height;
+							rect.x = (rect.x - zoom_rect.x) * dst.GetWidth() / zoom_rect.width;
+							rect.y = (rect.y - zoom_rect.y) * dst.GetHeight() / zoom_rect.height;
+							rect.width = right - rect.x;
+							rect.height = bottom - rect.y;
+						}
 						if (rect.IsOutOfBounds(dst.GetRect())) {
 							continue;
 						}
@@ -99,7 +101,7 @@ namespace {
 						if (!marker) {
 							marker = CreateMarker(action ? Color(64, 232, 255, 255) : Color(255, 184, 48, 255));
 						}
-						dst.Blit(rect.x, rect.y, *marker, marker->GetRect(), Opacity::Opaque());
+						dst.StretchBlit(rect, *marker, marker->GetRect(), Opacity::Opaque());
 					}
 				}
 			}
@@ -117,7 +119,6 @@ namespace {
 		}
 
 		const Spriteset_Map& spriteset;
-		bool before_zoom;
 		BitmapRef action_marker;
 		BitmapRef touch_marker;
 	};
@@ -131,8 +132,7 @@ Spriteset_Map::Spriteset_Map() {
 	timer2 = std::make_unique<Sprite_Timer>(1);
 
 	screen = std::make_unique<Screen>();
-	interaction_highlight = std::make_unique<InteractionHighlight>(*this, false);
-	interaction_highlight_before_zoom = std::make_unique<InteractionHighlight>(*this, true);
+	interaction_highlight = std::make_unique<InteractionHighlight>(*this);
 
 	if (Player::IsRPG2k3()) {
 		frame = std::make_unique<Frame>();
@@ -177,8 +177,6 @@ void Spriteset_Map::Refresh() {
 
 // Update
 void Spriteset_Map::Update() {
-	const auto zoom_z = InteractionZoomZ();
-	interaction_highlight_before_zoom->SetZ(zoom_z ? zoom_z : interaction_highlight_z);
 	Tone new_tone = Main_Data::game_screen->GetTone();
 
 	tilemap->SetOx(Game_Map::GetDisplayX() / (SCREEN_TILE_SIZE / TILE_SIZE));

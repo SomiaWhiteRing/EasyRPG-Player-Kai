@@ -115,7 +115,6 @@ protected:
 	std::unique_ptr<Screen> screen;
 	std::unique_ptr<Frame> frame;
 	std::unique_ptr<Drawable> interaction_highlight;
-	std::unique_ptr<Drawable> interaction_highlight_before_zoom;
 
 	void CreateSprite(Game_Character* character, bool create_x_clone, bool create_y_clone);
 	void CreateAirshipShadowSprite(bool create_x_clone, bool create_y_clone);
