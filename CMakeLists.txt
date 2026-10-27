@@ -887,7 +887,7 @@ if(WIN32)
 		src/platform/windows/utils.h
 		src/platform/windows/midiout_device_win32.cpp
 		src/platform/windows/midiout_device_win32.h)
-	target_link_libraries(${PROJECT_NAME} ole32 gdi32 winmm dwmapi)
+	target_link_libraries(${PROJECT_NAME} ole32 gdi32 winmm)
 endif()
 
 if(APPLE)

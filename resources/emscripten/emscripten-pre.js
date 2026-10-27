@@ -148,7 +148,7 @@ if (Module.game === undefined) {
 // Catch all errors occuring inside the window
 window.addEventListener('error', (event) => {
   // workaround chrome bug: See https://github.com/EasyRPG/Player/issues/2806
-  if (event.error?.message?.includes("side-effect in debug-evaluate") && event.defaultPrevented) {
+  if (event.error.message.includes("side-effect in debug-evaluate") && event.defaultPrevented) {
     return;
   }
 

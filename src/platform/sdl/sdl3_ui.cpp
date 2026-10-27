@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #  include <windows.h>
+#  include <SDL_syswm.h>
 #  include <dwmapi.h>
 #elif defined(__ANDROID__)
 #  include <jni.h>
@@ -92,8 +93,14 @@ static bool ShouldTopAlignAndroidViewport(int window_width, int window_height) {
 
 #ifdef _WIN32
 HWND GetWindowHandle(SDL_Window* window) {
-	return static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(window),
-		SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+	SDL_SysWMinfo wminfo;
+	SDL_VERSION(&wminfo.version)
+	SDL_bool success = SDL_GetWindowWMInfo(window, &wminfo);
+
+	if (success < 0)
+		Output::Error("Wrong SDL version");
+
+	return wminfo.info.win.window;
 }
 #endif
 
@@ -913,7 +920,6 @@ void Sdl3Ui::ProcessEvent(SDL_Event &evnt) {
 		case SDL_EVENT_FINGER_DOWN:
 		case SDL_EVENT_FINGER_UP:
 		case SDL_EVENT_FINGER_MOTION:
-		case SDL_EVENT_FINGER_CANCELED:
 			ProcessFingerEvent(evnt);
 			return;
 		default:
@@ -1175,7 +1181,7 @@ void Sdl3Ui::ProcessFingerEvent(SDL_Event& evnt) {
 #endif
 
 		fi->Down(evnt.tfinger.fingerID, x, y);
-	} else if (evnt.type == SDL_EVENT_FINGER_UP || evnt.type == SDL_EVENT_FINGER_CANCELED) {
+	} else if (evnt.type == SDL_EVENT_FINGER_UP) {
 		auto fi = std::find_if(touch_input.begin(), touch_input.end(), [&](const auto& input) {
 			return input.id == evnt.tfinger.fingerID;
 		});
@@ -1183,8 +1189,7 @@ void Sdl3Ui::ProcessFingerEvent(SDL_Event& evnt) {
 			// Finger is not tracked
 			return;
 		}
-		if (evnt.type == SDL_EVENT_FINGER_CANCELED) *fi = {};
-		else fi->Up();
+		fi->Up();
 	}
 #else
 	/* unused */

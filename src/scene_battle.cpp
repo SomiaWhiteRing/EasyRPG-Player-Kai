@@ -356,7 +356,7 @@ bool Scene_Battle::HandleEventOperation(AsyncOp operation) {
 	if (operation.GetType() == AsyncOp::eSave) {
 		const bool success = Scene_Save::Save(FileFinder::Save(), operation.GetSaveSlot(), true, operation.GetSaveSlot() <= 15);
 		if (operation.IsSaveResultEnabled()) {
-			if (operation.GetSaveResultVar() > 0) *Main_Data::game_variables->GetManiacWritable(operation.GetSaveResultVar()) = success ? 1 : 0;
+			if (operation.GetSaveResultVar() > 0) Main_Data::game_variables->Set(operation.GetSaveResultVar(), success ? 1 : 0);
 			else ApplyManiacSaveResult(operation, success, Main_Data::game_maniac_self_variables.get());
 			Game_Map::RefreshAfterManiacChange();
 		}
