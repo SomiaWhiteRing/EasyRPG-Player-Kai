@@ -534,6 +534,12 @@ bool Sdl2Ui::SetManiacWindowZoom(int zoom) {
 }
 
 bool Sdl2Ui::SetManiacWindowFit(bool enabled) {
+#ifdef EMSCRIPTEN
+	maniac_window_fit = enabled;
+	maniac_window_fit_requested = true;
+	EM_ASM({ Module.setManiacWindowFit(!!$0, $1, $2); }, enabled, GetWidth(), GetHeight());
+	return true;
+#else
 	const bool previous = maniac_window_fit;
 	const int requested = maniac_window_zoom;
 	maniac_window_fit = enabled;
@@ -555,15 +561,25 @@ bool Sdl2Ui::SetManiacWindowFit(bool enabled) {
 	}
 #endif
 	return true;
+#endif
 }
 
 bool Sdl2Ui::SetManiacScreenMode(bool fullscreen) {
+#if defined(EMSCRIPTEN)
+	ApplyManiacScreenMode(fullscreen);
+	window.size_changed = true;
+	EM_ASM({ Module.setManiacScreenMode(!!$0, !!$1, !!$2, $3, $4, $5); },
+		fullscreen, maniac_active_fullscreen_layout, maniac_active_fullscreen_stretch,
+		GetWidth(), GetHeight(), std::clamp(maniac_window_zoom, 1, 4));
+	return true;
+#else
 	if (IsFullscreen() != fullscreen) ToggleFullscreen();
 	if (IsFullscreen() != fullscreen) return false;
 	ApplyManiacScreenMode(fullscreen);
 	window.size_changed = true;
 	if (!fullscreen) return SetManiacWindowFit(maniac_window_fit);
 	return true;
+#endif
 }
 
 bool Sdl2Ui::SetManiacWindowInterpolation(bool enabled) {
@@ -586,6 +602,9 @@ bool Sdl2Ui::SetManiacWindowInterpolation(bool enabled) {
 	}
 	maniac_window_interpolation = enabled;
 	maniac_window_interpolation_requested = true;
+#ifdef EMSCRIPTEN
+	EM_ASM({ Module.setManiacWindowInterpolation(!!$0); }, enabled);
+#endif
 	return true;
 #else
 	return false;

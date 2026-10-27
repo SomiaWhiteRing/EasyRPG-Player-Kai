@@ -125,15 +125,113 @@ Module.syncSaves = () => {
   return Module.savePending;
 };
 
-Module.setManiacWindowZoom = (zoom, width, height, fit) => {
-  if (document.fullscreenElement) return true;
-  const factor = fit ? 1 : 1.5;
-  const scale = Math.max(1, Math.min(zoom,
-    Math.floor(window.innerWidth * factor / width), Math.floor(window.innerHeight * factor / height)));
-  Module.canvas.style.width = `${width * scale}px`;
-  Module.canvas.style.height = `${height * scale}px`;
-  return true;
-};
+// Existing Maniac video handling extracted from f28c77ac7's Web host.
+(() => {
+  const canvas = Module.canvas;
+  let width = canvas.width, height = canvas.height;
+  let windowInterpolation = false;
+  let windowFit = true, windowZoom = 0, windowFitRequested = false;
+  let screenMode, screenModeButton, screenModeRoot;
+  let closed = false;
+  const embeddedCanvasStyle = Object.fromEntries(['width', 'height', 'position', 'left', 'top', 'transform']
+    .map(property => [property, canvas.style[property]]));
+  const applyWindowZoom = () => {
+    Object.assign(canvas.style, embeddedCanvasStyle);
+    if (!windowZoom) return;
+    const factor = windowFit ? 1 : 1.5;
+    const zoom = Math.max(1, Math.min(windowZoom,
+      Math.floor(window.innerWidth * factor / width), Math.floor(window.innerHeight * factor / height)));
+    canvas.style.width = `${width * zoom}px`;
+    canvas.style.height = `${height * zoom}px`;
+    if (windowFitRequested) {
+      canvas.style.position = 'fixed';
+      canvas.style.transform = 'none';
+      canvas.style.left = `${Math.trunc((window.innerWidth - width * zoom) / 2)}px`;
+      canvas.style.top = `${Math.trunc((window.innerHeight - height * zoom) / 2)}px`;
+    }
+  };
+  const applyWindowInterpolation = () => {
+    canvas.style.imageRendering = windowInterpolation && !document.fullscreenElement ? 'auto' : 'pixelated';
+  };
+  const applyScreenMode = () => {
+    if (!screenMode || !document.fullscreenElement) return;
+    let w = window.innerWidth, h = window.innerHeight;
+    if (!screenMode.layout) {
+      const zoom = Math.max(1, Math.min(Math.floor(w / width), Math.floor(h / height)));
+      w = width * zoom; h = height * zoom;
+    } else if (!screenMode.stretch) {
+      if (w * height > h * width) w = Math.floor(h * width / height);
+      else h = Math.floor(w * height / width);
+    }
+    canvas.style.position = 'fixed';
+    canvas.style.transform = 'none';
+    canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+    canvas.style.left = `${Math.trunc((window.innerWidth - w) / 2)}px`;
+    canvas.style.top = `${Math.trunc((window.innerHeight - h) / 2)}px`;
+    applyWindowInterpolation();
+  };
+  const applyVideoLayout = () => {
+    if (!windowZoom && !screenMode) return;
+    if (screenMode && document.fullscreenElement) applyScreenMode();
+    else {
+      if (screenModeRoot) screenModeRoot.style.display = 'contents';
+      applyWindowZoom();
+    }
+  };
+  const requestScreenMode = async data => {
+    if (closed) return;
+    screenMode = data.fullscreen ? data : undefined;
+    width = data.width; height = data.height;
+    if (!data.fullscreen) {
+      screenModeButton?.remove(); screenModeButton = undefined;
+      if (document.fullscreenElement) await document.exitFullscreen();
+      if (screenModeRoot) screenModeRoot.style.display = 'contents';
+      windowZoom = data.zoom; windowFitRequested = true;
+      applyWindowZoom(); applyWindowInterpolation();
+      return;
+    }
+    if (document.fullscreenElement) { applyScreenMode(); return; }
+    if (!screenModeRoot) {
+      screenModeRoot = document.createElement('div');
+      screenModeRoot.style.display = 'contents';
+      canvas.before(screenModeRoot); screenModeRoot.append(canvas);
+    }
+    if (!screenModeButton) {
+      screenModeButton = document.createElement('button');
+      screenModeButton.textContent = '进入全屏';
+      screenModeButton.style.cssText = 'position:fixed;left:50%;top:8px;z-index:2147483647';
+      document.body.append(screenModeButton);
+      screenModeButton.onclick = async () => {
+        if (!screenMode || closed) return;
+        try {
+          screenModeRoot.style.cssText = 'display:block;width:100vw;height:100vh;background:black';
+          await screenModeRoot.requestFullscreen();
+          screenModeButton.remove(); screenModeButton = undefined;
+          applyScreenMode(); canvas.focus();
+        } catch (error) { console.error(error); }
+      };
+    }
+  };
+  Module.setManiacWindowZoom = (zoom, w, h, fit) => {
+    width = w; height = h; windowZoom = zoom; windowFit = fit;
+    applyWindowZoom(); applyWindowInterpolation();
+    return true;
+  };
+  Module.setManiacWindowFit = (enabled, w, h) => {
+    width = w; height = h; windowFit = enabled; windowFitRequested = true;
+    if (!windowZoom) windowZoom = 1;
+    applyWindowZoom();
+  };
+  Module.setManiacWindowInterpolation = enabled => {
+    windowInterpolation = enabled; applyWindowInterpolation();
+  };
+  Module.setManiacScreenMode = (fullscreen, layout, stretch, w, h, zoom) => {
+    void requestScreenMode({fullscreen, layout, stretch, width: w, height: h, zoom}).catch(console.error);
+  };
+  window.addEventListener('resize', applyVideoLayout);
+  document.addEventListener('fullscreenchange', () => { applyVideoLayout(); applyWindowInterpolation(); });
+  Module.onExit = () => { closed = true; screenModeButton?.remove(); };
+})();
 
 Module.setStatus('Downloading...');
 Module.arguments = ["easyrpg-player", ...parseArgs()];

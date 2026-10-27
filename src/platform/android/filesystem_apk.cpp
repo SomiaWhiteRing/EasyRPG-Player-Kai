@@ -22,7 +22,6 @@
 
 #include <jni.h>
 #include <SDL3/SDL_system.h>
-#include <vector>
 
 ApkFilesystem::ApkFilesystem() : Filesystem("", FilesystemView()) {
 	JNIEnv* env = EpAndroid::env;
@@ -91,16 +90,8 @@ std::streambuf* ApkFilesystem::CreateInputStreambuffer(std::string_view path, st
 
 	const auto* cbuffer = reinterpret_cast<const uint8_t*>(AAsset_getBuffer(asset));
 	if (!cbuffer) {
-		const auto len = AAsset_getLength(asset);
-		std::vector<uint8_t> buffer(len);
-		const auto read = AAsset_read(asset, buffer.data(), len);
 		AAsset_close(asset);
-
-		if (read != len) {
-			return nullptr;
-		}
-
-		return new Filesystem_Stream::InputMemoryStreamBuf(std::move(buffer));
+		return nullptr;
 	}
 	auto* buffer = const_cast<uint8_t*>(cbuffer);
 	auto len = AAsset_getLength(asset);
