@@ -33,6 +33,20 @@ if (-not (Test-Path -LiteralPath (Join-Path $SourceDirectory "CMakeLists.txt")))
 if (-not (Test-Path -LiteralPath $CMakeExecutable -PathType Leaf)) {
 	throw "Missing CMake executable: $CMakeExecutable"
 }
+
+# An existing lib/liblcf checkout wins over the pinned dependency when this
+# option is enabled. Catch the known stale-checkout mismatch before compiling.
+$buildLcf = $cacheLines | Where-Object { $_ -match '^PLAYER_BUILD_LIBLCF:[^=]+=' } | Select-Object -First 1
+$buildLcf = if ($buildLcf) { $buildLcf.Split('=', 2)[1] } else { "OFF" }
+foreach ($argument in $ConfigureArguments) {
+	if ($argument -match '^-DPLAYER_BUILD_LIBLCF(?::BOOL)?=(.+)$') { $buildLcf = $Matches[1] }
+}
+$vendoredSaveSystem = Join-Path $SourceDirectory "lib/liblcf/src/generated/lcf/rpg/savesystem.h"
+if ($buildLcf -match '^(ON|TRUE|YES|1)$' -and (Test-Path -LiteralPath $vendoredSaveSystem)) {
+	if (-not (Select-String -LiteralPath $vendoredSaveSystem -SimpleMatch 'maniac_face_animation_flags' -Quiet)) {
+		throw "The existing lib/liblcf checkout lacks required Maniac fields. Inspect its local changes, check and apply builds/patches/liblcf-maniac-250921.patch without resetting the checkout, then keep PLAYER_BUILD_LIBLCF=ON. See the Windows build guide."
+	}
+}
 New-Item -ItemType Directory -Path $BuildDirectory -Force | Out-Null
 
 # Give a fresh build an ASCII source alias without copying or resetting files.

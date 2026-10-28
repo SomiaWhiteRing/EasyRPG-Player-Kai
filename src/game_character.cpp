@@ -61,6 +61,15 @@ void Game_Character::MoveTo(int map_id, int x, int y) {
 	SetRemainingStep(0);
 }
 
+bool Game_Character::IsStopping() const {
+	// Maniac 05d440/05c4a0 gates new movement on interpolation, not the
+	// jump flag that MoveTo deliberately preserves. Otherwise repeated
+	// relocation and jump routes alternate between running and clearing
+	// the previous jump, making a script-controlled camera jitter.
+	if (Player::IsPatchManiac()) return GetRemainingStep() == 0;
+	return !(IsMoving() || IsJumping());
+}
+
 int Game_Character::GetJumpHeight() const {
 	if (IsJumping()) {
 		int jump_height = (GetRemainingStep() > SCREEN_TILE_SIZE / 2 ? SCREEN_TILE_SIZE - GetRemainingStep() : GetRemainingStep()) / 8;

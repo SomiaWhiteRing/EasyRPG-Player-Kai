@@ -2,6 +2,32 @@
 
 本文档记录了在当前 Windows 设备上编译 EasyRPG Player 的完整步骤。
 
+## 当前设备的固定入口
+
+获得本次构建授权后，使用仓库包装脚本和现有 ASCII 构建目录：
+
+```powershell
+& ./builds/cmake/build-windows.ps1 -BuildDirectory C:/buildscripts/mr14/player-build -Targets @('EasyRPG_Player_exe', 'test_runner_player') -ConfigureArguments @('-DPLAYER_BUILD_LIBLCF=ON') -Parallel 4
+```
+
+内置 `lib/liblcf` 必须应用本仓库的 `builds/patches/liblcf-maniac-250921.patch`；否则会缺少当前 Player 所需的 Maniac 字段。2026-10-29 已按用户要求在本机 checkout 应用该配套补丁。先检查并保留它的本地改动，再检查补丁是否已存在：
+
+```powershell
+git -C lib/liblcf status --short
+git -C lib/liblcf apply --reverse --check ../../builds/patches/liblcf-maniac-250921.patch
+```
+
+反向检查通过表示已经应用，不要重复打补丁。若尚未应用，先确认正向检查通过再执行：
+
+```powershell
+git -C lib/liblcf apply --check ../../builds/patches/liblcf-maniac-250921.patch
+git -C lib/liblcf apply ../../builds/patches/liblcf-maniac-250921.patch
+```
+
+保持 `PLAYER_BUILD_LIBLCF=ON`，让 Player 和内置的匹配依赖一起构建。该选项为 ON 时，已有 `lib/liblcf` 优先于预编译依赖，单独设置 `liblcf_DIR` 不会改用安装版本。包装脚本会在调用 CMake 前拦住已知的旧头文件组合；先确认配置输出中的依赖选择，再编译。不 reset 旧 checkout、不修改全局 PATH，也不原样重试缺字段的失败配置。
+
+包装脚本从缓存复用源码与 CMake 路径，并将配置、编译的工作目录都切到 ASCII 构建目录。仅把 `-S`、`-B` 写成 ASCII 路径但仍从中文目录直接调用 CMake，不足以规避本机路径问题。下文其他预设供独立环境配置参考，当前目录构建优先使用上述固定入口。
+
 ## 环境信息
 
 - **操作系统**: Windows

@@ -1248,10 +1248,6 @@ inline bool Game_Character::IsMoving() const {
 	return !IsJumping() && GetRemainingStep() > 0;
 }
 
-inline bool Game_Character::IsStopping() const {
-	return !(IsMoving() || IsJumping());
-}
-
 inline int Game_Character::GetBeginJumpX() const {
 	return data()->begin_jump_x;
 }
