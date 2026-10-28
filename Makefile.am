@@ -199,6 +199,7 @@ libeasyrpg_player_a_SOURCES = \
 	src/generated/bitmapfont_rmg2000.h \
 	src/generated/bitmapfont_ttyp0.h \
 	src/generated/bitmapfont_wqy.h \
+	src/generated/bitmapfont_wqy_symbols.h \
 	src/generated/bitmapfont_small.h \
 	src/generated/logo.h \
 	src/generated/logo2.h \

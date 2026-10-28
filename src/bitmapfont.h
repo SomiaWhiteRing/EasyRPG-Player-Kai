@@ -7,5 +7,6 @@
 #include "generated/bitmapfont_rmg2000.h"
 #include "generated/bitmapfont_ttyp0.h"
 #include "generated/bitmapfont_wqy.h"
+#include "generated/bitmapfont_wqy_symbols.h"
 
 #endif // EP_BITMAPFONT_H

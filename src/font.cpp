@@ -87,6 +87,7 @@ namespace {
 
 	BitmapFontGlyph const* find_gothic_glyph(char32_t code) {
 		if (Player::IsCP936()) {
+			if (auto* symbol = find_glyph(BITMAPFONT_WQY_SYMBOLS, code)) return symbol;
 			auto* wqy = find_glyph(BITMAPFONT_WQY, code);
 			if (wqy != NULL) {
 				return wqy;
@@ -98,6 +99,7 @@ namespace {
 
 	BitmapFontGlyph const* find_mincho_glyph(char32_t code) {
 		if (Player::IsCP936()) {
+			if (auto* symbol = find_glyph(BITMAPFONT_WQY_SYMBOLS, code)) return symbol;
 			auto* wqy = find_glyph(BITMAPFONT_WQY, code);
 			if (wqy != NULL) {
 				return wqy;
@@ -114,12 +116,25 @@ namespace {
 		}
 
 		auto* ttyp0 = find_glyph(BITMAPFONT_TTYP0, code);
-		return ttyp0 != NULL ? ttyp0 : find_mincho_glyph(code);
+		if (ttyp0 != NULL) {
+			return ttyp0;
+		}
+		// Match CP936 Han glyphs while preserving Western symbol metrics.
+		if (code >= 0x4E00 && code <= 0x9FFF) {
+			if (auto* wqy = find_glyph(BITMAPFONT_WQY, code)) return wqy;
+		}
+		return find_mincho_glyph(code);
 	}
 
 	BitmapFontGlyph const* find_ttyp0_glyph(char32_t code) {
 		auto* ttyp0 = find_glyph(BITMAPFONT_TTYP0, code);
-		return ttyp0 != NULL ? ttyp0 : find_gothic_glyph(code);
+		if (ttyp0 != NULL) {
+			return ttyp0;
+		}
+		if (code >= 0x4E00 && code <= 0x9FFF) {
+			if (auto* wqy = find_glyph(BITMAPFONT_WQY, code)) return wqy;
+		}
+		return find_gothic_glyph(code);
 	}
 
 	struct BitmapFont final : public Font {
