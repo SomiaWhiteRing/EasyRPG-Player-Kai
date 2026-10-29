@@ -145,6 +145,7 @@ protected:
 	enum class ManiacDispatch { Return, Continue, Finish };
 	ManiacDispatch maniac_dispatch = ManiacDispatch::Return;
 	bool DispatchCommand(lcf::rpg::EventCommand const& com);
+	bool ExecuteOtherCommand(lcf::rpg::EventCommand const& com);
 
 	int loop_count = 0;
 	int loop_limit = 10000;
@@ -220,6 +221,7 @@ protected:
 	bool CommandInputNumber(lcf::rpg::EventCommand const& com);
 	bool CommandControlSwitches(lcf::rpg::EventCommand const& com);
 	bool CommandControlVariables(lcf::rpg::EventCommand const& com);
+	bool CommandControlVariablesGeneral(lcf::rpg::EventCommand const& com, int start, int end, bool resolved_maniac_target);
 	bool CommandTimerOperation(lcf::rpg::EventCommand const& com);
 	bool CommandChangeGold(lcf::rpg::EventCommand const& com);
 	bool CommandChangeItems(lcf::rpg::EventCommand const& com);
@@ -281,6 +283,7 @@ protected:
 	bool CommandChangeSaveAccess(lcf::rpg::EventCommand const& com);
 	bool CommandChangeMainMenuAccess(lcf::rpg::EventCommand const& com);
 	bool CommandConditionalBranch(lcf::rpg::EventCommand const& com);
+	bool CompleteConditionalBranch(lcf::rpg::EventCommand const& com, bool result, bool maniac);
 	bool CommandElseBranch(lcf::rpg::EventCommand const& com);
 	bool CommandEndBranch(lcf::rpg::EventCommand const& com);
 	bool CommandJumpToLabel(lcf::rpg::EventCommand const& com);

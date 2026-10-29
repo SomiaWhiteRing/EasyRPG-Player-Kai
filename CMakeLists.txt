@@ -1295,6 +1295,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 	target_link_libraries(${EXE_NAME} ${PROJECT_NAME})
 
 	if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+		option(PLAYER_WEB_JSPI "Use native WebAssembly Promise suspension" ON)
 		# Do not confuse this with our own -DUSE_SDL
 		# Prevent Emscripten from pulling in bundled SDL headers that break the build
 		target_compile_options(${PROJECT_NAME} PUBLIC "-sUSE_SDL=0")
@@ -1305,7 +1306,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		set_property(TARGET ${EXE_NAME} PROPERTY LINK_FLAGS
 			"-sALLOW_MEMORY_GROWTH -sENVIRONMENT=worker -sMODULARIZE -sEXPORT_NAME=createEasyRpgEngine \
-			 -sASYNCIFY=1 -sSTACK_SIZE=524288 -sASYNCIFY_STACK_SIZE=524288 \
+			 -sSTACK_SIZE=524288 \
 			 --bind --pre-js ${PLAYER_JS_PREJS} --post-js ${PLAYER_JS_POSTJS} \
 			 -sEXPORTED_RUNTIME_METHODS=['FS','HEAPU8','HEAP16'] \
 			 -sEXPORTED_FUNCTIONS=_main,_malloc,_free")
@@ -1319,12 +1320,20 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		# Shared STL container instantiations must all preserve allocation errors.
 		# Mixing exception modes can select a weak resize implementation that aborts.
-		target_compile_options(${PROJECT_NAME} PUBLIC -fexceptions)
+		target_compile_options(${PROJECT_NAME} PUBLIC -fwasm-exceptions)
 		# A prebuilt liblcf must be compiled with the same exception mode.
 		if(TARGET lcf)
-			target_compile_options(lcf PRIVATE -fexceptions)
+			target_compile_options(lcf PRIVATE -fwasm-exceptions)
 		endif()
-		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -fexceptions -sABORTING_MALLOC=0")
+		set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+			" -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=1 -sABORTING_MALLOC=0 -sBINARYEN_EXTRA_PASSES=one-caller-inline-max-function-size=200")
+		# Keep the hot dispatcher separate from its large, uncommon command switch.
+		if(PLAYER_WEB_JSPI)
+			target_compile_definitions(${EXE_NAME} PRIVATE PLAYER_WEB_JSPI=1)
+			set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -sJSPI=1 -sJSPI_EXPORTS=web_main_loop")
+		else()
+			set_property(TARGET ${EXE_NAME} APPEND_STRING PROPERTY LINK_FLAGS " -sASYNCIFY=1 -sASYNCIFY_STACK_SIZE=524288")
+		endif()
 
 		target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_WEB_MOVIE_PLAYER=1)
 		target_sources(${PROJECT_NAME} PRIVATE

@@ -47,6 +47,35 @@ in-place assignments.
 
 namespace {
 	int32_t generated_common_name_cache = 0;
+	// Keep a snapshot: assignments may change storage used by the input span.
+	// Most event expressions fit here; larger records still use dynamic storage.
+	struct ExpressionBytecode {
+		std::array<uint8_t, 256> local;
+		std::vector<uint8_t> extra;
+		uint8_t* data;
+		size_t length;
+
+		explicit ExpressionBytecode(Span<const int32_t> words) : length(words.size() * 4) {
+			if (length > local.size()) {
+				extra.resize(length);
+				data = extra.data();
+			} else {
+				data = local.data();
+			}
+#ifdef WORDS_BIGENDIAN
+			for (size_t i = 0; i < words.size(); ++i) {
+				const auto word = static_cast<uint32_t>(words[i]);
+				for (unsigned byte = 0; byte < 4; ++byte) data[i * 4 + byte] = (word >> (byte * 8)) & 0xff;
+			}
+#else
+			if (length) std::memcpy(data, words.data(), length);
+#endif
+		}
+		const uint8_t* begin() const { return data; }
+		const uint8_t* end() const { return data + length; }
+		bool empty() const { return length == 0; }
+	};
+
 	template<typename T>
 	const T* FindLcfStringRecord(std::string_view type, const std::vector<T>& records, int id) {
 		if (!Player::IsPatchManiac()) {
@@ -275,12 +304,12 @@ struct ProcessAssignmentRet {
 	}
 };
 
-int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
-	std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip);
+int EvaluateAssignment(int token, const uint8_t*& it,
+	const uint8_t* end, const Game_BaseInterpreterContext& ip);
 int EvaluateNumericArrayFunction(Fn selector, int32_t base, int32_t raw_count,
 	const Game_BaseInterpreterContext& ip);
-int Process(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip);
-std::pair<int32_t, int32_t> ProcessPair(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip);
+int Process(const uint8_t*& it, const uint8_t* end, const Game_BaseInterpreterContext& ip);
+std::pair<int32_t, int32_t> ProcessPair(const uint8_t*& it, const uint8_t* end, const Game_BaseInterpreterContext& ip);
 
 int32_t FromBits(uint32_t bits) {
 	int32_t result;
@@ -306,7 +335,7 @@ int32_t ClampExpressionArithmetic(int64_t value) {
 		static_cast<int64_t>(Main_Data::game_variables->GetMaxValue())));
 }
 
-int32_t ReadExpressionCount(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end) {
+int32_t ReadExpressionCount(const uint8_t*& it, const uint8_t* end) {
 	if (it == end) return 0;
 	const int marker = *it++;
 	if (marker < 128) return marker;
@@ -319,7 +348,7 @@ int32_t ReadExpressionCount(std::vector<int32_t>::iterator& it, std::vector<int3
 	return FromBits(bits);
 }
 
-void Skip(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end) {
+void Skip(const uint8_t*& it, const uint8_t* end) {
 	if (it == end) return;
 	const int token = *it++;
 	const auto consume = [&](size_t count) {
@@ -357,7 +386,7 @@ void Skip(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end
 	}
 }
 
-int Process(std::vector<int32_t>::iterator& it, std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip) {
+int Process(const uint8_t*& it, const uint8_t* end, const Game_BaseInterpreterContext& ip) {
 	int value = 0;
 	int imm = 0;
 	int imm2 = 0;
@@ -638,8 +667,8 @@ int EvaluateNumericArrayFunction(Fn selector, int32_t base, int32_t raw_count,
 	return selector == Fn::ArraySum ? FromBits(sum) : extremum;
 }
 
-int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
-		std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip) try {
+int EvaluateAssignment(int token, const uint8_t*& it,
+		const uint8_t* end, const Game_BaseInterpreterContext& ip) try {
 	const auto selector = static_cast<Op>(it == end ? 0 : *it++);
 	const bool numeric = selector == Op::Var || selector == Op::SelfVar ||
 		selector == Op::VarIndirect || selector == Op::SelfVarIndirect;
@@ -748,20 +777,13 @@ int EvaluateAssignment(int token, std::vector<int32_t>::iterator& it,
 }
 
 int32_t ManiacPatch::ParseExpression(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter) {
-	std::vector<int32_t> ops;
-	for (auto &o: op_codes) {
-		auto uo = static_cast<uint32_t>(o);
-		ops.push_back(static_cast<int32_t>(uo & 0x000000FF));
-		ops.push_back(static_cast<int32_t>((uo & 0x0000FF00) >> 8));
-		ops.push_back(static_cast<int32_t>((uo & 0x00FF0000) >> 16));
-		ops.push_back(static_cast<int32_t>((uo & 0xFF000000) >> 24));
-	}
+	ExpressionBytecode ops(op_codes);
 	auto beg = ops.begin();
 	return Process(beg, ops.end(), interpreter);
 }
 
-std::pair<int32_t, int32_t> ProcessPair(std::vector<int32_t>::iterator& it,
-		std::vector<int32_t>::iterator end, const Game_BaseInterpreterContext& ip) {
+std::pair<int32_t, int32_t> ProcessPair(const uint8_t*& it,
+		const uint8_t* end, const Game_BaseInterpreterContext& ip) {
 	if (it == end) return {0, 0};
 	if (*it == static_cast<int32_t>(Op::Range)) {
 		++it;
@@ -791,28 +813,14 @@ std::pair<int32_t, int32_t> ProcessPair(std::vector<int32_t>::iterator& it,
 }
 
 std::pair<int32_t, int32_t> ManiacPatch::ParseExpressionPair(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter) {
-	std::vector<int32_t> ops;
-	for (auto word : op_codes) {
-		const auto bits = static_cast<uint32_t>(word);
-		for (unsigned shift = 0; shift < 32; shift += 8) {
-			ops.push_back(static_cast<int32_t>((bits >> shift) & 0xff));
-		}
-	}
+	ExpressionBytecode ops(op_codes);
 	if (ops.empty()) return {0, 0};
 	auto it = ops.begin();
 	return ProcessPair(it, ops.end(), interpreter);
 }
 
 std::vector<int32_t> ManiacPatch::ParseExpressions(Span<const int32_t> op_codes, const Game_BaseInterpreterContext& interpreter) {
-	std::vector<int32_t> ops;
-	for (auto& o : op_codes) {
-		auto uo = static_cast<uint32_t>(o);
-		ops.push_back(static_cast<int32_t>(uo & 0x000000FF));
-		ops.push_back(static_cast<int32_t>((uo & 0x0000FF00) >> 8));
-		ops.push_back(static_cast<int32_t>((uo & 0x00FF0000) >> 16));
-		ops.push_back(static_cast<int32_t>((uo & 0xFF000000) >> 24));
-	}
-
+	ExpressionBytecode ops(op_codes);
 	if (ops.empty()) {
 		return {};
 	}

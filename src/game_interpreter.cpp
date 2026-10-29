@@ -775,6 +775,31 @@ bool Game_Interpreter::DispatchCommand(lcf::rpg::EventCommand const& com) {
 
 bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 	switch (static_cast<Cmd>(com.code)) {
+		case Cmd::ControlVars:
+			if (com.parameters.size() == 6 && com.parameters[0] >= 0 && com.parameters[0] <= 3
+					&& ((com.parameters[4] >= 0 && com.parameters[4] <= 2) || com.parameters[4] == 7)) {
+				return CommandControlVariables(com);
+			}
+			return CmdSetup<&Game_Interpreter::CommandControlVariables, 7>(com);
+		case Cmd::ConditionalBranch:
+			if (Player::IsPatchManiac() && com.parameters.size() >= 6
+					&& (com.parameters[0] == 1 || com.parameters[0] == 14)) {
+				const int lhs = com.parameters[0] == 1 ? ReadVariable(com.parameters[1]) : ReadVariableIndirect(com.parameters[1]);
+				const int rhs = com.parameters[2] == 0 ? com.parameters[3]
+					: com.parameters[2] == 1 ? ReadVariable(com.parameters[3]) : ReadVariableIndirect(com.parameters[3]);
+				return CompleteConditionalBranch(com, CheckOperator(lhs, rhs, com.parameters[4]), true);
+			}
+			return CmdSetup<&Game_Interpreter::CommandConditionalBranch, 6>(com);
+		default:
+			return ExecuteOtherCommand(com);
+	}
+}
+
+#ifdef __EMSCRIPTEN__
+__attribute__((noinline))
+#endif
+bool Game_Interpreter::ExecuteOtherCommand(lcf::rpg::EventCommand const& com) {
+	switch (static_cast<Cmd>(com.code)) {
 		case Cmd::CallCommonEvent:
 			return Player::IsPatchManiac()
 				? CommandManiacCallCommonEvent(com) : true;
@@ -795,8 +820,6 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 			return CmdSetup<&Game_Interpreter::CommandInputNumber, 2>(com);
 		case Cmd::ControlSwitches:
 			return CmdSetup<&Game_Interpreter::CommandControlSwitches, 4>(com);
-		case Cmd::ControlVars:
-			return CmdSetup<&Game_Interpreter::CommandControlVariables, 7>(com);
 		case Cmd::TimerOperation:
 			return CmdSetup<&Game_Interpreter::CommandTimerOperation, 5>(com);
 		case Cmd::ChangeGold:
@@ -918,14 +941,6 @@ bool Game_Interpreter::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 			return CmdSetup<&Game_Interpreter::CommandChangeSaveAccess, 1>(com);
 		case Cmd::ChangeMainMenuAccess:
 			return CmdSetup<&Game_Interpreter::CommandChangeMainMenuAccess, 1>(com);
-		case Cmd::ConditionalBranch:
-			if (Player::IsPatchManiac() && com.parameters.size() < 6) {
-				auto padded = com;
-				padded.parameters = lcf::DBArray<int32_t>(6);
-				std::copy(com.parameters.begin(), com.parameters.end(), padded.parameters.begin());
-				return CommandConditionalBranch(padded);
-			}
-			return CmdSetup<&Game_Interpreter::CommandConditionalBranch, 6>(com);
 		case Cmd::Label:
 			return true;
 		case Cmd::JumpToLabel:
@@ -1390,6 +1405,50 @@ bool Game_Interpreter::CommandControlVariables(lcf::rpg::EventCommand const& com
 		}
 		if ((start < 0) != (end < 0)) end = start;
 	}
+	const int operand = com.parameters[4], operation = com.parameters[3];
+	if (resolved_maniac_target && Player::IsPatchManiac() && start == end && start >= 0
+			&& operation >= 0 && operation <= 10
+			&& ((operand >= 0 && operand <= 2) || (operand == 19 && com.parameters.size() >= 9))) {
+		Main_Data::game_variables->EnsureSize(static_cast<size_t>(start) + 1);
+		const int64_t minimum = Main_Data::game_variables->GetMinValue(), maximum = Main_Data::game_variables->GetMaxValue();
+		int value;
+		if (operand == 19) {
+			const int lhs = ValueOrVariableBitfield(com.parameters[8], 0, com.parameters[6]);
+			const int rhs = ValueOrVariableBitfield(com.parameters[8], 1, com.parameters[7]);
+			value = ControlVariables::Binary(com.parameters[5], lhs, rhs);
+		} else {
+			const int raw = com.parameters[5];
+			value = operand == 0 ? raw : operand == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
+		}
+		auto& destination = *Main_Data::game_variables->GetManiacWritable(start);
+		int64_t result = 0;
+		switch (operation) {
+			case 0: destination = value; break;
+			case 1: result = static_cast<int64_t>(destination) + value; break;
+			case 2: result = static_cast<int64_t>(destination) - value; break;
+			case 3: result = static_cast<int64_t>(destination) * value; break;
+			case 4: result = static_cast<int64_t>(destination) / (value == 0 ? 1 : value); break;
+			case 5: result = static_cast<int64_t>(destination) % (value == 0 ? 1 : value); break;
+			default: {
+				const uint32_t lhs = static_cast<uint32_t>(destination), rhs = static_cast<uint32_t>(value);
+				const uint32_t bits = operation == 6 ? lhs | rhs : operation == 7 ? lhs & rhs
+					: operation == 8 ? lhs ^ rhs : operation == 9 ? lhs << (rhs & 31) : lhs >> (rhs & 31);
+				std::memcpy(&destination, &bits, sizeof(bits));
+				break;
+			}
+		}
+		if (operation >= 1 && operation <= 5) destination = static_cast<int32_t>(std::clamp(result, minimum, maximum));
+		Game_Map::RefreshAfterManiacChange();
+		return true;
+	}
+	return CommandControlVariablesGeneral(com, start, end, resolved_maniac_target);
+}
+
+#ifdef __EMSCRIPTEN__
+__attribute__((noinline))
+#endif
+bool Game_Interpreter::CommandControlVariablesGeneral(lcf::rpg::EventCommand const& com, int start, int end, bool resolved_maniac_target) {
+
 	int value = 0;
 	int operand = com.parameters[4];
 	const auto parameter = [&](size_t index) -> int32_t {
@@ -4491,6 +4550,11 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	default:
 		Output::Warning("ConditionalBranch: Branch {} unsupported", com.parameters[0]);
 	}
+
+	return CompleteConditionalBranch(com, result, maniac);
+}
+
+bool Game_Interpreter::CompleteConditionalBranch(lcf::rpg::EventCommand const& com, bool result, bool maniac) {
 
 	int sub_idx = subcommand_sentinel;
 	if (!result) {

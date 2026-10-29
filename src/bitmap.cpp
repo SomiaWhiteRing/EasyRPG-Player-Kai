@@ -393,10 +393,25 @@ Color Bitmap::GetManiacColorAt(int x, int y) const {
 
 void Bitmap::EnableManiacPixels() {
 	if (!maniac_pixels.empty()) return;
-	maniac_pixels.resize(static_cast<size_t>(width()) * height());
-	for (int y = 0; y < height(); ++y) for (int x = 0; x < width(); ++x)
-		maniac_pixels[static_cast<size_t>(y) * width() + x] = pixel_owner
-			? pixel_owner->GetManiacColorAt(x + maniac_view_origin.x, y + maniac_view_origin.y) : GetColorAt(x, y);
+	const int bitmap_width = width(), bitmap_height = height();
+	maniac_pixels.resize(static_cast<size_t>(bitmap_width) * bitmap_height);
+	if (pixel_owner) {
+		for (int y = 0; y < bitmap_height; ++y) for (int x = 0; x < bitmap_width; ++x)
+			maniac_pixels[static_cast<size_t>(y) * bitmap_width + x] =
+				pixel_owner->GetManiacColorAt(x + maniac_view_origin.x, y + maniac_view_origin.y);
+	} else {
+		const auto* data = static_cast<const uint8_t*>(pixels());
+		const int image_pitch = pitch();
+		for (int y = 0; y < bitmap_height; ++y) {
+			const auto* pixel = data + y * image_pitch;
+			auto* output = maniac_pixels.data() + static_cast<size_t>(y) * bitmap_width;
+			for (int x = 0; x < bitmap_width; ++x, pixel += format.bytes) {
+				uint32_t packed;
+				std::memcpy(&packed, pixel, sizeof(packed));
+				format.uint32_to_rgba(packed, output[x].red, output[x].green, output[x].blue, output[x].alpha);
+			}
+		}
+	}
 }
 
 void Bitmap::SetManiacColorAt(int x, int y, Color color, bool presentation) {

@@ -6,7 +6,7 @@ ARTIFACT_DIR="${ARTIFACT_DIR:-build/artifacts}"
 PACKAGE_DIR="${PACKAGE_DIR:-build/package/web}"
 ASSET_NAME="${ASSET_NAME:-EasyRPG-Player-Kai-local-web.zip}"
 
-for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player.data player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
+for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player.data easyrpg-player-asyncify.js easyrpg-player-asyncify.wasm easyrpg-player-asyncify.data player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
 	if [ ! -s "$BUILD_DIR/$file" ]; then
 		echo "Missing required Web build output: $BUILD_DIR/$file" >&2
 		exit 1
@@ -27,6 +27,7 @@ cp COPYING "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.js" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.wasm" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.data" "$PACKAGE_DIR/"
+cp "$BUILD_DIR/easyrpg-player-asyncify.js" "$BUILD_DIR/easyrpg-player-asyncify.wasm" "$BUILD_DIR/easyrpg-player-asyncify.data" "$PACKAGE_DIR/"
 
 cat > "$PACKAGE_DIR/README.txt" <<'EOF'
 EasyRPG Player Kai private archive-site Web build.
@@ -37,6 +38,7 @@ installed locally; this build does not download game resources.
 
 The engine and WebGL2 display run in one dedicated Worker. A separate audio
 Worker runs the native decoders/mixer and supplies AudioWorklet directly.
+Workers select native Promise suspension when supported, otherwise Asyncify.
 Installed files use a bounded memory cache. No SharedArrayBuffer or COOP/COEP
 is required.
 

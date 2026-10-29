@@ -36,7 +36,7 @@ EM_ASM({
 }, static_cast<int>(lvl), msg.c_str());
 }
 
-void main_loop() {
+extern "C" EMSCRIPTEN_KEEPALIVE void web_main_loop() {
 	if (counter < 5) {
 		++counter;
 	}
@@ -59,13 +59,26 @@ void main_loop() {
 			counter = 6;
 			return;
 		}
+#ifndef PLAYER_WEB_JSPI
 		emscripten_cancel_main_loop();
+#endif
 		EM_ASM({
 			Module.stopped = true;
 			Module.syncSaves().then(() => postMessage({type: "stopped"})).catch(() => {});
 		});
 	}
 }
+
+#ifdef PLAYER_WEB_JSPI
+EM_JS(void, StartJspiMainLoop, (), {
+	const frame = () => {
+		Module._web_main_loop().then(() => {
+			if (!Module.stopped) requestAnimationFrame(frame);
+		}).catch(handleException);
+	};
+	requestAnimationFrame(frame);
+});
+#endif
 
 /**
  * If the main function ever needs to change, be sure to update the `main()`
@@ -77,7 +90,11 @@ extern "C" int main(int argc, char* argv[]) {
 	Output::IgnorePause(true);
 	Output::SetLogCallback(LogCallback);
 
-	emscripten_set_main_loop(main_loop, 0, 0);
+#ifdef PLAYER_WEB_JSPI
+	StartJspiMainLoop();
+#else
+	emscripten_set_main_loop(web_main_loop, 0, 0);
+#endif
 
 	// Close
 	return Player::exit_code;

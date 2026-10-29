@@ -26,12 +26,13 @@ self.onmessage = async ({data}) => {
     if (data.type !== 'start' || engine) return;
     audioPort = data.audioPort;
     controlPort = data.controlPort;
+    const engineName = data.engineName;
     importScripts(new URL('player-files.js', data.runtimeBase).href,
-      new URL('easyrpg-player.js', data.runtimeBase).href);
+      new URL(`${engineName}.js`, data.runtimeBase).href);
     engine = await createEasyRpgEngine({
       audioOnly: true, noInitialRun: true, workId: data.workId,
       gamePackages: data.packages, sampleRate: data.sampleRate,
-      locateFile: path => new URL(path, data.runtimeBase).href,
+      locateFile: path => new URL(path.replace(/^easyrpg-player\./, `${engineName}.`), data.runtimeBase).href,
       print: (...values) => postMessage({type: 'log', level: 'info', message: values.join(' ')}),
       printErr: (...values) => postMessage({type: 'log', level: 'error', message: values.join(' ')}),
       onAbort: message => report(new Error(message)),

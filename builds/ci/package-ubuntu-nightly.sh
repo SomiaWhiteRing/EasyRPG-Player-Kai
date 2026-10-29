@@ -173,6 +173,10 @@ package_web() {
 		stamp_toolchain_cache "$marker_file" web
 	)
 
+	local native_deps="$emscripten_work_dir/player-native-exceptions"
+	log "Preparing native Wasm setjmp dependencies"
+	bash ./builds/emscripten/build-native-exception-deps.sh "$emscripten_work_dir" "$native_deps"
+
 	log "Configuring Web build"
 	(
 		# shellcheck disable=SC1091
@@ -186,14 +190,23 @@ package_web() {
 			-DPLAYER_ENABLE_TESTS=OFF \
 			-DPLAYER_BUILD_LIBLCF=ON \
 			-DPLAYER_TARGET_PLATFORM=Web \
+			-DPLAYER_WEB_JSPI=OFF \
+			-DPNG_LIBRARY_RELEASE="$native_deps/lib/libpng16.a" \
+			-DFREETYPE_LIBRARY_RELEASE="$native_deps/lib/libfreetype.a" \
 			-DPLAYER_VERSION_APPEND="$version_suffix"
 
 		log "Building Web"
 		cmake --build "$build_dir"
+		for extension in js wasm data; do
+			cp "$build_dir/easyrpg-player.$extension" "$build_dir/easyrpg-player-asyncify.$extension"
+		done
+		log "Building native Promise suspension variant"
+		cmake -S . -B "$build_dir" -DPLAYER_WEB_JSPI=ON
+		cmake --build "$build_dir"
 	)
 
 	log "Verifying Web outputs"
-	for file in easyrpg-player.js easyrpg-player.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
+	for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player-asyncify.js easyrpg-player-asyncify.wasm easyrpg-player-asyncify.data player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
 		test -s "$build_dir/$file" || {
 			echo "Missing build output: $build_dir/$file"
 			exit 1
