@@ -52,7 +52,8 @@ public class SettingsManager {
         FONTS_FOLDER_NAME = "fonts";
     public static int FAST_FORWARD_MODE_HOLD = 0, FAST_FORWARD_MODE_TAP = 1;
     private static int gameBrowserLabelMode = 0;
-    private static boolean showABasZX = false;
+    private static boolean showABasZX = true;
+    private static final String SHOW_AB_AS_ZX_DEFAULT_ON = "show_ab_as_zx_default_on";
 
     private static List<String> imageSizeOption = Arrays.asList("nearest", "integer", "bilinear");
     private static List<String> gameResolutionOption = Arrays.asList("original", "widescreen", "ultrawide");
@@ -109,7 +110,7 @@ public class SettingsManager {
 
         gameBrowserLabelMode = sharedPref.getInt(GAME_BROWSER_LABEL_MODE.toString(), 0);
 
-        showABasZX = sharedPref.getBoolean(SHOW_AB_AS_ZX.toString(), false);
+        showABasZX = sharedPref.getBoolean(SHOW_AB_AS_ZX_DEFAULT_ON, true);
     }
 
     public static Set<String> getFavoriteGamesList() {
@@ -532,7 +533,7 @@ public class SettingsManager {
 
     public static void setShowABasZX(boolean b) {
         showABasZX = b;
-        editor.putBoolean(SHOW_AB_AS_ZX.toString(), b);
+        editor.putBoolean(SHOW_AB_AS_ZX_DEFAULT_ON, b);
         editor.commit();
     }
 }

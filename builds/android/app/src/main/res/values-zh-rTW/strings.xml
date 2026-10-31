@@ -67,6 +67,7 @@
     <string name="default_layout">預設值</string>
     <!--ButtonMapping Activity-->
     <string name="add_a_button">新增按鈕</string>
+    <string name="add_custom_button">新增自訂按鍵</string>
     <string name="reset_button_mapping">重設按鈕</string>
     <string name="exit_without_saving">直接退出 (不儲存)</string>
     <string name="save_and_quit">儲存後退出</string>

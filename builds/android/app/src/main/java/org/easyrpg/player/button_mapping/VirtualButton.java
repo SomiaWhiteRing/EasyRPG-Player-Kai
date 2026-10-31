@@ -20,7 +20,7 @@ public class VirtualButton extends View {
     protected int keyCode;
     protected double posX, posY; // Relative position on the screen
     protected int originalSize, originalLetterSize, resizeFactor, realSize;
-    protected char charButton; // The char displayed on the button
+    protected String charButton; // The label displayed on the button
     protected Paint painter;
     protected boolean isPressed; // To know when the touch go out the button
     protected boolean debug_mode;
@@ -35,8 +35,8 @@ public class VirtualButton extends View {
             KEY_DIVIDE = 154, KEY_FAST_FORWARD = KeyEvent.KEYCODE_F,
             KEY_DEBUG_THROUGH = KeyEvent.KEYCODE_CTRL_LEFT, KEY_DEBUG_MENU = KeyEvent.KEYCODE_F9,
             KEY_HISTORY = KeyEvent.KEYCODE_GRAVE, KEY_HIGHLIGHT = KeyEvent.KEYCODE_E;
-    // Keep letter buttons distinct from existing presets that use the same Android key codes.
-    public static final int KEY_LETTER_OFFSET = 1000;
+    // Keep custom buttons distinct from existing presets that use the same Android key codes.
+    public static final int CUSTOM_KEY_OFFSET = 1000;
 
     public static VirtualButton Create(Activity activity, int keyCode, double posX, double posY, int size) {
         if (keyCode == KEY_FAST_FORWARD) {
@@ -104,7 +104,7 @@ public class VirtualButton extends View {
         int originalLetterSizeDec = originalLetterSize / 10;
         painter.setTextSize(Helper.getPixels(this, (int) (originalLetterSize * ((float) resizeFactor / 100))));
         paint.getTextBounds(text, 0, text.length(), bound);
-        while (bound.height() >= cHeight * 0.6) {
+        while ((bound.height() >= cHeight * 0.6 || bound.width() >= cWidth * 0.8) && originalLetterSize > originalLetterSizeDec) {
             // Decrement until the text fits in the circle
             originalLetterSize -= originalLetterSizeDec;
             painter.setTextSize(Helper.getPixels(this, (int) (originalLetterSize * ((float) resizeFactor / 100))));
@@ -183,7 +183,7 @@ public class VirtualButton extends View {
             if (!isPressed) {
                 isPressed = true;
 
-                SDLActivity.onNativeKeyDown(keyCode >= KEY_LETTER_OFFSET ? keyCode - KEY_LETTER_OFFSET : keyCode);
+                SDLActivity.onNativeKeyDown(keyCode >= CUSTOM_KEY_OFFSET ? keyCode - CUSTOM_KEY_OFFSET : keyCode);
                 // Vibration
                 if (SettingsManager.isVibrationEnabled() && vibrator != null) {
                     vibrator.vibrate(SettingsManager.getVibrationDuration());
@@ -199,16 +199,38 @@ public class VirtualButton extends View {
             // released (in case the touch mouvement go out the button bounds)
             if (isPressed) {
                 isPressed = false;
-                SDLActivity.onNativeKeyUp(keyCode >= KEY_LETTER_OFFSET ? keyCode - KEY_LETTER_OFFSET : keyCode);
+                SDLActivity.onNativeKeyUp(keyCode >= CUSTOM_KEY_OFFSET ? keyCode - CUSTOM_KEY_OFFSET : keyCode);
             }
         }
     }
 
-    public char getAppropriateChar(int keyCode) {
+    public static String customKeyLabel(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_GRAVE: return "`";
+            case KeyEvent.KEYCODE_MINUS: return "-";
+            case KeyEvent.KEYCODE_EQUALS: return "=";
+            case KeyEvent.KEYCODE_LEFT_BRACKET: return "[";
+            case KeyEvent.KEYCODE_RIGHT_BRACKET: return "]";
+            case KeyEvent.KEYCODE_BACKSLASH: return "\\";
+            case KeyEvent.KEYCODE_SEMICOLON: return ";";
+            case KeyEvent.KEYCODE_APOSTROPHE: return "'";
+            case KeyEvent.KEYCODE_COMMA: return ",";
+            case KeyEvent.KEYCODE_PERIOD: return ".";
+            case KeyEvent.KEYCODE_SLASH: return "/";
+            case KeyEvent.KEYCODE_NUMPAD_DIVIDE: return "Num /";
+            case KeyEvent.KEYCODE_NUMPAD_MULTIPLY: return "Num *";
+            case KeyEvent.KEYCODE_NUMPAD_SUBTRACT: return "Num -";
+            case KeyEvent.KEYCODE_NUMPAD_ADD: return "Num +";
+            case KeyEvent.KEYCODE_NUMPAD_DOT: return "Num .";
+            default: return KeyEvent.keyCodeToString(keyCode).substring(8).replace("NUMPAD_", "Num ").replace('_', ' ');
+        }
+    }
+
+    public String getAppropriateChar(int keyCode) {
         char charButton;
 
-        if (keyCode >= KEY_LETTER_OFFSET + KeyEvent.KEYCODE_A && keyCode <= KEY_LETTER_OFFSET + KeyEvent.KEYCODE_Z) {
-            charButton = (char) ('A' + keyCode - KEY_LETTER_OFFSET - KeyEvent.KEYCODE_A);
+        if (keyCode >= CUSTOM_KEY_OFFSET) {
+            return customKeyLabel(keyCode - CUSTOM_KEY_OFFSET);
         } else if (keyCode == ENTER) {
             if (SettingsManager.getShowABasZX()) {
                 charButton = 'Z';
@@ -222,7 +244,7 @@ public class VirtualButton extends View {
                 charButton = 'B';
             }
         } else if (keyCode == SHIFT) {
-            charButton = 'S';
+            charButton = '⇧';
         } else if (keyCode == KEY_0) {
             charButton = '0';
         } else if (keyCode == KEY_1) {
@@ -265,7 +287,7 @@ public class VirtualButton extends View {
             charButton = '?';
         }
 
-        return charButton;
+        return String.valueOf(charButton);
     }
 
     public double getPosX() {

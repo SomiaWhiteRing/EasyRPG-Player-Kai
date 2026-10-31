@@ -139,6 +139,7 @@ Please tell us in detail what went wrong.\n\n
 
     <!--ButtonMapping Activity-->
     <string name="add_a_button">Add a button</string>
+    <string name="add_custom_button">Add custom button</string>
     <string name="reset_button_mapping">Reset button mapping</string>
     <string name="exit_without_saving">Exit without saving</string>
     <string name="save_and_quit">Save and quit</string>

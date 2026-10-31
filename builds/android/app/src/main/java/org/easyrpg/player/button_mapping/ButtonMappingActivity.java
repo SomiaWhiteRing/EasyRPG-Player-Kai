@@ -15,6 +15,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.GravityCompat;
@@ -27,7 +31,6 @@ import org.easyrpg.player.Helper;
 import org.easyrpg.player.R;
 import org.easyrpg.player.settings.SettingsManager;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -132,6 +135,9 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
         if (item.getItemId() == R.id.button_mapping_menu_add_button) {
             showSupportedButton();
             openOrCloseMenu();
+        } else if (item.getItemId() == R.id.button_mapping_menu_add_custom_button) {
+            showCustomKeyboard();
+            openOrCloseMenu();
         } else if (item.getItemId() == R.id.button_mapping_menu_reset) {
             if (orientation == InputLayout.Orientation.ORIENTATION_HORIZONTAL) {
                 buttonList = InputLayout.getDefaultInputLayoutHorizontal(this).getButtonList();
@@ -193,7 +199,7 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
 
     public void showSupportedButton() {
         Context ctx = getApplicationContext();
-        final CharSequence[] presets = {
+        final CharSequence[] items = {
                 ctx.getString(R.string.key_enter),
                 ctx.getString(R.string.key_cancel),
                 ctx.getString(R.string.key_shift),
@@ -205,24 +211,85 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                 ctx.getString(R.string.key_history),
                 ctx.getString(R.string.key_highlight)
         };
-        final CharSequence[] items = Arrays.copyOf(presets, presets.length + 26);
-        for (int i = 0; i < 26; i++) {
-            items[presets.length + i] = String.valueOf((char) ('A' + i));
-        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getResources().getString(R.string.add_a_button));
         builder.setItems(items, (dialog, item) -> {
             //Toast.makeText(getApplicationContext(), items[item], Toast.LENGTH_SHORT).show();
-            if (item < presets.length) {
-                addAButton(items[item].toString());
-            } else {
-                int keyCode = VirtualButton.KEY_LETTER_OFFSET + KeyEvent.KEYCODE_A + item - presets.length;
-                buttonList.add(VirtualButton.Create(this, keyCode, 0.5, 0.5, 100));
-                drawButtons();
-            }
+            addAButton(items[item].toString());
         });
         AlertDialog alert = builder.create();
         alert.show();
+    }
+
+    private void showCustomKeyboard() {
+        String[] rows = {
+                "ESCAPE F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12",
+                "GRAVE 1 2 3 4 5 6 7 8 9 0 MINUS EQUALS DEL INSERT HOME PAGE_UP NUM_LOCK NUMPAD_DIVIDE NUMPAD_MULTIPLY NUMPAD_SUBTRACT",
+                "TAB Q W E R T Y U I O P LEFT_BRACKET RIGHT_BRACKET BACKSLASH FORWARD_DEL MOVE_END PAGE_DOWN NUMPAD_7 NUMPAD_8 NUMPAD_9 NUMPAD_ADD",
+                "CAPS_LOCK A S D F G H J K L SEMICOLON APOSTROPHE ENTER NUMPAD_4 NUMPAD_5 NUMPAD_6",
+                "SHIFT_LEFT Z X C V B N M COMMA PERIOD SLASH SHIFT_RIGHT DPAD_UP NUMPAD_1 NUMPAD_2 NUMPAD_3 NUMPAD_ENTER",
+                "CTRL_LEFT ALT_LEFT SPACE ALT_RIGHT CTRL_RIGHT DPAD_LEFT DPAD_DOWN DPAD_RIGHT NUMPAD_0 NUMPAD_DOT"
+        };
+        int[] reserved = {
+                KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_SPACE,
+                KeyEvent.KEYCODE_Z, KeyEvent.KEYCODE_X, KeyEvent.KEYCODE_B,
+                KeyEvent.KEYCODE_E, KeyEvent.KEYCODE_F, KeyEvent.KEYCODE_GRAVE,
+                KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT,
+                KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.KEYCODE_CTRL_RIGHT,
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
+                KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F2, KeyEvent.KEYCODE_F3,
+                KeyEvent.KEYCODE_F4, KeyEvent.KEYCODE_F5, KeyEvent.KEYCODE_F7,
+                KeyEvent.KEYCODE_F9, KeyEvent.KEYCODE_F10, KeyEvent.KEYCODE_F11, KeyEvent.KEYCODE_F12,
+                KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
+                KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD,
+                KeyEvent.KEYCODE_NUMPAD_ENTER
+        };
+        LinearLayout keyboard = new LinearLayout(this);
+        keyboard.setOrientation(LinearLayout.VERTICAL);
+        HorizontalScrollView horizontal = new HorizontalScrollView(this);
+        horizontal.addView(keyboard);
+        ScrollView vertical = new ScrollView(this);
+        vertical.addView(horizontal);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.add_custom_button)
+                .setView(vertical)
+                .create();
+        int keyWidth = (int) (56 * getResources().getDisplayMetrics().density);
+        int keyHeight = (int) (52 * getResources().getDisplayMetrics().density);
+        for (String row : rows) {
+            LinearLayout keyRow = new LinearLayout(this);
+            keyboard.addView(keyRow);
+            for (String name : row.split(" ")) {
+                int code = KeyEvent.keyCodeFromString("KEYCODE_" + name);
+                Button key = new Button(this);
+                key.setText(VirtualButton.customKeyLabel(code));
+                key.setAllCaps(false);
+                key.setPadding(0, 0, 0, 0);
+                key.setMinWidth(0);
+                key.setMinimumWidth(0);
+                boolean used = code == KeyEvent.KEYCODE_UNKNOWN
+                        || (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9)
+                        || (code >= KeyEvent.KEYCODE_NUMPAD_0 && code <= KeyEvent.KEYCODE_NUMPAD_9);
+                for (int existing : reserved) {
+                    used |= code == existing;
+                }
+                for (VirtualButton existing : buttonList) {
+                    used |= existing.getKeyCode() == VirtualButton.CUSTOM_KEY_OFFSET + code;
+                    if (!SettingsManager.getShowABasZX() && (code == KeyEvent.KEYCODE_A || code == KeyEvent.KEYCODE_B)) {
+                        used |= existing.getKeyCode() == (code == KeyEvent.KEYCODE_A ? VirtualButton.ENTER : VirtualButton.CANCEL);
+                    }
+                }
+                key.setEnabled(!used);
+                key.setOnClickListener(view -> {
+                    buttonList.add(VirtualButton.Create(this, VirtualButton.CUSTOM_KEY_OFFSET + code, 0.5, 0.5, 100));
+                    drawButtons();
+                    dialog.dismiss();
+                });
+                keyRow.addView(key, new LinearLayout.LayoutParams(keyWidth, keyHeight));
+            }
+        }
+        dialog.show();
     }
 
     public void addAButton(String s) {

@@ -67,6 +67,7 @@
     <string name="default_layout">デフォルト</string>
     <!--ButtonMapping Activity-->
     <string name="add_a_button">ボタン追加</string>
+    <string name="add_custom_button">カスタムキーを追加</string>
     <string name="reset_button_mapping">ボタン設定のリセット</string>
     <string name="exit_without_saving">保存しないで閉じる</string>
     <string name="save_and_quit">保存して閉じる</string>
