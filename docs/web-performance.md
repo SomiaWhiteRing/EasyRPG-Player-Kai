@@ -18,7 +18,7 @@ Binaryen 对单一调用者默认可能无限内联。发布构建限制 `one-ca
 
 ## 构建与发布
 
-使用 `builds/ci/package-ubuntu-nightly.sh web`（或既有 Docker 包装入口）。它先准备匹配 ABI 的两个 C 依赖，再从相同核心对象构建 Asyncify 和 JSPI 两个入口。发布 ZIP 必须同时包含 `easyrpg-player.{js,wasm,data}` 与 `easyrpg-player-asyncify.{js,wasm,data}`。手工配置前可运行 `builds/emscripten/build-native-exception-deps.sh <SDK目录> <输出目录>`，并将输出的 `lib/libpng16.a`、`lib/libfreetype.a` 分别传给 `PNG_LIBRARY_RELEASE`、`FREETYPE_LIBRARY_RELEASE`。
+使用 `builds/ci/package-ubuntu-nightly.sh web`（或既有 Docker 包装入口）。它先准备匹配 ABI 的两个 C 依赖，再从相同核心对象构建 Asyncify 和 JSPI 两个入口。发布 ZIP 必须包含 `easyrpg-player.{js,wasm}`、`easyrpg-player-asyncify.{js,wasm}` 和唯一的 `easyrpg-player.data`；两种入口共用同一份 SoundFont。Worker 的 `locateFile` 只为 WASM 选择变体，网站预加载也始终请求共用 `.data`，不能再复制 `easyrpg-player-asyncify.data`。手工配置前可运行 `builds/emscripten/build-native-exception-deps.sh <SDK目录> <输出目录>`，并将输出的 `lib/libpng16.a`、`lib/libfreetype.a` 分别传给 `PNG_LIBRARY_RELEASE`、`FREETYPE_LIBRARY_RELEASE`。
 
 获得运行授权后，除密集关卡外还检查实际异步等待、异常捕获、PNG 错误跳转、音频及停止退出。比较实际游戏状态，不以少执行事件、减少对象、增加逻辑预算或降低刷新要求冒充优化。测试钩子、固定 Maniac 种子和压力场景参数只用于任务内验证，发布前移除。
 

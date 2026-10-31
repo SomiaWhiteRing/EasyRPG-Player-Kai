@@ -182,7 +182,7 @@ self.onmessage = async ({data}) => {
           }
           audioPort.postMessage({...command, generation}, command.file ? [command.file.bytes.buffer] : []);
         },
-        locateFile: path => new URL(path.replace(/^easyrpg-player\./, `${engineName}.`), data.runtimeBase).href,
+        locateFile: path => new URL(path.replace(/^easyrpg-player\.wasm$/, `${engineName}.wasm`), data.runtimeBase).href,
         readConsoleLine,
         useSystemNameInput: () => data.systemNameInput === true,
         beginNameInput, pollNameInput, cancelNameInput,

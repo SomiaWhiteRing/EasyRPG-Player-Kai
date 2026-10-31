@@ -32,7 +32,7 @@ self.onmessage = async ({data}) => {
     engine = await createEasyRpgEngine({
       audioOnly: true, noInitialRun: true, workId: data.workId,
       gamePackages: data.packages, sampleRate: data.sampleRate,
-      locateFile: path => new URL(path.replace(/^easyrpg-player\./, `${engineName}.`), data.runtimeBase).href,
+      locateFile: path => new URL(path.replace(/^easyrpg-player\.wasm$/, `${engineName}.wasm`), data.runtimeBase).href,
       print: (...values) => postMessage({type: 'log', level: 'info', message: values.join(' ')}),
       printErr: (...values) => postMessage({type: 'log', level: 'error', message: values.join(' ')}),
       onAbort: message => report(new Error(message)),
