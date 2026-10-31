@@ -206,6 +206,24 @@ public class VirtualButton extends View {
 
     public static String customKeyLabel(int keyCode) {
         switch (keyCode) {
+            case KeyEvent.KEYCODE_ESCAPE: return "Esc";
+            case KeyEvent.KEYCODE_DEL: return "⌫";
+            case KeyEvent.KEYCODE_FORWARD_DEL: return "Del";
+            case KeyEvent.KEYCODE_MOVE_END: return "End";
+            case KeyEvent.KEYCODE_PAGE_UP: return "PgUp";
+            case KeyEvent.KEYCODE_PAGE_DOWN: return "PgDn";
+            case KeyEvent.KEYCODE_CAPS_LOCK: return "Caps";
+            case KeyEvent.KEYCODE_NUM_LOCK: return "Num";
+            case KeyEvent.KEYCODE_SHIFT_LEFT:
+            case KeyEvent.KEYCODE_SHIFT_RIGHT: return "Shift";
+            case KeyEvent.KEYCODE_CTRL_LEFT:
+            case KeyEvent.KEYCODE_CTRL_RIGHT: return "Ctrl";
+            case KeyEvent.KEYCODE_ALT_LEFT:
+            case KeyEvent.KEYCODE_ALT_RIGHT: return "Alt";
+            case KeyEvent.KEYCODE_DPAD_UP: return "↑";
+            case KeyEvent.KEYCODE_DPAD_DOWN: return "↓";
+            case KeyEvent.KEYCODE_DPAD_LEFT: return "←";
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return "→";
             case KeyEvent.KEYCODE_GRAVE: return "`";
             case KeyEvent.KEYCODE_MINUS: return "-";
             case KeyEvent.KEYCODE_EQUALS: return "=";

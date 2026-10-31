@@ -16,8 +16,8 @@ import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
-import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
 import androidx.annotation.NonNull;
@@ -203,7 +203,6 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                 ctx.getString(R.string.key_enter),
                 ctx.getString(R.string.key_cancel),
                 ctx.getString(R.string.key_shift),
-                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-", "*", "/",
                 ctx.getString(R.string.menu),
                 ctx.getString(R.string.key_fast_forward),
                 ctx.getString(R.string.key_debug_menu),
@@ -223,12 +222,12 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
 
     private void showCustomKeyboard() {
         String[] rows = {
-                "ESCAPE F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12",
-                "GRAVE 1 2 3 4 5 6 7 8 9 0 MINUS EQUALS DEL INSERT HOME PAGE_UP NUM_LOCK NUMPAD_DIVIDE NUMPAD_MULTIPLY NUMPAD_SUBTRACT",
-                "TAB Q W E R T Y U I O P LEFT_BRACKET RIGHT_BRACKET BACKSLASH FORWARD_DEL MOVE_END PAGE_DOWN NUMPAD_7 NUMPAD_8 NUMPAD_9 NUMPAD_ADD",
-                "CAPS_LOCK A S D F G H J K L SEMICOLON APOSTROPHE ENTER NUMPAD_4 NUMPAD_5 NUMPAD_6",
-                "SHIFT_LEFT Z X C V B N M COMMA PERIOD SLASH SHIFT_RIGHT DPAD_UP NUMPAD_1 NUMPAD_2 NUMPAD_3 NUMPAD_ENTER",
-                "CTRL_LEFT ALT_LEFT SPACE ALT_RIGHT CTRL_RIGHT DPAD_LEFT DPAD_DOWN DPAD_RIGHT NUMPAD_0 NUMPAD_DOT"
+                "ESCAPE _:1 F1 F2 F3 F4 _:0.5 F5 F6 F7 F8 _:0.5 F9 F10 F11 F12",
+                "GRAVE 1 2 3 4 5 6 7 8 9 0 MINUS EQUALS DEL:2 _:0.5 INSERT HOME PAGE_UP _:0.5 NUM_LOCK NUMPAD_DIVIDE NUMPAD_MULTIPLY NUMPAD_SUBTRACT",
+                "TAB:1.5 Q W E R T Y U I O P LEFT_BRACKET RIGHT_BRACKET BACKSLASH:1.5 _:0.5 FORWARD_DEL MOVE_END PAGE_DOWN _:0.5 NUMPAD_7 NUMPAD_8 NUMPAD_9 NUMPAD_ADD",
+                "CAPS_LOCK:1.75 A S D F G H J K L SEMICOLON APOSTROPHE ENTER:2.25 _:4 NUMPAD_4 NUMPAD_5 NUMPAD_6 _:1",
+                "SHIFT_LEFT:2.25 Z X C V B N M COMMA PERIOD SLASH SHIFT_RIGHT:2.75 _:1.5 DPAD_UP _:1.5 NUMPAD_1 NUMPAD_2 NUMPAD_3 NUMPAD_ENTER",
+                "CTRL_LEFT:1.25 _:1.25 ALT_LEFT:1.25 SPACE:6.25 ALT_RIGHT:1.25 _:1.25 _:1.25 CTRL_RIGHT:1.25 _:0.5 DPAD_LEFT DPAD_DOWN DPAD_RIGHT _:0.5 NUMPAD_0:2 NUMPAD_DOT"
         };
         int[] reserved = {
                 KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_SPACE,
@@ -241,41 +240,52 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                 KeyEvent.KEYCODE_F1, KeyEvent.KEYCODE_F2, KeyEvent.KEYCODE_F3,
                 KeyEvent.KEYCODE_F4, KeyEvent.KEYCODE_F5, KeyEvent.KEYCODE_F7,
                 KeyEvent.KEYCODE_F9, KeyEvent.KEYCODE_F10, KeyEvent.KEYCODE_F11, KeyEvent.KEYCODE_F12,
-                KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
-                KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD,
                 KeyEvent.KEYCODE_NUMPAD_ENTER
         };
-        LinearLayout keyboard = new LinearLayout(this);
-        keyboard.setOrientation(LinearLayout.VERTICAL);
+        int keyWidth = (int) (56 * getResources().getDisplayMetrics().density);
+        int keyHeight = (int) (52 * getResources().getDisplayMetrics().density);
+        FrameLayout keyboard = new FrameLayout(this);
         HorizontalScrollView horizontal = new HorizontalScrollView(this);
-        horizontal.addView(keyboard);
+        horizontal.addView(keyboard, new ViewGroup.LayoutParams(keyWidth * 23, keyHeight * rows.length));
         ScrollView vertical = new ScrollView(this);
         vertical.addView(horizontal);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.add_custom_button)
                 .setView(vertical)
                 .create();
-        int keyWidth = (int) (56 * getResources().getDisplayMetrics().density);
-        int keyHeight = (int) (52 * getResources().getDisplayMetrics().density);
-        for (String row : rows) {
-            LinearLayout keyRow = new LinearLayout(this);
-            keyboard.addView(keyRow);
-            for (String name : row.split(" ")) {
+        for (int rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+            int x = 0;
+            for (String entry : rows[rowIndex].split(" ")) {
+                String[] parts = entry.split(":");
+                String name = parts[0];
+                int width = parts.length == 2 ? (int) (keyWidth * Float.parseFloat(parts[1])) : keyWidth;
+                if (name.equals("_")) {
+                    x += width;
+                    continue;
+                }
                 int code = KeyEvent.keyCodeFromString("KEYCODE_" + name);
                 Button key = new Button(this);
-                key.setText(VirtualButton.customKeyLabel(code));
+                key.setText(VirtualButton.customKeyLabel(code).replace("Num ", ""));
+                key.setTextSize(12);
                 key.setAllCaps(false);
                 key.setPadding(0, 0, 0, 0);
                 key.setMinWidth(0);
                 key.setMinimumWidth(0);
-                boolean used = code == KeyEvent.KEYCODE_UNKNOWN
-                        || (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9)
-                        || (code >= KeyEvent.KEYCODE_NUMPAD_0 && code <= KeyEvent.KEYCODE_NUMPAD_9);
+                boolean used = code == KeyEvent.KEYCODE_UNKNOWN;
                 for (int existing : reserved) {
                     used |= code == existing;
                 }
                 for (VirtualButton existing : buttonList) {
-                    used |= existing.getKeyCode() == VirtualButton.CUSTOM_KEY_OFFSET + code;
+                    int existingCode = existing.getKeyCode();
+                    if (existingCode >= VirtualButton.CUSTOM_KEY_OFFSET) {
+                        existingCode -= VirtualButton.CUSTOM_KEY_OFFSET;
+                    }
+                    used |= existingCode == code;
+                    if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
+                        used |= existingCode == KeyEvent.KEYCODE_NUMPAD_0 + code - KeyEvent.KEYCODE_0;
+                    } else if (code >= KeyEvent.KEYCODE_NUMPAD_0 && code <= KeyEvent.KEYCODE_NUMPAD_9) {
+                        used |= existingCode == KeyEvent.KEYCODE_0 + code - KeyEvent.KEYCODE_NUMPAD_0;
+                    }
                     if (!SettingsManager.getShowABasZX() && (code == KeyEvent.KEYCODE_A || code == KeyEvent.KEYCODE_B)) {
                         used |= existing.getKeyCode() == (code == KeyEvent.KEYCODE_A ? VirtualButton.ENTER : VirtualButton.CANCEL);
                     }
@@ -286,7 +296,12 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                     drawButtons();
                     dialog.dismiss();
                 });
-                keyRow.addView(key, new LinearLayout.LayoutParams(keyWidth, keyHeight));
+                int height = code == KeyEvent.KEYCODE_NUMPAD_ADD || code == KeyEvent.KEYCODE_NUMPAD_ENTER ? keyHeight * 2 : keyHeight;
+                FrameLayout.LayoutParams position = new FrameLayout.LayoutParams(width, height);
+                position.leftMargin = x;
+                position.topMargin = rowIndex * keyHeight;
+                keyboard.addView(key, position);
+                x += width;
             }
         }
         dialog.show();
@@ -302,34 +317,6 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
             keyCode = KeyEvent.KEYCODE_B;
         } else if (s.equals(ctx.getString(R.string.key_shift))) {
             keyCode = KeyEvent.KEYCODE_SHIFT_LEFT;
-        } else if (s.equals("0")) {
-            keyCode = KeyEvent.KEYCODE_0;
-        } else if (s.equals("1")) {
-            keyCode = KeyEvent.KEYCODE_1;
-        } else if (s.equals("2")) {
-            keyCode = KeyEvent.KEYCODE_2;
-        } else if (s.equals("3")) {
-            keyCode = KeyEvent.KEYCODE_3;
-        } else if (s.equals("4")) {
-            keyCode = KeyEvent.KEYCODE_4;
-        } else if (s.equals("5")) {
-            keyCode = KeyEvent.KEYCODE_5;
-        } else if (s.equals("6")) {
-            keyCode = KeyEvent.KEYCODE_6;
-        } else if (s.equals("7")) {
-            keyCode = KeyEvent.KEYCODE_7;
-        } else if (s.equals("8")) {
-            keyCode = KeyEvent.KEYCODE_8;
-        } else if (s.equals("9")) {
-            keyCode = KeyEvent.KEYCODE_9;
-        } else if (s.equals("+")) {
-            keyCode = KeyEvent.KEYCODE_NUMPAD_ADD;
-        } else if (s.equals("-")) {
-            keyCode = KeyEvent.KEYCODE_NUMPAD_SUBTRACT;
-        } else if (s.equals("*")) {
-            keyCode = KeyEvent.KEYCODE_NUMPAD_MULTIPLY;
-        } else if (s.equals("/")) {
-            keyCode = KeyEvent.KEYCODE_NUMPAD_DIVIDE;
         } else if (s.equals(ctx.getString(R.string.menu))) {
             keyCode = MenuButton.MENU_BUTTON_KEY;
         } else if (s.equals(ctx.getString(R.string.key_fast_forward))) {
