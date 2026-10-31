@@ -35,6 +35,8 @@ public class VirtualButton extends View {
             KEY_DIVIDE = 154, KEY_FAST_FORWARD = KeyEvent.KEYCODE_F,
             KEY_DEBUG_THROUGH = KeyEvent.KEYCODE_CTRL_LEFT, KEY_DEBUG_MENU = KeyEvent.KEYCODE_F9,
             KEY_HISTORY = KeyEvent.KEYCODE_GRAVE, KEY_HIGHLIGHT = KeyEvent.KEYCODE_E;
+    // Keep letter buttons distinct from existing presets that use the same Android key codes.
+    public static final int KEY_LETTER_OFFSET = 1000;
 
     public static VirtualButton Create(Activity activity, int keyCode, double posX, double posY, int size) {
         if (keyCode == KEY_FAST_FORWARD) {
@@ -181,7 +183,7 @@ public class VirtualButton extends View {
             if (!isPressed) {
                 isPressed = true;
 
-                SDLActivity.onNativeKeyDown(this.keyCode);
+                SDLActivity.onNativeKeyDown(keyCode >= KEY_LETTER_OFFSET ? keyCode - KEY_LETTER_OFFSET : keyCode);
                 // Vibration
                 if (SettingsManager.isVibrationEnabled() && vibrator != null) {
                     vibrator.vibrate(SettingsManager.getVibrationDuration());
@@ -197,7 +199,7 @@ public class VirtualButton extends View {
             // released (in case the touch mouvement go out the button bounds)
             if (isPressed) {
                 isPressed = false;
-                SDLActivity.onNativeKeyUp(this.keyCode);
+                SDLActivity.onNativeKeyUp(keyCode >= KEY_LETTER_OFFSET ? keyCode - KEY_LETTER_OFFSET : keyCode);
             }
         }
     }
@@ -205,7 +207,9 @@ public class VirtualButton extends View {
     public char getAppropriateChar(int keyCode) {
         char charButton;
 
-        if (keyCode == ENTER) {
+        if (keyCode >= KEY_LETTER_OFFSET + KeyEvent.KEYCODE_A && keyCode <= KEY_LETTER_OFFSET + KeyEvent.KEYCODE_Z) {
+            charButton = (char) ('A' + keyCode - KEY_LETTER_OFFSET - KeyEvent.KEYCODE_A);
+        } else if (keyCode == ENTER) {
             if (SettingsManager.getShowABasZX()) {
                 charButton = 'Z';
             } else {

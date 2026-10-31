@@ -27,6 +27,7 @@ import org.easyrpg.player.Helper;
 import org.easyrpg.player.R;
 import org.easyrpg.player.settings.SettingsManager;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -192,7 +193,7 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
 
     public void showSupportedButton() {
         Context ctx = getApplicationContext();
-        final CharSequence[] items = {
+        final CharSequence[] presets = {
                 ctx.getString(R.string.key_enter),
                 ctx.getString(R.string.key_cancel),
                 ctx.getString(R.string.key_shift),
@@ -204,11 +205,21 @@ public class ButtonMappingActivity extends BaseActivity implements NavigationVie
                 ctx.getString(R.string.key_history),
                 ctx.getString(R.string.key_highlight)
         };
+        final CharSequence[] items = Arrays.copyOf(presets, presets.length + 26);
+        for (int i = 0; i < 26; i++) {
+            items[presets.length + i] = String.valueOf((char) ('A' + i));
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getResources().getString(R.string.add_a_button));
         builder.setItems(items, (dialog, item) -> {
             //Toast.makeText(getApplicationContext(), items[item], Toast.LENGTH_SHORT).show();
-            addAButton(items[item].toString());
+            if (item < presets.length) {
+                addAButton(items[item].toString());
+            } else {
+                int keyCode = VirtualButton.KEY_LETTER_OFFSET + KeyEvent.KEYCODE_A + item - presets.length;
+                buttonList.add(VirtualButton.Create(this, keyCode, 0.5, 0.5, 100));
+                drawButtons();
+            }
         });
         AlertDialog alert = builder.create();
         alert.show();
