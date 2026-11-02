@@ -63,9 +63,11 @@ void Input::UiSource::DoUpdate(bool system_only) {
 		if (keymask[bm.second]) {
 			continue;
 		}
-		// Maniac games can use letter keys independently of direction input.
+		// Preserve RPG_RT's H/J/K/L directions while leaving other letters to Maniac games.
 		if (maniac && bm.first >= Input::UP && bm.first <= Input::RIGHT
-				&& bm.second >= Input::Keys::A && bm.second <= Input::Keys::Z) {
+				&& bm.second >= Input::Keys::A && bm.second <= Input::Keys::Z
+				&& bm.second != Input::Keys::H && bm.second != Input::Keys::J
+				&& bm.second != Input::Keys::K && bm.second != Input::Keys::L) {
 			continue;
 		}
 
