@@ -58,8 +58,14 @@ void Input::UiSource::DoUpdate(bool system_only) {
 	UpdateGamepad();
 	UpdateTouch();
 
+	const bool maniac = Player::IsPatchManiac();
 	for (auto& bm: cfg.buttons) {
 		if (keymask[bm.second]) {
+			continue;
+		}
+		// Maniac games can use letter keys independently of direction input.
+		if (maniac && bm.first >= Input::UP && bm.first <= Input::RIGHT
+				&& bm.second >= Input::Keys::A && bm.second <= Input::Keys::Z) {
 			continue;
 		}
 
