@@ -16,6 +16,14 @@ Web Player 和内置 liblcf 统一使用 `-fwasm-exceptions`，链接保留 `WAS
 
 Binaryen 对单一调用者默认可能无限内联。发布构建限制 `one-caller-inline-max-function-size=200`，使常见事件分派与庞大的通用指令路径保持分离。
 
+## Maniac 图片准备
+
+普通资源图片在逻辑更新时记录帧、色调、闪光和源版本，绘制或读取处理后像素时才生成对应结果；读取必须使用该逻辑更新捕获的状态。透明度恰为 100、无效帧保留此前的处理结果。可修改图片仍及时更新处理缓冲，并保留当前帧之外的历史像素。资源转为可修改图片前，先完成待处理结果，并将共享帧视图脱离为独立缓冲。
+
+无效果的资源帧使用持有原图的只读视图；调色帧复用缓冲，以批量内核保持 Maniac 的整数截断、饱和度、闪光、透明色及直通 Alpha 规则。性能修改不能以普通 EasyRPG 调色公式替换这些规则。缓存只回收无人引用的位图；单张超过缓存预算的大图不享受最近 50 毫秒的额外保留，以免连续预载累积大图。
+
+等待中的预读仍限制为 16 条、静态文件名和一个待解码图片；可跨过擦图、切换远景及文字图片，不跨控制流。实测使用原始游戏颜色、等待和动画速度，对比音乐启动偏移与之后新增的画面偏移；二者不能混为同一个数值。
+
 ## 构建与发布
 
 使用 `builds/ci/package-ubuntu-nightly.sh web`（或既有 Docker 包装入口）。它先准备匹配 ABI 的两个 C 依赖，再从相同核心对象构建 Asyncify 和 JSPI 两个入口。发布 ZIP 必须包含 `easyrpg-player.{js,wasm}`、`easyrpg-player-asyncify.{js,wasm}` 和唯一的 `easyrpg-player.data`；两种入口共用同一份 SoundFont。Worker 的 `locateFile` 只为 WASM 选择变体，网站预加载也始终请求共用 `.data`，不能再复制 `easyrpg-player-asyncify.data`。手工配置前可运行 `builds/emscripten/build-native-exception-deps.sh <SDK目录> <输出目录>`，并将输出的 `lib/libpng16.a`、`lib/libfreetype.a` 分别传给 `PNG_LIBRARY_RELEASE`、`FREETYPE_LIBRARY_RELEASE`。

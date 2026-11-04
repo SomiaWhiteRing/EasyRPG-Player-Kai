@@ -110,8 +110,9 @@ namespace {
 			auto last_access = cur_ticks - it->second.last_access;
 			bool cache_exhausted = cache_size > cache_limit;
 			if (cache_exhausted) {
-				if (last_access <= 50ms) {
-					// Used during the last 3 frames, must be important, keep it.
+				if (last_access <= 50ms && it->second.bitmap->GetSize() <= cache_limit) {
+					// Retain small hot entries. An unused sheet larger than the whole
+					// cache must not accumulate with other sheets during a preload loop.
 					++it;
 					continue;
 				}

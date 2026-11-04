@@ -424,6 +424,67 @@ void Bitmap::SetManiacColorAt(int x, int y, Color color, bool presentation) {
 	maniac_pixels[static_cast<size_t>(y) * width() + x] = straight;
 }
 
+void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const std::array<int, 4>& tone,
+		bool flip_x, bool flip_y, int flash, const std::array<int, 3>& flash_color, bool chromakey) {
+	// The complete destination is overwritten. Do not read/convert its previous
+	// display pixels through EnableManiacPixels, or allocate again on every frame.
+	maniac_pixels.resize(static_cast<size_t>(frame.width) * frame.height);
+	maniac_presentation = false;
+	std::array<std::array<uint8_t, 256>, 3> channels;
+	for (size_t c = 0; c < channels.size(); ++c) {
+		for (int value = 0; value < 256; ++value) {
+			int result = value;
+			if (tone[c] < 100) result = tone[c] * result / 100;
+			else if (tone[c] > 100) result += (255 - result) * (tone[c] - 100) / 100;
+			if (flash > 0) result = static_cast<int>((static_cast<int64_t>(256 - flash) * result
+				+ static_cast<int64_t>(flash) * flash_color[c]) / 256);
+			channels[c][value] = static_cast<uint8_t>(result);
+		}
+	}
+	const Bitmap* logical_source = &source;
+	int source_x = frame.x, source_y = frame.y;
+	while (logical_source->maniac_pixels.empty() && logical_source->pixel_owner) {
+		source_x += logical_source->maniac_view_origin.x;
+		source_y += logical_source->maniac_view_origin.y;
+		logical_source = logical_source->pixel_owner.get();
+	}
+	const bool straight = !logical_source->maniac_pixels.empty() && !logical_source->maniac_presentation;
+	auto* display = static_cast<uint8_t*>(pixels());
+	const int display_pitch = pitch(), bytes = format.bytes;
+	const int saturation = tone[3];
+	for (int y = 0; y < frame.height; ++y) {
+		const int sy = flip_y ? frame.height - y - 1 : y;
+		const Color* input = straight ? logical_source->maniac_pixels.data()
+			+ static_cast<size_t>(source_y + sy) * logical_source->width() + source_x : nullptr;
+		auto* output = maniac_pixels.data() + static_cast<size_t>(y) * frame.width;
+		auto* pixel = display + static_cast<size_t>(y) * display_pitch;
+		for (int x = 0; x < frame.width; ++x, pixel += bytes) {
+			const int sx = flip_x ? frame.width - x - 1 : x;
+			Color color = input ? input[sx] : source.GetManiacColorAt(frame.x + sx, frame.y + sy);
+			if (color.alpha || !chromakey) {
+				int r = color.red, g = color.green, b = color.blue;
+				if (saturation < 100) {
+					const int luminance = 3 * (r + g + b) / 10;
+					r = (r * saturation + luminance * (100 - saturation)) / 100;
+					g = (g * saturation + luminance * (100 - saturation)) / 100;
+					b = (b * saturation + luminance * (100 - saturation)) / 100;
+				} else if (saturation > 100) {
+					const int luminance = (b + 3 * (g + r)) / 10;
+					r = std::clamp(((3 * r - 2 * luminance) * (saturation - 100) + r * (200 - saturation)) / 100, 0, 255);
+					g = std::clamp(((3 * g - 2 * luminance) * (saturation - 100) + g * (200 - saturation)) / 100, 0, 255);
+					b = std::clamp(((3 * b - 2 * luminance) * (saturation - 100) + b * (200 - saturation)) / 100, 0, 255);
+				}
+				color.red = channels[0][r]; color.green = channels[1][g]; color.blue = channels[2][b];
+			}
+			output[x] = color;
+			MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
+			const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
+			std::memcpy(pixel, &packed, bytes);
+		}
+	}
+	++maniac_revision;
+}
+
 void Bitmap::ResetManiacPresentation() {
 	if (maniac_presentation) {
 		maniac_pixels.clear();

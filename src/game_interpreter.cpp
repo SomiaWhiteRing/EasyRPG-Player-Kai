@@ -2464,7 +2464,7 @@ bool Game_Interpreter::CommandWait(lcf::rpg::EventCommand const& com) { // code 
 
 	bool maniac = Player::IsPatchManiac();
 	if (maniac || Player::IsRPG2k3ECommands()) {
-		// Look only through a short, straight sequence of waits and audio commands.
+		// Look only through a short, straight sequence without control flow.
 		// Names depending on variables must be resolved when the command executes.
 		const auto& commands = GetFrame().commands;
 		for (size_t i = index + 1; i < commands.size() && i <= index + 16; ++i) {
@@ -2480,7 +2480,8 @@ bool Game_Interpreter::CommandWait(lcf::rpg::EventCommand const& com) { // code 
 				break;
 			}
 			if (code != Cmd::Wait && code != Cmd::PlayBGM && code != Cmd::PlaySound
-					&& code != Cmd::Comment && code != Cmd::Comment_2) {
+					&& code != Cmd::Comment && code != Cmd::Comment_2 && code != Cmd::ErasePicture
+					&& code != Cmd::ChangePBG && code != Cmd::Maniac_ShowStringPicture) {
 				break;
 			}
 		}

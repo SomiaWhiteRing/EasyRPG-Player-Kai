@@ -162,14 +162,12 @@ void Wave(Bitmap& destination, const Bitmap& source, int x, int y, double sx, do
 }
 }
 
-BitmapRef Prepare(const Bitmap& source, Rect frame, const lcf::rpg::SavePicture& picture, const lcf::rpg::SaveScreen& screen, bool chromakey) {
+BitmapRef Prepare(const BitmapRef& source, const PrepareState& state, BitmapRef reuse, bool allow_view) {
+	const Rect frame(state[0], state[1], state[2], state[3]);
 	if (frame.width <= 0 || frame.height <= 0) return {};
-	std::array<int, 4> tone = {Nearest(picture.current_red), Nearest(picture.current_green), Nearest(picture.current_blue), Nearest(picture.current_sat)};
-	const std::array<double, 4> screen_tone = {screen.tint_current_red, screen.tint_current_green, screen.tint_current_blue, screen.tint_current_sat};
-	for (size_t i = 0; i < tone.size(); ++i) tone[i] = static_cast<int>(std::clamp(static_cast<int64_t>(tone[i])
-		+ (picture.flags.affected_by_tint ? Round(screen_tone[i]) : 100) - 100, int64_t{0}, int64_t{200}));
-	const int flip = (static_cast<uint32_t>(picture.finish_bot_trans) >> 12) & 15;
-	const bool sheet = frame.width != source.GetWidth() || frame.height != source.GetHeight();
+	const std::array<int, 4> tone = {state[4], state[5], state[6], state[7]};
+	const int flip = state[12];
+	const bool sheet = frame.width != source->GetWidth() || frame.height != source->GetHeight();
 	bool horizontal = false, vertical = false;
 	if (flip == 1) horizontal = frame.width > 1;
 	else if (flip == 2) vertical = frame.height >= (sheet ? 2 : 3);
@@ -177,36 +175,14 @@ BitmapRef Prepare(const Bitmap& source, Rect frame, const lcf::rpg::SavePicture&
 		horizontal = frame.width > 1;
 		vertical = frame.height > 1 && (horizontal || sheet || frame.height >= 3);
 	}
-	auto result = Bitmap::Create(frame.width, frame.height, true);
-	result->EnableManiacPixels();
-	const int flash = picture.flags.affected_by_flash ? Round(screen.flash_current_level) * 8 : 0;
-	const std::array<int, 3> flash_color = {screen.flash_red * 8, screen.flash_green * 8, screen.flash_blue * 8};
-	if (!horizontal && !vertical && tone == std::array<int, 4>{100, 100, 100, 100} && flash <= 0) {
-		result->CopyManiacPixels(0, 0, source, frame);
-		return result;
-	}
-	for (int y = 0; y < frame.height; ++y) for (int x = 0; x < frame.width; ++x) {
-		Color pixel = source.GetManiacColorAt(frame.x + (horizontal ? frame.width - x - 1 : x), frame.y + (vertical ? frame.height - y - 1 : y));
-		if (pixel.alpha || !chromakey) {
-			std::array<int, 3> channels = {pixel.red, pixel.green, pixel.blue};
-			const int saturation = tone[3];
-			if (saturation < 100) {
-				const int luminance = 3 * (channels[0] + channels[1] + channels[2]) / 10;
-				for (auto& channel : channels) channel = (channel * saturation + luminance * (100 - saturation)) / 100;
-			} else if (saturation > 100) {
-				const int luminance = (channels[2] + 3 * (channels[1] + channels[0])) / 10;
-				for (auto& channel : channels) channel = std::clamp(((3 * channel - 2 * luminance) * (saturation - 100) + channel * (200 - saturation)) / 100, 0, 255);
-			}
-			for (size_t i = 0; i < channels.size(); ++i) {
-				if (tone[i] < 100) channels[i] = tone[i] * channels[i] / 100;
-				else if (tone[i] > 100) channels[i] += (255 - channels[i]) * (tone[i] - 100) / 100;
-				if (flash > 0) channels[i] = static_cast<int>((static_cast<int64_t>(256 - flash) * channels[i] + static_cast<int64_t>(flash) * flash_color[i]) / 256);
-			}
-			pixel.red = channels[0] & 255; pixel.green = channels[1] & 255; pixel.blue = channels[2] & 255;
-		}
-		result->SetManiacColorAt(x, y, pixel);
-	}
-	return result;
+	const int flash = state[11] * 8;
+	if (allow_view && !horizontal && !vertical && tone == std::array<int, 4>{100, 100, 100, 100} && flash <= 0)
+		return Bitmap::CreateReadOnlyView(source, frame);
+	if (!reuse || reuse->IsReadOnly() || reuse->GetWidth() != frame.width || reuse->GetHeight() != frame.height)
+		reuse = Bitmap::Create(frame.width, frame.height, true);
+	reuse->PrepareManiacFrame(*source, frame, tone, horizontal, vertical, flash,
+		{state[8] * 8, state[9] * 8, state[10] * 8}, state[13] != 0);
+	return reuse;
 }
 
 void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture, int x, int y, bool chromakey) {

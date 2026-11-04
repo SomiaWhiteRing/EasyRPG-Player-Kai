@@ -158,7 +158,7 @@ public:
 		void InitManiacPixelLayout(bool resource_shared);
 		void ResetManiacPixelLayout();
 		void RecordManiacProcessedFrame(const BitmapRef& frame);
-		BitmapRef GetManiacReadBitmap(bool processed) const;
+		BitmapRef GetManiacReadBitmap(bool processed);
 		Color ReadManiacPixel(const Bitmap& source, bool processed, int x, int y) const;
 		void ClearManiacTileRect(const Rect& rect);
 		void CopyManiacTilePart(int x, int y, const Bitmap& source, const Rect& source_rect, bool skip_alpha_zero);

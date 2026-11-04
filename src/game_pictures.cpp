@@ -585,6 +585,7 @@ void Game_Pictures::Picture::Erase() {
 	data.name.clear();
 	if (sprite) {
 		sprite->SetBitmap(nullptr);
+		sprite->ResetManiacPixels();
 	}
 	if (IsWindowAttached()) {
 		data.easyrpg_type = lcf::rpg::SavePicture::EasyRpgType_default;
@@ -666,6 +667,9 @@ BitmapRef Game_Pictures::Picture::GetMutableBitmap(bool flatten_spritesheet) {
 	if (!sprite || !sprite->GetBitmap()) return {};
 	auto bitmap = sprite->GetBitmap();
 	if (Player::IsPatchManiac() && maniac_image_width <= 0) InitManiacPixelLayout(false);
+	// Preserve both the last processed frame and an initially hidden picture's
+	// zero allocation before a command detaches and changes the resource.
+	if (Player::IsPatchManiac()) GetManiacReadBitmap(true);
 	const bool flatten = flatten_spritesheet && (data.spritesheet_cols > 1 || data.spritesheet_rows > 1);
 	if (!bitmap_modified || flatten) {
 		// Pictures loaded from Cache may share this image with other pictures.
@@ -684,6 +688,11 @@ BitmapRef Game_Pictures::Picture::GetMutableBitmap(bool flatten_spritesheet) {
 			copy->SetManiacColorAt(x, y, bitmap->GetManiacColorAt(source.x + x, source.y + y));
 		bitmap = std::move(copy);
 		bitmap_modified = true;
+	}
+	if (maniac_processed && maniac_processed->IsReadOnly()) {
+		auto processed = Bitmap::Create(maniac_image_width, maniac_image_height, true);
+		processed->CopyManiacPixels(0, 0, *maniac_processed, maniac_processed->GetRect());
+		maniac_processed = std::move(processed);
 	}
 	maniac_resource_shared = false;
 	if (flatten) {
@@ -764,14 +773,13 @@ void Game_Pictures::Picture::InitManiacPixelLayout(bool resource_shared) {
 	maniac_image_width = resource_shared ? maniac_frame_width : raw.GetWidth();
 	maniac_image_height = resource_shared ? maniac_frame_height : raw.GetHeight();
 	maniac_resource_shared = resource_shared;
-	if (maniac_image_width > 0 && maniac_image_height > 0) {
+	if (!resource_shared && maniac_image_width > 0 && maniac_image_height > 0) {
 		maniac_processed = Bitmap::Create(maniac_image_width, maniac_image_height, true);
 		if (maniac_processed) maniac_processed->Clear();
 	}
 }
 
 void Game_Pictures::Picture::RecordManiacProcessedFrame(const BitmapRef& frame) {
-	if (!maniac_processed) return;
 	if (frame->GetWidth() > maniac_image_width || frame->GetHeight() > maniac_image_height)
 		Output::Error("Maniac picture {} frame exceeds processed allocation", data.ID);
 	// Resource pictures expose the same prepared frame to drawing and pixel
@@ -780,12 +788,21 @@ void Game_Pictures::Picture::RecordManiacProcessedFrame(const BitmapRef& frame) 
 		maniac_processed = frame;
 		return;
 	}
+	if (!maniac_processed) return;
 	// Native e40c0 writes this frame to origin0; the rest of a kind2 full
 	// allocation keeps its earlier/zero pixels. Display still uses Sprite's frame.
 	maniac_processed->CopyManiacPixels(0, 0, *frame, frame->GetRect());
 }
 
-BitmapRef Game_Pictures::Picture::GetManiacReadBitmap(bool processed) const {
+BitmapRef Game_Pictures::Picture::GetManiacReadBitmap(bool processed) {
+	if (processed && sprite) {
+		sprite->MaterializeManiacPixels();
+		// Hidden/invalid first frames expose the original zero-filled allocation.
+		if (!maniac_processed && maniac_image_width > 0 && maniac_image_height > 0) {
+			maniac_processed = Bitmap::Create(maniac_image_width, maniac_image_height, true);
+			maniac_processed->Clear();
+		}
+	}
 	return processed ? maniac_processed : sprite ? sprite->GetBitmap() : BitmapRef();
 }
 

@@ -20,6 +20,7 @@
 
 // Headers
 #include <cstdint>
+#include <array>
 #include <string>
 #include <map>
 #include <vector>
@@ -263,6 +264,10 @@ public:
 	void CopyManiacPixels(int x, int y, const Bitmap& source, Rect source_rect,
 		bool chromakey = false, bool presentation = false);
 	void EnableManiacPixels();
+	/** Replaces a complete frame, preserving Maniac's straight-alpha color arithmetic. */
+	void PrepareManiacFrame(const Bitmap& source, const Rect& frame, const std::array<int, 4>& tone,
+		bool flip_x, bool flip_y, int flash, const std::array<int, 3>& flash_color, bool chromakey);
+	bool IsReadOnly() const { return read_only; }
 	void ResetManiacPresentation();
 	uint64_t GetManiacRevision() const { return pixel_owner ? pixel_owner->GetManiacRevision() : maniac_revision; }
 

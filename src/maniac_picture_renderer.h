@@ -10,8 +10,9 @@
 namespace ManiacPicture {
 int Truncate(double value);
 int Nearest(double value);
-BitmapRef Prepare(const Bitmap& source, Rect frame, const lcf::rpg::SavePicture& picture,
-	const lcf::rpg::SaveScreen& screen, bool chromakey);
+// frame xywh, tone rgb/saturation, flash rgb/level, flip nibble, chromakey.
+using PrepareState = std::array<int, 14>;
+BitmapRef Prepare(const BitmapRef& source, const PrepareState& state, BitmapRef reuse, bool allow_view);
 void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture, int x, int y, bool chromakey);
 }
 #endif

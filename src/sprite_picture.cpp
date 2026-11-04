@@ -46,8 +46,7 @@ void Sprite_Picture::OnPictureShow(bool reuse_pixels) {
 		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
 	}
 	if (!reuse_pixels) {
-		maniac_source.reset();
-		maniac_prepared.reset();
+		ResetManiacPixels();
 	}
 	last_spritesheet_frame = -1;
 	UpdatePictureZ();
@@ -218,27 +217,14 @@ void Sprite_Picture::UpdateManiacPixels() {
 	if (initialize)
 		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
 	if (picture.data.current_top_trans == 100.0) return;
-	Rect rect;
-	const auto previous = maniac_prepared;
-	if (auto prepared = PrepareManiacBitmap(rect); prepared && (initialize || prepared != previous))
-		picture.RecordManiacProcessedFrame(prepared);
-}
-
-BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {
-	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
-	if (maniac_prepared) rect = maniac_prepared->GetRect();
-	return maniac_prepared;
-}
-
-BitmapRef Sprite_Picture::PrepareManiacBitmap(Rect& rect) const {
-	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
-	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
+	const auto& pic = picture;
 	const auto& bitmap = GetBitmap();
-	if (!bitmap || pic.data.spritesheet_cols <= 0 || pic.data.spritesheet_rows <= 0) return {};
+	if (!bitmap || pic.data.spritesheet_cols <= 0 || pic.data.spritesheet_rows <= 0) return;
 	const int width = bitmap->GetWidth() / pic.data.spritesheet_cols;
 	const int height = bitmap->GetHeight() / pic.data.spritesheet_rows;
 	Rect frame(width * (pic.data.spritesheet_frame % pic.data.spritesheet_cols), height * (pic.data.spritesheet_frame / pic.data.spritesheet_cols), width, height);
-	if (static_cast<uint32_t>(pic.data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())) return {};
+	if (static_cast<uint32_t>(pic.data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())
+			|| width <= 0 || height <= 0) return;
 	const auto& data = pic.data;
 	const auto& screen = Main_Data::game_screen->GetSaveData();
 	const auto component = [&](double picture, double screen) {
@@ -256,8 +242,32 @@ BitmapRef Sprite_Picture::PrepareManiacBitmap(Rect& rect) const {
 		maniac_source = bitmap;
 		maniac_prepare_state = state;
 		maniac_source_revision = bitmap->GetManiacRevision();
-		maniac_prepared = ManiacPicture::Prepare(*bitmap, frame, data, screen, pic.GetManiacImageChromakey());
+		maniac_pixels_pending = true;
 	}
+	// Resource pixels are immutable until GetMutableBitmap detaches them. Keep
+	// this tick's exact frame/effects for reads, even if an event changes them
+	// before the next draw. Mutable images must retain their historical pixels.
+	if (!picture.maniac_resource_shared) MaterializeManiacPixels();
+}
+
+void Sprite_Picture::MaterializeManiacPixels() const {
+	if (!maniac_pixels_pending) return;
+	auto& picture = Main_Data::game_pictures->GetPicture(pic_id);
+	maniac_prepared = ManiacPicture::Prepare(maniac_source, maniac_prepare_state,
+		maniac_prepared, picture.maniac_resource_shared);
+	maniac_pixels_pending = false;
+	if (maniac_prepared) picture.RecordManiacProcessedFrame(maniac_prepared);
+}
+
+void Sprite_Picture::ResetManiacPixels() {
+	maniac_source.reset();
+	maniac_prepared.reset();
+	maniac_pixels_pending = false;
+}
+
+BitmapRef Sprite_Picture::GetPreparedBitmap(Rect& rect) const {
+	if (!Player::IsPatchManiac()) return Sprite::GetPreparedBitmap(rect);
+	MaterializeManiacPixels();
 	if (maniac_prepared) rect = maniac_prepared->GetRect();
 	return maniac_prepared;
 }
