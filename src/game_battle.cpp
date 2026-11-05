@@ -306,7 +306,9 @@ void Game_Battle::UpdateAtbGauges() {
 	Main_Data::game_enemyparty->GetBattlers(battlers);
 	Main_Data::game_party->GetBattlers(battlers);
 
-	const auto use_2k3e_algo = Player::IsRPG2k3E();
+	// Maniac uses the linear 300000 / (sum_agi * 100 / (agi + 1)) increment.
+	// The English RPG_RT low-gauge multiplier is absent from its ATB update.
+	const auto use_2k3e_algo = Player::IsRPG2k3E() && !Player::IsPatchManiac();
 
 	int sum_agi = 0;
 	for (auto* bat: battlers) {

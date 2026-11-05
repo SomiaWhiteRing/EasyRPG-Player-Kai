@@ -3630,11 +3630,11 @@ TEST_CASE("Maniac 250921 battle no-ops reach adjacent markers in one update") {
 	Graphics::Quit();
 }
 
-TEST_CASE("Maniac 250921 battle End Command polls input twice after frame cleanup") {
+TEST_CASE("Maniac battle End Command preserves the current input frame") {
 	struct CountingSource : Input::Source {
 		using Input::Source::Source;
 		int updates = 0;
-		void Update() override { ++updates; }
+		void Update() override { ++updates; pressed_buttons.set(Input::DECISION); }
 		void UpdateSystem() override {}
 	};
 	struct RestoreSource {
@@ -3649,6 +3649,9 @@ TEST_CASE("Maniac 250921 battle End Command polls input twice after frame cleanu
 		RestoreSource restore;
 		Input::source = std::make_unique<CountingSource>(Game_ConfigInput{}, Input::DirectionMappingArray{});
 		auto* source = static_cast<CountingSource*>(Input::source.get());
+		Input::ResetKeys();
+		Input::Update();
+		REQUIRE(Input::IsTriggered(Input::DECISION));
 		lcf::rpg::EventCommand end;
 		end.code = static_cast<int32_t>(lcf::rpg::EventCommand::Code::END);
 		Player::game_config.patch_maniac.Set(1);
@@ -3656,35 +3659,30 @@ TEST_CASE("Maniac 250921 battle End Command polls input twice after frame cleanu
 		battle.Push(std::vector<lcf::rpg::EventCommand>{end}, 0);
 		battle.Update();
 		CHECK(!battle.IsRunning());
-		CHECK(source->updates == 2);
+		CHECK(source->updates == 1);
+		CHECK(Input::IsTriggered(Input::DECISION));
+		CHECK(Input::press_time[Input::DECISION] == 1);
 
 		Game_Interpreter map(true);
 		map.Push(std::vector<lcf::rpg::EventCommand>{end}, 0);
 		map.Update();
 		CHECK(!map.IsRunning());
-		CHECK(source->updates == 2);
+		CHECK(source->updates == 1);
+		CHECK(Input::IsTriggered(Input::DECISION));
+		Input::ResetKeys();
 
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();
 }
 
-TEST_CASE("Maniac 250921 battle typed return delivers and clears before both input polls") {
+TEST_CASE("Maniac battle typed return delivers and clears without advancing input") {
 	struct CountingSource : Input::Source {
 		using Input::Source::Source;
-		Game_Interpreter_Battle* owner = nullptr;
-		int receiver = 2;
 		int updates = 0;
-		int compatible_polls = 0;
 		void Update() override {
 			++updates;
-			const auto* bank = Main_Data::game_maniac_self_variables->Find(1, 0, 1);
-			const bool delivered = receiver == 2 ? Main_Data::game_variables->Get(601) == 91
-				: receiver == 5 ? Main_Data::game_strings->Get(601) == "Inner"
-				: Main_Data::game_switches->Get(601) == 1;
-			if (delivered && bank && bank->numbers.empty() && bank->strings.empty()
-				&& bank->switches.empty() && bank->empty_string_slots.empty()
-				&& owner->GetState().stack.size() == 1) ++compatible_polls;
+			pressed_buttons.set(Input::DECISION);
 		}
 		void UpdateSystem() override {}
 	};
@@ -3736,12 +3734,23 @@ TEST_CASE("Maniac 250921 battle typed return delivers and clears before both inp
 		RestoreSource restore;
 		Input::source = std::make_unique<CountingSource>(Game_ConfigInput{}, Input::DirectionMappingArray{});
 		auto* source = static_cast<CountingSource*>(Input::source.get());
-		source->owner = &battle;
-		source->receiver = receiver;
+		Input::ResetKeys();
+		Input::Update();
 		battle.Update();
 		CHECK(battle.IsRunning());
-		CHECK(source->updates == 2);
-		CHECK(source->compatible_polls == 2);
+		CHECK(source->updates == 1);
+		CHECK(Input::IsTriggered(Input::DECISION));
+		CHECK(battle.GetState().stack.size() == 1);
+		CHECK((receiver == 2 ? Main_Data::game_variables->Get(601) == 91
+			: receiver == 5 ? Main_Data::game_strings->Get(601) == "Inner"
+			: Main_Data::game_switches->Get(601) == 1));
+		const auto* cleared_bank = Main_Data::game_maniac_self_variables->Find(1, 0, 1);
+		REQUIRE(cleared_bank != nullptr);
+		CHECK(cleared_bank->numbers.empty());
+		CHECK(cleared_bank->strings.empty());
+		CHECK(cleared_bank->switches.empty());
+		CHECK(cleared_bank->empty_string_slots.empty());
+		Input::ResetKeys();
 		Player::game_config.patch_maniac.Set(previous_patch);
 	}
 	Graphics::Quit();

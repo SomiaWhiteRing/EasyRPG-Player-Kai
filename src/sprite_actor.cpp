@@ -243,7 +243,9 @@ void Sprite_Actor::CreateSprite() {
 void Sprite_Actor::DoIdleAnimation() {
 	auto* battler = GetBattler();
 	if (battler->IsDefending()) {
-		SetAnimationState(AnimationState_Defending);
+		if (anim_state != AnimationState_Defending || loop_state == LoopState_DefaultAnimationAfterFinish) {
+			SetAnimationState(AnimationState_Defending);
+		}
 		idling = true;
 		return;
 	}

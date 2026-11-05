@@ -55,7 +55,7 @@ index c3f269f..a7382a5 100644
  EventPage,ManiacEventInfo,touched,1
  EventPage,ManiacEventInfo,collision,2
 diff --git a/generator/csv/fields.csv b/generator/csv/fields.csv
-index 2e82eaf..0e1388b 100644
+index 2e82eaf..ffaf91e 100644
 --- a/generator/csv/fields.csv
 +++ b/generator/csv/fields.csv
 @@ -725,7 +725,16 @@ SaveSystem,face_id,f,Int32,0x34,0,0,0,
@@ -75,14 +75,16 @@ index 2e82eaf..0e1388b 100644
  SaveSystem,title_music,f,Music,0x47,"Music{ """" }",1,0,
  SaveSystem,battle_music,f,Music,0x48,"Music{ """" }",1,0,
  SaveSystem,battle_end_music,f,Music,0x49,"Music{ """" }",1,0,
-@@ -763,6 +772,7 @@ SaveSystem,menu_allowed,f,Boolean,0x7C,True,0,0,
+@@ -763,7 +772,8 @@ SaveSystem,menu_allowed,f,Boolean,0x7C,True,0,0,
  SaveSystem,background,f,String,0x7D,,0,0,string
  SaveSystem,save_count,f,Int32,0x83,0,0,0,
  SaveSystem,save_slot,f,Int32,0x84,1,0,0,
+-SaveSystem,atb_mode,f,Enum<SaveSystem_AtbMode>,0x8C,0,0,1,ATB mode of RPG 2003 battle system.
 +SaveSystem,maniac_message_mouse_flags,f,UInt8,0x86,0,0,0,Maniac message mouse flags bit0 disables left and right mouse input
- SaveSystem,atb_mode,f,Enum<SaveSystem_AtbMode>,0x8C,0,0,1,ATB mode of RPG 2003 battle system.
++SaveSystem,atb_mode,f,Enum<SaveSystem_AtbMode>,0x8C,0,1,1,ATB mode of RPG 2003 battle system.
  SaveScreen,tint_finish_red,f,Int32,0x01,100,0,0,int
  SaveScreen,tint_finish_green,f,Int32,0x02,100,0,0,int
+ SaveScreen,tint_finish_blue,f,Int32,0x03,100,0,0,int
 @@ -794,6 +804,14 @@ SaveScreen,battleanim_active,f,Boolean,0x2E,False,0,0,There is currently a battl
  SaveScreen,battleanim_global,f,Boolean,0x2F,False,0,0,int - battle animation global scope
  SaveScreen,weather,f,Int32,0x30,0,0,0,int
@@ -689,31 +691,32 @@ delta 16
 Ycmdn!cFKH1xcKJ1vcfErFDfMf06g0Up#T5?
 
 diff --git a/src/generated/lsd_savesystem.cpp b/src/generated/lsd_savesystem.cpp
-index b53ea34d8365e24f7f6fc9963ad7759d1e7513fb..325e4b59b51d3f7ba7f8032eb98f6ae2ce12bf4a 100644
+index b53ea34d8365e24f7f6fc9963ad7759d1e7513fb..ac0ac1c484edfc1d12e23abea6f2511ada6e425d 100644
 GIT binary patch
-delta 1878
-zcmah}%}x_h6i!1+OADPMR0<lkD$>&0(8LrBp%7z&MhOrScV=>FZ`(05Q<<647$q2<
-z06a@|;nsyh$^)>|7#FbcF^up6#`{y+JGV6M=6>gA&d>LqzdN4&kDmSI-r*%=YN)WN
-zSJ#ogR@a<D1>3NyMBz<u338bTeDx*Z$Ug`vzY!IkpCL;_>w44syZ;68o@-PCPkLc@
-zY9v@f1+3Z*vK&A&SNmE|IO~tUyX(K+0-SWP@20`3P}?BHrxye4iOnL-(0-icCdSS!
-zax6CCWIRg?7+@}%>0oOU=`@3ckTl~iA30YmmXvbI<*8c8EW<|ZGW<#TFEZ`LXph;>
-zAl&UIEG4F0M_5$JLIzfgSVymD?VTVgKP7w0$;BkA-YNKUdjP(LKhg0-<ycowU97yV
-z=?g<UIum~0Zf=Ohl4Tpn(W<6e(oq@Ce8M1IHrPle`4nAn*_JzXnc*P$nDei$6`cy5
-zpZFw`<LqNrITH^dd+^dy;rHY%{&6jpiL>G>SSwdLNXt>6Q;tN28n2besINvCGy}Wo
-zv7k|{*;s5=>1#o>M~I{XK8Apj85L{?$p`R0VGN1FTXQVUEOU|GPkyFb9d7E!<|eh~
-zl(IR-c{f5i??Qy`T{t1)G8mKnjqv1naDp|WI{6z!&yH45n}1tJj-z80=~~$|u*rn3
-zNMKX$2?-YG=Q6=*;9-<(6BX2=X4CspR7)5+H49FCBUEn@3CD1pOQdB`WQc5oZ01p@
-z^wL%>yivn8t2@|!H%pGU5wThUrQ7C9Zp_@<@=#fYteUCTE7(*u6O`~3R<MAff}?E$
-z*HK!=MG46^Sn+1zxW@;_K7V67x8vRBLt>O<XO^t;j(b1MM$Ts!%lUo#kC}_N!zs#-
-zwV-n90!QH}gl9u@;z1XDx+LSdS|Wz$^D(ZvpZQowP+cQDyVV09=9N%OK12v_^Z5Zc
-rd-vwY2z!;rul%8B#l<f|(~eeTreR7Rd6oiQ>I+W?<^5pzv2geg3JtSe
+delta 1894
+zcmah}%}x_h6i!1+|DaQZN<pJkL|R%KnwWwi6k<%!r~yLaj!Z7?Z98T<m6<7xQG($K
+zz_U~rZe1v(JODe5aRCb-!w4^6yg#MAb4%lH?)RN@=KOu<@2>0Mqw8R~cjy^1G?ZV`
+zs~bpPt7~??j4fDIBJifS2-$QPzIx(t>>Yrlw-OPJpCeO48+z0FyY~gLo^MorPkLc*
+zdN@!-d8}GCGHpP!*Zr+0ocG1v-SysV0d^|jzg1ybsBI8pGfO`9#72QeXg^M~lcN`m
+z?28RJoygDx`k9Gl*x1}cI*lM9B+P`vMvm3;C8=C-SgIy6O0XHd3V)K`%c%V*tufQ-
+zguDHOg~YV#F!L&!sDjl3*3m1PdnZWJPs)~Za52cLdm6sn?uT!oPqaM|+1F817nYYb
+zbE#`bWx~(f#SJoFGVBVnwW^^ObyR|LkI+a52b+lm@1g@PS#qTg8V(bW`To_lf?cNl
+z6Q87WeES$HN8&DI4sMz%{GJ-;A2*We7)!p4wNklbX*mkC%i-`~<FyhV@zlr$&B9)4
+zG*GG5EG!nQ_*)RI5yDBIhasS(M+ELL@c`b(*T*v?%}gLM7a)qVwfvYU#5LR0j1m{^
+z{lsTF<)NmYEKaF4yO_x`4LA|10S6*<!-12<T!zY2Un4X%5tw9!sdjFRXQMX%wt;M0
+z$12jbl2O416TTvWP5H+qSnQ{Rf-~R42$?R*s|C%X_okp0F|unWoOy<+{=yQD;UpVR
+z$)LC~G6$LTqhRr+rJ8uNhAozNp#5&99BU(DwgO70&xhWay|?Y6G7FkDL#>ywp=t&w
+zp=&H*0YiCP+XAkul#Gj#k~vs$XW*pA11BDDV<)@o-r-GRE6UC;8RZ@4d>BX0X&2_=
+z-u;K>V(u`C@Z&A0o|?dMC<39m;JkR?1)DCxc&wJFVSORWRroU(4GJo3gyyz;;KPCv
+zY{`iT;cYJ0@7&(~g;BD-O5<1V$hG3wFS4c`rO2Cx>GH_E6xOA__;f&?4~8F$NB;m@
+C@3$TR
 
-delta 262
+delta 268
 zcmdlmm+@Z{;|71W$qC$wlP|D}O>Sa~VKkh)fYp4m7<(O5lpV+xoP3-;aq?je{mBLV
-ze4A4_yxArP@bXSxC$w<$d@*Io$s70tCT}*#ojk`#X7UAQR-jqzoGwnmB}JKe>2{Mn
-z3|CD~FqNPD)|h?sJtHkHpmK@L{q|XmFtwBKIZCkQ7nEe?=S}_ybjAlKb{MzOP(uPD
-zQ>??qsg#?TmzkIx4^?~6&=6+C=6jA!ER+AZNo=0&Uc@}v$lG}G0v`^Lm6Q35IX2Js
-Y-oiM!&z^JgE?+~q(Z0fy`TQ0E0BzY|g8%>k
+ze4A4_yxArP@bXSxC$w<$d@*Io$s70tCT})~Wi`;@;xwE*(MWyr1!h*DiR_#%PQfKb
+znR)4UlRXSqO-?YCpZwOCee*pdEiRxYiOv1?S&T5XlkYi7u;mw&Waj5h{s?r;2PbwI
+zx6x2T0wPlkv_UC1F)uSQIUcI^prIkmh|TvLn^-3Qag*3Q+r5Z+vXQs(<OMz)AS);H
+d8FOr&?Y)I@a-Tit<XygoaHD;NC-eC&0sw#-VHf}a
 
 diff --git a/src/generated/rpg_save.cpp b/src/generated/rpg_save.cpp
 index 38ead6ee377a8d1a752ed5ce08a190add11459cb..74ccc596ff683d52572291947ebfee91c6659da8 100644
@@ -855,7 +858,7 @@ index be7a8a1..68aafbb 100644
  	/**
  	 * Saves Savegame.
 diff --git a/src/lsd_reader.cpp b/src/lsd_reader.cpp
-index e26d3cc..b3c124c 100644
+index e26d3cc..d59899e 100644
 --- a/src/lsd_reader.cpp
 +++ b/src/lsd_reader.cpp
 @@ -11,6 +11,7 @@
@@ -891,7 +894,20 @@ index e26d3cc..b3c124c 100644
  	LcfReader reader(filestream, ToString(encoding));
  
  	if (!reader.IsOk()) {
-@@ -111,6 +112,28 @@ std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::strin
+@@ -97,6 +98,8 @@ std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::strin
+ 	auto pos = reader.Tell();
+ 
+ 	std::unique_ptr<rpg::Save> save(new rpg::Save());
++	// Maniac omits 0x8C when ATB wait is enabled. An explicit zero is active.
++	if (maniac) save->system.atb_mode = rpg::SaveSystem::AtbMode_atb_wait;
+ 	Struct<rpg::Save>::ReadLcf(*save, reader);
+ 
+ 	if (save->easyrpg_data.codepage > 0) {
+@@ -108,9 +111,32 @@ std::unique_ptr<rpg::Save> LSD_Reader::Load(std::istream& filestream, std::strin
+ 			return {};
+ 		}
+ 		save.reset(new rpg::Save());
++		if (maniac) save->system.atb_mode = rpg::SaveSystem::AtbMode_atb_wait;
  		Struct<rpg::Save>::ReadLcf(*save, reader2);
  	}
  

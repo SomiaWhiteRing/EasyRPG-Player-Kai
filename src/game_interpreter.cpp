@@ -800,6 +800,11 @@ __attribute__((noinline))
 #endif
 bool Game_Interpreter::ExecuteOtherCommand(lcf::rpg::EventCommand const& com) {
 	switch (static_cast<Cmd>(com.code)) {
+		case Cmd::ToggleAtbMode:
+			if (Player::IsPatchManiac() || Player::IsRPG2k3ECommands()) {
+				Main_Data::game_system->ToggleAtbMode();
+			}
+			return true;
 		case Cmd::CallCommonEvent:
 			return Player::IsPatchManiac()
 				? CommandManiacCallCommonEvent(com) : true;
@@ -4447,7 +4452,7 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 		break;
 	case 11:
 		// RPG Maker 2003 v1.11 features
-		if (Player::IsRPG2k3ECommands()) {
+		if (maniac || Player::IsRPG2k3ECommands()) {
 			switch (com.parameters[1]) {
 				case 0:
 					// Any savestate available

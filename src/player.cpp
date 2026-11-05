@@ -1402,7 +1402,8 @@ void Player::SetupNewGame() {
 		static_cast<Scene_Title*>(title.get())->OnGameStart();
 	}
 
-	Main_Data::game_system->SetAtbMode(static_cast<Game_System::AtbMode>(lcf::Data::battlecommands.easyrpg_default_atb_mode));
+	Main_Data::game_system->SetAtbMode(IsPatchManiac() ? lcf::rpg::SaveSystem::AtbMode_atb_wait
+		: static_cast<Game_System::AtbMode>(lcf::Data::battlecommands.easyrpg_default_atb_mode));
 
 	Main_Data::game_party->SetupNewGame();
 	SetupPlayerSpawn();

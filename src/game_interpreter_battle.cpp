@@ -139,18 +139,6 @@ Game_Interpreter_Battle::Game_Interpreter_Battle(bool main_flag)
 {
 }
 
-bool Game_Interpreter_Battle::OnFinishStackFrame() {
-	const bool has_parent_frame = Game_Interpreter::OnFinishStackFrame();
-	if (Player::IsPatchManiac()
-			&& !Game_Battle::IsManiacHookPumping()) {
-		// Only the native mode-2 battle interpreter polls input after cleanup.
-		// The five independent hook interpreters have mode 0.
-		Input::Update();
-		Input::Update();
-	}
-	return has_parent_frame;
-}
-
 bool Game_Interpreter_Battle::AreConditionsMet(const lcf::rpg::TroopPageCondition& condition, Game_Battler* source) {
 	if (!condition.flags.switch_a &&
 		!condition.flags.switch_b &&

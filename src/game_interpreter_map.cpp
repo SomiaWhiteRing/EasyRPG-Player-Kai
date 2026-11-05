@@ -247,8 +247,6 @@ bool Game_Interpreter_Map::ExecuteCommand(lcf::rpg::EventCommand const& com) {
 			return CmdSetup<&Game_Interpreter_Map::CommandOpenMainMenu, 0>(com);
 		case Cmd::OpenLoadMenu:
 			return CmdSetup<&Game_Interpreter_Map::CommandOpenLoadMenu, 0>(com);
-		case Cmd::ToggleAtbMode:
-			return CmdSetup<&Game_Interpreter_Map::CommandToggleAtbMode, 0>(com);
 		case Cmd::EasyRpg_TriggerEventAt:
 			return CmdSetup<&Game_Interpreter_Map::CommandEasyRpgTriggerEventAt, 4>(com);
 		case Cmd::EasyRpg_WaitForSingleMovement:
@@ -956,15 +954,6 @@ bool Game_Interpreter_Map::CommandOpenLoadMenu(lcf::rpg::EventCommand const& /* 
 	Scene::instance->SetRequestedScene(std::make_shared<Scene_Load>());
 	++index;
 	return false;
-}
-
-bool Game_Interpreter_Map::CommandToggleAtbMode(lcf::rpg::EventCommand const& /* com */) {
-	if (!Player::IsRPG2k3ECommands()) {
-		return true;
-	}
-
-	Main_Data::game_system->ToggleAtbMode();
-	return true;
 }
 
 bool Game_Interpreter_Map::CommandEasyRpgTriggerEventAt(lcf::rpg::EventCommand const& com) {

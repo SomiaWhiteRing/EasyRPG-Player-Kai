@@ -81,8 +81,6 @@ public:
 	 */
 	bool ManiacBattleHook(ManiacBattleHookType hook_type, int var1, int var2, int var3, int var4 = 0, int var5 = 0, int var6 = 0, int* hook_result = nullptr);
 private:
-	bool OnFinishStackFrame() override;
-
 	bool CommandCallCommonEvent(lcf::rpg::EventCommand const& com);
 	bool CommandForceFlee(lcf::rpg::EventCommand const& com);
 	bool CommandEnableCombo(lcf::rpg::EventCommand const& com);
