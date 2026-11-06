@@ -956,8 +956,11 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 		return false;
 	}
 
-	if (!battle_ending) {
-		// FIXME: Interpreter also blocked by an RPG_RT continueBattle flag. What is this flag?
+	// Candidate countdowns suspend the master. Result presentation resumes it;
+	// the mode-2 executor checks enemy liveness before each command.
+	const bool update_events = Player::IsPatchManiac()
+		? maniac_battle_end_timer == 0 : !battle_ending;
+	if (update_events) {
 		if (!Game_Battle::IsBattleAnimationWaiting()) {
 			if (!UpdateEvents()) {
 				return false;
@@ -980,16 +983,15 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 			}
 		}
 
-		if (maniac_escape_end_timer > 0 && --maniac_escape_end_timer == 0) {
-			SetState(maniac_escape_end_result == BattleResult::Defeat ? State_Defeat : State_Victory);
+		if (maniac_battle_end_timer > 0 && --maniac_battle_end_timer == 0) {
+			SetState(maniac_battle_end_result == BattleResult::Defeat ? State_Defeat : State_Victory);
 		}
-		CheckBattleEndConditions();
+		if (CheckBattleEndConditions() && Player::IsPatchManiac()) return true;
 		if (!UpdateAtb()) return false;
 
 		if (Player::IsPatchManiac()
 				&& !Game_Battle::IsBattleAnimationWaiting()
-				&& !Game_Message::IsMessageActive()
-				&& !(state == State_Escape && maniac_escape_end_timer > 0)) {
+				&& !Game_Message::IsMessageActive()) {
 			// Hooks can change a troop condition while no unit can act.
 			// Poll the dynamic conditions independently of action completion.
 			if (!CheckBattleEndAndScheduleEvents(EventTriggerType::eAfterBattleAction, nullptr)) {
@@ -1003,6 +1005,7 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 void Scene_Battle_Rpg2k3::vUpdate() {
 	const auto process_scene = UpdateBattleState();
 	if (Game_Battle::IsManiacBattleCancelled()) return;
+	bool wait_checked = false;
 
 	while (process_scene) {
 		// A pumped callback suspends the action that invoked it. Only the
@@ -1014,6 +1017,8 @@ void Scene_Battle_Rpg2k3::vUpdate() {
 		if (Scene::instance.get() != this || Game_Battle::IsManiacBattleCancelled()) {
 			break;
 		}
+		// The native result countdown suspends actions without replacing escape.
+		if (maniac_battle_end_timer > 0 && state != State_Escape) break;
 
 		if (IsWindowMoving()) {
 			break;
@@ -1027,9 +1032,12 @@ void Scene_Battle_Rpg2k3::vUpdate() {
 			break;
 		}
 
+		// A wait set by this frame's action starts ticking on the next update.
+		if (Player::IsPatchManiac() && wait_checked && battle_action_wait > 0) break;
 		if (!CheckWait()) {
 			break;
 		}
+		wait_checked = true;
 
 		if (ProcessSceneAction() == SceneActionReturn::eWaitTillNextFrame) {
 			break;
@@ -1049,14 +1057,18 @@ void Scene_Battle_Rpg2k3::NextTurn(Game_Battler* battler) {
 
 bool Scene_Battle_Rpg2k3::CheckBattleEndConditions() {
 	UpdateManiacForceFlee();
-	if (state == State_Escape && maniac_force_flee_accepted) {
-		// 18c080 records a candidate without replacing escape phase 4.
-		// 188680 commits it after 60 updates; 18cb30 can finish escape first.
-		if (maniac_escape_end_result != BattleResult::Abort) return true;
-		if (Game_Battle::CheckLose()) maniac_escape_end_result = BattleResult::Defeat;
-		else if (Game_Battle::CheckWin()) maniac_escape_end_result = BattleResult::Victory;
-		if (maniac_escape_end_result != BattleResult::Abort) {
-			maniac_escape_end_timer = 60;
+	if (Player::IsPatchManiac() && state != State_Victory && state != State_Defeat) {
+		// Win and loss first become candidates. Common events may still request
+		// escape before the candidate commits; do not begin result presentation yet.
+		if (maniac_battle_end_result != BattleResult::Abort) return true;
+		if (Main_Data::game_party->GetActors().empty()) {
+			EndBattle(BattleResult::Escape);
+			return true;
+		}
+		if (Game_Battle::CheckLose()) maniac_battle_end_result = BattleResult::Defeat;
+		else if (Game_Battle::CheckWin()) maniac_battle_end_result = BattleResult::Victory;
+		if (maniac_battle_end_result != BattleResult::Abort) {
+			maniac_battle_end_timer = 60;
 			return true;
 		}
 		return false;
@@ -1122,6 +1134,8 @@ bool Scene_Battle_Rpg2k3::CheckBattleEndAndScheduleEvents(EventTriggerType tt, G
 #endif
 	RefreshTargetWindow();
 
+	// Native starts a newly selected troop page in the current logical frame.
+	if (page && Player::IsPatchManiac() && !UpdateEvents()) return false;
 	return !interp.IsRunning();
 }
 
@@ -1921,7 +1935,7 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionVi
 		if (lcf::Data::battlecommands.battle_type == lcf::rpg::BattleCommands::BattleType_alternative) {
 			command_window->SetVisible(true);
 		}
-		battle_end_timer = 60;
+		battle_end_timer = Player::IsPatchManiac() && maniac_battle_end_result != BattleResult::Abort ? 0 : 60;
 		SetSceneActionSubState(ePreMessage);
 	}
 
@@ -2020,7 +2034,7 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionDe
 			command_window->SetVisible(true);
 		}
 
-		battle_end_timer = 60;
+		battle_end_timer = Player::IsPatchManiac() && maniac_battle_end_result != BattleResult::Abort ? 0 : 60;
 		SetSceneActionSubState(ePreMessage);
 	}
 

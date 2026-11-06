@@ -411,6 +411,8 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		Player::active_interpreter_flags = previous_flags;
 	});
 #endif
+	const bool native_battle_master = Player::IsPatchManiac() && Player::IsRPG2k3()
+		&& Game_Battle::IsBattleRunning() && this == &Game_Battle::GetPrimaryInterpreterBattle();
 
 	if (reset_loop_count) {
 		loop_count = 0;
@@ -450,7 +452,9 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 		// A pf mode tail re-enters the native dispatcher after its wait
 		// prelude. Async yields retain this position until Update(false).
 		if (maniac_dispatch != ManiacDispatch::Continue) {
-			if (main_flag) {
+			// Native battle mode 2 waits for its own message, not result messages
+			// or the map foreground's boarding and vehicle transitions.
+			if (main_flag && !native_battle_master) {
 				if (Main_Data::game_player->IsBoardingOrUnboarding())
 					break;
 
@@ -530,6 +534,11 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 			break;
 		}
 
+		// Native mode 2 checks for a live enemy before dispatching the next
+		// command. A command that caused victory has already advanced its cursor.
+		if (maniac_dispatch != ManiacDispatch::Continue && native_battle_master
+				&& Game_Battle::CheckWin()) break;
+
 		// Pop any completed stack frames
 		if (frame->current_command >= (int)frame->commands.size()) {
 			const bool more = OnFinishStackFrame();
@@ -556,14 +565,10 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 			maniac_dispatch = ManiacDispatch::Continue;
 		}
 
-		if (maniac_dispatch != ManiacDispatch::Continue
+		if (!Player::IsPatchManiac() && maniac_dispatch != ManiacDispatch::Continue
 			&& Game_Battle::IsBattleRunning() && Player::IsRPG2k3()
-			// Independent Maniac callbacks use the mode-0 executor, which has
-			// no troop-page cancellation when the last enemy dies.
-			&& (!Player::IsPatchManiac() || this == &Game_Battle::GetPrimaryInterpreterBattle())
 			&& Game_Battle::CheckWin()) {
 			// Interpreter is cancelled when a win condition is fulfilled in RPG2k3 battle
-			if (Player::IsPatchManiac() && maniac_dispatch != ManiacDispatch::Continue) ++loop_count;
 			break;
 		}
 
