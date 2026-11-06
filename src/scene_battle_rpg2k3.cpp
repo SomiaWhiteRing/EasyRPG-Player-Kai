@@ -951,8 +951,8 @@ bool Scene_Battle_Rpg2k3::UpdateBattleState() {
 	UpdateUi();
 
 	const auto battle_ending = (state == State_Victory || state == State_Defeat);
-	// Common events also run while battle animations or messages are waiting.
-	if (!battle_ending && Player::IsPatchManiac() && !UpdateManiacCommonEvents()) {
+	// Maniac common events also run during the battle result delay and messages.
+	if (Player::IsPatchManiac() && !UpdateManiacCommonEvents()) {
 		return false;
 	}
 
@@ -1928,7 +1928,8 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionVi
 	if (scene_action_substate == ePreMessage) {
 		if (battle_end_timer > 0) {
 			--battle_end_timer;
-			return SceneActionReturn::eContinueThisFrame;
+			return Player::IsPatchManiac()
+				? SceneActionReturn::eWaitTillNextFrame : SceneActionReturn::eContinueThisFrame;
 		}
 
 		for (auto* actor: Main_Data::game_party->GetActors()) {
@@ -2026,7 +2027,8 @@ Scene_Battle_Rpg2k3::SceneActionReturn Scene_Battle_Rpg2k3::ProcessSceneActionDe
 	if (scene_action_substate == ePreMessage) {
 		if (battle_end_timer > 0) {
 			--battle_end_timer;
-			return SceneActionReturn::eContinueThisFrame;
+			return Player::IsPatchManiac()
+				? SceneActionReturn::eWaitTillNextFrame : SceneActionReturn::eContinueThisFrame;
 		}
 		Main_Data::game_system->BgmPlay(Main_Data::game_system->GetSystemBGM(Main_Data::game_system->BGM_GameOver));
 		SetWait(60, 60);
