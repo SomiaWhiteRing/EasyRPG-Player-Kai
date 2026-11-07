@@ -96,6 +96,12 @@ Sdl2Audio::Sdl2Audio(const Game_ConfigAudio& cfg) :
 	want.format = AUDIO_S16SYS;
 	want.channels = 2;
 	want.samples = 2048;
+#ifdef _WIN32
+	// Keep WASAPI's queued audio closer to the frame in which playback starts.
+	if (SDL_strcmp(SDL_GetCurrentAudioDriver(), "wasapi") == 0) {
+		want.samples = 1024;
+	}
+#endif
 	want.callback = sdl_audio_callback;
 	want.userdata = this;
 

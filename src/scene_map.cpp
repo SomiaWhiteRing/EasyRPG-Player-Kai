@@ -515,7 +515,10 @@ void Scene_Map::OnAsyncSuspend(F&& f, AsyncOp aop, bool is_preupdate) {
 
 	if (aop.GetType() == AsyncOp::eShowScreen) {
 		auto tt = static_cast<Transition::Type>(aop.GetTransitionType());
-		transition.InitShow(tt, this);
+		// Maniac's explicit fade on a visible screen waits 40 frames.
+		const int duration = Player::IsPatchManiac() && tt == Transition::TransitionFadeIn
+			&& !transition.IsErasedNotActive() ? 40 : -1;
+		transition.InitShow(tt, this, duration);
 		screen_erased_by_event = false;
 	}
 

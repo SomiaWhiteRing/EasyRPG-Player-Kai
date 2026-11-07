@@ -25,15 +25,17 @@
 namespace ImagePNG {
 	class PictureLoader {
 	public:
-		static std::unique_ptr<PictureLoader> Create(Filesystem_Stream::InputStream stream, bool transparent);
+		// Takes ownership only for supported pictures. Otherwise rewinds the input for the regular decoder.
+		static std::unique_ptr<PictureLoader> Create(Filesystem_Stream::InputStream& stream, bool transparent);
 		~PictureLoader();
 		bool ReadRows(int count);
 		bool IsComplete() const;
 		BitmapRef GetBitmap() const;
+		BitmapRef Finish();
 	private:
 		struct Data;
 		PictureLoader();
-		bool Init(Filesystem_Stream::InputStream stream, bool transparent);
+		bool Init(bool transparent);
 		std::unique_ptr<Data> data;
 	};
 

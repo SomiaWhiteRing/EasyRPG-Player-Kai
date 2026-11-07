@@ -23,6 +23,7 @@
 #include <vector>
 #include <fstream>
 #include <array>
+#include <limits>
 
 #include "output.h"
 #include "image_png.h"
@@ -60,8 +61,10 @@ struct ImagePNG::PictureLoader::Data {
 	int next_row = 0;
 	int palette_size = 0;
 	bool transparent = false;
+	bool rgba = false;
 	bool has_transparent = false;
-	bool has_opaque = false;
+	bool has_visible = false;
+	bool has_partial_alpha = false;
 	bool complete = false;
 	bool failed = false;
 	~Data() {
@@ -74,25 +77,32 @@ struct ImagePNG::PictureLoader::Data {
 ImagePNG::PictureLoader::PictureLoader() : data(std::make_unique<Data>()) {}
 ImagePNG::PictureLoader::~PictureLoader() = default;
 
-std::unique_ptr<ImagePNG::PictureLoader> ImagePNG::PictureLoader::Create(Filesystem_Stream::InputStream stream, bool transparent) {
+std::unique_ptr<ImagePNG::PictureLoader> ImagePNG::PictureLoader::Create(Filesystem_Stream::InputStream& stream, bool transparent) {
+	if (!stream) {
+		return {};
+	}
 	auto loader = std::unique_ptr<PictureLoader>(new PictureLoader());
-	if (!loader->Init(std::move(stream), transparent)) {
+	loader->data->stream = std::move(stream);
+	if (!loader->Init(transparent)) {
+		stream = std::move(loader->data->stream);
+		stream.clear();
+		stream.seekg(0);
 		return {};
 	}
 	return loader;
 }
 
-bool ImagePNG::PictureLoader::Init(Filesystem_Stream::InputStream stream, bool transparent) {
-	if (!stream || Bitmap::pixel_format.bits != 32) {
+bool ImagePNG::PictureLoader::Init(bool transparent) {
+	if (Bitmap::pixel_format.bits != 32) {
 		return false;
 	}
+	auto& stream = data->stream;
 	uint8_t signature[8];
 	stream.read(reinterpret_cast<char*>(signature), sizeof(signature));
 	if (stream.gcount() != sizeof(signature) || png_sig_cmp(signature, 0, sizeof(signature))) {
 		return false;
 	}
 	stream.seekg(0);
-	data->stream = std::move(stream);
 	data->transparent = transparent;
 	data->png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, on_png_error, on_png_warning);
 	if (!data->png) {
@@ -118,12 +128,13 @@ bool ImagePNG::PictureLoader::Init(Filesystem_Stream::InputStream stream, bool t
 	png_get_IHDR(data->png, data->info, &width, &height, &depth, &type, &interlace, nullptr, nullptr);
 	// Bound speculative memory and preserve the regular decoder for other PNG types.
 	const auto pixels = static_cast<uint64_t>(width) * height;
-	if (depth != 8 || type != PNG_COLOR_TYPE_PALETTE || interlace != PNG_INTERLACE_NONE
+	data->rgba = type == PNG_COLOR_TYPE_RGBA && transparent && Player::IsPatchManiac();
+	if (depth != 8 || (type != PNG_COLOR_TYPE_PALETTE && !data->rgba) || interlace != PNG_INTERLACE_NONE
 			|| pixels < 4 * 1024 * 1024 || pixels > 128 * 1024 * 1024 / 4) {
 		return false;
 	}
 	png_colorp palette = nullptr;
-	if (!png_get_PLTE(data->png, data->info, &palette, &data->palette_size)) {
+	if (!data->rgba && !png_get_PLTE(data->png, data->info, &palette, &data->palette_size)) {
 		return false;
 	}
 	png_read_update_info(data->png, data->info);
@@ -137,10 +148,10 @@ bool ImagePNG::PictureLoader::Init(Filesystem_Stream::InputStream stream, bool t
 	pixman_image_set_destroy_function(data->bitmap->bitmap.get(),
 		[](pixman_image_t*, void* buffer) { std::free(buffer); }, storage.get());
 	storage.release();
-	data->bitmap->original_bpp = 8;
+	data->bitmap->original_bpp = data->rgba ? 32 : 8;
 	if (Player::IsPatchManiac()) data->bitmap->maniac_pixels.resize(pixels);
 	data->bitmap->SetId(ToString(data->stream.GetName()));
-	data->row.resize(width);
+	data->row.resize(png_get_rowbytes(data->png, data->info));
 	for (int i = 0; i < data->palette_size; ++i) {
 		const auto& color = palette[i];
 		data->straight_palette[i] = Color(color.red, color.green, color.blue, (transparent && i == 0) ? 0 : 255);
@@ -160,26 +171,43 @@ bool ImagePNG::PictureLoader::ReadRows(int count) {
 		data->bitmap.reset();
 		return false;
 	}
-	const int end = std::min(data->bitmap->GetHeight(), data->next_row + count);
+	const size_t width = data->bitmap->GetWidth();
+	const int end = data->next_row + std::min(data->bitmap->GetHeight() - data->next_row, count);
 	for (; data->next_row < end; ++data->next_row) {
 		png_read_row(data->png, data->row.data(), nullptr);
 		auto* dst = reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(data->bitmap->pixels())
 			+ static_cast<size_t>(data->next_row) * data->bitmap->pitch());
-		for (size_t x = 0; x < data->row.size(); ++x) {
+		auto* straight = data->bitmap->maniac_pixels.empty() ? nullptr
+			: data->bitmap->maniac_pixels.data() + static_cast<size_t>(data->next_row) * width;
+		if (data->rgba) {
+			const auto* rgba = data->row.data();
+			for (size_t x = 0; x < width; ++x, rgba += 4) {
+				auto color = Color(rgba[0], rgba[1], rgba[2], rgba[3]);
+				straight[x] = color;
+				Bitmap::MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
+				dst[x] = data->bitmap->format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
+				data->has_transparent |= color.alpha == 0;
+				data->has_visible |= color.alpha != 0;
+				data->has_partial_alpha |= color.alpha != 0 && color.alpha != 255;
+			}
+			continue;
+		}
+		for (size_t x = 0; x < width; ++x) {
 			auto index = data->row[x];
 			if (index >= data->palette_size) {
 				png_error(data->png, "Invalid picture palette index");
 			}
 			dst[x] = data->palette[index];
-			if (!data->bitmap->maniac_pixels.empty()) data->bitmap->maniac_pixels[static_cast<size_t>(data->next_row) * data->row.size() + x] = data->straight_palette[index];
+			if (straight) straight[x] = data->straight_palette[index];
 			bool transparent = data->transparent && index == 0;
 			data->has_transparent |= transparent;
-			data->has_opaque |= !transparent;
+			data->has_visible |= !transparent;
 		}
 	}
 	if (data->next_row == data->bitmap->GetHeight()) {
 		png_read_end(data->png, nullptr);
-		data->bitmap->image_opacity = !data->has_opaque ? ImageOpacity::Transparent
+		data->bitmap->image_opacity = data->has_partial_alpha ? ImageOpacity::Alpha_8Bit
+			: !data->has_visible ? ImageOpacity::Transparent
 			: data->has_transparent ? ImageOpacity::Alpha_1Bit : ImageOpacity::Opaque;
 		data->bitmap->read_only = true;
 		data->complete = true;
@@ -189,6 +217,11 @@ bool ImagePNG::PictureLoader::ReadRows(int count) {
 
 bool ImagePNG::PictureLoader::IsComplete() const { return data->complete; }
 BitmapRef ImagePNG::PictureLoader::GetBitmap() const { return data->complete ? data->bitmap : BitmapRef{}; }
+
+BitmapRef ImagePNG::PictureLoader::Finish() {
+	ReadRows(std::numeric_limits<int>::max());
+	return GetBitmap();
+}
 
 static bool ReadPNGWithReadFunction(png_voidp,png_rw_ptr, bool, ImageOut&);
 static void ReadPalettedData(png_struct*, png_info*, png_uint_32, png_uint_32, bool, uint32_t*);

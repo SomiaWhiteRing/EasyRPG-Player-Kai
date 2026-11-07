@@ -277,7 +277,15 @@ namespace {
 							T == Material::Chipset ? Bitmap::Flag_Chipset :
 							T == Material::System ? Bitmap::Flag_System : 0);
 					if ((T == Material::Picture || T == Material::Chipset) && Player::IsPatchManiac()) flags |= Bitmap::Flag_ManiacPicture;
-					bmp = Bitmap::Create(std::move(is), transparent, flags);
+					std::unique_ptr<ImagePNG::PictureLoader> loader;
+					if constexpr (T == Material::Picture) {
+						if (flags & Bitmap::Flag_ManiacPicture) {
+							// Decode eligible large pictures directly into their final buffers
+							// even when they were first requested after a map transfer.
+							loader = ImagePNG::PictureLoader::Create(is, transparent);
+						}
+					}
+					bmp = loader ? loader->Finish() : Bitmap::Create(std::move(is), transparent, flags);
 					if (!bmp) {
 						Output::Warning("Invalid image: {}/{}", s.directory, filename);
 					} else {
@@ -397,12 +405,7 @@ BitmapRef Cache::Picture(std::string_view file, bool transparent) {
 		if (!picture_preload->IsComplete()) {
 			Output::Debug("Picture preload not ready: {}", file);
 		}
-		while (!picture_preload->IsComplete()) {
-			if (!picture_preload->ReadRows(256)) {
-				break;
-			}
-		}
-		auto bitmap = picture_preload->GetBitmap();
+		auto bitmap = picture_preload->Finish();
 		picture_preload.reset();
 		auto key = std::move(picture_preload_key);
 		picture_preload_key.clear();
@@ -424,7 +427,7 @@ void Cache::PreloadPicture(std::string_view filename, bool transparent) {
 	picture_preload_work = {};
 	FreeBitmapMemory();
 	auto stream = FileFinder::OpenImage("Picture", filename);
-	picture_preload = ImagePNG::PictureLoader::Create(std::move(stream), transparent);
+	picture_preload = ImagePNG::PictureLoader::Create(stream, transparent);
 }
 
 void Cache::UpdatePicturePreload() {
