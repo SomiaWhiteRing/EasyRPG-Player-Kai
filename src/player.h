@@ -352,6 +352,9 @@ namespace Player {
 	/** Hide Title flag, if true title scene will run without image and music. */
 	extern bool hide_title_flag;
 
+	/** Skip startup logos without changing game or debug settings. */
+	extern bool skip_logo_flag;
+
 	/** The width of the screen */
 	extern int screen_width;
 

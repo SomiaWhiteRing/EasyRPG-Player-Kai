@@ -706,6 +706,22 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     gamepadFrame = requestAnimationFrame(pollGamepad);
   };
 
+  const startupProgress = () => {
+    if (!started && !closed && !stopping) startStartupTimer();
+  };
+  for (const target of [worker, audioWorker]) listen(target, 'message', ({data}) => {
+    if (data.type === 'startup-progress') startupProgress();
+  });
+  async function loadRuntimeAsset(name) {
+    const response = await fetch(new URL(name, base), {signal});
+    if (!response.ok) throw new Error(`Runtime download failed: ${response.status} ${name}`);
+    startupProgress();
+    const body = response.body.pipeThrough(new TransformStream({transform(chunk, controller) {
+      startupProgress();
+      controller.enqueue(chunk);
+    }}));
+    return new Response(body, {headers: {'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream'}});
+  }
   startStartupTimer();
   const shutdown = async () => {
     nameInput?.finish(null);
@@ -720,20 +736,25 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   try {
     // Cancel/timeout must also end startup while the audio module is loading.
-    await Promise.race([context.audioWorklet.addModule(new URL('player-audio.js', base)), ready]);
+    // Download and compile once; both Workers retain their own engine memory.
+    const [wasmModule, runtimeData] = await Promise.race([Promise.all([
+      loadRuntimeAsset(`${engineName}.wasm`).then(response => WebAssembly.compileStreaming(response)),
+      loadRuntimeAsset('easyrpg-player.data').then(response => response.arrayBuffer()),
+      context.audioWorklet.addModule(new URL('player-audio.js', base)),
+    ]), ready]);
     node = new AudioWorkletNode(context, 'easyrpg-audio', {numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2]});
     const audioChannel = new MessageChannel();
     const controlChannel = new MessageChannel();
     node.port.postMessage({type: 'connect', port: audioChannel.port1}, [audioChannel.port1]);
     node.connect(masterVolume);
     audioWorker.postMessage({type: 'start', runtimeBase: base, engineName, packages: options.packages,
-      workId: options.workId, sampleRate: context.sampleRate,
+      workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData,
       audioPort: audioChannel.port2, controlPort: controlChannel.port1},
       [audioChannel.port2, controlChannel.port1]);
     const audioCapabilities = await Promise.race([audioReady, ready]);
     const offscreen = canvas.transferControlToOffscreen();
     worker.postMessage({type: 'start', canvas: offscreen, runtimeBase: base, engineName, packages: options.packages,
-      workId: options.workId, sampleRate: context.sampleRate, arguments: options.arguments || [],
+      workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData, arguments: options.arguments || [],
       joystickAvailable: joystickAvailable(),
       systemNameInput,
       audioPort: controlChannel.port2, audioCapabilities}, [offscreen, controlChannel.port2]);

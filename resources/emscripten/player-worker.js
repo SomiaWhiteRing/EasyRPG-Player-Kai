@@ -182,7 +182,14 @@ self.onmessage = async ({data}) => {
           }
           audioPort.postMessage({...command, generation}, command.file ? [command.file.bytes.buffer] : []);
         },
+        getPreloadedPackage: () => data.runtimeData,
+        instantiateWasm: (imports, receiveInstance) => {
+          const instance = new WebAssembly.Instance(data.wasmModule, imports);
+          receiveInstance(instance, data.wasmModule);
+          return instance.exports;
+        },
         locateFile: path => new URL(path.replace(/^easyrpg-player\.wasm$/, `${engineName}.wasm`), data.runtimeBase).href,
+        setStatus: () => postMessage({type: 'startup-progress'}),
         readConsoleLine,
         useSystemNameInput: () => data.systemNameInput === true,
         beginNameInput, pollNameInput, cancelNameInput,

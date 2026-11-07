@@ -43,7 +43,7 @@
 Scene_Logo::Scene_Logo() :
 	frame_counter(0) {
 	type = Scene::Logo;
-	skip_logos = Player::debug_flag || Game_Battle::battle_test.enabled;
+	skip_logos = Player::skip_logo_flag || Player::debug_flag || Game_Battle::battle_test.enabled;
 }
 
 Scene_Logo::Scene_Logo(std::vector<std::vector<uint8_t>> logos, unsigned current_logo_index) :
@@ -72,12 +72,14 @@ void Scene_Logo::vUpdate() {
 			return;
 		}
 
-		logos = LoadLogos();
+		if (!skip_logos) {
+			logos = LoadLogos();
+		}
 	}
 
 	++frame_counter;
 
-	if (Input::IsPressed(Input::SHIFT)) {
+	if (!skip_logos && Input::IsPressed(Input::SHIFT)) {
 		DrawTextOnLogo(true);
 		--frame_counter;
 	}

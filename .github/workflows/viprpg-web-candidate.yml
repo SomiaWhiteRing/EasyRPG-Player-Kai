@@ -1,0 +1,52 @@
+name: Build VIPRPG Web candidate
+
+on:
+  push:
+    branches: [codex/viprpg-web-20261108]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      WEB_ASSET_NAME: EasyRPG-Player-Kai-cb1b27425-site-20261108-web.zip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            external/local-docker/web
+            external/local-docker/home
+          key: easyrpg-local-docker-web-${{ runner.os }}-${{ hashFiles('builds/docker/package.Dockerfile', 'builds/ci/package-ubuntu-nightly.cache.env') }}
+          restore-keys: |
+            easyrpg-local-docker-web-${{ runner.os }}-
+
+      - name: Build patched Web package
+        shell: pwsh
+        run: |
+          ./builds/package-docker.ps1 web
+          if ($LASTEXITCODE -ne 0) { throw "Web package build failed." }
+
+      - name: Include font and dictionary licenses
+        env:
+          FONT_LICENSE_BASE: https://raw.githubusercontent.com/SomiaWhiteRing/VIPRPG-ZH-Archive/11a38f87e704778881668a9173fb9ef2523206ed/public/play/runtime/easyrpg/2026.11.5-site-cfb372db7-jspi-shared
+        run: |
+          for file in NOTICE-Zfull.txt LICENSE-smallfonts.txt; do
+            curl --fail --silent --show-error --retry 3 "$FONT_LICENSE_BASE/$file" -o "$RUNNER_TEMP/$file"
+          done
+          zip -j "build/artifacts/$WEB_ASSET_NAME" \
+            "$RUNNER_TEMP/NOTICE-Zfull.txt" "$RUNNER_TEMP/LICENSE-smallfonts.txt" \
+            resources/pinyin/LICENSE-rime-pinyin-simp.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viprpg-web
+          path: build/artifacts/${{ env.WEB_ASSET_NAME }}
+          if-no-files-found: error
