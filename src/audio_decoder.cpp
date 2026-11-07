@@ -171,6 +171,12 @@ void AudioDecoder::Update(std::chrono::microseconds delta) {
 		return;
 	}
 
+	if (delta >= fade_time) {
+		fade_time = 0ms;
+		SetVolume(fade_volume_end);
+		return;
+	}
+
 	fade_time -= delta;
 
 	volume += static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(delta).count()) * delta_volume_step;

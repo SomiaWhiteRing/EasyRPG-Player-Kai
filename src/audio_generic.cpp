@@ -19,9 +19,11 @@
 
 #include <cstring>
 #include <cassert>
+#include <cmath>
 #include <memory>
 #include "audio_generic.h"
 #include "output.h"
+#include "player.h"
 
 GenericAudio::GenericAudio(const Game_ConfigAudio& cfg) : AudioInterface(cfg) {
 	int i = 0;
@@ -45,6 +47,10 @@ GenericAudio::GenericAudio(const Game_ConfigAudio& cfg) : AudioInterface(cfg) {
 }
 
 void GenericAudio::BGM_Play(Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein) {
+	PlayBgm(std::move(stream), volume, pitch, fadein, Player::IsPatchManiac());
+}
+
+void GenericAudio::PlayBgm(Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein, bool maniac) {
 	if (!stream) {
 		Output::Warning("Couldn't play BGM {}: File not readable", stream.GetName());
 		return;
@@ -57,7 +63,7 @@ void GenericAudio::BGM_Play(Filesystem_Stream::InputStream stream, int volume, i
 			LockMutex();
 			BGM_PlayedOnceIndicator = false;
 			UnlockMutex();
-			PlayOnChannel(BGM_Channel, std::move(stream), volume, pitch, fadein);
+			PlayOnChannel(BGM_Channel, std::move(stream), volume, pitch, fadein, maniac);
 			return;
 		}
 	}
@@ -217,7 +223,7 @@ void GenericAudio::SetFormat(int frequency, AudioDecoder::Format format, int cha
 	output_format.channels = channels;
 }
 
-bool GenericAudio::PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStream filestream, int volume, int pitch, int fadein) {
+bool GenericAudio::PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStream filestream, int volume, int pitch, int fadein, bool maniac) {
 	chan.paused = true; // Pause channel so the audio thread doesn't work on it
 	chan.stopped = false; // Unstop channel so the audio thread doesn't delete it
 
@@ -265,8 +271,16 @@ bool GenericAudio::PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStrea
 	if (chan.decoder && chan.decoder->Open(std::move(filestream))) {
 		chan.decoder->SetPitch(pitch);
 		chan.decoder->SetFormat(output_format.frequency, output_format.format, output_format.channels);
-		chan.decoder->SetVolume(0);
-		chan.decoder->SetFade(volume, std::chrono::milliseconds(fadein));
+		chan.maniac_ogg_volume = -1;
+		if (maniac && chan.decoder->GetType() == "ogg") {
+			chan.maniac_ogg_volume = std::clamp(volume, 0, 100);
+			chan.fade_elapsed = {};
+			chan.fade_duration = std::chrono::milliseconds(std::max(0, fadein));
+			chan.fading_out = false;
+		} else {
+			chan.decoder->SetVolume(0);
+			chan.decoder->SetFade(volume, std::chrono::milliseconds(fadein));
+		}
 		chan.decoder->SetLooping(true);
 		chan.paused = false; // Unpause channel -> Play it.
 
@@ -294,6 +308,8 @@ void GenericAudio::Decode(uint8_t* output_buffer, int buffer_length) {
 	bool channel_active = false;
 	float total_volume = 0;
 	int samples_per_frame = buffer_length / output_format.channels / 2;
+	const auto buffer_duration = std::chrono::microseconds(
+		static_cast<int64_t>(samples_per_frame) * 1'000'000 / output_format.frequency);
 
 	assert(buffer_length > 0);
 
@@ -329,8 +345,7 @@ void GenericAudio::Decode(uint8_t* output_buffer, int buffer_length) {
 				if (currently_mixed_channel.stopped) {
 					currently_mixed_channel.decoder.reset();
 				} else {
-					currently_mixed_channel.decoder->Update(std::chrono::microseconds(1000 * 1000 / 60));
-					volume = current_master_volume * (currently_mixed_channel.decoder->GetVolume() / 100.0);
+					volume = current_master_volume * currently_mixed_channel.AdvanceGain(buffer_duration);
 					currently_mixed_channel.decoder->GetFormat(frequency, sampleformat, channels);
 					samplesize = AudioDecoder::GetSamplesizeForFormat(sampleformat);
 
@@ -540,11 +555,34 @@ int GenericAudio::BgmChannel::GetTicks() const {
 	return -1;
 }
 
+float GenericAudio::BgmChannel::AdvanceGain(std::chrono::microseconds delta) {
+	if (maniac_ogg_volume < 0) {
+		decoder->Update(delta);
+		return decoder->GetVolume() / 100.0f;
+	}
+
+	int progress = 100;
+	if (fade_elapsed < fade_duration) {
+		fade_elapsed = std::min(fade_elapsed + delta, fade_duration);
+		// RPG_RT rounds the fade percentage first, then truncates the effective volume.
+		progress = static_cast<int>((fade_elapsed.count() * 100 + fade_duration.count() / 2) / fade_duration.count());
+	}
+	const int fade_percent = fading_out ? 100 - progress : progress;
+	const int effective_volume = maniac_ogg_volume * fade_percent / 100;
+	return effective_volume == 0 ? 0.0f : std::pow(10.0f, (effective_volume - 100) * 23.0f / 2000.0f);
+}
+
 void GenericAudio::BgmChannel::SetFade(int fade) {
 	if (midi_out_used) {
 		instance->midi_thread->GetMidiOut().SetFade(0, std::chrono::milliseconds(fade));
 	} else if (decoder) {
-		decoder->SetFade(0, std::chrono::milliseconds(fade));
+		if (maniac_ogg_volume < 0) {
+			decoder->SetFade(0, std::chrono::milliseconds(fade));
+		} else if (!fading_out) {
+			fade_elapsed = {};
+			fade_duration = std::chrono::milliseconds(std::max(0, fade));
+			fading_out = true;
+		}
 	}
 }
 
@@ -552,7 +590,11 @@ void GenericAudio::BgmChannel::SetVolume(int volume) {
 	if (midi_out_used) {
 		instance->midi_thread->GetMidiOut().SetVolume(volume);
 	} else if (decoder) {
-		decoder->SetVolume(volume);
+		if (maniac_ogg_volume < 0) {
+			decoder->SetVolume(volume);
+		} else {
+			maniac_ogg_volume = std::clamp(volume, 0, 100);
+		}
 	}
 }
 

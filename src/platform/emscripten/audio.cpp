@@ -48,7 +48,7 @@ bool WebAudio::CheckFluidsynth(std::string& status) {
 }
 void WebAudio::BGM_Play(Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein) {
   Update();
-  Command({{"op","bgm"},{"path",stream.GetName()},{"volume",volume},{"pitch",pitch},{"fadein",fadein}});
+  Command({{"op","bgm"},{"path",stream.GetName()},{"volume",volume},{"pitch",pitch},{"fadein",fadein},{"maniac",Player::IsPatchManiac()}});
 }
 void WebAudio::BGM_Stop() { Command({{"op","stop"}}); }
 void WebAudio::BGM_Pause() { Command({{"op","pause"}}); }
@@ -112,7 +112,7 @@ EMSCRIPTEN_KEEPALIVE void web_audio_command(const char* text) {
   const auto op = c.at("op").get<std::string>();
   if (op == "bgm") {
     auto stream = OpenAudio(c.at("path").get<std::string>());
-    mixer->BGM_Play(std::move(stream), c.at("volume"), c.at("pitch"), c.at("fadein"));
+    mixer->PlayBgm(std::move(stream), c.at("volume"), c.at("pitch"), c.at("fadein"), c.value("maniac", false));
   } else if (op == "se") {
     const auto path = c.at("path").get<std::string>();
     auto se = AudioSeCache::GetCachedSe(path);

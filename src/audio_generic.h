@@ -44,6 +44,7 @@ public:
 	virtual ~GenericAudio() = default;
 
 	void BGM_Play(Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein) override;
+	void PlayBgm(Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein, bool maniac);
 	void BGM_Pause() override;
 	void BGM_Resume() override;
 	void BGM_Stop() override;
@@ -80,9 +81,14 @@ private:
 		bool paused;
 		bool stopped;
 		bool midi_out_used = false;
+		int maniac_ogg_volume = -1;
+		std::chrono::microseconds fade_elapsed{};
+		std::chrono::microseconds fade_duration{};
+		bool fading_out = false;
 		void Stop();
 		void SetPaused(bool newPaused);
 		int GetTicks() const;
+		float AdvanceGain(std::chrono::microseconds delta);
 		void SetFade(int fade);
 		void SetVolume(int volume);
 		void SetPitch(int pitch);
@@ -102,7 +108,7 @@ private:
 	};
 	Format output_format = {};
 
-	bool PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein);
+	bool PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein, bool maniac);
 	bool PlayOnChannel(SeChannel& chan, std::unique_ptr<AudioSeCache> se, int volume, int pitch);
 
 	static constexpr unsigned nr_of_se_channels = 31;

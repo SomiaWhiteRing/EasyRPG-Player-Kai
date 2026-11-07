@@ -515,9 +515,12 @@ void Scene_Map::OnAsyncSuspend(F&& f, AsyncOp aop, bool is_preupdate) {
 
 	if (aop.GetType() == AsyncOp::eShowScreen) {
 		auto tt = static_cast<Transition::Type>(aop.GetTransitionType());
-		// Maniac's explicit fade on a visible screen waits 40 frames.
-		const int duration = Player::IsPatchManiac() && tt == Transition::TransitionFadeIn
-			&& !transition.IsErasedNotActive() ? 40 : -1;
+		int duration = -1;
+		if (Player::IsPatchManiac() && tt == Transition::TransitionFadeIn) {
+			// RPG_RT takes 34 ticks from black or 41 ticks for a crossfade.
+			// Kai resumes the event on the tick after the transition ends.
+			duration = transition.IsErasedNotActive() ? 33 : 40;
+		}
 		transition.InitShow(tt, this, duration);
 		screen_erased_by_event = false;
 	}

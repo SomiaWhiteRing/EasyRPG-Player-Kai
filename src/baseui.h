@@ -517,7 +517,9 @@ inline void BaseUi::SetShowFps(ConfigEnum::ShowFps fps) {
 }
 
 inline void BaseUi::SetPauseWhenFocusLost(bool value) {
-	vcfg.pause_when_focus_lost.Set(value);
+	if (vcfg.pause_when_focus_lost.Set(value)) {
+		vcfg.pause_when_focus_lost_configured = true;
+	}
 }
 
 inline Game_Clock::duration BaseUi::GetFrameLimit() const {
