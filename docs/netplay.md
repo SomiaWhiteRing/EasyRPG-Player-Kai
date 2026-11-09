@@ -19,6 +19,7 @@ it so players that ignore these comments follow the offline event path.
 | `@netplay join V` | Join an existing room numbered by V. An absent or full room is rejected. |
 | `@netplay rooms T` | Read the latest room directory into Maniac string T. Each row has a numeric `id` and a `players` array with `name` and `avatar` fields. |
 | `@netplay identity T` | Read the local directory profile as a JSON object with `name` and `avatar` fields. |
+| `@netplay online V` | Read the current number of directory sessions, or -1 if unavailable. The room list request opens the directory subscription. |
 | `@netplay stop_directory` | Stop receiving directory updates when leaving the online menu. |
 | `@netplay fade_transfer OUT IN [DELAY]` | Set the fade durations and an optional black-screen delay before the next map's fade-in, in frames. A screen already erased starts with the delay and reveal. |
 | `@netplay state V` | Read the connection state into V. Values are 0 idle, 1 connecting, 2 waiting, 3 first seat paired, 4 second seat paired, and -1 disconnected. |

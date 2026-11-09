@@ -538,6 +538,12 @@ void Game_Netplay::Command(std::string_view comment) {
 #else
 		write(variable, 0);
 #endif
+	} else if (command == "online") {
+#ifdef PLAYER_WEB
+		write(variable, EM_ASM_INT({ return Module.netplay?.online?.() ?? -1; }));
+#else
+		write(variable, -1);
+#endif
 	} else if (command == "receive") {
 		int received;
 		if (!(args >> received) || !vars.IsValid(received) || received == variable) return;

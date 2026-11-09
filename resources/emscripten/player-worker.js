@@ -160,12 +160,12 @@ function createNetplay(endpoint) {
   directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
   let socket, state = 0;
   let subscription, retry = 0, fallback = false, nextPoll = 0, polling = false;
-  let rooms, identity;
+  let rooms, identity, online = -1;
   let probe = 0, probeSent = 0, latency = -1, pendingProbe;
   const avatarPaths = new Set(), avatars = new Map();
   const inbox = [], frames = [];
   const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
-  const updateDirectory = (list, local) => {
+  const updateDirectory = (list, local, count) => {
     if (!Array.isArray(list) || !list.every(room => Number.isSafeInteger(room?.id) &&
         Array.isArray(room.players) && room.players.every(isIdentity))) return;
     avatarPaths.clear();
@@ -173,6 +173,7 @@ function createNetplay(endpoint) {
     if (local) avatarPaths.add(local.avatar);
     rooms = JSON.stringify(list);
     if (local) identity = JSON.stringify(local);
+    online = Number.isInteger(count) && count >= 0 && count <= 0x7fffffff ? count : -1;
   };
   const subscribe = () => {
     const connection = subscription = new WebSocket(directory);
@@ -180,6 +181,7 @@ function createNetplay(endpoint) {
       if (subscription !== connection) return;
       subscription = undefined;
       fallback = true;
+      online = -1;
       retry = performance.now() + 2000;
       connection.close();
     };
@@ -190,7 +192,7 @@ function createNetplay(endpoint) {
       try { snapshot = JSON.parse(data); } catch { return; }
       if (!isIdentity(snapshot?.identity)) return;
       fallback = false;
-      updateDirectory(snapshot.rooms, snapshot.identity);
+      updateDirectory(snapshot.rooms, snapshot.identity, snapshot.online);
     };
   };
   const stopDirectory = () => {
@@ -199,6 +201,7 @@ function createNetplay(endpoint) {
     fallback = false;
     retry = 0;
     rooms = identity = undefined;
+    online = -1;
     previous?.close();
   };
   const clear = () => {
@@ -251,6 +254,7 @@ function createNetplay(endpoint) {
       identity = undefined;
       return snapshot;
     },
+    online: () => online,
     peerLatency(poll, reset) {
       echoProbe();
       if (reset) latency = -1;
