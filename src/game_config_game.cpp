@@ -193,6 +193,7 @@ void Game_ConfigGame::LoadFromStream(Filesystem_Stream::InputStream& is) {
 	new_game.FromIni(ini);
 	engine_str.FromIni(ini);
 	fake_resolution.FromIni(ini);
+	netplay_enabled = ini.GetBoolean("Netplay", "Enabled", false);
 
 	if (patch_easyrpg.FromIni(ini)) {
 		patch_override = true;

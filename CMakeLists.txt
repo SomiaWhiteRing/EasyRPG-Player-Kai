@@ -198,6 +198,8 @@ add_library(${PROJECT_NAME} OBJECT
 	src/game_config.cpp
 	src/game_config.h
 	src/game_config_game.cpp
+	src/game_netplay.cpp
+	src/game_netplay.h
 	src/game_config_game.h
 	src/game_destiny.cpp
 	src/game_destiny.h

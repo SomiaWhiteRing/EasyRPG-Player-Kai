@@ -147,6 +147,54 @@ function createRenderer(canvas) {
   };
 }
 
+function createNetplay(endpoint) {
+  if (!endpoint) return;
+  const base = new URL(endpoint);
+  if (base.protocol === 'https:') base.protocol = 'wss:';
+  else if (base.protocol === 'http:') base.protocol = 'ws:';
+  else if (base.protocol !== 'wss:' && base.protocol !== 'ws:') return;
+  let socket, state = 0;
+  const inbox = [];
+  const close = () => {
+    const old = socket;
+    socket = undefined;
+    inbox.length = 0;
+    state = 0;
+    old?.close();
+  };
+  return {
+    close,
+    state: () => state,
+    open(room) {
+      if (room < 1 || room > 999999) return;
+      close();
+      const connection = socket = new WebSocket(new URL(String(room), base));
+      state = 1;
+      connection.binaryType = 'arraybuffer';
+      const ended = () => {
+        if (socket !== connection) return;
+        close();
+        state = -1;
+      };
+      connection.onclose = connection.onerror = ended;
+      connection.onmessage = ({data}) => {
+        if (socket !== connection) return;
+        if (data === '2' || data === '3' || data === '4') state = Number(data);
+        else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256)
+          inbox.push(new DataView(data).getInt32(0, true));
+        else ended();
+      };
+    },
+    send(value) {
+      if (state < 3 || socket.readyState !== WebSocket.OPEN) return;
+      const bytes = new DataView(new ArrayBuffer(4));
+      bytes.setInt32(0, value, true);
+      socket.send(bytes.buffer);
+    },
+    receive: () => inbox.shift(),
+  };
+}
+
 self.onmessage = async ({data}) => {
   try {
     if (data.type === 'joystick-availability') {
@@ -169,6 +217,7 @@ self.onmessage = async ({data}) => {
         canvas: data.canvas, workId: data.workId, sampleRate: data.sampleRate,
         audioCapabilities: data.audioCapabilities,
         gamePackages: data.packages, gameArguments: data.arguments, keyNames: {},
+        netplay: createNetplay(data.netplayEndpoint),
         audioCommand: command => {
           if (command.op === 'config' && command.soundfont?.startsWith('/') && engine && command.soundfont !== forwardedSoundfont) {
             try {

@@ -142,6 +142,8 @@ libeasyrpg_player_a_SOURCES = \
 	src/game_config.h \
 	src/game_config_game.cpp \
 	src/game_config_game.h \
+	src/game_netplay.cpp \
+	src/game_netplay.h \
 	src/game_destiny.cpp \
 	src/game_destiny.h \
 	src/game_dynrpg.cpp \

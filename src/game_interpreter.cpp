@@ -33,6 +33,7 @@
 #include "game_interpreter.h"
 #include "game_maniac_self_variables.h"
 #include "game_maniac_js.h"
+#include "game_netplay.h"
 #include "async_handler.h"
 #include "cache.h"
 #include "audio.h"
@@ -2802,6 +2803,10 @@ std::optional<bool> Game_Interpreter::HandleDestinyScript(const lcf::rpg::EventC
 }
 
 bool Game_Interpreter::CommandComment(const lcf::rpg::EventCommand &com) {
+	if (Player::game_config.netplay_enabled && StartsWith(com.string, "@netplay ")) {
+		Game_Netplay::Command(ToString(com.string));
+		return true;
+	}
 	if (auto handled = HandleDynRpgScript(com); handled.has_value()) {
 		return handled.value();
 	}
