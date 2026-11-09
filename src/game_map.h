@@ -700,6 +700,10 @@ namespace Game_Map {
 	void RemoveAllPendingMoves();
 
 	void UpdateProcessedFlags(bool is_preupdate);
+	// Map and common parallel events for a synchronized scene.
+	bool UpdateNetplay();
+	void CaptureNetplay(lcf::rpg::Save& state);
+	void RestoreNetplay(lcf::rpg::Save& state);
 	bool UpdateCommonEvents(MapUpdateAsyncContext& actx);
 	bool UpdateMapEvents(MapUpdateAsyncContext& actx);
 	bool UpdateMessage(MapUpdateAsyncContext& actx);

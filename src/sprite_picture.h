@@ -20,6 +20,8 @@
 
 #include "sprite.h"
 #include <array>
+#include <lcf/rpg/savepicture.h>
+#include <optional>
 
 class Bitmap;
 
@@ -37,6 +39,17 @@ public:
 
 	void Draw(Bitmap& dst) override;
 
+	struct NetplayPose {
+		lcf::rpg::SavePicture data;
+		BitmapRef bitmap;
+		Tone tone;
+		Color flash;
+		int shake_x;
+		int shake_y;
+		std::optional<std::array<int, 14>> maniac_pixels;
+	};
+	void PresentNetplay(NetplayPose pose);
+
 	void OnPictureShow(bool reuse_pixels = false);
 	void SetPictureId(int id);
 	void UpdateManiacPixels();
@@ -51,7 +64,10 @@ public:
 	int GetFrameHeight() const;
 
 private:
+	void DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data, int frames,
+		const Tone& screen_tone, const Color& flash, int shake_x, int shake_y);
 	void UpdatePictureZ();
+	std::unique_ptr<NetplayPose> netplay_pose;
 	mutable BitmapRef maniac_source;
 	mutable BitmapRef maniac_prepared;
 	mutable std::array<int, 14> maniac_prepare_state{};

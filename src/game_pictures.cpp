@@ -170,6 +170,62 @@ std::vector<lcf::rpg::SavePicture> Game_Pictures::GetSaveData() const {
 	return save;
 }
 
+Game_Pictures::NetplaySnapshot Game_Pictures::CaptureNetplay() const {
+	NetplaySnapshot state{{}, frame_counter};
+	for (const auto& holder : pictures) {
+		const auto& picture = *holder;
+		const auto bitmap = picture.sprite ? picture.sprite->GetBitmap() : BitmapRef{};
+		if (!bitmap && !picture.Exists()) continue;
+		state.entries.push_back({picture.data, bitmap, picture.maniac_image_chromakey,
+			picture.origin, picture.position_scaled, picture.needs_update,
+			picture.sprite && picture.sprite->IsVisible()});
+	}
+	return state;
+}
+
+void Game_Pictures::RestoreNetplay(NetplaySnapshot state) {
+	frame_counter = state.frame_counter;
+	auto entry = state.entries.begin();
+	for (auto& holder : pictures) {
+		auto& picture = *holder;
+		if (entry == state.entries.end() || entry->data.ID != picture.data.ID) {
+			if (!picture.Exists() && (!picture.sprite || !picture.sprite->GetBitmap())) continue;
+			const int id = picture.data.ID;
+			picture.Erase();
+			picture.data = {};
+			picture.data.ID = id;
+			picture.needs_update = false;
+			continue;
+		}
+		// Keep prepared resource pixels when switching between matching layouts.
+		const bool same_layout = entry->bitmap && picture.sprite && picture.sprite->GetBitmap() == entry->bitmap &&
+			picture.data.spritesheet_cols == entry->data.spritesheet_cols &&
+			picture.data.spritesheet_rows == entry->data.spritesheet_rows &&
+			picture.data.easyrpg_type == entry->data.easyrpg_type &&
+			picture.data.name.empty() == entry->data.name.empty();
+		const bool same_layer = picture.data.map_layer == entry->data.map_layer &&
+			picture.data.battle_layer == entry->data.battle_layer;
+		picture.data = std::move(entry->data);
+		picture.maniac_image_chromakey = entry->chromakey;
+		picture.origin = entry->origin;
+		picture.position_scaled = entry->position_scaled;
+		picture.needs_update = entry->needs_update;
+		picture.request_id = {};
+		if (!same_layout) picture.ResetManiacPixelLayout();
+		if (entry->bitmap || picture.sprite) {
+			picture.CreateSprite();
+			if (!same_layout) {
+				picture.sprite->SetBitmap(entry->bitmap);
+				picture.sprite->OnPictureShow();
+			} else if (!same_layer) {
+				picture.sprite->OnPictureShow(true);
+			}
+			picture.sprite->SetVisible(entry->visible);
+		}
+		++entry;
+	}
+}
+
 int Game_Pictures::GetDefaultNumberOfPictures() {
 	if (Player::IsEnglish()) {
 		return 1000;
@@ -1006,12 +1062,15 @@ bool Game_Pictures::Picture::IsWindowAttached() const {
 	return data.easyrpg_type == lcf::rpg::SavePicture::EasyRpgType_window;
 }
 
-void Game_Pictures::Picture::Update(bool is_battle) {
+void Game_Pictures::Picture::Update(bool is_battle, bool prepare_pixels) {
 	if ((is_battle && !IsOnBattle()) || (!is_battle && !IsOnMap())) {
 		return;
 	}
 	if (Player::IsPatchManiac()) {
-		if (!needs_update) { if (sprite) sprite->UpdateManiacPixels(); return; }
+		if (!needs_update) {
+			if (prepare_pixels && sprite) sprite->UpdateManiacPixels();
+			return;
+		}
 		if (data.spritesheet_speed != 0 && static_cast<uint32_t>(data.spritesheet_speed) <= static_cast<uint32_t>(data.frames)) {
 			data.spritesheet_frame = static_cast<int32_t>(static_cast<uint32_t>(data.spritesheet_frame) + 1u);
 			data.frames = 0;
@@ -1056,7 +1115,7 @@ void Game_Pictures::Picture::Update(bool is_battle) {
 			data.current_rotation = interpolate(data.current_rotation, data.current_effect_power);
 		}
 		data.frames = static_cast<int32_t>(static_cast<uint32_t>(data.frames) + 1u);
-		if (sprite) sprite->UpdateManiacPixels();
+		if (prepare_pixels && sprite) sprite->UpdateManiacPixels();
 		return;
 	}
 
@@ -1144,10 +1203,10 @@ void Game_Pictures::Picture::Update(bool is_battle) {
 	}
 }
 
-void Game_Pictures::Update(bool is_battle) {
+void Game_Pictures::Update(bool is_battle, bool prepare_pixels) {
 	++frame_counter;
 	for (auto& pic: pictures) {
-		pic->Update(is_battle);
+		pic->Update(is_battle, prepare_pixels);
 	}
 }
 

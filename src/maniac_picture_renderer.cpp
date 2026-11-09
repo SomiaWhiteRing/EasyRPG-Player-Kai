@@ -14,6 +14,26 @@ int Truncate(double value) {
 
 int Nearest(double value) { return Truncate(std::nearbyint(value)); }
 
+std::optional<PrepareState> DescribeFrame(const Bitmap& source, const lcf::rpg::SavePicture& picture,
+		const lcf::rpg::SaveScreen& screen, bool chromakey) {
+	const int cols = picture.spritesheet_cols, rows = picture.spritesheet_rows;
+	const auto index = static_cast<uint32_t>(picture.spritesheet_frame);
+	if (cols <= 0 || rows <= 0 || index >= uint32_t(cols) * uint32_t(rows)) return {};
+	const int width = source.GetWidth() / cols, height = source.GetHeight() / rows;
+	if (width <= 0 || height <= 0) return {};
+	const auto component = [&](double value, double tint) {
+		return static_cast<int>(std::clamp(static_cast<int64_t>(Nearest(value))
+			+ (picture.flags.affected_by_tint ? Truncate(std::round(tint)) : 100) - 100, int64_t{0}, int64_t{200}));
+	};
+	return PrepareState{width * int(index % cols), height * int(index / cols), width, height,
+		component(picture.current_red, screen.tint_current_red), component(picture.current_green, screen.tint_current_green),
+		component(picture.current_blue, screen.tint_current_blue), component(picture.current_sat, screen.tint_current_sat),
+		picture.flags.affected_by_flash ? screen.flash_red : 0, picture.flags.affected_by_flash ? screen.flash_green : 0,
+		picture.flags.affected_by_flash ? screen.flash_blue : 0,
+		picture.flags.affected_by_flash ? Truncate(std::round(screen.flash_current_level)) : 0,
+		static_cast<int>((static_cast<uint32_t>(picture.finish_bot_trans) >> 12) & 15), chromakey};
+}
+
 namespace {
 int Round(double value) { return Truncate(std::round(value)); }
 

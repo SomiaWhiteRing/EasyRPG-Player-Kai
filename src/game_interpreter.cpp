@@ -2549,7 +2549,7 @@ bool Game_Interpreter::CommandPlayBGM(lcf::rpg::EventCommand const& com) { // co
 	music.tempo = ValueOrVariableBitfield(com, 4, 3, 2);
 	music.balance = ValueOrVariableBitfield(com, 4, 4, 3);
 
-	Main_Data::game_system->BgmPlay(music);
+	if (!Game_Netplay::QueueAudio(music)) Main_Data::game_system->BgmPlay(music);
 	return true;
 }
 
@@ -2557,7 +2557,7 @@ bool Game_Interpreter::CommandFadeOutBGM(lcf::rpg::EventCommand const& com) { //
 	const int mode = Player::IsPatchManiac() && com.parameters.size() > 1 ? com.parameters[1] & 15 : 0;
 	const int raw = com.parameters[0];
 	const int fadeout = mode == 0 ? raw : mode == 1 ? ReadVariable(raw) : ReadVariableIndirect(raw);
-	Main_Data::game_system->BgmFade(fadeout);
+	if (!Game_Netplay::QueueAudio(fadeout)) Main_Data::game_system->BgmFade(fadeout);
 	return true;
 }
 
@@ -2569,7 +2569,7 @@ bool Game_Interpreter::CommandPlaySound(lcf::rpg::EventCommand const& com) { // 
 	sound.tempo = ValueOrVariableBitfield(com, 3, 2, 1);
 	sound.balance = ValueOrVariableBitfield(com, 3, 3, 2);
 
-	Main_Data::game_system->SePlay(sound, true);
+	if (!Game_Netplay::QueueAudio(sound)) Main_Data::game_system->SePlay(sound, true);
 	return true;
 }
 

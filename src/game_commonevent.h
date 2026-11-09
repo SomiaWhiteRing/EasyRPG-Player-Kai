@@ -45,6 +45,7 @@ public:
 	 * @param data savegame data.
 	 */
 	void SetSaveData(const lcf::rpg::SaveEventExecState& data);
+	void RestoreNetplay(const lcf::rpg::SaveEventExecState& data);
 
 	/**
 	 * Updates common event parallel interpreter.

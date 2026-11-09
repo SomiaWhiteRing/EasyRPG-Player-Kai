@@ -154,11 +154,12 @@ function createNetplay(endpoint) {
   else if (base.protocol === 'http:') base.protocol = 'ws:';
   else if (base.protocol !== 'wss:' && base.protocol !== 'ws:') return;
   let socket, state = 0;
-  const inbox = [];
+  const inbox = [], frames = [];
   const close = () => {
     const old = socket;
     socket = undefined;
     inbox.length = 0;
+    frames.length = 0;
     state = 0;
     old?.close();
   };
@@ -179,19 +180,26 @@ function createNetplay(endpoint) {
       connection.onclose = connection.onerror = ended;
       connection.onmessage = ({data}) => {
         if (socket !== connection) return;
-        if (data === '2' || data === '3' || data === '4') state = Number(data);
-        else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256)
+        if (data === '2' || data === '3' || data === '4') {
+          state = Number(data);
+        } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
           inbox.push(new DataView(data).getInt32(0, true));
-        else ended();
+        } else if (data instanceof ArrayBuffer && data.byteLength === 12 && frames.length < 256) {
+          const packet = new DataView(data);
+          frames.push([packet.getInt32(0, true), packet.getInt32(4, true), packet.getInt32(8, true)]);
+        } else {
+          ended();
+        }
       };
     },
-    send(value) {
+    send(...values) {
       if (state < 3 || socket.readyState !== WebSocket.OPEN) return;
-      const bytes = new DataView(new ArrayBuffer(4));
-      bytes.setInt32(0, value, true);
+      const bytes = new DataView(new ArrayBuffer(values.length * 4));
+      values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
       socket.send(bytes.buffer);
     },
     receive: () => inbox.shift(),
+    receiveFrame: () => frames.shift(),
   };
 }
 

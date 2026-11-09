@@ -25,6 +25,7 @@
 #include "scene_settings.h"
 #include "main_data.h"
 #include "game_map.h"
+#include "game_netplay.h"
 #include "game_actors.h"
 #include "game_message.h"
 #include "game_party.h"
@@ -263,6 +264,10 @@ void Scene_Map::QueueManiacLoad(AsyncOp operation) {
 }
 
 void Scene_Map::vUpdate() {
+	if (Player::game_config.netplay_enabled && Game_Netplay::UpdateMap()) {
+		UpdateGraphics();
+		return;
+	}
 	if (maniac_pending_load.IsActive()) {
 		const auto operation = maniac_pending_load;
 		maniac_pending_load = {};
