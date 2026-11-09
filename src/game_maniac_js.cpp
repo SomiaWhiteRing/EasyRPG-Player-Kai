@@ -1,4 +1,7 @@
 #include "game_maniac_js.h"
+#include "bitmap.h"
+#include "cache.h"
+#include "font.h"
 #include "game_interpreter_shared.h"
 #include "game_maniac_self_variables.h"
 #include "game_switches.h"
@@ -7,17 +10,26 @@
 #include "game_pictures.h"
 #include "filefinder.h"
 #include "filesystem_stream.h"
+#include "input.h"
 #include "utils.h"
 #include "main_data.h"
 #include "output.h"
 #include "player.h"
+#include "text.h"
+#include "transition.h"
 #include <quickjs.h>
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
 #include <memory>
 #include <new>
+#include <unordered_map>
+#ifdef PLAYER_WEB
+#include <emscripten.h>
+#endif
 
 namespace {
 int32_t Offset(int32_t id, uint32_t offset) {
@@ -77,6 +89,26 @@ public:
 		JS_SetClassProto(context, picture_class, prototype);
 		auto rm2k3 = JS_NewObject(context);
 		JS_SetPropertyStr(context, rm2k3, "getPicture", JS_NewCFunction(context, GetPicture, "getPicture", 1));
+		if (Player::game_config.netplay_enabled) {
+			JS_SetPropertyStr(context, rm2k3, "setNetplayOverlay",
+				JS_NewCFunction(context, SetNetplayOverlay, "setNetplayOverlay", 1));
+			JS_SetPropertyStr(context, rm2k3, "netplayTime", JS_NewCFunction(context, NetplayTime, "netplayTime", 0));
+			JS_SetPropertyStr(context, rm2k3, "netplayFade", JS_NewCFunction(context, NetplayFade, "netplayFade", 2));
+			JS_SetPropertyStr(context, rm2k3, "netplayButtons", JS_NewCFunction(context, NetplayButtons, "netplayButtons", 1));
+			canvas = JS_NewObject(context);
+			JS_SetPropertyStr(context, canvas, "fill", JS_NewCFunction(context, FillOverlay, "fill", 5));
+			JS_SetPropertyStr(context, canvas, "textWidth", JS_NewCFunction(context, OverlayTextWidth, "textWidth", 1));
+			JS_SetPropertyStr(context, canvas, "text", JS_NewCFunction(context, DrawOverlayText, "text", 5));
+			JS_SetPropertyStr(context, canvas, "picture", JS_NewCFunction(context, DrawOverlayPicture, "picture", 11));
+#ifdef PLAYER_WEB
+			JS_SetPropertyStr(context, canvas, "avatar", JS_NewCFunction(context, DrawOverlayAvatar, "avatar", 5));
+			JS_SetPropertyStr(context, canvas, "peerLatency", JS_NewCFunction(context, OverlayPeerLatency, "peerLatency", 2));
+#endif
+			JS_SetPropertyStr(context, canvas, "capture", JS_NewCFunctionMagic(context, OverlayFrame, "capture", 0,
+				JS_CFUNC_generic_magic, 0));
+			JS_SetPropertyStr(context, canvas, "restore", JS_NewCFunctionMagic(context, OverlayFrame, "restore", 0,
+				JS_CFUNC_generic_magic, 1));
+		}
 		JS_SetPropertyStr(context, global, "rm2k3", rm2k3);
 		auto console = JS_NewObject(context);
 		JS_SetPropertyStr(context, console, "log", JS_NewCFunction(context, ConsoleLog, "log", 1));
@@ -98,8 +130,28 @@ public:
 		JS_FreeValue(context, initialized);
 	}
 	~Runtime() {
+		JS_FreeValue(context, overlay);
+		JS_FreeValue(context, canvas);
 		JS_FreeContext(context);
 		JS_FreeRuntime(runtime);
+	}
+
+	void DrawNetplayOverlay(Bitmap& destination) {
+		if (JS_IsUndefined(overlay)) return;
+		overlay_target = &destination;
+		JSValue args[] = {
+			canvas, JS_NewInt32(context, destination.GetWidth()), JS_NewInt32(context, destination.GetHeight()),
+			JS_NewFloat64(context, NetplayTimeMs())
+		};
+		auto result = JS_Call(context, overlay, JS_UNDEFINED, 4, args);
+		overlay_target = nullptr;
+		JS_FreeValue(context, args[3]);
+		if (JS_IsException(result)) {
+			ReportException();
+			JS_FreeValue(context, overlay);
+			overlay = JS_UNDEFINED;
+		}
+		JS_FreeValue(context, result);
 	}
 
 	// A proxy can wrap another proxy. Preserve native array recognition without
@@ -124,11 +176,7 @@ public:
 		auto result = JS_Eval(context, source.data(), source.size(), "",
 			JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_STRICT);
 		if (JS_IsException(result)) {
-			auto exception = JS_GetException(context);
-			const char* message = JS_ToCString(context, exception);
-			Output::Warning("Maniac JavaScript: {}", message ? message : "Exception");
-			if (message) JS_FreeCString(context, message);
-			JS_FreeValue(context, exception);
+			ReportException();
 			result = JS_UNDEFINED;
 		}
 		const int32_t count = parameters.size() > 4 ? parameters[4] : 0;
@@ -154,6 +202,203 @@ public:
 	}
 
 private:
+	static double NetplayTimeMs() {
+		const auto now = std::chrono::steady_clock::now().time_since_epoch();
+		return std::chrono::duration<double, std::milli>(now).count();
+	}
+
+	static JSValue NetplayTime(JSContext* context, JSValueConst, int, JSValueConst*) {
+		return JS_NewFloat64(context, NetplayTimeMs());
+	}
+
+	static JSValue NetplayButtons(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		const bool repeat = argc > 0 && JS_ToBool(context, argv[0]);
+		auto button = repeat ? Input::IsRepeated : Input::IsTriggered;
+		constexpr Input::InputButton menu[] = {
+			Input::DOWN, Input::LEFT, Input::RIGHT, Input::UP, Input::DECISION, Input::CANCEL, Input::SHIFT
+		};
+		int keys = 0;
+		for (int i = 0; i < 7; ++i) {
+			if (button(menu[i])) keys |= 1 << (i + 1);
+		}
+		for (int i = 0; i < 10; ++i) {
+			if (button(static_cast<Input::InputButton>(Input::N0 + i))) keys |= 1 << (10 + i);
+		}
+		if (!repeat && Input::IsRawKeyTriggered(Input::Keys::ESCAPE)) keys |= 1 << 8;
+		return JS_NewInt32(context, keys);
+	}
+
+	static JSValue NetplayFade(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& transition = Transition::instance();
+		if (!argc) {
+			return JS_NewInt32(context, transition.IsActive() ? 1 : transition.IsErasedNotActive() ? 2 : 0);
+		}
+		int32_t frames;
+		if (JS_ToInt32(context, &frames, argv[0]) < 0) return JS_EXCEPTION;
+		if (frames <= 0 || !Scene::instance) {
+			return JS_ThrowRangeError(context, "Expected a positive fade duration");
+		}
+		if (argc > 1 && JS_ToBool(context, argv[1])) {
+			transition.InitShow(Transition::TransitionFadeIn, Scene::instance.get(), frames);
+		} else {
+			transition.InitErase(Transition::TransitionFadeOut, Scene::instance.get(), frames);
+		}
+		return JS_UNDEFINED;
+	}
+
+	void ReportException() {
+		auto exception = JS_GetException(context);
+		const char* message = JS_ToCString(context, exception);
+		Output::Warning("Maniac JavaScript: {}", message ? message : "Exception");
+		if (message) JS_FreeCString(context, message);
+		JS_FreeValue(context, exception);
+	}
+
+	static JSValue SetNetplayOverlay(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		const auto callback = argc > 0 ? argv[0] : JS_UNDEFINED;
+		const bool clear = JS_IsNull(callback) || JS_IsUndefined(callback);
+		if (!clear && !JS_IsFunction(context, callback)) {
+			return JS_ThrowTypeError(context, "Expected a netplay overlay function");
+		}
+		JS_FreeValue(context, self.overlay);
+		self.overlay = clear ? JS_UNDEFINED : JS_DupValue(context, callback);
+		if (clear) {
+			self.overlay_frame.reset();
+#ifdef PLAYER_WEB
+			self.overlay_avatars.clear();
+#endif
+		}
+		return JS_UNDEFINED;
+	}
+
+	template <size_t N>
+	static bool ReadOverlayNumbers(JSContext* context, const JSValueConst* args, int32_t (&values)[N]) {
+		for (size_t i = 0; i < N; ++i) {
+			if (JS_ToInt32(context, &values[i], args[i]) < 0) return false;
+		}
+		return true;
+	}
+
+	static Color OverlayColor(uint32_t rgba) {
+		return Color(rgba >> 24, (rgba >> 16) & 255, (rgba >> 8) & 255, rgba & 255);
+	}
+
+	static JSValue FillOverlay(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto* target = static_cast<Runtime*>(JS_GetContextOpaque(context))->overlay_target;
+		if (!target || argc < 5) return JS_ThrowTypeError(context, "Expected overlay fill bounds and color");
+		int32_t args[5];
+		if (!ReadOverlayNumbers(context, argv, args)) return JS_EXCEPTION;
+		target->FillRect(Rect(args[0], args[1], args[2], args[3]), OverlayColor(args[4]));
+		return JS_UNDEFINED;
+	}
+
+	static JSValue OverlayTextWidth(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		const char* value = JS_ToCString(context, argc > 0 ? argv[0] : JS_UNDEFINED);
+		if (!value) return JS_EXCEPTION;
+		const auto size = Text::GetSize(*Font::Default(), value);
+		JS_FreeCString(context, value);
+		return JS_NewInt32(context, size.width);
+	}
+
+	static JSValue DrawOverlayText(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto* target = static_cast<Runtime*>(JS_GetContextOpaque(context))->overlay_target;
+		if (!target || argc < 5) return JS_ThrowTypeError(context, "Expected overlay text, position, color and scale");
+		int32_t args[4];
+		if (!ReadOverlayNumbers(context, argv + 1, args)) return JS_EXCEPTION;
+		const char* value = JS_ToCString(context, argv[0]);
+		if (!value) return JS_EXCEPTION;
+		const auto font = Font::Default();
+		const auto color = OverlayColor(args[2]);
+		if (args[3] == 2) {
+			const auto size = Text::GetSize(*font, value);
+			if (size.width > 0 && size.height > 0) {
+				auto label = Bitmap::Create(size.width, size.height, true);
+				Text::Draw(*label, 0, 0, *font, color, value);
+				target->StretchBlit(Rect(args[0], args[1], size.width * 2, size.height * 2),
+					*label, label->GetRect(), Opacity::Opaque());
+			}
+		} else {
+			Text::Draw(*target, args[0], args[1], *font, color, value);
+		}
+		JS_FreeCString(context, value);
+		return JS_UNDEFINED;
+	}
+
+	static JSValue DrawOverlayPicture(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto* target = static_cast<Runtime*>(JS_GetContextOpaque(context))->overlay_target;
+		if (!target || argc < 11) return JS_ThrowTypeError(context, "Expected overlay picture, bounds, opacity and flip");
+		int32_t args[10];
+		if (!ReadOverlayNumbers(context, argv + 1, args)) return JS_EXCEPTION;
+		const char* file = JS_ToCString(context, argv[0]);
+		if (!file) return JS_EXCEPTION;
+		auto picture = Cache::Picture(file, true);
+		JS_FreeCString(context, file);
+		if (!picture) return JS_UNDEFINED;
+		const Rect source = args[2] > 0 && args[3] > 0
+			? Rect(args[0], args[1], args[2], args[3]) : picture->GetRect();
+		const Rect destination(args[4], args[5], args[6], args[7]);
+		const Opacity opacity(std::clamp(args[8], 0, 255));
+		if (args[9]) {
+			auto flipped = Bitmap::Create(source.width, source.height, true);
+			flipped->FlipBlit(0, 0, *picture, source, true, false, Opacity::Opaque());
+			target->StretchBlit(destination, *flipped, flipped->GetRect(), opacity);
+		} else {
+			target->StretchBlit(destination, *picture, source, opacity);
+		}
+		return JS_UNDEFINED;
+	}
+
+#ifdef PLAYER_WEB
+	static JSValue OverlayPeerLatency(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		const bool poll = argc > 0 && JS_ToBool(context, argv[0]);
+		const bool reset = argc > 1 && JS_ToBool(context, argv[1]);
+		return JS_NewInt32(context, EM_ASM_INT({
+			return Module.netplay?.peerLatency?.($0, $1) ?? -1;
+		}, poll, reset));
+	}
+
+	static JSValue DrawOverlayAvatar(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		auto* target = self.overlay_target;
+		if (!target || argc < 5) return JS_ThrowTypeError(context, "Expected overlay avatar and bounds");
+		int32_t args[4];
+		if (!ReadOverlayNumbers(context, argv + 1, args)) return JS_EXCEPTION;
+		std::string path;
+		if (!self.Text(argv[0], path)) return JS_EXCEPTION;
+		auto& avatar = self.overlay_avatars[path];
+		if (!avatar) {
+			constexpr int size = 48;
+			std::array<uint8_t, size * size * 4> pixels;
+			if (!EM_ASM_INT({
+				return Module.netplay?.avatar?.(UTF8ToString($0), $1, $2) ?? 0;
+			}, path.c_str(), pixels.data(), size)) return JS_UNDEFINED;
+			avatar = Bitmap::Create(size, size, true);
+			for (int y = 0; y < size; ++y) {
+				for (int x = 0; x < size; ++x) {
+					const auto* pixel = pixels.data() + (y * size + x) * 4;
+					avatar->SetManiacColorAt(x, y, Color(pixel[0], pixel[1], pixel[2], pixel[3]));
+				}
+			}
+		}
+		target->StretchBlit(Rect(args[0], args[1], args[2], args[3]), *avatar, avatar->GetRect(), Opacity::Opaque());
+		return JS_UNDEFINED;
+	}
+#endif
+
+	static JSValue OverlayFrame(JSContext* context, JSValueConst, int, JSValueConst*, int mode) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		auto* target = self.overlay_target;
+		if (!target) return JS_ThrowTypeError(context, "Expected an active netplay overlay");
+		if (mode == 0) {
+			self.overlay_frame = Bitmap::Create(target->GetWidth(), target->GetHeight(), false);
+			self.overlay_frame->Blit(0, 0, *target, target->GetRect(), Opacity::Opaque());
+		} else if (self.overlay_frame) {
+			target->Blit(0, 0, *self.overlay_frame, self.overlay_frame->GetRect(), Opacity::Opaque());
+		}
+		return JS_UNDEFINED;
+	}
+
 	bool Text(JSValueConst value, std::string& text) {
 		size_t length = 0;
 		const char* data = JS_ToCStringLen(context, &length, value);
@@ -390,6 +635,13 @@ private:
 	JSContext* context;
 	JSClassID picture_class = 0;
 	const Game_BaseInterpreterContext* caller = nullptr;
+	JSValue overlay = JS_UNDEFINED;
+	JSValue canvas = JS_UNDEFINED;
+	Bitmap* overlay_target = nullptr;
+	BitmapRef overlay_frame;
+#ifdef PLAYER_WEB
+	std::unordered_map<std::string, BitmapRef> overlay_avatars;
+#endif
 };
 
 std::unique_ptr<Runtime> runtime;
@@ -399,6 +651,10 @@ void Game_ManiacJs::Execute(std::string_view source, Span<const int32_t> paramet
 	const Game_BaseInterpreterContext& caller) {
 	if (!runtime) runtime = std::make_unique<Runtime>();
 	runtime->Execute(source, parameters, caller);
+}
+
+void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination) {
+	if (runtime) runtime->DrawNetplayOverlay(destination);
 }
 
 void Game_ManiacJs::Reset() {

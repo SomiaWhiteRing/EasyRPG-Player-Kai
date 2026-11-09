@@ -1349,8 +1349,13 @@ void Game_Map::UpdateProcessedFlags(bool is_preupdate) {
 
 bool Game_Map::UpdateNetplay() {
 	MapUpdateAsyncContext actx;
-	UpdateProcessedFlags(true);
-	if (!UpdateCommonEvents(actx) || !UpdateMapEvents(actx)) return false;
+	return UpdateNetplay(actx);
+}
+
+bool Game_Map::UpdateNetplay(MapUpdateAsyncContext& actx) {
+	if (!actx.IsActive()) UpdateProcessedFlags(true);
+	if ((!actx.IsActive() || actx.IsParallelCommonEvent()) && !UpdateCommonEvents(actx)) return false;
+	if (!UpdateMapEvents(actx)) return false;
 	Main_Data::game_screen->Update();
 	Main_Data::game_pictures->Update(false, false);
 	if (GetNeedRefresh() || Player::IsManiacPf()) Refresh();

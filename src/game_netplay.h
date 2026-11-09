@@ -4,6 +4,8 @@
 #include <string_view>
 #include <utility>
 
+class MapUpdateAsyncContext;
+
 namespace lcf::rpg {
 	class Music;
 	class Sound;
@@ -13,6 +15,14 @@ namespace Game_Netplay {
 	// Called only for an explicitly enabled project.
 	void Command(std::string_view comment);
 	void Close();
+	struct TransferFade {
+		int erase = 0;
+		int show = 0;
+		int delay = 0;
+	};
+	TransferFade TakeTransferFade();
+	bool PreparesMap(int map_id);
+	bool UpdatePreparation(MapUpdateAsyncContext& actx);
 	bool UpdateMap();
 	bool UsesConfirmedPicture(int id);
 	bool HidesLivePicture(int id);

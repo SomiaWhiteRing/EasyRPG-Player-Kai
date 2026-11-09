@@ -34,7 +34,7 @@ public:
 	}
 
 	bool Update(int display_frame) {
-		if (Commit()) return true;
+		if (CommitReady()) return true;
 		if (next - confirmed < window) {
 			auto& frame = frames.at(next);
 			const bool known = !replay && confirmed == next && frame.actual.has_value();
@@ -42,8 +42,20 @@ public:
 			++next;
 		}
 		if (last_replay_display != display_frame && !Reconcile(display_frame)) return false;
-		Commit();
+		CommitReady();
 		return true;
+	}
+
+	bool CommitReady() {
+		const int simulated = replay ? replay->next : next;
+		while (confirmed < std::min(simulated, remote_next)) {
+			auto& frame = frames.at(confirmed);
+			if (NeedsReplay(frame)) break;
+			if (world.Publish(confirmed++, std::move(frame.effects))) return true;
+		}
+		const int oldest = confirmed - confirmed % checkpoint_interval;
+		frames.erase(frames.begin(), frames.lower_bound(oldest));
+		return false;
 	}
 
 private:
@@ -82,18 +94,6 @@ private:
 
 	static bool NeedsReplay(const Frame& frame) {
 		return frame.needs_confirmation || frame.used != *frame.actual;
-	}
-
-	bool Commit() {
-		const int simulated = replay ? replay->next : next;
-		while (confirmed < std::min(simulated, remote_next)) {
-			auto& frame = frames.at(confirmed);
-			if (NeedsReplay(frame)) break;
-			if (world.Publish(confirmed++, std::move(frame.effects))) return true;
-		}
-		const int oldest = confirmed - confirmed % checkpoint_interval;
-		frames.erase(frames.begin(), frames.lower_bound(oldest));
-		return false;
 	}
 
 	bool Reconcile(int display_frame) {

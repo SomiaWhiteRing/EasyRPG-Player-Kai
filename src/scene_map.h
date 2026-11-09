@@ -67,6 +67,9 @@ private:
 		bool erase_screen = false;
 		bool use_default_transition_in = false;
 		bool defer_recursive_teleports = false;
+		int netplay_fade_out = 0;
+		int netplay_fade_in = 0;
+		int netplay_delay = 0;
 	};
 	void StartPendingTeleport(TeleportParams tp);
 	void FinishPendingTeleport(TeleportParams tp);
@@ -80,6 +83,7 @@ private:
 
 	// Calls map update
 	void UpdateStage1(MapUpdateAsyncContext actx);
+	bool UpdateNetplayOpening(MapUpdateAsyncContext actx);
 	// Handles pending teleport and scene changes.
 	void UpdateStage2();
 

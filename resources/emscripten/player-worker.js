@@ -154,13 +154,58 @@ function createNetplay(endpoint) {
   else if (base.protocol === 'http:') base.protocol = 'ws:';
   else if (base.protocol !== 'wss:' && base.protocol !== 'ws:') return;
   const directory = new URL('rooms', base);
-  directory.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
+  const guest = crypto.getRandomValues(new Uint16Array(1))[0].toString(16).padStart(4, '0');
+  directory.searchParams.set('guest', guest);
+  const directoryHttp = new URL(directory);
+  directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
   let socket, state = 0;
-  let nextPoll = 0, polling = false, rooms;
+  let subscription, retry = 0, fallback = false, nextPoll = 0, polling = false;
+  let rooms, identity;
+  let probe = 0, probeSent = 0, latency = -1, pendingProbe;
+  const avatarPaths = new Set(), avatars = new Map();
   const inbox = [], frames = [];
+  const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
+  const updateDirectory = (list, local) => {
+    if (!Array.isArray(list) || !list.every(room => Number.isSafeInteger(room?.id) &&
+        Array.isArray(room.players) && room.players.every(isIdentity))) return;
+    avatarPaths.clear();
+    for (const {players} of list) for (const {avatar} of players) avatarPaths.add(avatar);
+    if (local) avatarPaths.add(local.avatar);
+    rooms = JSON.stringify(list);
+    if (local) identity = JSON.stringify(local);
+  };
+  const subscribe = () => {
+    const connection = subscription = new WebSocket(directory);
+    const ended = () => {
+      if (subscription !== connection) return;
+      subscription = undefined;
+      fallback = true;
+      retry = performance.now() + 2000;
+      connection.close();
+    };
+    connection.onerror = connection.onclose = ended;
+    connection.onmessage = ({data}) => {
+      if (subscription !== connection || typeof data !== 'string') return;
+      let snapshot;
+      try { snapshot = JSON.parse(data); } catch { return; }
+      if (!isIdentity(snapshot?.identity)) return;
+      fallback = false;
+      updateDirectory(snapshot.rooms, snapshot.identity);
+    };
+  };
+  const stopDirectory = () => {
+    const previous = subscription;
+    subscription = undefined;
+    fallback = false;
+    retry = 0;
+    rooms = identity = undefined;
+    previous?.close();
+  };
   const clear = () => {
     inbox.length = 0;
     frames.length = 0;
+    latency = -1;
+    pendingProbe = undefined;
   };
   const close = () => {
     const old = socket;
@@ -169,25 +214,78 @@ function createNetplay(endpoint) {
     state = 0;
     old?.close();
   };
+  const send = (...values) => {
+    if (state < 3 || socket.readyState !== WebSocket.OPEN) return;
+    const bytes = new DataView(new ArrayBuffer(values.length * 4));
+    values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
+    socket.send(bytes.buffer);
+  };
+  const echoProbe = () => {
+    if (pendingProbe === undefined) return;
+    send(1, pendingProbe);
+    pendingProbe = undefined;
+  };
   return {
     close,
-    state: () => state,
+    send,
+    stopDirectory,
+    state() {
+      echoProbe();
+      return state;
+    },
     rooms() {
-      if (!polling && performance.now() >= nextPoll) {
+      if (!subscription && performance.now() >= retry) subscribe();
+      if (fallback && !polling && performance.now() >= nextPoll) {
         polling = true;
         nextPoll = performance.now() + 1200;
-        fetch(directory, {credentials: 'same-origin', cache: 'no-store'}).then(async response => {
-          if (response.ok) rooms = JSON.stringify(await response.json());
+        fetch(directoryHttp, {credentials: 'same-origin', cache: 'no-store'}).then(async response => {
+          if (response.ok && fallback) updateDirectory(await response.json());
         }).catch(() => {}).finally(() => { polling = false; });
       }
       const snapshot = rooms;
       rooms = undefined;
       return snapshot;
     },
+    identity() {
+      const snapshot = identity;
+      identity = undefined;
+      return snapshot;
+    },
+    peerLatency(poll, reset) {
+      echoProbe();
+      if (reset) latency = -1;
+      if (poll && state >= 3) {
+        probe = (probe + 1) | 0;
+        probeSent = performance.now();
+        send(0, probe);
+      }
+      return latency;
+    },
+    avatar(path, pointer, size) {
+      if (!avatarPaths.has(path)) return 0;
+      if (!avatars.has(path)) {
+        const source = new URL(path, directoryHttp);
+        if (source.origin !== directoryHttp.origin) return 0;
+        avatars.set(path, null);
+        fetch(source).then(response => response.blob()).then(createImageBitmap).then(image => {
+          const canvas = new OffscreenCanvas(size, size);
+          const ctx = canvas.getContext('2d');
+          const crop = Math.min(image.width, image.height);
+          ctx.drawImage(image, (image.width - crop) / 2, (image.height - crop) / 2, crop, crop, 0, 0, size, size);
+          image.close();
+          avatars.set(path, ctx.getImageData(0, 0, size, size).data);
+        }).catch(() => {});
+      }
+      const bytes = avatars.get(path);
+      if (!bytes) return 0;
+      engine.HEAPU8.set(bytes, pointer);
+      return 1;
+    },
     open(room, mode) {
       if (room < 1 || room > 999999) return;
       close();
       const address = new URL(String(room), base);
+      address.searchParams.set('guest', guest);
       if (mode) address.searchParams.set('mode', mode);
       const connection = socket = new WebSocket(address);
       state = 1;
@@ -206,6 +304,10 @@ function createNetplay(endpoint) {
           nextPoll = 0;
         } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
           inbox.push(new DataView(data).getInt32(0, true));
+        } else if (data instanceof ArrayBuffer && data.byteLength === 8) {
+          const packet = new DataView(data), kind = packet.getInt32(0, true), number = packet.getInt32(4, true);
+          if (kind === 0) pendingProbe = number;
+          else if (kind === 1 && number === probe) latency = Math.trunc(performance.now() - probeSent);
         } else if (data instanceof ArrayBuffer && data.byteLength === 12 && frames.length < 256) {
           const packet = new DataView(data);
           frames.push([packet.getInt32(0, true), packet.getInt32(4, true), packet.getInt32(8, true)]);
@@ -213,12 +315,6 @@ function createNetplay(endpoint) {
           ended();
         }
       };
-    },
-    send(...values) {
-      if (state < 3 || socket.readyState !== WebSocket.OPEN) return;
-      const bytes = new DataView(new ArrayBuffer(values.length * 4));
-      values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
-      socket.send(bytes.buffer);
     },
     receive: () => inbox.shift(),
     receiveFrame: () => frames.shift(),
@@ -298,6 +394,7 @@ self.onmessage = async ({data}) => {
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {
         engine.stopping = true;
+        engine.netplay?.stopDirectory();
         cancelNameInput();
         consoleCommand({op: 'close'});
         finishConsoleInput(null);

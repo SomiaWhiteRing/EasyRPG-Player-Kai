@@ -14,6 +14,7 @@
 #include "netplay_rollback.h"
 #include "player.h"
 #include "rand.h"
+#include "transition.h"
 
 #include <lcf/rpg/save.h>
 #include <cstdlib>
@@ -30,11 +31,13 @@
 namespace {
 
 using Audio = std::variant<lcf::rpg::Music, lcf::rpg::Sound, int>;
+constexpr int confirmed_signal_bit = 128;
 
 struct Effects {
 	std::vector<Audio> audio;
 	std::map<int, int> samples;
 	std::map<int, int> picture_retirements;
+	bool input_signal = false;
 	bool stop = false;
 };
 
@@ -57,7 +60,7 @@ FrameContext* frame = nullptr;
 #ifdef PLAYER_WEB
 
 struct MapWorld {
-	explicit MapWorld(int seat) : seat(seat) {}
+	MapWorld(int seat, int presentation_buffer) : seat(seat), presentation_buffer(presentation_buffer) {}
 
 	struct Snapshot {
 		lcf::rpg::Save map;
@@ -121,6 +124,35 @@ struct MapWorld {
 		Main_Data::maniac_random_seed = state.maniac_seed;
 	}
 
+	std::optional<Sprite_Picture::NetplayPose> CapturePicture(int id) const {
+		const auto* picture = Main_Data::game_pictures->GetPicturePtr(id);
+		if (!picture || !picture->sprite || !picture->sprite->IsVisible() || !picture->IsOnMap() ||
+				picture->bitmap_modified || (picture->IsWindowAttached() && (picture->data.maniac_image_flags >> 24) != 1)) {
+			return {};
+		}
+		const auto& bitmap = picture->sprite->GetBitmap();
+		if (!bitmap) return {};
+		auto& screen = *Main_Data::game_screen;
+		auto pixels = Player::IsPatchManiac()
+			? ManiacPicture::DescribeFrame(*bitmap, picture->data, screen.GetSaveData(), picture->GetManiacImageChromakey())
+			: std::nullopt;
+		return Sprite_Picture::NetplayPose{picture->data, bitmap, screen.GetTone(), screen.GetFlashColor(),
+			screen.GetShakeOffsetX(), screen.GetShakeOffsetY(), pixels};
+	}
+
+	void RememberOpeningPictures() {
+		for (int id = 1; id <= Main_Data::game_pictures->GetMaxPictureId(); ++id) {
+			if (auto pose = CapturePicture(id)) opening_pictures.push_back(std::move(*pose));
+		}
+	}
+
+	void PresentPicture(Sprite_Picture::NetplayPose pose) {
+		const int id = pose.data.ID;
+		auto& sprite = displayed[id];
+		if (!sprite) sprite = std::make_unique<Sprite_Picture>(id);
+		sprite->PresentNetplay(std::move(pose));
+	}
+
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
 			confirmed_pictures, picture_transforms, picture_births, presented_samples, drawn_pictures};
@@ -129,42 +161,37 @@ struct MapWorld {
 		frame = nullptr;
 		if (!complete) return false;
 		if (effects.stop) effects.terminal = std::make_unique<Snapshot>(Capture());
-		auto& screen = *Main_Data::game_screen;
+		for (auto& pose : opening_pictures) {
+			if (confirmed_pictures.count(pose.data.ID)) PresentPicture(std::move(pose));
+		}
+		opening_pictures.clear();
 		for (int id : confirmed_pictures) {
-			const auto* picture = Main_Data::game_pictures->GetPicturePtr(id);
-			if (!picture || !picture->sprite || !picture->sprite->IsVisible() || !picture->IsOnMap() ||
-					picture->bitmap_modified || picture->IsWindowAttached()) continue;
-			const auto& bitmap = picture->sprite->GetBitmap();
-			if (!bitmap) continue;
-			auto pixels = Player::IsPatchManiac()
-				? ManiacPicture::DescribeFrame(*bitmap, picture->data, screen.GetSaveData(), picture->GetManiacImageChromakey())
-				: std::nullopt;
-			effects.pictures.push_back({picture->data, bitmap, screen.GetTone(), screen.GetFlashColor(),
-				screen.GetShakeOffsetX(), screen.GetShakeOffsetY(), pixels});
+			if (auto pose = CapturePicture(id)) effects.pictures.push_back(std::move(*pose));
 		}
 		return true;
 	}
 
 	bool Publish(int, Effects effects) {
 		stopping = effects.stop;
+		pending_signal |= effects.input_signal;
 		pending.push_back(std::move(effects));
 		return stopping;
 	}
 
 	bool Present() {
-		if (pending.empty()) return false;
+		if (pending.empty()) {
+			presentation_playing = false;
+			return false;
+		}
+		if (!presentation_playing && !stopping && pending.size() < static_cast<size_t>(presentation_buffer)) return false;
+		presentation_playing = true;
 		auto effects = std::move(pending.front());
 		pending.pop_front();
 		presented_samples = std::move(effects.samples);
 		for (const auto& [id, birth] : effects.picture_retirements)
 			presented_retirements.insert_or_assign(id, birth);
 		for (auto& item : displayed) item.second->SetVisible(false);
-		for (auto& pose : effects.pictures) {
-			const int id = pose.data.ID;
-			auto& sprite = displayed[id];
-			if (!sprite) sprite = std::make_unique<Sprite_Picture>(id);
-			sprite->PresentNetplay(std::move(pose));
-		}
+		for (auto& pose : effects.pictures) PresentPicture(std::move(pose));
 		auto& system = *Main_Data::game_system;
 		for (const auto& effect : effects.audio) {
 			if (auto* music = std::get_if<lcf::rpg::Music>(&effect)) system.BgmPlay(*music);
@@ -183,18 +210,24 @@ struct MapWorld {
 	std::map<int, std::pair<int, int>> drawn_pictures;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
 	std::deque<Effects> pending;
+	std::vector<Sprite_Picture::NetplayPose> opening_pictures;
 	bool stopping = false;
+	bool pending_signal = false;
 	const int seat;
+	const int presentation_buffer;
+	bool presentation_playing = false;
 };
 
 struct Match {
-	Match(int id, int seed, int seat)
-		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), world(seat), timeline(world, seat) {}
+	Match(int id, int seed, int seat, bool continue_rng, int presentation_buffer)
+		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), continue_rng(continue_rng),
+		  world(seat, presentation_buffer), timeline(world, seat) {}
 
 	int id;
 	int seed;
 	int seat;
 	int map_id;
+	bool continue_rng;
 	bool announced = false;
 	bool peer_ready = false;
 	bool started = false;
@@ -203,6 +236,15 @@ struct Match {
 };
 
 std::unique_ptr<Match> match;
+int prepare_map = 0;
+int prepare_fade = 0;
+std::optional<uint32_t> prepare_seed;
+Game_Netplay::TransferFade transfer_fade;
+
+void SeedRng(uint32_t seed) {
+	Main_Data::maniac_random_seed = seed;
+	Rand::GetRNG().seed(seed);
+}
 
 int ReadTransportState() {
 	return EM_ASM_INT({ return Module.netplay?.state() ?? 0; });
@@ -224,18 +266,35 @@ void Game_Netplay::Command(std::string_view comment) {
 		frame->effects.stop = true;
 		return;
 	}
-	if (command == "rooms" && !frame) {
+	if (command == "stop_directory" && !frame) {
+#ifdef PLAYER_WEB
+		EM_ASM({ Module.netplay?.stopDirectory?.(); });
+#endif
+		return;
+	}
+	if (command == "fade_transfer" && !frame) {
+#ifdef PLAYER_WEB
+		int erase, show;
+		if (args >> erase >> show && erase > 0 && show > 0) {
+			int delay = 0;
+			args >> delay;
+			transfer_fade = {erase, show, std::max(0, delay)};
+		}
+#endif
+		return;
+	}
+	if ((command == "rooms" || command == "identity") && !frame) {
 #ifdef PLAYER_WEB
 		int string_id;
 		if (!(args >> string_id) || string_id <= 0) return;
 		auto* data = reinterpret_cast<char*>(EM_ASM_PTR({
-			const text = Module.netplay?.rooms();
+			const text = $0 ? Module.netplay?.identity?.() : Module.netplay?.rooms();
 			if (text === undefined) return 0;
 			const size = lengthBytesUTF8(text) + 1;
 			const buffer = _malloc(size);
 			if (buffer) stringToUTF8(text, buffer, size);
 			return buffer;
-		}));
+		}, command == "identity"));
 		if (data) {
 			Main_Data::game_strings->SetManiacRawSlot(string_id, data);
 			std::free(data);
@@ -275,6 +334,8 @@ void Game_Netplay::Command(std::string_view comment) {
 		} else if (command == "known") {
 			frame->needs_confirmation = !frame->known;
 			write(variable, frame->known);
+		} else if (command == "signal") {
+			frame->effects.input_signal |= vars.Get(variable) != 0;
 		} else if (command == "sample") {
 			int count;
 			if (!(args >> count) || count < 1 || count > vars.GetSizeWithLimit() - variable + 1) return;
@@ -288,6 +349,24 @@ void Game_Netplay::Command(std::string_view comment) {
 				const auto found = frame->presented_samples.find(variable + i);
 				write(destination + i, found == frame->presented_samples.end() ? 0 : found->second);
 			}
+		} else if (command == "upcoming") {
+#ifdef PLAYER_WEB
+			int delay, related, value;
+			if (!(args >> delay >> related >> value) || !vars.IsValid(delay) || !vars.IsValid(related) ||
+					!vars.IsValid(value) || delay == value) return;
+			int distance = 0;
+			for (const auto& queued : match->world.pending) {
+				++distance;
+				const auto watched = queued.samples.find(variable);
+				if (watched == queued.samples.end() || watched->second == 0) continue;
+				const auto other = queued.samples.find(related);
+				write(delay, distance);
+				write(value, other == queued.samples.end() ? 0 : other->second);
+				return;
+			}
+			write(delay, 0);
+			write(value, 0);
+#endif
 		} else if (command == "drawn") {
 			int x, y;
 			if (!(args >> x >> y) || !vars.IsValid(x) || !vars.IsValid(y) || x == y) return;
@@ -378,15 +457,27 @@ void Game_Netplay::Command(std::string_view comment) {
 	} else if (command == "send") {
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
 	} else if (command == "seed" && ReadTransportState() >= 3) {
-		const auto seed = static_cast<uint32_t>(vars.Get(variable));
-		Main_Data::maniac_random_seed = seed;
-		Rand::GetRNG().seed(seed);
+		SeedRng(static_cast<uint32_t>(vars.Get(variable)));
+	} else if (command == "prepare" && !match && ReadTransportState() >= 3) {
+		prepare_map = std::max(0, vars.Get(variable));
+		int frames = 0;
+		args >> frames;
+		prepare_fade = std::max(0, frames);
+		int seed;
+		prepare_seed.reset();
+		if (args >> seed && vars.IsValid(seed)) prepare_seed = static_cast<uint32_t>(vars.Get(seed));
 	} else if (command == "start" && !match) {
 		int seed;
 		if (!(args >> seed) || !vars.IsValid(seed)) return;
+		std::string rng_mode;
+		args >> rng_mode;
+		int buffer_variable;
+		const int buffer = args >> buffer_variable && vars.IsValid(buffer_variable)
+			? std::clamp(vars.Get(buffer_variable), 1, 60) : 1;
 		const int state = ReadTransportState();
 		if (state >= 3 && vars.Get(variable) > 0) {
-			match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), state - 3);
+			match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), state - 3, rng_mode == "continue_rng", buffer);
+			prepare_map = 0;
 		}
 	}
 #endif
@@ -395,7 +486,51 @@ void Game_Netplay::Command(std::string_view comment) {
 void Game_Netplay::Close() {
 #ifdef PLAYER_WEB
 	match.reset();
+	prepare_map = 0;
+	prepare_seed.reset();
+	transfer_fade = {};
 	EM_ASM({ Module.netplay?.close(); });
+#endif
+}
+
+Game_Netplay::TransferFade Game_Netplay::TakeTransferFade() {
+#ifdef PLAYER_WEB
+	return std::exchange(transfer_fade, {});
+#else
+	return {};
+#endif
+}
+
+bool Game_Netplay::PreparesMap(int map_id) {
+#ifdef PLAYER_WEB
+	return prepare_map > 0 && prepare_map == map_id;
+#else
+	return false;
+#endif
+}
+
+bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
+#ifdef PLAYER_WEB
+	if (!PreparesMap(Game_Map::GetMapId())) return false;
+	if (ReadTransportState() < 3) {
+		prepare_map = 0;
+		prepare_seed.reset();
+		return false;
+	}
+	if (prepare_seed) {
+		SeedRng(*prepare_seed);
+		prepare_seed.reset();
+	}
+	if (!Game_Map::UpdateNetplay(actx)) return true;
+	if (match) match->world.RememberOpeningPictures();
+	auto& transition = Transition::instance();
+	if (prepare_fade > 0 && transition.IsErasedNotActive()) {
+		transition.InitShow(Transition::TransitionFadeIn, Scene::instance.get(), prepare_fade);
+	}
+	return true;
+#else
+	(void)actx;
+	return false;
 #endif
 }
 
@@ -431,7 +566,7 @@ bool Game_Netplay::UpdateMap() {
 		if (packet[0] != match->id) continue;
 		const bool accepted = packet[1] == -1
 			? !match->peer_ready && packet[2] == match->seed
-			: match->peer_ready && packet[2] >= 0 && packet[2] <= 127 &&
+			: match->peer_ready && packet[2] >= 0 && packet[2] <= (127 | confirmed_signal_bit) &&
 				match->timeline.Receive(packet[1], packet[2]);
 		if (!accepted) {
 			Close();
@@ -440,10 +575,13 @@ bool Game_Netplay::UpdateMap() {
 		match->peer_ready = true;
 	}
 	if (!match->peer_ready) return true;
-	if (!match->started) {
-		Main_Data::maniac_random_seed = static_cast<uint32_t>(match->seed);
-		Rand::GetRNG().seed(static_cast<uint32_t>(match->seed));
-		match->started = true;
+	if (!match->started && !match->continue_rng) {
+		SeedRng(static_cast<uint32_t>(match->seed));
+	}
+	match->started = true;
+	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {
+		if (match->world.Present()) match.reset();
+		return true;
 	}
 	const int input = (Input::IsPressed(Input::LEFT) ? 1 : 0) |
 		(Input::IsPressed(Input::RIGHT) ? 2 : 0) |
@@ -451,8 +589,10 @@ bool Game_Netplay::UpdateMap() {
 		(Input::IsPressed(Input::DOWN) ? 8 : 0) |
 		(Input::IsPressed(Input::DECISION) ? 16 : 0) |
 		(Input::IsPressed(Input::CANCEL) ? 32 : 0) |
-		(Input::IsPressed(Input::SHIFT) ? 64 : 0);
+		(Input::IsPressed(Input::SHIFT) ? 64 : 0) |
+		(match->world.pending_signal ? confirmed_signal_bit : 0);
 	if (auto index = match->timeline.QueueLocal(input)) {
+		match->world.pending_signal = false;
 		EM_ASM({ Module.netplay.send($0, $1, $2); }, match->id, *index, input);
 	}
 	// Event projections read the confirmed pose that will be drawn on this tick.
