@@ -5,7 +5,7 @@
 #include <array>
 #include "bitmapfont_glyph.h"
 
-constexpr const std::array<BitmapFontGlyph,346> BITMAPFONT_WQY_SYMBOLS = {{
+constexpr const std::array<BitmapFontGlyph,345> BITMAPFONT_WQY_SYMBOLS = {{
 	{ 164, true, { 0, 0, 0, 0, 0, 0, 132, 120, 72, 72, 120, 132 } },
 	{ 167, true, { 0, 0, 240, 8, 8, 112, 136, 136, 112, 128, 128, 120 } },
 	{ 168, true, { 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
@@ -23,7 +23,6 @@ constexpr const std::array<BitmapFontGlyph,346> BITMAPFONT_WQY_SYMBOLS = {{
 	{ 8220, true, { 1152, 576, 1728, 1728, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{ 8221, true, { 54, 54, 36, 18, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{ 8229, true, { 0, 0, 0, 0, 0, 0, 1548, 0, 0, 0, 0, 0 } },
-	{ 8230, true, { 0, 0, 0, 0, 0, 0, 3270, 0, 0, 0, 0, 0 } },
 	{ 8240, true, { 2, 5, 133, 69, 37, 1109, 2738, 2728, 2724, 2722, 2721, 1088 } },
 	{ 8242, true, { 0, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{ 8243, true, { 4, 20, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
