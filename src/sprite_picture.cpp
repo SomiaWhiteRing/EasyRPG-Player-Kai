@@ -106,7 +106,7 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 		}
 		return;
 	}
-	if (Game_Netplay::UsesConfirmedPicture(pic_id)) return;
+	if (Game_Netplay::UsesConfirmedPicture(pic_id) || Game_Netplay::HidesLivePicture(pic_id)) return;
 	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 	const auto& data = pic.data;
 

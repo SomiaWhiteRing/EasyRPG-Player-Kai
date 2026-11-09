@@ -34,6 +34,7 @@ using Audio = std::variant<lcf::rpg::Music, lcf::rpg::Sound, int>;
 struct Effects {
 	std::vector<Audio> audio;
 	std::map<int, int> samples;
+	std::map<int, int> picture_retirements;
 	bool stop = false;
 };
 
@@ -46,6 +47,7 @@ struct FrameContext {
 	bool& needs_confirmation;
 	std::set<int>& confirmed_pictures;
 	std::map<int, Game_Netplay::PictureView>& picture_transforms;
+	std::map<int, int>& picture_births;
 	const std::map<int, int>& presented_samples;
 	const std::map<int, std::pair<int, int>>& drawn_pictures;
 };
@@ -67,6 +69,7 @@ struct MapWorld {
 		Game_ManiacSelfVariables::Banks self_variables;
 		std::set<int> confirmed_pictures;
 		std::map<int, Game_Netplay::PictureView> picture_transforms;
+		std::map<int, int> picture_births;
 		Rand::RNG rng;
 		uint32_t maniac_seed;
 		int32_t variable_zero;
@@ -85,7 +88,7 @@ struct MapWorld {
 			strings.GetManiacVectorSize(),
 			Main_Data::game_maniac_self_variables ? Main_Data::game_maniac_self_variables->GetSaveData()
 				: Game_ManiacSelfVariables::Banks{},
-			confirmed_pictures, picture_transforms, Rand::GetRNG(),
+			confirmed_pictures, picture_transforms, picture_births, Rand::GetRNG(),
 			Main_Data::maniac_random_seed, Main_Data::game_variables->GetManiacRawSlot(0), Game_Map::GetNeedRefresh()};
 		Game_Map::CaptureNetplay(state.map);
 		state.map.screen = Main_Data::game_screen->GetSaveData();
@@ -109,6 +112,7 @@ struct MapWorld {
 			Main_Data::game_maniac_self_variables->MutableBanks() = std::move(state.self_variables);
 		confirmed_pictures = std::move(state.confirmed_pictures);
 		picture_transforms = std::move(state.picture_transforms);
+		picture_births = std::move(state.picture_births);
 		Main_Data::game_screen->SetSaveData(std::move(state.map.screen));
 		Main_Data::game_pictures->RestoreNetplay(std::move(state.pictures));
 		Game_Map::RestoreNetplay(state.map);
@@ -119,7 +123,7 @@ struct MapWorld {
 
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
-			confirmed_pictures, picture_transforms, presented_samples, drawn_pictures};
+			confirmed_pictures, picture_transforms, picture_births, presented_samples, drawn_pictures};
 		frame = &context;
 		const bool complete = Game_Map::UpdateNetplay();
 		frame = nullptr;
@@ -152,6 +156,8 @@ struct MapWorld {
 		auto effects = std::move(pending.front());
 		pending.pop_front();
 		presented_samples = std::move(effects.samples);
+		for (const auto& [id, birth] : effects.picture_retirements)
+			presented_retirements.insert_or_assign(id, birth);
 		for (auto& item : displayed) item.second->SetVisible(false);
 		for (auto& pose : effects.pictures) {
 			const int id = pose.data.ID;
@@ -171,6 +177,8 @@ struct MapWorld {
 
 	std::set<int> confirmed_pictures;
 	std::map<int, Game_Netplay::PictureView> picture_transforms;
+	std::map<int, int> picture_births;
+	std::map<int, int> presented_retirements;
 	std::map<int, int> presented_samples;
 	std::map<int, std::pair<int, int>> drawn_pictures;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
@@ -297,6 +305,14 @@ void Game_Netplay::Command(std::string_view comment) {
 				frame->confirmed_pictures.insert(picture);
 		} else if (command == "live") {
 			frame->confirmed_pictures.erase(vars.Get(variable));
+		} else if (command == "birth" || command == "retire") {
+			const int picture = vars.Get(variable);
+			if (picture <= 0 || picture > Main_Data::game_pictures->GetMaxPictureId()) return;
+			if (command == "birth") {
+				frame->picture_births.insert_or_assign(picture, frame->index);
+			} else if (const auto birth = frame->picture_births.find(picture); birth != frame->picture_births.end()) {
+				frame->effects.picture_retirements.insert_or_assign(picture, birth->second);
+			}
 		} else if (command == "track") {
 			int last_var, flags;
 			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 13 ||
@@ -473,6 +489,22 @@ Game_Netplay::PictureView Game_Netplay::PictureTransform(int id) {
 	(void)id;
 #endif
 	return {};
+}
+
+bool Game_Netplay::HidesLivePicture(int id) {
+#ifdef PLAYER_WEB
+	if (match) {
+		const auto& world = match->world;
+		const auto retired = world.presented_retirements.find(id);
+		if (retired != world.presented_retirements.end()) {
+			const auto birth = world.picture_births.find(id);
+			return birth != world.picture_births.end() && birth->second <= retired->second;
+		}
+	}
+#else
+	(void)id;
+#endif
+	return false;
 }
 
 void Game_Netplay::RecordPictureDraw(int id, int x, int y) {

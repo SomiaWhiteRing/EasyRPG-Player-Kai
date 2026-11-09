@@ -47,6 +47,8 @@ for projects with random decisions during the scene's setup.
 | `@netplay known V` | Read whether both inputs and their history are known. A call on a predicted frame requests replay once the inputs arrive, even when the prediction matches. |
 | `@netplay present V` | Display the resource picture whose ID is stored in V from the confirmed frame stream. The setting belongs to the picture slot. |
 | `@netplay live V` | Restore immediate drawing for the picture slot whose ID is stored in V. |
+| `@netplay birth V` | Start a new presentation lifetime for the picture slot whose ID is stored in V. |
+| `@netplay retire V` | Hide the current lifetime of picture V from the immediate view when this frame is presented. A later birth in the same slot can draw immediately. |
 | `@netplay track A B FLAGS [X [Y [U [V]]]]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing or 8 to use the confirmed picture only when the immediate picture is invisible. Add 2 for horizontal reflection or 4 to reflect the position only. X and Y give offsets before reflection. U and V add offsets when using the fallback. |
 | `@netplay sample V COUNT` | Attach a range of variables to the current frame for presentation. |
 | `@netplay shown V D COUNT` | Copy the most recently presented samples starting at V into variables starting at D. Missing samples read as zero. |

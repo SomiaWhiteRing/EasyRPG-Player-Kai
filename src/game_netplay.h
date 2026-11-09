@@ -15,6 +15,7 @@ namespace Game_Netplay {
 	void Close();
 	bool UpdateMap();
 	bool UsesConfirmedPicture(int id);
+	bool HidesLivePicture(int id);
 	struct PictureView {
 		int reflection = 0;
 		int offset_x = 0;
