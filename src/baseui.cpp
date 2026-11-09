@@ -99,9 +99,11 @@ bool BaseUi::IsRightShiftPressed() const {
 bool BaseUi::ShouldPauseWhenFocusLost() const {
 	auto cfg = vcfg;
 	vGetConfig(cfg);
-	if (!cfg.pause_when_focus_lost_configured && !cfg.pause_when_focus_lost.IsLocked()
-			&& Player::IsPatchManiac() && Main_Data::game_system) {
-		return !Main_Data::game_system->IsManiacRunWhenInactive();
+	if (!cfg.pause_when_focus_lost_configured && !cfg.pause_when_focus_lost.IsLocked()) {
+		if (Player::game_config.netplay_enabled) return false;
+		if (Player::IsPatchManiac() && Main_Data::game_system) {
+			return !Main_Data::game_system->IsManiacRunWhenInactive();
+		}
 	}
 	return cfg.pause_when_focus_lost.Get();
 }

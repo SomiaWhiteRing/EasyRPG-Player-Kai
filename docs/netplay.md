@@ -7,6 +7,9 @@ Place the declaration in the project root next to RPG_RT.ldb.
 Enabled=1
 ```
 
+Netplay-enabled projects default to running when focus is lost. An explicit
+`Pause when focus lost` setting still takes precedence.
+
 The game uses regular RPG Maker comment commands for room controls. Initialize
 the availability variable to zero in a regular event command before querying
 it so players that ignore these comments follow the offline event path.
