@@ -101,7 +101,8 @@ starts or resumes. The default is one frame.
 | `@netplay stop` | End the synchronized map after this frame is confirmed. The next map tick resumes regular event processing at the confirmed state. |
 
 Parallel map and common events advance on the synchronized clock. Use the
-synchronized input variables for rules. The snapshot covers map events,
+synchronized input variables for rules. Fast-forward is suspended during
+a synchronized match. The snapshot covers map events,
 switches, variables, seeded randomness, and resource pictures. Transitions,
 foreground events, interactive messages, save I/O, and mutable images belong
 outside the synchronized map. Play BGM, fade BGM and play sound event commands

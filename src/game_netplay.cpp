@@ -607,6 +607,14 @@ void Game_Netplay::Close() {
 #endif
 }
 
+bool Game_Netplay::InMatch() {
+#ifdef PLAYER_WEB
+	return match != nullptr;
+#else
+	return false;
+#endif
+}
+
 Game_Netplay::TransferFade Game_Netplay::TakeTransferFade() {
 #ifdef PLAYER_WEB
 	return std::exchange(transfer_fade, {});

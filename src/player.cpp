@@ -57,6 +57,7 @@
 #include "game_variables.h"
 #include "game_strings.h"
 #include "game_maniac_self_variables.h"
+#include "game_netplay.h"
 #include "maniac_original_save.h"
 #include "maniac_patch.h"
 #include "game_targets.h"
@@ -368,7 +369,7 @@ void Player::UpdateInput() {
 	if (Input::IsSystemPressed(Input::FAST_FORWARD_B)) {
 		speed = static_cast<float>(Input::GetInputSource()->GetConfig().speed_modifier_b.Get());
 	}
-	Game_Clock::SetGameSpeedFactor(speed);
+	Game_Clock::SetGameSpeedFactor(Game_Netplay::InMatch() ? 1.0f : speed);
 
 	if (Main_Data::game_quit) {
 		reset_flag |= Main_Data::game_quit->ShouldQuit();
