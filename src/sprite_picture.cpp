@@ -81,6 +81,7 @@ void Sprite_Picture::UpdatePictureZ() {
 
 
 void Sprite_Picture::Draw(Bitmap& dst) {
+	const int reflection = Game_Netplay::PictureReflection(pic_id);
 	if (netplay_pose) {
 		if (!Game_Netplay::UsesConfirmedPicture(pic_id)) return;
 		const auto& pose = *netplay_pose;
@@ -89,7 +90,8 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 			int x = ManiacPicture::Nearest(data.current_x), y = ManiacPicture::Nearest(data.current_y);
 			if (data.flags.affected_by_shake) { x += pose.shake_x; y += pose.shake_y; }
 			if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
-			ManiacPicture::Draw(dst, *maniac_prepared, data, x, y, pose.maniac_pixels->back());
+			if (reflection == 2) x = dst.GetWidth() - x;
+			ManiacPicture::Draw(dst, *maniac_prepared, data, x, y, pose.maniac_pixels->back(), reflection == 1);
 		} else if (!Player::IsPatchManiac()) {
 			DrawStandard(dst, data, static_cast<int32_t>(static_cast<uint32_t>(data.spritesheet_cols) *
 					static_cast<uint32_t>(data.spritesheet_rows)),
@@ -133,7 +135,8 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 			y += Main_Data::game_screen->GetShakeOffsetY();
 		}
 		if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
-		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey());
+		if (reflection == 2) x = dst.GetWidth() - x;
+		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey(), reflection == 1);
 		return;
 	}
 
@@ -165,6 +168,7 @@ void Sprite_Picture::PresentNetplay(NetplayPose pose) {
 void Sprite_Picture::DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data, int frames,
 		const Tone& screen_tone, const Color& flash, int shake_x, int shake_y) {
 	const auto& bitmap = GetBitmap();
+	const int reflection = Game_Netplay::PictureReflection(pic_id);
 	// RPG Maker 2k3 1.12: Spritesheets
 	if (feature_spritesheet
 			&& frames > 1
@@ -194,6 +198,7 @@ void Sprite_Picture::DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data
 		SetX(x);
 		SetY(y);
 	}
+	if (reflection) SetX(dst.GetWidth() - GetX());
 
 	SetZoomX(data.current_magnify / 100.0);
 	SetZoomY(data.current_magnify / 100.0);
@@ -244,7 +249,7 @@ void Sprite_Picture::DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data
 		SetFlashEffect(Color());
 	}
 
-	SetFlipX((data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_x) == lcf::rpg::SavePicture::EasyRpgFlip_x);
+	SetFlipX(bool(data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_x) != (reflection == 1));
 	SetFlipY((data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_y) == lcf::rpg::SavePicture::EasyRpgFlip_y);
 	SetBlendType(data.easyrpg_blend_mode);
 

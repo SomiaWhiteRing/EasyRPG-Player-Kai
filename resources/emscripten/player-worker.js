@@ -153,23 +153,43 @@ function createNetplay(endpoint) {
   if (base.protocol === 'https:') base.protocol = 'wss:';
   else if (base.protocol === 'http:') base.protocol = 'ws:';
   else if (base.protocol !== 'wss:' && base.protocol !== 'ws:') return;
+  const directory = new URL('rooms', base);
+  directory.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
   let socket, state = 0;
+  let nextPoll = 0, polling = false, rooms;
   const inbox = [], frames = [];
+  const clear = () => {
+    inbox.length = 0;
+    frames.length = 0;
+  };
   const close = () => {
     const old = socket;
     socket = undefined;
-    inbox.length = 0;
-    frames.length = 0;
+    clear();
     state = 0;
     old?.close();
   };
   return {
     close,
     state: () => state,
-    open(room) {
+    rooms() {
+      if (!polling && performance.now() >= nextPoll) {
+        polling = true;
+        nextPoll = performance.now() + 1200;
+        fetch(directory, {credentials: 'same-origin', cache: 'no-store'}).then(async response => {
+          if (response.ok) rooms = JSON.stringify(await response.json());
+        }).catch(() => {}).finally(() => { polling = false; });
+      }
+      const snapshot = rooms;
+      rooms = undefined;
+      return snapshot;
+    },
+    open(room, mode) {
       if (room < 1 || room > 999999) return;
       close();
-      const connection = socket = new WebSocket(new URL(String(room), base));
+      const address = new URL(String(room), base);
+      if (mode) address.searchParams.set('mode', mode);
+      const connection = socket = new WebSocket(address);
       state = 1;
       connection.binaryType = 'arraybuffer';
       const ended = () => {
@@ -181,7 +201,9 @@ function createNetplay(endpoint) {
       connection.onmessage = ({data}) => {
         if (socket !== connection) return;
         if (data === '2' || data === '3' || data === '4') {
+          if (data === '2') clear();
           state = Number(data);
+          nextPoll = 0;
         } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
           inbox.push(new DataView(data).getInt32(0, true));
         } else if (data instanceof ArrayBuffer && data.byteLength === 12 && frames.length < 256) {

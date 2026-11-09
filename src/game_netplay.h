@@ -14,6 +14,7 @@ namespace Game_Netplay {
 	void Close();
 	bool UpdateMap();
 	bool UsesConfirmedPicture(int id);
+	int PictureReflection(int id);
 	bool QueueAudio(const lcf::rpg::Music& music);
 	bool QueueAudio(const lcf::rpg::Sound& sound);
 	bool QueueAudio(int fadeout);

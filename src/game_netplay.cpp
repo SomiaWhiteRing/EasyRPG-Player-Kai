@@ -16,6 +16,7 @@
 #include "rand.h"
 
 #include <lcf/rpg/save.h>
+#include <cstdlib>
 #include <deque>
 #include <set>
 #include <sstream>
@@ -42,6 +43,7 @@ struct FrameContext {
 	Effects& effects;
 	bool& needs_confirmation;
 	std::set<int>& confirmed_pictures;
+	std::map<int, int>& picture_reflections;
 };
 
 FrameContext* frame = nullptr;
@@ -60,6 +62,7 @@ struct MapWorld {
 		size_t string_size;
 		Game_ManiacSelfVariables::Banks self_variables;
 		std::set<int> confirmed_pictures;
+		std::map<int, int> picture_reflections;
 		Rand::RNG rng;
 		uint32_t maniac_seed;
 		int32_t variable_zero;
@@ -78,7 +81,7 @@ struct MapWorld {
 			strings.GetManiacVectorSize(),
 			Main_Data::game_maniac_self_variables ? Main_Data::game_maniac_self_variables->GetSaveData()
 				: Game_ManiacSelfVariables::Banks{},
-			confirmed_pictures, Rand::GetRNG(),
+			confirmed_pictures, picture_reflections, Rand::GetRNG(),
 			Main_Data::maniac_random_seed, Main_Data::game_variables->GetManiacRawSlot(0), Game_Map::GetNeedRefresh()};
 		Game_Map::CaptureNetplay(state.map);
 		state.map.screen = Main_Data::game_screen->GetSaveData();
@@ -101,6 +104,7 @@ struct MapWorld {
 		if (Main_Data::game_maniac_self_variables)
 			Main_Data::game_maniac_self_variables->MutableBanks() = std::move(state.self_variables);
 		confirmed_pictures = std::move(state.confirmed_pictures);
+		picture_reflections = std::move(state.picture_reflections);
 		Main_Data::game_screen->SetSaveData(std::move(state.map.screen));
 		Main_Data::game_pictures->RestoreNetplay(std::move(state.pictures));
 		Game_Map::RestoreNetplay(state.map);
@@ -110,7 +114,8 @@ struct MapWorld {
 	}
 
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
-		FrameContext context{index, seat, inputs, known, effects, needs_confirmation, confirmed_pictures};
+		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
+			confirmed_pictures, picture_reflections};
 		frame = &context;
 		const bool complete = Game_Map::UpdateNetplay();
 		frame = nullptr;
@@ -160,6 +165,7 @@ struct MapWorld {
 	}
 
 	std::set<int> confirmed_pictures;
+	std::map<int, int> picture_reflections;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
 	std::deque<Effects> pending;
 	bool stopping = false;
@@ -203,6 +209,25 @@ void Game_Netplay::Command(std::string_view comment) {
 		frame->effects.stop = true;
 		return;
 	}
+	if (command == "rooms" && !frame) {
+#ifdef PLAYER_WEB
+		int string_id;
+		if (!(args >> string_id) || string_id <= 0) return;
+		auto* data = reinterpret_cast<char*>(EM_ASM_PTR({
+			const text = Module.netplay?.rooms();
+			if (text === undefined) return 0;
+			const size = lengthBytesUTF8(text) + 1;
+			const buffer = _malloc(size);
+			if (buffer) stringToUTF8(text, buffer, size);
+			return buffer;
+		}));
+		if (data) {
+			Main_Data::game_strings->SetManiacRawSlot(string_id, data);
+			std::free(data);
+		}
+#endif
+		return;
+	}
 
 	int variable;
 	auto& vars = *Main_Data::game_variables;
@@ -241,6 +266,17 @@ void Game_Netplay::Command(std::string_view comment) {
 				frame->confirmed_pictures.insert(picture);
 		} else if (command == "live") {
 			frame->confirmed_pictures.erase(vars.Get(variable));
+		} else if (command == "track") {
+			int last_var, flags;
+			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 5) return;
+			const int first = vars.Get(variable), last = vars.Get(last_var);
+			if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
+			for (int id = first; id <= last; ++id) {
+				if (flags & 1) frame->confirmed_pictures.insert(id);
+				else frame->confirmed_pictures.erase(id);
+				if (flags & 6) frame->picture_reflections.insert_or_assign(id, flags >> 1);
+				else frame->picture_reflections.erase(id);
+			}
 		}
 		return;
 	}
@@ -276,8 +312,16 @@ void Game_Netplay::Command(std::string_view comment) {
 #ifdef PLAYER_WEB
 	else if (command == "open") {
 		EM_ASM({ Module.netplay?.open($0); }, vars.Get(variable));
+	} else if (command == "create") {
+		EM_ASM({ Module.netplay?.open($0, 'create'); }, vars.Get(variable));
+	} else if (command == "join") {
+		EM_ASM({ Module.netplay?.open($0, 'join'); }, vars.Get(variable));
 	} else if (command == "send") {
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
+	} else if (command == "seed" && ReadTransportState() >= 3) {
+		const auto seed = static_cast<uint32_t>(vars.Get(variable));
+		Main_Data::maniac_random_seed = seed;
+		Rand::GetRNG().seed(seed);
 	} else if (command == "start" && !match) {
 		int seed;
 		if (!(args >> seed) || !vars.IsValid(seed)) return;
@@ -367,6 +411,18 @@ bool Game_Netplay::UsesConfirmedPicture(int id) {
 	(void)id;
 	return false;
 #endif
+}
+
+int Game_Netplay::PictureReflection(int id) {
+#ifdef PLAYER_WEB
+	if (match) {
+		const auto it = match->world.picture_reflections.find(id);
+		if (it != match->world.picture_reflections.end()) return it->second;
+	}
+#else
+	(void)id;
+#endif
+	return 0;
 }
 
 bool Game_Netplay::QueueAudio(const lcf::rpg::Music& music) {

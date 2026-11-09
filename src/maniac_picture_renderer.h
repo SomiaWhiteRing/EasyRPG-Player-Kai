@@ -16,6 +16,7 @@ using PrepareState = std::array<int, 14>;
 std::optional<PrepareState> DescribeFrame(const Bitmap& source, const lcf::rpg::SavePicture& picture,
 	const lcf::rpg::SaveScreen& screen, bool chromakey);
 BitmapRef Prepare(const BitmapRef& source, const PrepareState& state, BitmapRef reuse, bool allow_view);
-void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture, int x, int y, bool chromakey);
+void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture,
+	int x, int y, bool chromakey, bool reflect_x = false);
 }
 #endif

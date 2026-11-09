@@ -92,8 +92,9 @@ int BlendChannel(int source, int destination, int blend, int opacity) {
 	return value & 255;
 }
 
-void Composite(Bitmap& destination, int x, int y, Color source, int blend, int opacity, bool key) {
+void Composite(Bitmap& destination, int x, int y, Color source, int blend, int opacity, bool key, bool reflect_x) {
 	if (key && !source.alpha) return;
+	if (reflect_x) x = destination.GetWidth() - 1 - x;
 	const auto previous = destination.GetColorAt(x, y);
 	Color result(BlendChannel(source.red, previous.red, blend, opacity),
 		BlendChannel(source.green, previous.green, blend, opacity),
@@ -103,7 +104,8 @@ void Composite(Bitmap& destination, int x, int y, Color source, int blend, int o
 	destination.SetManiacColorAt(x, y, result, true);
 }
 
-void Scaled(Bitmap& destination, const Bitmap& source, int x, int y, double percent_x, double percent_y, int blend, int opacity, bool key) {
+void Scaled(Bitmap& destination, const Bitmap& source, int x, int y, double percent_x, double percent_y,
+	int blend, int opacity, bool key, bool reflect_x) {
 	const int width = source.GetWidth(), height = source.GetHeight();
 	const double sx = percent_x * 0.01, sy = percent_y * 0.01;
 	int left, right, top, bottom;
@@ -120,12 +122,13 @@ void Scaled(Bitmap& destination, const Bitmap& source, int x, int y, double perc
 		for (int ix = 0; ix < horizontal.length; ++ix) {
 			const int px = horizontal.Sample(ix);
 			if (static_cast<unsigned>(px) < static_cast<unsigned>(width) && static_cast<unsigned>(py) < static_cast<unsigned>(height))
-				Composite(destination, horizontal.destination + ix, vertical.destination + iy, source.GetManiacColorAt(px, py), blend, opacity, key);
+				Composite(destination, horizontal.destination + ix, vertical.destination + iy, source.GetManiacColorAt(px, py), blend, opacity, key, reflect_x);
 		}
 	}
 }
 
-void Rotated(Bitmap& destination, const Bitmap& source, int x, int y, double sx, double sy, double degrees, int blend, int opacity, bool key) {
+void Rotated(Bitmap& destination, const Bitmap& source, int x, int y, double sx, double sy, double degrees,
+	int blend, int opacity, bool key, bool reflect_x) {
 	if (sx == 0.0 || sy == 0.0) return;
 	const int width = source.GetWidth(), height = source.GetHeight();
 	const double radians = degrees * 3.141592653589793 / 180.0;
@@ -148,14 +151,15 @@ void Rotated(Bitmap& destination, const Bitmap& source, int x, int y, double sx,
 		for (int ix = left; ix < right; ++ix) {
 			const int px = Nearest(u), py = Nearest(v);
 			if (static_cast<unsigned>(px) < static_cast<unsigned>(width) && static_cast<unsigned>(py) < static_cast<unsigned>(height))
-				Composite(destination, ix, iy, source.GetManiacColorAt(px, py), blend, opacity, key);
+				Composite(destination, ix, iy, source.GetManiacColorAt(px, py), blend, opacity, key, reflect_x);
 			u += du; v += dv;
 		}
 		u0 -= row_u; v0 += row_v;
 	}
 }
 
-void Wave(Bitmap& destination, const Bitmap& source, int x, int y, double sx, double sy, int amplitude, int phase, int blend, int opacity, bool key) {
+void Wave(Bitmap& destination, const Bitmap& source, int x, int y, double sx, double sy, int amplitude, int phase,
+	int blend, int opacity, bool key, bool reflect_x) {
 	const int width = source.GetWidth(), height = source.GetHeight();
 	const int half_x = Truncate((width / 2) * sx), half_y = Truncate((height / 2) * sy);
 	const int length = Truncate(width * sx), rows = Truncate(height * sy);
@@ -176,7 +180,7 @@ void Wave(Bitmap& destination, const Bitmap& source, int x, int y, double sx, do
 			static_cast<int>(static_cast<int64_t>(vertical.destination - (y - half_y) + row) * height / (2 * half_y)));
 		for (int column = start; column < end; ++column) {
 			const int px = std::min(width - 1, static_cast<int>(static_cast<int64_t>(column) * width / (2 * half_x)));
-			Composite(destination, left + column, vertical.destination + row, source.GetManiacColorAt(px, py), blend, opacity, key);
+			Composite(destination, left + column, vertical.destination + row, source.GetManiacColorAt(px, py), blend, opacity, key, reflect_x);
 		}
 	}
 }
@@ -205,18 +209,19 @@ BitmapRef Prepare(const BitmapRef& source, const PrepareState& state, BitmapRef 
 	return reuse;
 }
 
-void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture, int x, int y, bool chromakey) {
+void Draw(Bitmap& destination, const Bitmap& prepared, const lcf::rpg::SavePicture& picture,
+		int x, int y, bool chromakey, bool reflect_x) {
 	if (picture.current_top_trans == 100.0) return;
 	const int opacity = Nearest(255.0 - picture.current_top_trans * 255.0 * 0.01);
 	const int blend = (static_cast<uint32_t>(picture.finish_bot_trans) >> 8) & 3;
 	const double sx = picture.current_magnify * 0.01, sy = picture.maniac_current_magnify_height * 0.01;
 	if (picture.effect_mode == 0 && picture.current_rotation == 0.0
 			&& Truncate(picture.current_magnify) == 100 && Truncate(picture.maniac_current_magnify_height) == 100
-			&& blend == 0 && opacity >= 255) {
+			&& blend == 0 && opacity >= 255 && !reflect_x) {
 		destination.CopyManiacPixels(x - prepared.GetWidth() / 2, y - prepared.GetHeight() / 2,
 			prepared, prepared.GetRect(), chromakey, true);
-	} else if (picture.effect_mode == 0 && picture.current_rotation == 0.0) Scaled(destination, prepared, x, y, picture.current_magnify, picture.maniac_current_magnify_height, blend, opacity, chromakey);
-	else if (picture.effect_mode == 2) Wave(destination, prepared, x, y, sx, sy, Nearest(picture.current_effect_power * 4.0), picture.current_waver, blend, opacity, chromakey);
-	else Rotated(destination, prepared, x, y, sx, sy, -picture.current_rotation * (picture.effect_mode == 1 ? 1.40625 : 1.0), blend, opacity, chromakey);
+	} else if (picture.effect_mode == 0 && picture.current_rotation == 0.0) Scaled(destination, prepared, x, y, picture.current_magnify, picture.maniac_current_magnify_height, blend, opacity, chromakey, reflect_x);
+	else if (picture.effect_mode == 2) Wave(destination, prepared, x, y, sx, sy, Nearest(picture.current_effect_power * 4.0), picture.current_waver, blend, opacity, chromakey, reflect_x);
+	else Rotated(destination, prepared, x, y, sx, sy, -picture.current_rotation * (picture.effect_mode == 1 ? 1.40625 : 1.0), blend, opacity, chromakey, reflect_x);
 }
 }
