@@ -455,8 +455,9 @@ bool Game_Netplay::UpdateMap() {
 	if (auto index = match->timeline.QueueLocal(input)) {
 		EM_ASM({ Module.netplay.send($0, $1, $2); }, match->id, *index, input);
 	}
+	// Event projections read the confirmed pose that will be drawn on this tick.
+	match->world.Present();
 	if (!match->timeline.Update(Game_Clock::GetFrame())) Close();
-	else if (match->world.Present()) match.reset();
 	return true;
 #else
 	return false;
