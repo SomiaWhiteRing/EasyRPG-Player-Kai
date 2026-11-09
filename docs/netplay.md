@@ -47,7 +47,10 @@ for projects with random decisions during the scene's setup.
 | `@netplay known V` | Read whether both inputs and their history are known. A call on a predicted frame requests replay once the inputs arrive, even when the prediction matches. |
 | `@netplay present V` | Display the resource picture whose ID is stored in V from the confirmed frame stream. The setting belongs to the picture slot. |
 | `@netplay live V` | Restore immediate drawing for the picture slot whose ID is stored in V. |
-| `@netplay track A B FLAGS [X]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing, 2 for horizontal reflection, or 4 to reflect the position only. Optional variable X gives the horizontal offset before reflection. |
+| `@netplay track A B FLAGS [X [Y [U [V]]]]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing or 8 to use the confirmed picture only when the immediate picture is invisible. Add 2 for horizontal reflection or 4 to reflect the position only. X and Y give offsets before reflection. U and V add offsets when using the fallback. |
+| `@netplay sample V COUNT` | Attach a range of variables to the current frame for presentation. |
+| `@netplay shown V D COUNT` | Copy the most recently presented samples starting at V into variables starting at D. Missing samples read as zero. |
+| `@netplay drawn P X Y` | Read the last drawn coordinates of the picture slot stored in P, after offsets and before reflection. Missing coordinates read as zero. |
 | `@netplay stop` | End the synchronized map after this frame is confirmed. The next map tick resumes regular event processing at the confirmed state. |
 
 Parallel map and common events advance on the synchronized clock. Use the
@@ -58,3 +61,4 @@ outside the synchronized map. Play BGM, fade BGM and play sound event commands
 are published once from confirmed frames in simulation order. A picture can
 be tracked before it appears. Reserve the immediate track for effects whose
 speculative positions and lifetimes the game can safely expose.
+Use displayed samples and coordinates only for presentation decisions.

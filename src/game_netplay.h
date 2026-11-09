@@ -15,7 +15,16 @@ namespace Game_Netplay {
 	void Close();
 	bool UpdateMap();
 	bool UsesConfirmedPicture(int id);
-	std::pair<int, int> PictureTransform(int id);
+	struct PictureView {
+		int reflection = 0;
+		int offset_x = 0;
+		int offset_y = 0;
+		int confirmed_offset_x = 0;
+		int confirmed_offset_y = 0;
+		bool fallback = false;
+	};
+	PictureView PictureTransform(int id);
+	void RecordPictureDraw(int id, int x, int y);
 	bool QueueAudio(const lcf::rpg::Music& music);
 	bool QueueAudio(const lcf::rpg::Sound& sound);
 	bool QueueAudio(int fadeout);

@@ -65,7 +65,7 @@ public:
 
 private:
 	void DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data, int frames,
-		const Tone& screen_tone, const Color& flash, int shake_x, int shake_y, int reflection, int offset);
+		const Tone& screen_tone, const Color& flash, int shake_x, int shake_y, int reflection, int offset_x, int offset_y);
 	void UpdatePictureZ();
 	std::unique_ptr<NetplayPose> netplay_pose;
 	mutable BitmapRef maniac_source;

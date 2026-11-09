@@ -18,6 +18,7 @@
 #include <lcf/rpg/save.h>
 #include <cstdlib>
 #include <deque>
+#include <map>
 #include <set>
 #include <sstream>
 #include <variant>
@@ -32,6 +33,7 @@ using Audio = std::variant<lcf::rpg::Music, lcf::rpg::Sound, int>;
 
 struct Effects {
 	std::vector<Audio> audio;
+	std::map<int, int> samples;
 	bool stop = false;
 };
 
@@ -43,7 +45,9 @@ struct FrameContext {
 	Effects& effects;
 	bool& needs_confirmation;
 	std::set<int>& confirmed_pictures;
-	std::map<int, std::pair<int, int>>& picture_transforms;
+	std::map<int, Game_Netplay::PictureView>& picture_transforms;
+	const std::map<int, int>& presented_samples;
+	const std::map<int, std::pair<int, int>>& drawn_pictures;
 };
 
 FrameContext* frame = nullptr;
@@ -62,7 +66,7 @@ struct MapWorld {
 		size_t string_size;
 		Game_ManiacSelfVariables::Banks self_variables;
 		std::set<int> confirmed_pictures;
-		std::map<int, std::pair<int, int>> picture_transforms;
+		std::map<int, Game_Netplay::PictureView> picture_transforms;
 		Rand::RNG rng;
 		uint32_t maniac_seed;
 		int32_t variable_zero;
@@ -115,7 +119,7 @@ struct MapWorld {
 
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
-			confirmed_pictures, picture_transforms};
+			confirmed_pictures, picture_transforms, presented_samples, drawn_pictures};
 		frame = &context;
 		const bool complete = Game_Map::UpdateNetplay();
 		frame = nullptr;
@@ -147,6 +151,7 @@ struct MapWorld {
 		if (pending.empty()) return false;
 		auto effects = std::move(pending.front());
 		pending.pop_front();
+		presented_samples = std::move(effects.samples);
 		for (auto& item : displayed) item.second->SetVisible(false);
 		for (auto& pose : effects.pictures) {
 			const int id = pose.data.ID;
@@ -165,7 +170,9 @@ struct MapWorld {
 	}
 
 	std::set<int> confirmed_pictures;
-	std::map<int, std::pair<int, int>> picture_transforms;
+	std::map<int, Game_Netplay::PictureView> picture_transforms;
+	std::map<int, int> presented_samples;
+	std::map<int, std::pair<int, int>> drawn_pictures;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
 	std::deque<Effects> pending;
 	bool stopping = false;
@@ -260,6 +267,30 @@ void Game_Netplay::Command(std::string_view comment) {
 		} else if (command == "known") {
 			frame->needs_confirmation = !frame->known;
 			write(variable, frame->known);
+		} else if (command == "sample") {
+			int count;
+			if (!(args >> count) || count < 1 || count > vars.GetSizeWithLimit() - variable + 1) return;
+			for (int i = 0; i < count; ++i)
+				frame->effects.samples.insert_or_assign(variable + i, vars.Get(variable + i));
+		} else if (command == "shown") {
+			int destination, count;
+			if (!(args >> destination >> count) || !vars.IsValid(destination) || count < 1 ||
+					count > vars.GetSizeWithLimit() - std::max(variable, destination) + 1) return;
+			for (int i = 0; i < count; ++i) {
+				const auto found = frame->presented_samples.find(variable + i);
+				write(destination + i, found == frame->presented_samples.end() ? 0 : found->second);
+			}
+		} else if (command == "drawn") {
+			int x, y;
+			if (!(args >> x >> y) || !vars.IsValid(x) || !vars.IsValid(y) || x == y) return;
+			const auto found = frame->drawn_pictures.find(vars.Get(variable));
+			if (found == frame->drawn_pictures.end()) {
+				write(x, 0);
+				write(y, 0);
+			} else {
+				write(x, found->second.first);
+				write(y, found->second.second);
+			}
 		} else if (command == "present") {
 			const int picture = vars.Get(variable);
 			if (picture > 0 && picture <= Main_Data::game_pictures->GetMaxPictureId())
@@ -268,18 +299,25 @@ void Game_Netplay::Command(std::string_view comment) {
 			frame->confirmed_pictures.erase(vars.Get(variable));
 		} else if (command == "track") {
 			int last_var, flags;
-			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 5) return;
+			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 13 ||
+					(flags & 6) == 6 || (flags & 9) == 9) return;
 			const int first = vars.Get(variable), last = vars.Get(last_var);
 			if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
-			int offset = 0;
-			if (int offset_var; args >> offset_var) {
+			PictureView view;
+			view.reflection = (flags & 6) >> 1;
+			view.fallback = (flags & 8) != 0;
+			for (int* offset : {&view.offset_x, &view.offset_y, &view.confirmed_offset_x, &view.confirmed_offset_y}) {
+				if (!view.fallback && offset == &view.confirmed_offset_x) break;
+				int offset_var;
+				if (!(args >> offset_var)) break;
 				if (!vars.IsValid(offset_var)) return;
-				offset = std::clamp(vars.Get(offset_var), -4096, 4096);
+				*offset = std::clamp(vars.Get(offset_var), -4096, 4096);
 			}
 			for (int id = first; id <= last; ++id) {
-				if (flags & 1) frame->confirmed_pictures.insert(id);
+				if ((flags & 1) || view.fallback) frame->confirmed_pictures.insert(id);
 				else frame->confirmed_pictures.erase(id);
-				if ((flags & 6) || offset) frame->picture_transforms.insert_or_assign(id, std::pair{flags >> 1, offset});
+				if (view.reflection || view.offset_x || view.offset_y || view.fallback)
+					frame->picture_transforms.insert_or_assign(id, view);
 				else frame->picture_transforms.erase(id);
 			}
 		}
@@ -411,14 +449,21 @@ bool Game_Netplay::UpdateMap() {
 
 bool Game_Netplay::UsesConfirmedPicture(int id) {
 #ifdef PLAYER_WEB
-	return match && match->world.confirmed_pictures.count(id) != 0;
+	if (!match || match->world.confirmed_pictures.count(id) == 0) return false;
+	const auto view = match->world.picture_transforms.find(id);
+	if (view == match->world.picture_transforms.end() || !view->second.fallback) return true;
+	const auto* live = Main_Data::game_pictures->GetPicturePtr(id);
+	if (!live || !live->IsOnMap() || !live->sprite || !live->sprite->IsVisible() || !live->sprite->GetBitmap())
+		return true;
+	const bool separate_bottom = !Player::IsPatchManiac() && Player::IsRPG2k3() && !Player::IsRPG2k3E();
+	return live->data.current_top_trans == 100 && (!separate_bottom || live->data.current_bot_trans == 100);
 #else
 	(void)id;
 	return false;
 #endif
 }
 
-std::pair<int, int> Game_Netplay::PictureTransform(int id) {
+Game_Netplay::PictureView Game_Netplay::PictureTransform(int id) {
 #ifdef PLAYER_WEB
 	if (match) {
 		const auto it = match->world.picture_transforms.find(id);
@@ -428,6 +473,16 @@ std::pair<int, int> Game_Netplay::PictureTransform(int id) {
 	(void)id;
 #endif
 	return {};
+}
+
+void Game_Netplay::RecordPictureDraw(int id, int x, int y) {
+#ifdef PLAYER_WEB
+	if (match) match->world.drawn_pictures.insert_or_assign(id, std::pair{x, y});
+#else
+	(void)id;
+	(void)x;
+	(void)y;
+#endif
 }
 
 bool Game_Netplay::QueueAudio(const lcf::rpg::Music& music) {
