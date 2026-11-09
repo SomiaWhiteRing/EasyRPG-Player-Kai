@@ -47,7 +47,7 @@ for projects with random decisions during the scene's setup.
 | `@netplay known V` | Read whether both inputs and their history are known. A call on a predicted frame requests replay once the inputs arrive, even when the prediction matches. |
 | `@netplay present V` | Display the resource picture whose ID is stored in V from the confirmed frame stream. The setting belongs to the picture slot. |
 | `@netplay live V` | Restore immediate drawing for the picture slot whose ID is stored in V. |
-| `@netplay track A B FLAGS` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing, 2 for horizontal reflection, or 4 to reflect the position only. |
+| `@netplay track A B FLAGS [X]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing, 2 for horizontal reflection, or 4 to reflect the position only. Optional variable X gives the horizontal offset before reflection. |
 | `@netplay stop` | End the synchronized map after this frame is confirmed. The next map tick resumes regular event processing at the confirmed state. |
 
 Parallel map and common events advance on the synchronized clock. Use the

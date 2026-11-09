@@ -2,6 +2,7 @@
 #define EP_GAME_NETPLAY_H
 
 #include <string_view>
+#include <utility>
 
 namespace lcf::rpg {
 	class Music;
@@ -14,7 +15,7 @@ namespace Game_Netplay {
 	void Close();
 	bool UpdateMap();
 	bool UsesConfirmedPicture(int id);
-	int PictureReflection(int id);
+	std::pair<int, int> PictureTransform(int id);
 	bool QueueAudio(const lcf::rpg::Music& music);
 	bool QueueAudio(const lcf::rpg::Sound& sound);
 	bool QueueAudio(int fadeout);

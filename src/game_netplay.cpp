@@ -43,7 +43,7 @@ struct FrameContext {
 	Effects& effects;
 	bool& needs_confirmation;
 	std::set<int>& confirmed_pictures;
-	std::map<int, int>& picture_reflections;
+	std::map<int, std::pair<int, int>>& picture_transforms;
 };
 
 FrameContext* frame = nullptr;
@@ -62,7 +62,7 @@ struct MapWorld {
 		size_t string_size;
 		Game_ManiacSelfVariables::Banks self_variables;
 		std::set<int> confirmed_pictures;
-		std::map<int, int> picture_reflections;
+		std::map<int, std::pair<int, int>> picture_transforms;
 		Rand::RNG rng;
 		uint32_t maniac_seed;
 		int32_t variable_zero;
@@ -81,7 +81,7 @@ struct MapWorld {
 			strings.GetManiacVectorSize(),
 			Main_Data::game_maniac_self_variables ? Main_Data::game_maniac_self_variables->GetSaveData()
 				: Game_ManiacSelfVariables::Banks{},
-			confirmed_pictures, picture_reflections, Rand::GetRNG(),
+			confirmed_pictures, picture_transforms, Rand::GetRNG(),
 			Main_Data::maniac_random_seed, Main_Data::game_variables->GetManiacRawSlot(0), Game_Map::GetNeedRefresh()};
 		Game_Map::CaptureNetplay(state.map);
 		state.map.screen = Main_Data::game_screen->GetSaveData();
@@ -104,7 +104,7 @@ struct MapWorld {
 		if (Main_Data::game_maniac_self_variables)
 			Main_Data::game_maniac_self_variables->MutableBanks() = std::move(state.self_variables);
 		confirmed_pictures = std::move(state.confirmed_pictures);
-		picture_reflections = std::move(state.picture_reflections);
+		picture_transforms = std::move(state.picture_transforms);
 		Main_Data::game_screen->SetSaveData(std::move(state.map.screen));
 		Main_Data::game_pictures->RestoreNetplay(std::move(state.pictures));
 		Game_Map::RestoreNetplay(state.map);
@@ -115,7 +115,7 @@ struct MapWorld {
 
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
-			confirmed_pictures, picture_reflections};
+			confirmed_pictures, picture_transforms};
 		frame = &context;
 		const bool complete = Game_Map::UpdateNetplay();
 		frame = nullptr;
@@ -165,7 +165,7 @@ struct MapWorld {
 	}
 
 	std::set<int> confirmed_pictures;
-	std::map<int, int> picture_reflections;
+	std::map<int, std::pair<int, int>> picture_transforms;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
 	std::deque<Effects> pending;
 	bool stopping = false;
@@ -271,11 +271,16 @@ void Game_Netplay::Command(std::string_view comment) {
 			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 5) return;
 			const int first = vars.Get(variable), last = vars.Get(last_var);
 			if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
+			int offset = 0;
+			if (int offset_var; args >> offset_var) {
+				if (!vars.IsValid(offset_var)) return;
+				offset = std::clamp(vars.Get(offset_var), -4096, 4096);
+			}
 			for (int id = first; id <= last; ++id) {
 				if (flags & 1) frame->confirmed_pictures.insert(id);
 				else frame->confirmed_pictures.erase(id);
-				if (flags & 6) frame->picture_reflections.insert_or_assign(id, flags >> 1);
-				else frame->picture_reflections.erase(id);
+				if ((flags & 6) || offset) frame->picture_transforms.insert_or_assign(id, std::pair{flags >> 1, offset});
+				else frame->picture_transforms.erase(id);
 			}
 		}
 		return;
@@ -413,16 +418,16 @@ bool Game_Netplay::UsesConfirmedPicture(int id) {
 #endif
 }
 
-int Game_Netplay::PictureReflection(int id) {
+std::pair<int, int> Game_Netplay::PictureTransform(int id) {
 #ifdef PLAYER_WEB
 	if (match) {
-		const auto it = match->world.picture_reflections.find(id);
-		if (it != match->world.picture_reflections.end()) return it->second;
+		const auto it = match->world.picture_transforms.find(id);
+		if (it != match->world.picture_transforms.end()) return it->second;
 	}
 #else
 	(void)id;
 #endif
-	return 0;
+	return {};
 }
 
 bool Game_Netplay::QueueAudio(const lcf::rpg::Music& music) {
