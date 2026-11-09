@@ -4,6 +4,7 @@
 #include "font.h"
 #include "game_interpreter_shared.h"
 #include "game_maniac_self_variables.h"
+#include "game_netplay.h"
 #include "game_switches.h"
 #include "game_variables.h"
 #include "game_strings.h"
@@ -95,6 +96,14 @@ public:
 			JS_SetPropertyStr(context, rm2k3, "netplayTime", JS_NewCFunction(context, NetplayTime, "netplayTime", 0));
 			JS_SetPropertyStr(context, rm2k3, "netplayFade", JS_NewCFunction(context, NetplayFade, "netplayFade", 2));
 			JS_SetPropertyStr(context, rm2k3, "netplayButtons", JS_NewCFunction(context, NetplayButtons, "netplayButtons", 1));
+			JS_SetPropertyStr(context, rm2k3, "netplayContinuePicture",
+				JS_NewCFunction(context, NetplayContinuePicture, "netplayContinuePicture", 4));
+			JS_SetPropertyStr(context, rm2k3, "setNetplayProjection",
+				JS_NewCFunction(context, SetNetplayProjection, "setNetplayProjection", 1));
+			JS_SetPropertyStr(context, rm2k3, "netplaySample", JS_NewCFunction(context, NetplaySample, "netplaySample", 2));
+			JS_SetPropertyStr(context, rm2k3, "netplayUpcoming", JS_NewCFunction(context, NetplayUpcoming, "netplayUpcoming", 2));
+			JS_SetPropertyStr(context, rm2k3, "netplayPosition", JS_NewCFunction(context, NetplayPosition, "netplayPosition", 2));
+			JS_SetPropertyStr(context, rm2k3, "netplayProject", JS_NewCFunction(context, NetplayProject, "netplayProject", 7));
 			canvas = JS_NewObject(context);
 			JS_SetPropertyStr(context, canvas, "fill", JS_NewCFunction(context, FillOverlay, "fill", 5));
 			JS_SetPropertyStr(context, canvas, "textWidth", JS_NewCFunction(context, OverlayTextWidth, "textWidth", 1));
@@ -131,6 +140,7 @@ public:
 	}
 	~Runtime() {
 		JS_FreeValue(context, overlay);
+		JS_FreeValue(context, projection);
 		JS_FreeValue(context, canvas);
 		JS_FreeContext(context);
 		JS_FreeRuntime(runtime);
@@ -150,6 +160,18 @@ public:
 			ReportException();
 			JS_FreeValue(context, overlay);
 			overlay = JS_UNDEFINED;
+		}
+		JS_FreeValue(context, result);
+	}
+
+	void RunNetplayProjection(int seat, bool stopping) {
+		if (JS_IsUndefined(projection)) return;
+		JSValue args[] = {JS_NewInt32(context, seat), JS_NewBool(context, stopping)};
+		auto result = JS_Call(context, projection, JS_UNDEFINED, 2, args);
+		if (JS_IsException(result)) {
+			ReportException();
+			JS_FreeValue(context, projection);
+			projection = JS_UNDEFINED;
 		}
 		JS_FreeValue(context, result);
 	}
@@ -243,6 +265,79 @@ private:
 		} else {
 			transition.InitErase(Transition::TransitionFadeOut, Scene::instance.get(), frames);
 		}
+		return JS_UNDEFINED;
+	}
+
+	static JSValue NetplayContinuePicture(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		using Action = Game_Netplay::PictureContinuation;
+		int32_t id;
+		if (argc < 1) return JS_ThrowTypeError(context, "Expected a picture slot");
+		if (JS_ToInt32(context, &id, argv[0]) < 0) return JS_EXCEPTION;
+		if (argc == 1) {
+			Game_Netplay::ContinuePicture(id, Action::Capture);
+		} else if (argc == 2 && JS_IsNull(argv[1])) {
+			Game_Netplay::ContinuePicture(id, Action::Remove);
+		} else if (argc == 4) {
+			int32_t x, y, angle;
+			if (JS_ToInt32(context, &x, argv[1]) < 0 || JS_ToInt32(context, &y, argv[2]) < 0 ||
+					JS_ToInt32(context, &angle, argv[3]) < 0) return JS_EXCEPTION;
+			Game_Netplay::ContinuePicture(id, Action::Move, x, y, angle);
+		} else {
+			return JS_ThrowTypeError(context, "Expected a picture slot, null or position and rotation");
+		}
+		return JS_UNDEFINED;
+	}
+
+	static JSValue SetNetplayProjection(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		const auto callback = argc > 0 ? argv[0] : JS_UNDEFINED;
+		const bool clear = JS_IsNull(callback) || JS_IsUndefined(callback);
+		if (!clear && !JS_IsFunction(context, callback)) {
+			return JS_ThrowTypeError(context, "Expected a netplay projection function");
+		}
+		JS_FreeValue(context, self.projection);
+		self.projection = clear ? JS_UNDEFINED : JS_DupValue(context, callback);
+		return JS_UNDEFINED;
+	}
+
+	static JSValue NetplayPair(JSContext* context, std::pair<int, int> pair) {
+		auto result = JS_NewArray(context);
+		JS_SetPropertyUint32(context, result, 0, JS_NewInt32(context, pair.first));
+		JS_SetPropertyUint32(context, result, 1, JS_NewInt32(context, pair.second));
+		return result;
+	}
+
+	static JSValue NetplaySample(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t id;
+		if (argc < 1) return JS_UNDEFINED;
+		if (JS_ToInt32(context, &id, argv[0]) < 0) return JS_EXCEPTION;
+		return JS_NewInt32(context, Game_Netplay::ProjectionSample(id, argc > 1 && JS_ToBool(context, argv[1])));
+	}
+
+	static JSValue NetplayUpcoming(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t id, related;
+		if (argc < 2) return JS_UNDEFINED;
+		if (JS_ToInt32(context, &id, argv[0]) < 0 || JS_ToInt32(context, &related, argv[1]) < 0)
+			return JS_EXCEPTION;
+		return NetplayPair(context, Game_Netplay::UpcomingSample(id, related));
+	}
+
+	static JSValue NetplayPosition(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t id, source;
+		if (argc < 2) return JS_UNDEFINED;
+		if (JS_ToInt32(context, &id, argv[0]) < 0 || JS_ToInt32(context, &source, argv[1]) < 0)
+			return JS_EXCEPTION;
+		const auto position = Game_Netplay::ProjectionPosition(id, source);
+		return position ? NetplayPair(context, *position) : JS_NULL;
+	}
+
+	static JSValue NetplayProject(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t values[7]{};
+		if (argc < 5) return JS_UNDEFINED;
+		for (int i = 0; i < std::min(argc, 7); ++i) {
+			if (JS_ToInt32(context, &values[i], argv[i]) < 0) return JS_EXCEPTION;
+		}
+		Game_Netplay::ProjectPictures(values[0], values[1], values[2], values[3], values[4], values[5], values[6]);
 		return JS_UNDEFINED;
 	}
 
@@ -636,6 +731,7 @@ private:
 	JSClassID picture_class = 0;
 	const Game_BaseInterpreterContext* caller = nullptr;
 	JSValue overlay = JS_UNDEFINED;
+	JSValue projection = JS_UNDEFINED;
 	JSValue canvas = JS_UNDEFINED;
 	Bitmap* overlay_target = nullptr;
 	BitmapRef overlay_frame;
@@ -655,6 +751,10 @@ void Game_ManiacJs::Execute(std::string_view source, Span<const int32_t> paramet
 
 void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination) {
 	if (runtime) runtime->DrawNetplayOverlay(destination);
+}
+
+void Game_ManiacJs::RunNetplayProjection(int seat, bool stopping) {
+	if (runtime) runtime->RunNetplayProjection(seat, stopping);
 }
 
 void Game_ManiacJs::Reset() {

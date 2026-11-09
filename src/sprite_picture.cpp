@@ -81,12 +81,14 @@ void Sprite_Picture::UpdatePictureZ() {
 
 
 void Sprite_Picture::Draw(Bitmap& dst) {
-	const auto view = Game_Netplay::PictureTransform(pic_id);
+	const bool confirmed = netplay_pose && !netplay_pose->immediate_preview;
+	const auto* captured_view = confirmed && netplay_pose->captured_view ? &*netplay_pose->captured_view : nullptr;
+	const auto view = Game_Netplay::PictureTransform(pic_id, captured_view);
 	const auto reflection = view.reflection;
-	const int offset_x = view.offset_x + (netplay_pose ? view.confirmed_offset_x : 0);
-	const int offset_y = view.offset_y + (netplay_pose ? view.confirmed_offset_y : 0);
+	const int offset_x = view.offset_x + (confirmed ? view.confirmed_offset_x : 0);
+	const int offset_y = view.offset_y + (confirmed ? view.confirmed_offset_y : 0);
 	if (netplay_pose) {
-		if (!Game_Netplay::UsesConfirmedPicture(pic_id)) return;
+		if (confirmed && !Game_Netplay::UsesConfirmedPicture(pic_id, captured_view, netplay_pose->birth)) return;
 		const auto& pose = *netplay_pose;
 		const auto& data = pose.data;
 		if (pose.maniac_pixels && maniac_prepared) {
@@ -96,7 +98,7 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 			if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
 			x += offset_x;
 			y += offset_y;
-			Game_Netplay::RecordPictureDraw(pic_id, x, y);
+			Game_Netplay::RecordPictureDraw(pic_id, x, y, !confirmed);
 			if (reflection == 2) x = dst.GetWidth() - x;
 			ManiacPicture::Draw(dst, *maniac_prepared, data, x, y, pose.maniac_pixels->back(), reflection == 1);
 		} else if (!Player::IsPatchManiac()) {
@@ -144,7 +146,7 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 		if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
 		x += offset_x;
 		y += offset_y;
-		Game_Netplay::RecordPictureDraw(pic_id, x, y);
+		Game_Netplay::RecordPictureDraw(pic_id, x, y, true);
 		if (reflection == 2) x = dst.GetWidth() - x;
 		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey(), reflection == 1);
 		return;
@@ -270,7 +272,8 @@ void Sprite_Picture::DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data
 	if (GetZoomX() <= 0.0 || GetZoomY() <= 0.0) {
 		return;
 	}
-	if (top_trans != 100 || bottom_trans != 100) Game_Netplay::RecordPictureDraw(pic_id, draw_x, draw_y);
+	if (top_trans != 100 || bottom_trans != 100)
+		Game_Netplay::RecordPictureDraw(pic_id, draw_x, draw_y, !netplay_pose || netplay_pose->immediate_preview);
 	Sprite::Draw(dst);
 }
 

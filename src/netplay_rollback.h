@@ -20,6 +20,8 @@ public:
 		frames[0].actual = 0;
 	}
 
+	int VisibleFrame() const { return next - 1; }
+
 	bool Receive(int frame, int input) {
 		if (frame != remote_next || frame > next + window + input_delay) return false;
 		frames[frame].actual = input;

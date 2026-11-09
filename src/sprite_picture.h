@@ -18,6 +18,7 @@
 #ifndef EP_PICTURE_SPRITE_H
 #define EP_PICTURE_SPRITE_H
 
+#include "game_netplay.h"
 #include "sprite.h"
 #include <array>
 #include <lcf/rpg/savepicture.h>
@@ -47,8 +48,12 @@ public:
 		int shake_x;
 		int shake_y;
 		std::optional<std::array<int, 14>> maniac_pixels;
+		bool immediate_preview = false;
+		std::optional<Game_Netplay::PictureView> captured_view;
+		int birth = -1;
 	};
 	void PresentNetplay(NetplayPose pose);
+	const NetplayPose* GetNetplayPose() const { return netplay_pose.get(); }
 
 	void OnPictureShow(bool reuse_pixels = false);
 	void SetPictureId(int id);

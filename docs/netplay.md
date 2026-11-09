@@ -92,7 +92,7 @@ starts or resumes. The default is one frame.
 | `@netplay live V` | Restore immediate drawing for the picture slot whose ID is stored in V. |
 | `@netplay birth V` | Start a new presentation lifetime for the picture slot whose ID is stored in V. |
 | `@netplay retire V` | Hide the current lifetime of picture V from the immediate view when this frame is presented. A later birth in the same slot can draw immediately. |
-| `@netplay track A B FLAGS [X [Y [U [V]]]]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing or 8 to use the confirmed picture only when the immediate picture is invisible. Add 2 for horizontal reflection or 4 to reflect the position only. X and Y give offsets before reflection. U and V add offsets when using the fallback. |
+| `@netplay track A B FLAGS [X [Y [U [V]]]]` | Set the view of an inclusive picture slot range stored in A and B. Add 1 for confirmed drawing or 8 to use the confirmed picture only when the immediate picture is invisible. Add 16 to capture confirmed poses while drawing immediately so later switches can use the already buffered poses. Add 32 to retain the view with the captured pose across slot reuse. Add 64 to also retain the view and use a confirmed birth only when no immediate picture is visible and that birth has not already been previewed. Add 2 for horizontal reflection or 4 to reflect the position only. X and Y give offsets before reflection. U and V add offsets when using the fallback. |
 | `@netplay sample V COUNT` | Attach a range of variables to the current frame for presentation. |
 | `@netplay shown V D COUNT` | Copy the most recently presented samples starting at V into variables starting at D. Missing samples read as zero. |
 | `@netplay upcoming V D R U` | Find the first queued confirmed frame where sample V is nonzero. Write its playback distance to D and sample R from that frame to U. Both outputs are zero when no frame matches. |
@@ -108,3 +108,22 @@ are published once from confirmed frames in simulation order. A picture can
 be tracked before it appears. Reserve the immediate track for effects whose
 speculative positions and lifetimes the game can safely expose.
 Use displayed samples and coordinates only for presentation decisions.
+
+During a synchronized map tick, `rm2k3.netplayContinuePicture(id)` captures
+the slot's final pose for an immediate drawing when the native picture is
+absent. `netplayContinuePicture(id, x, y, angle)` updates its position and
+rotation, and `netplayContinuePicture(id, null)` removes it. The copy follows
+rollback snapshots and stops drawing when its birth is retired on the
+confirmed presentation timeline or replaced by a newer picture.
+
+`rm2k3.setNetplayProjection(callback)` runs a drawing-only callback after
+prediction and replay, once per synchronized map tick. It receives the
+zero-based seat and whether the match is stopping. The callback can read
+`netplaySample(variable, shown)`, `netplayUpcoming(variable, related)` and
+`netplayPosition(picture, source)`. Position sources 0, 1 and 2 read the
+immediate, confirmed and last drawn coordinates respectively.
+`netplayProject(first, last, source, x, y, shownX, shownY)` selects a drawing
+source for an already tracked slot range and adds offsets. Source 0 keeps
+the track's current policy, 1 selects immediate drawing and 2 selects
+confirmed drawing. The last two arguments are optional extra offsets for
+the confirmed drawing. These overrides do not change simulation or capture.

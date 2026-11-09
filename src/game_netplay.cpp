@@ -1,6 +1,7 @@
 #include "game_netplay.h"
 #include "game_clock.h"
 #include "game_map.h"
+#include "game_maniac_js.h"
 #include "game_maniac_self_variables.h"
 #include "game_pictures.h"
 #include "game_screen.h"
@@ -41,6 +42,13 @@ struct Effects {
 	bool stop = false;
 };
 
+struct PictureContinuationUpdate {
+	Game_Netplay::PictureContinuation action;
+	int x;
+	int y;
+	int angle;
+};
+
 struct FrameContext {
 	int index;
 	int seat;
@@ -48,19 +56,48 @@ struct FrameContext {
 	bool known;
 	Effects& effects;
 	bool& needs_confirmation;
-	std::set<int>& confirmed_pictures;
+	std::set<int>& captured_pictures;
 	std::map<int, Game_Netplay::PictureView>& picture_transforms;
 	std::map<int, int>& picture_births;
 	const std::map<int, int>& presented_samples;
 	const std::map<int, std::pair<int, int>>& drawn_pictures;
+	std::map<int, PictureContinuationUpdate> continuations;
 };
 
 FrameContext* frame = nullptr;
 
 #ifdef PLAYER_WEB
 
+bool HasVisibleLivePicture(int id) {
+	const auto* live = Main_Data::game_pictures->GetPicturePtr(id);
+	if (!live || !live->IsOnMap() || !live->sprite || !live->sprite->IsVisible() || !live->sprite->GetBitmap())
+		return false;
+	const bool separate_bottom = !Player::IsPatchManiac() && Player::IsRPG2k3() && !Player::IsRPG2k3E();
+	return live->data.current_top_trans != 100 || (separate_bottom && live->data.current_bot_trans != 100);
+}
+
+std::pair<int, int> PicturePosition(const lcf::rpg::SavePicture& data, int shake_x, int shake_y) {
+	int x = ManiacPicture::Nearest(data.current_x);
+	int y = ManiacPicture::Nearest(data.current_y);
+	if (data.flags.affected_by_shake) { x += shake_x; y += shake_y; }
+	if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
+	return {x, y};
+}
+
 struct MapWorld {
 	MapWorld(int seat, int presentation_buffer) : seat(seat), presentation_buffer(presentation_buffer) {}
+
+	struct ContinuedPicture {
+		Sprite_Picture::NetplayPose pose;
+		int birth;
+	};
+	struct Projection {
+		int source;
+		int x;
+		int y;
+		int shown_x;
+		int shown_y;
+	};
 
 	struct Snapshot {
 		lcf::rpg::Save map;
@@ -70,9 +107,10 @@ struct MapWorld {
 		std::vector<lcf::DBString> string_zero;
 		size_t string_size;
 		Game_ManiacSelfVariables::Banks self_variables;
-		std::set<int> confirmed_pictures;
+		std::set<int> captured_pictures;
 		std::map<int, Game_Netplay::PictureView> picture_transforms;
 		std::map<int, int> picture_births;
+		std::map<int, ContinuedPicture> continued_pictures;
 		Rand::RNG rng;
 		uint32_t maniac_seed;
 		int32_t variable_zero;
@@ -91,7 +129,7 @@ struct MapWorld {
 			strings.GetManiacVectorSize(),
 			Main_Data::game_maniac_self_variables ? Main_Data::game_maniac_self_variables->GetSaveData()
 				: Game_ManiacSelfVariables::Banks{},
-			confirmed_pictures, picture_transforms, picture_births, Rand::GetRNG(),
+			captured_pictures, picture_transforms, picture_births, continued_pictures, Rand::GetRNG(),
 			Main_Data::maniac_random_seed, Main_Data::game_variables->GetManiacRawSlot(0), Game_Map::GetNeedRefresh()};
 		Game_Map::CaptureNetplay(state.map);
 		state.map.screen = Main_Data::game_screen->GetSaveData();
@@ -113,9 +151,10 @@ struct MapWorld {
 			Main_Data::game_maniac_self_variables = std::make_unique<Game_ManiacSelfVariables>();
 		if (Main_Data::game_maniac_self_variables)
 			Main_Data::game_maniac_self_variables->MutableBanks() = std::move(state.self_variables);
-		confirmed_pictures = std::move(state.confirmed_pictures);
+		captured_pictures = std::move(state.captured_pictures);
 		picture_transforms = std::move(state.picture_transforms);
 		picture_births = std::move(state.picture_births);
+		continued_pictures = std::move(state.continued_pictures);
 		Main_Data::game_screen->SetSaveData(std::move(state.map.screen));
 		Main_Data::game_pictures->RestoreNetplay(std::move(state.pictures));
 		Game_Map::RestoreNetplay(state.map);
@@ -136,8 +175,13 @@ struct MapWorld {
 		auto pixels = Player::IsPatchManiac()
 			? ManiacPicture::DescribeFrame(*bitmap, picture->data, screen.GetSaveData(), picture->GetManiacImageChromakey())
 			: std::nullopt;
+		const auto view = picture_transforms.find(id);
+		std::optional<Game_Netplay::PictureView> captured_view;
+		if (view != picture_transforms.end() && view->second.per_pose) captured_view = view->second;
+		const auto born = picture_births.find(id);
 		return Sprite_Picture::NetplayPose{picture->data, bitmap, screen.GetTone(), screen.GetFlashColor(),
-			screen.GetShakeOffsetX(), screen.GetShakeOffsetY(), pixels};
+			screen.GetShakeOffsetX(), screen.GetShakeOffsetY(), pixels, false, captured_view,
+			born == picture_births.end() ? -1 : born->second};
 	}
 
 	void RememberOpeningPictures() {
@@ -153,19 +197,70 @@ struct MapWorld {
 		sprite->PresentNetplay(std::move(pose));
 	}
 
+	bool IsRetired(int id, int birth) const {
+		const auto retired = presented_retirements.find(id);
+		return retired != presented_retirements.end() && birth <= retired->second;
+	}
+
+	void PresentContinuations() {
+		for (auto& item : displayed_continuations) item.second->SetVisible(false);
+		if (stopping) return;
+		for (const auto& [id, continuation] : continued_pictures) {
+			if (IsRetired(id, continuation.birth) || HasVisibleLivePicture(id)) continue;
+			const auto born = picture_births.find(id);
+			if (born != picture_births.end() && born->second > continuation.birth) continue;
+			auto pose = continuation.pose;
+			auto& screen = *Main_Data::game_screen;
+			pose.shake_x = screen.GetShakeOffsetX();
+			pose.shake_y = screen.GetShakeOffsetY();
+			pose.immediate_preview = true;
+			auto& sprite = displayed_continuations[id];
+			if (!sprite) sprite = std::make_unique<Sprite_Picture>(id);
+			sprite->PresentNetplay(std::move(pose));
+		}
+	}
+
+	void Project(size_t pending_count) {
+		projections.clear();
+		projection_pending = pending_count;
+		Game_ManiacJs::RunNetplayProjection(seat, stopping);
+	}
+
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
-			confirmed_pictures, picture_transforms, picture_births, presented_samples, drawn_pictures};
+			captured_pictures, picture_transforms, picture_births, presented_samples, drawn_pictures, {}};
 		frame = &context;
 		const bool complete = Game_Map::UpdateNetplay();
 		frame = nullptr;
 		if (!complete) return false;
+		for (const auto& [id, update] : context.continuations) {
+			switch (update.action) {
+			case Game_Netplay::PictureContinuation::Capture:
+				if (auto pose = CapturePicture(id)) {
+					const auto birth = picture_births.find(id);
+					continued_pictures.insert_or_assign(id, ContinuedPicture{std::move(*pose),
+						birth == picture_births.end() ? index : birth->second});
+				}
+				break;
+			case Game_Netplay::PictureContinuation::Move:
+				if (auto picture = continued_pictures.find(id); picture != continued_pictures.end()) {
+					auto& data = picture->second.pose.data;
+					data.current_x = update.x;
+					data.current_y = update.y;
+					data.current_rotation = update.angle;
+				}
+				break;
+			case Game_Netplay::PictureContinuation::Remove:
+				continued_pictures.erase(id);
+				break;
+			}
+		}
 		if (effects.stop) effects.terminal = std::make_unique<Snapshot>(Capture());
 		for (auto& pose : opening_pictures) {
-			if (confirmed_pictures.count(pose.data.ID)) PresentPicture(std::move(pose));
+			if (captured_pictures.count(pose.data.ID)) PresentPicture(std::move(pose));
 		}
 		opening_pictures.clear();
-		for (int id : confirmed_pictures) {
+		for (int id : captured_pictures) {
 			if (auto pose = CapturePicture(id)) effects.pictures.push_back(std::move(*pose));
 		}
 		return true;
@@ -173,6 +268,7 @@ struct MapWorld {
 
 	bool Publish(int, Effects effects) {
 		stopping = effects.stop;
+		if (stopping) PresentContinuations();
 		pending_signal |= effects.input_signal;
 		pending.push_back(std::move(effects));
 		return stopping;
@@ -202,13 +298,17 @@ struct MapWorld {
 		return effects.stop;
 	}
 
-	std::set<int> confirmed_pictures;
+	std::set<int> captured_pictures;
 	std::map<int, Game_Netplay::PictureView> picture_transforms;
 	std::map<int, int> picture_births;
+	std::map<int, ContinuedPicture> continued_pictures;
 	std::map<int, int> presented_retirements;
 	std::map<int, int> presented_samples;
 	std::map<int, std::pair<int, int>> drawn_pictures;
+	std::map<int, int> immediate_draws;
 	std::map<int, std::unique_ptr<Sprite_Picture>> displayed;
+	std::map<int, std::unique_ptr<Sprite_Picture>> displayed_continuations;
+	std::map<int, Projection> projections;
 	std::deque<Effects> pending;
 	std::vector<Sprite_Picture::NetplayPose> opening_pictures;
 	bool stopping = false;
@@ -216,6 +316,7 @@ struct MapWorld {
 	const int seat;
 	const int presentation_buffer;
 	bool presentation_playing = false;
+	size_t projection_pending = 0;
 };
 
 struct Match {
@@ -380,10 +481,13 @@ void Game_Netplay::Command(std::string_view comment) {
 			}
 		} else if (command == "present") {
 			const int picture = vars.Get(variable);
-			if (picture > 0 && picture <= Main_Data::game_pictures->GetMaxPictureId())
-				frame->confirmed_pictures.insert(picture);
+			if (picture > 0 && picture <= Main_Data::game_pictures->GetMaxPictureId()) {
+				frame->captured_pictures.insert(picture);
+				const auto view = frame->picture_transforms.find(picture);
+				if (view != frame->picture_transforms.end()) view->second.draw_live = false;
+			}
 		} else if (command == "live") {
-			frame->confirmed_pictures.erase(vars.Get(variable));
+			frame->captured_pictures.erase(vars.Get(variable));
 		} else if (command == "birth" || command == "retire") {
 			const int picture = vars.Get(variable);
 			if (picture <= 0 || picture > Main_Data::game_pictures->GetMaxPictureId()) return;
@@ -393,14 +497,18 @@ void Game_Netplay::Command(std::string_view comment) {
 				frame->effects.picture_retirements.insert_or_assign(picture, birth->second);
 			}
 		} else if (command == "track") {
+			constexpr int confirmed = 1, fallback = 8, record = 16, per_pose = 32, unseen = 64;
 			int last_var, flags;
-			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 13 ||
-					(flags & 6) == 6 || (flags & 9) == 9) return;
+			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 127 ||
+					(flags & 6) == 6 || ((flags & confirmed) && (flags & (fallback | unseen)))) return;
 			const int first = vars.Get(variable), last = vars.Get(last_var);
 			if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
 			PictureView view;
 			view.reflection = (flags & 6) >> 1;
-			view.fallback = (flags & 8) != 0;
+			view.fallback = (flags & (fallback | unseen)) != 0;
+			view.draw_live = (flags & record) && !(flags & (confirmed | fallback | unseen));
+			view.per_pose = (flags & (per_pose | unseen)) != 0;
+			view.unseen_fallback = (flags & unseen) != 0;
 			for (int* offset : {&view.offset_x, &view.offset_y, &view.confirmed_offset_x, &view.confirmed_offset_y}) {
 				if (!view.fallback && offset == &view.confirmed_offset_x) break;
 				int offset_var;
@@ -409,9 +517,9 @@ void Game_Netplay::Command(std::string_view comment) {
 				*offset = std::clamp(vars.Get(offset_var), -4096, 4096);
 			}
 			for (int id = first; id <= last; ++id) {
-				if ((flags & 1) || view.fallback) frame->confirmed_pictures.insert(id);
-				else frame->confirmed_pictures.erase(id);
-				if (view.reflection || view.offset_x || view.offset_y || view.fallback)
+				if (flags & (confirmed | fallback | record | unseen)) frame->captured_pictures.insert(id);
+				else frame->captured_pictures.erase(id);
+				if (view.reflection || view.offset_x || view.offset_y || view.fallback || view.draw_live || view.per_pose)
 					frame->picture_transforms.insert_or_assign(id, view);
 				else frame->picture_transforms.erase(id);
 			}
@@ -543,6 +651,7 @@ bool Game_Netplay::UpdateMap() {
 	}
 	if (match->world.stopping) {
 		if (match->world.Present()) match.reset();
+		else match->world.Project(match->world.pending.size());
 		return true;
 	}
 	if (ReadTransportState() != match->seat + 3) {
@@ -581,6 +690,7 @@ bool Game_Netplay::UpdateMap() {
 	match->started = true;
 	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {
 		if (match->world.Present()) match.reset();
+		else match->world.Project(match->world.pending.size());
 		return true;
 	}
 	const int input = (Input::IsPressed(Input::LEFT) ? 1 : 0) |
@@ -597,50 +707,78 @@ bool Game_Netplay::UpdateMap() {
 	}
 	// Event projections read the confirmed pose that will be drawn on this tick.
 	match->world.Present();
+	const auto pending_count = match->world.pending.size();
 	if (!match->timeline.Update(Game_Clock::GetFrame())) Close();
+	else {
+		match->world.Project(pending_count);
+		match->world.PresentContinuations();
+	}
 	return true;
 #else
 	return false;
 #endif
 }
 
-bool Game_Netplay::UsesConfirmedPicture(int id) {
+bool Game_Netplay::UsesConfirmedPicture(int id, const PictureView* captured_view, int birth) {
 #ifdef PLAYER_WEB
-	if (!match || match->world.confirmed_pictures.count(id) == 0) return false;
-	const auto view = match->world.picture_transforms.find(id);
-	if (view == match->world.picture_transforms.end() || !view->second.fallback) return true;
-	const auto* live = Main_Data::game_pictures->GetPicturePtr(id);
-	if (!live || !live->IsOnMap() || !live->sprite || !live->sprite->IsVisible() || !live->sprite->GetBitmap())
-		return true;
-	const bool separate_bottom = !Player::IsPatchManiac() && Player::IsRPG2k3() && !Player::IsRPG2k3E();
-	return live->data.current_top_trans == 100 && (!separate_bottom || live->data.current_bot_trans == 100);
+	if (!match) return false;
+	if (!captured_view && match->world.captured_pictures.count(id) == 0) return false;
+	const auto projection = match->world.projections.find(id);
+	if (projection != match->world.projections.end() && projection->second.source)
+		return projection->second.source == 2;
+	if (captured_view && captured_view->unseen_fallback) {
+		const auto& world = match->world;
+		const auto drawn = world.immediate_draws.find(id);
+		if (birth >= 0 && (world.IsRetired(id, birth) ||
+				(drawn != world.immediate_draws.end() && drawn->second >= birth))) return false;
+		const auto view = world.picture_transforms.find(id);
+		return world.stopping || view == world.picture_transforms.end() ||
+			!view->second.unseen_fallback || !HasVisibleLivePicture(id);
+	}
+	if (captured_view && !captured_view->fallback) return !captured_view->draw_live;
+	if (!captured_view) {
+		const auto view = match->world.picture_transforms.find(id);
+		if (view == match->world.picture_transforms.end()) return true;
+		if (view->second.draw_live) return false;
+		if (!view->second.fallback) return true;
+		if (view->second.unseen_fallback && match->world.stopping) return true;
+	}
+	return !HasVisibleLivePicture(id);
 #else
 	(void)id;
+	(void)captured_view;
+	(void)birth;
 	return false;
 #endif
 }
 
-Game_Netplay::PictureView Game_Netplay::PictureTransform(int id) {
+Game_Netplay::PictureView Game_Netplay::PictureTransform(int id, const PictureView* captured_view) {
+	PictureView view = captured_view ? *captured_view : PictureView{};
 #ifdef PLAYER_WEB
 	if (match) {
 		const auto it = match->world.picture_transforms.find(id);
-		if (it != match->world.picture_transforms.end()) return it->second;
+		if (!captured_view && it != match->world.picture_transforms.end()) view = it->second;
+		const auto projection = match->world.projections.find(id);
+		if (projection != match->world.projections.end()) {
+			const auto& value = projection->second;
+			view.offset_x = value.x;
+			view.offset_y = value.y;
+			view.confirmed_offset_x = value.shown_x;
+			view.confirmed_offset_y = value.shown_y;
+		}
 	}
 #else
 	(void)id;
 #endif
-	return {};
+	return view;
 }
 
 bool Game_Netplay::HidesLivePicture(int id) {
 #ifdef PLAYER_WEB
 	if (match) {
 		const auto& world = match->world;
-		const auto retired = world.presented_retirements.find(id);
-		if (retired != world.presented_retirements.end()) {
-			const auto birth = world.picture_births.find(id);
-			return birth != world.picture_births.end() && birth->second <= retired->second;
-		}
+		const auto birth = world.picture_births.find(id);
+		return birth != world.picture_births.end() && world.IsRetired(id, birth->second);
 	}
 #else
 	(void)id;
@@ -648,13 +786,105 @@ bool Game_Netplay::HidesLivePicture(int id) {
 	return false;
 }
 
-void Game_Netplay::RecordPictureDraw(int id, int x, int y) {
+void Game_Netplay::ContinuePicture(int id, PictureContinuation action, int x, int y, int angle) {
+	if (frame && id > 0 && id <= Main_Data::game_pictures->GetMaxPictureId()) {
+		frame->continuations.insert_or_assign(id, PictureContinuationUpdate{action, x, y, angle});
+	}
+}
+
+int Game_Netplay::ProjectionSample(int id, bool shown) {
 #ifdef PLAYER_WEB
-	if (match) match->world.drawn_pictures.insert_or_assign(id, std::pair{x, y});
+	if (match) {
+		if (!shown) return Main_Data::game_variables->Get(id);
+		const auto& samples = match->world.presented_samples;
+		const auto sample = samples.find(id);
+		if (sample != samples.end()) return sample->second;
+	}
+#else
+	(void)id;
+	(void)shown;
+#endif
+	return 0;
+}
+
+std::pair<int, int> Game_Netplay::UpcomingSample(int id, int related) {
+#ifdef PLAYER_WEB
+	if (match) {
+		size_t distance = 0;
+		for (const auto& queued : match->world.pending) {
+			if (++distance > match->world.projection_pending) break;
+			const auto sample = queued.samples.find(id);
+			if (sample == queued.samples.end() || sample->second == 0) continue;
+			const auto other = queued.samples.find(related);
+			return {static_cast<int>(distance), other == queued.samples.end() ? 0 : other->second};
+		}
+	}
+#else
+	(void)id;
+	(void)related;
+#endif
+	return {};
+}
+
+std::optional<std::pair<int, int>> Game_Netplay::ProjectionPosition(int id, int source) {
+#ifdef PLAYER_WEB
+	if (match) {
+		const auto& world = match->world;
+		if (source == 0) {
+			if (const auto* picture = Main_Data::game_pictures->GetPicturePtr(id)) {
+				const auto& screen = *Main_Data::game_screen;
+				return PicturePosition(picture->data, screen.GetShakeOffsetX(), screen.GetShakeOffsetY());
+			}
+		} else if (source == 1) {
+			const auto shown = world.displayed.find(id);
+			if (shown != world.displayed.end() && shown->second->IsVisible()) {
+				const auto& pose = *shown->second->GetNetplayPose();
+				if (pose.data.current_top_trans != 100) return PicturePosition(pose.data, pose.shake_x, pose.shake_y);
+			}
+		} else if (source == 2) {
+			const auto drawn = world.drawn_pictures.find(id);
+			if (drawn != world.drawn_pictures.end()) return drawn->second;
+		}
+	}
+#else
+	(void)id;
+	(void)source;
+#endif
+	return {};
+}
+
+void Game_Netplay::ProjectPictures(int first, int last, int source, int x, int y, int shown_x, int shown_y) {
+#ifdef PLAYER_WEB
+	if (match && first > 0 && first <= last && last <= Main_Data::game_pictures->GetMaxPictureId() &&
+			source >= 0 && source <= 2) {
+		for (int id = first; id <= last; ++id)
+			match->world.projections.insert_or_assign(id, MapWorld::Projection{source, x, y, shown_x, shown_y});
+	}
+#else
+	(void)first;
+	(void)last;
+	(void)source;
+	(void)x;
+	(void)y;
+	(void)shown_x;
+	(void)shown_y;
+#endif
+}
+
+void Game_Netplay::RecordPictureDraw(int id, int x, int y, bool immediate) {
+#ifdef PLAYER_WEB
+	if (match) {
+		auto& world = match->world;
+		world.drawn_pictures.insert_or_assign(id, std::pair{x, y});
+		const auto view = world.picture_transforms.find(id);
+		if (immediate && view != world.picture_transforms.end() && view->second.unseen_fallback)
+			world.immediate_draws.insert_or_assign(id, match->timeline.VisibleFrame());
+	}
 #else
 	(void)id;
 	(void)x;
 	(void)y;
+	(void)immediate;
 #endif
 }
 
