@@ -40,6 +40,22 @@ public:
 	void SetSaveData(std::vector<lcf::rpg::SavePicture> save);
 	std::vector<lcf::rpg::SavePicture> GetSaveData() const;
 
+	struct NetplaySnapshot {
+		struct Entry {
+			lcf::rpg::SavePicture data;
+			BitmapRef bitmap;
+			std::optional<bool> chromakey;
+			int origin;
+			bool position_scaled;
+			bool needs_update;
+			bool visible;
+		};
+		std::vector<Entry> entries;
+		int frame_counter;
+	};
+	NetplaySnapshot CaptureNetplay() const;
+	void RestoreNetplay(NetplaySnapshot state);
+
 	void InitGraphics();
 
 	static int GetDefaultNumberOfPictures();
@@ -104,7 +120,7 @@ public:
 	void Erase(int id);
 	void EraseAll();
 
-	void Update(bool is_battle);
+	void Update(bool is_battle, bool prepare_pixels = true);
 
 	void OnMapChange();
 	void OnBattleEnd();
@@ -130,7 +146,7 @@ public:
 		bool maniac_resource_shared = false;
 		BitmapRef maniac_processed;
 
-		void Update(bool is_battle);
+		void Update(bool is_battle, bool prepare_pixels);
 		// Filename reuse retains the backing image's key even if the command
 		// replaces the saved transparency byte.
 		std::optional<bool> maniac_image_chromakey;

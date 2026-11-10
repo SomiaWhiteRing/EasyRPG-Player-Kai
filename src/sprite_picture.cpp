@@ -19,6 +19,7 @@
 
 #include "sprite_picture.h"
 #include "main_data.h"
+#include "game_netplay.h"
 #include "game_pictures.h"
 #include "game_battle.h"
 #include "game_screen.h"
@@ -80,6 +81,34 @@ void Sprite_Picture::UpdatePictureZ() {
 
 
 void Sprite_Picture::Draw(Bitmap& dst) {
+	const bool confirmed = netplay_pose && !netplay_pose->immediate_preview;
+	const auto* captured_view = confirmed && netplay_pose->captured_view ? &*netplay_pose->captured_view : nullptr;
+	const auto view = Game_Netplay::PictureTransform(pic_id, captured_view);
+	const auto reflection = view.reflection;
+	const int offset_x = view.offset_x + (confirmed ? view.confirmed_offset_x : 0);
+	const int offset_y = view.offset_y + (confirmed ? view.confirmed_offset_y : 0);
+	if (netplay_pose) {
+		if (confirmed && !Game_Netplay::UsesConfirmedPicture(pic_id, captured_view, netplay_pose->birth)) return;
+		const auto& pose = *netplay_pose;
+		const auto& data = pose.data;
+		if (pose.maniac_pixels && maniac_prepared) {
+			if (data.current_top_trans == 100.0) return;
+			int x = ManiacPicture::Nearest(data.current_x), y = ManiacPicture::Nearest(data.current_y);
+			if (data.flags.affected_by_shake) { x += pose.shake_x; y += pose.shake_y; }
+			if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
+			x += offset_x;
+			y += offset_y;
+			Game_Netplay::RecordPictureDraw(pic_id, x, y, !confirmed);
+			if (reflection == 2) x = dst.GetWidth() - x;
+			ManiacPicture::Draw(dst, *maniac_prepared, data, x, y, pose.maniac_pixels->back(), reflection == 1);
+		} else if (!Player::IsPatchManiac()) {
+			DrawStandard(dst, data, static_cast<int32_t>(static_cast<uint32_t>(data.spritesheet_cols) *
+					static_cast<uint32_t>(data.spritesheet_rows)),
+				pose.tone, pose.flash, pose.shake_x, pose.shake_y, reflection, offset_x, offset_y);
+		}
+		return;
+	}
+	if (Game_Netplay::UsesConfirmedPicture(pic_id) || Game_Netplay::HidesLivePicture(pic_id)) return;
 	const auto& pic = Main_Data::game_pictures->GetPicture(pic_id);
 	const auto& data = pic.data;
 
@@ -115,13 +144,46 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 			y += Main_Data::game_screen->GetShakeOffsetY();
 		}
 		if (Player::game_config.fake_resolution.Get()) { x += Player::menu_offset_x; y += Player::menu_offset_y; }
-		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey());
+		x += offset_x;
+		y += offset_y;
+		Game_Netplay::RecordPictureDraw(pic_id, x, y, true);
+		if (reflection == 2) x = dst.GetWidth() - x;
+		ManiacPicture::Draw(dst, *prepared, data, x, y, pic.GetManiacImageChromakey(), reflection == 1);
 		return;
 	}
 
+	auto& screen = *Main_Data::game_screen;
+	DrawStandard(dst, data, pic.NumSpriteSheetFrames(), screen.GetTone(), screen.GetFlashColor(),
+		screen.GetShakeOffsetX(), screen.GetShakeOffsetY(), reflection, offset_x, offset_y);
+}
+
+void Sprite_Picture::PresentNetplay(NetplayPose pose) {
+	const auto& data = pose.data;
+	const auto priority = feature_priority_layers ? GetPriorityForMapLayer(data.map_layer) : 0;
+	SetZ(priority > 0 ? priority + data.ID * 10 : Priority_PictureOld + data.ID);
+	if (!netplay_pose || pose.bitmap != netplay_pose->bitmap ||
+			data.spritesheet_cols != netplay_pose->data.spritesheet_cols ||
+			data.spritesheet_rows != netplay_pose->data.spritesheet_rows) {
+		SetBitmap(pose.bitmap);
+		SetSrcRect(pose.bitmap->GetRect());
+		last_spritesheet_frame = -1;
+	}
+	if (pose.maniac_pixels && (!netplay_pose || pose.bitmap != netplay_pose->bitmap ||
+			pose.maniac_pixels != netplay_pose->maniac_pixels)) {
+		maniac_prepared = ManiacPicture::Prepare(pose.bitmap, *pose.maniac_pixels, std::move(maniac_prepared), true);
+	}
+	if (netplay_pose) *netplay_pose = std::move(pose);
+	else netplay_pose = std::make_unique<NetplayPose>(std::move(pose));
+	SetVisible(!Player::IsPatchManiac() || priority > 0);
+}
+
+void Sprite_Picture::DrawStandard(Bitmap& dst, const lcf::rpg::SavePicture& data, int frames,
+		const Tone& screen_tone, const Color& flash, int shake_x, int shake_y,
+		int reflection, int offset_x, int offset_y) {
+	const auto& bitmap = GetBitmap();
 	// RPG Maker 2k3 1.12: Spritesheets
 	if (feature_spritesheet
-			&& pic.NumSpriteSheetFrames() > 1
+			&& frames > 1
 			&& last_spritesheet_frame != data.spritesheet_frame)
 	{
 		last_spritesheet_frame = data.spritesheet_frame;
@@ -137,8 +199,8 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 	int x = data.current_x;
 	int y = data.current_y;
 	if (data.flags.affected_by_shake) {
-		x -= Main_Data::game_screen->GetShakeOffsetX();
-		y -= Main_Data::game_screen->GetShakeOffsetY();
+		x -= shake_x;
+		y -= shake_y;
 	}
 
 	if (Player::game_config.fake_resolution.Get()) {
@@ -148,6 +210,10 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 		SetX(x);
 		SetY(y);
 	}
+	const int draw_x = GetX() + offset_x;
+	const int draw_y = GetY() + offset_y;
+	if (reflection || offset_x) SetX(reflection ? dst.GetWidth() - draw_x : draw_x);
+	if (offset_y) SetY(draw_y);
 
 	SetZoomX(data.current_magnify / 100.0);
 	SetZoomY(data.current_magnify / 100.0);
@@ -188,18 +254,17 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 			(int) (data.current_blue * 128 / 100),
 			(int) (data.current_sat * 128 / 100));
 	if (data.flags.affected_by_tint) {
-		auto screen_tone = Main_Data::game_screen->GetTone();
 		tone = Blend(tone, screen_tone);
 	}
 	SetTone(tone);
 
 	if (data.flags.affected_by_flash) {
-		SetFlashEffect(Main_Data::game_screen->GetFlashColor());
+		SetFlashEffect(flash);
 	} else {
 		SetFlashEffect(Color());
 	}
 
-	SetFlipX((data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_x) == lcf::rpg::SavePicture::EasyRpgFlip_x);
+	SetFlipX(bool(data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_x) != (reflection == 1));
 	SetFlipY((data.easyrpg_flip & lcf::rpg::SavePicture::EasyRpgFlip_y) == lcf::rpg::SavePicture::EasyRpgFlip_y);
 	SetBlendType(data.easyrpg_blend_mode);
 
@@ -207,6 +272,8 @@ void Sprite_Picture::Draw(Bitmap& dst) {
 	if (GetZoomX() <= 0.0 || GetZoomY() <= 0.0) {
 		return;
 	}
+	if (top_trans != 100 || bottom_trans != 100)
+		Game_Netplay::RecordPictureDraw(pic_id, draw_x, draw_y, !netplay_pose || netplay_pose->immediate_preview);
 	Sprite::Draw(dst);
 }
 
@@ -217,30 +284,14 @@ void Sprite_Picture::UpdateManiacPixels() {
 	if (initialize)
 		picture.InitManiacPixelLayout(!picture.bitmap_modified && !picture.data.name.empty() && !picture.IsWindowAttached());
 	if (picture.data.current_top_trans == 100.0) return;
-	const auto& pic = picture;
 	const auto& bitmap = GetBitmap();
-	if (!bitmap || pic.data.spritesheet_cols <= 0 || pic.data.spritesheet_rows <= 0) return;
-	const int width = bitmap->GetWidth() / pic.data.spritesheet_cols;
-	const int height = bitmap->GetHeight() / pic.data.spritesheet_rows;
-	Rect frame(width * (pic.data.spritesheet_frame % pic.data.spritesheet_cols), height * (pic.data.spritesheet_frame / pic.data.spritesheet_cols), width, height);
-	if (static_cast<uint32_t>(pic.data.spritesheet_frame) >= static_cast<uint32_t>(pic.NumSpriteSheetFrames())
-			|| width <= 0 || height <= 0) return;
-	const auto& data = pic.data;
-	const auto& screen = Main_Data::game_screen->GetSaveData();
-	const auto component = [&](double picture, double screen) {
-		return static_cast<int>(std::clamp(static_cast<int64_t>(ManiacPicture::Nearest(picture))
-			+ (data.flags.affected_by_tint ? ManiacPicture::Truncate(std::round(screen)) : 100) - 100, int64_t{0}, int64_t{200}));
-	};
-	const std::array<int, 14> state = {frame.x, frame.y, frame.width, frame.height,
-		component(data.current_red, screen.tint_current_red), component(data.current_green, screen.tint_current_green),
-		component(data.current_blue, screen.tint_current_blue), component(data.current_sat, screen.tint_current_sat),
-		data.flags.affected_by_flash ? screen.flash_red : 0, data.flags.affected_by_flash ? screen.flash_green : 0,
-		data.flags.affected_by_flash ? screen.flash_blue : 0,
-		data.flags.affected_by_flash ? ManiacPicture::Truncate(std::round(screen.flash_current_level)) : 0,
-		static_cast<int>((static_cast<uint32_t>(data.finish_bot_trans) >> 12) & 15), pic.GetManiacImageChromakey()};
-	if (!maniac_prepared || maniac_source != bitmap || maniac_prepare_state != state || maniac_source_revision != bitmap->GetManiacRevision()) {
+	if (!bitmap) return;
+	const auto state = ManiacPicture::DescribeFrame(*bitmap, picture.data,
+		Main_Data::game_screen->GetSaveData(), picture.GetManiacImageChromakey());
+	if (!state) return;
+	if (!maniac_prepared || maniac_source != bitmap || maniac_prepare_state != *state || maniac_source_revision != bitmap->GetManiacRevision()) {
 		maniac_source = bitmap;
-		maniac_prepare_state = state;
+		maniac_prepare_state = *state;
 		maniac_source_revision = bitmap->GetManiacRevision();
 		maniac_pixels_pending = true;
 	}

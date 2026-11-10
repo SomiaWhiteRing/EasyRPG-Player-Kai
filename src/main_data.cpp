@@ -38,6 +38,7 @@
 #include "game_strings.h"
 #include "game_maniac_self_variables.h"
 #include "game_maniac_js.h"
+#include "game_netplay.h"
 #include "game_switches.h"
 #include "game_targets.h"
 #include "game_quit.h"
@@ -139,6 +140,7 @@ void Main_Data::Cleanup() {
 		if (auto* message = Game_Message::GetWindow()) message->FinishMessageProcessing(false);
 	}
 	Game_ManiacJs::Reset();
+	if (Player::game_config.netplay_enabled) Game_Netplay::Close();
 	Output::ManiacConsoleClose();
 	Game_Map::Quit();
 

@@ -50,6 +50,15 @@ void Game_CommonEvent::SetSaveData(const lcf::rpg::SaveEventExecState& data) {
 	}
 }
 
+void Game_CommonEvent::RestoreNetplay(const lcf::rpg::SaveEventExecState& data) {
+	if (interpreter && (data.stack.empty() || data.stack.front().commands.empty())) {
+		interpreter->Clear();
+		interpreter->Push(this);
+	} else {
+		SetSaveData(data);
+	}
+}
+
 AsyncOp Game_CommonEvent::Update(bool resume_async) {
 	if (interpreter && IsWaitingBackgroundExecution(resume_async)) {
 		assert(interpreter->IsRunning());

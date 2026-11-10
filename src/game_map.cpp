@@ -1347,6 +1347,48 @@ void Game_Map::UpdateProcessedFlags(bool is_preupdate) {
 }
 
 
+bool Game_Map::UpdateNetplay() {
+	MapUpdateAsyncContext actx;
+	return UpdateNetplay(actx);
+}
+
+bool Game_Map::UpdateNetplay(MapUpdateAsyncContext& actx) {
+	if (!actx.IsActive()) UpdateProcessedFlags(true);
+	if ((!actx.IsActive() || actx.IsParallelCommonEvent()) && !UpdateCommonEvents(actx)) return false;
+	if (!UpdateMapEvents(actx)) return false;
+	Main_Data::game_screen->Update();
+	Main_Data::game_pictures->Update(false, false);
+	if (GetNeedRefresh() || Player::IsManiacPf()) Refresh();
+	Parallax::Update();
+	return true;
+}
+
+void Game_Map::CaptureNetplay(lcf::rpg::Save& state) {
+	state.map_info = map_info;
+	state.map_info.events.clear();
+	for (auto& event : events) state.map_info.events.push_back(event.GetSaveData());
+	state.panorama = panorama;
+	for (auto& event : common_events) {
+		if (event.GetTrigger() != lcf::rpg::EventPage::Trigger_parallel) continue;
+		auto& saved = state.common_events.emplace_back();
+		saved.ID = event.GetIndex();
+		saved.parallel_event_execstate = event.GetSaveData();
+	}
+}
+
+void Game_Map::RestoreNetplay(lcf::rpg::Save& state) {
+	auto saved_events = std::move(state.map_info.events);
+	map_info = std::move(state.map_info);
+	panorama = std::move(state.panorama);
+	Refresh();
+	for (std::size_t i = 0; i < events.size(); ++i) {
+		events[i].SetSaveData(std::move(saved_events[i]));
+	}
+	for (const auto& saved : state.common_events) {
+		common_events[saved.ID - 1].RestoreNetplay(saved.parallel_event_execstate);
+	}
+}
+
 bool Game_Map::UpdateCommonEvents(MapUpdateAsyncContext& actx) {
 	int resume_ce = actx.GetParallelCommonEvent();
 

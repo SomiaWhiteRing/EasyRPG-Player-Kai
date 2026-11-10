@@ -31,6 +31,7 @@
 #include "baseui.h"
 #include "game_clock.h"
 #include "main_data.h"
+#include "game_maniac_js.h"
 #include "game_screen.h"
 
 using namespace std::chrono_literals;
@@ -152,6 +153,9 @@ void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) 
 		}
 	}
 	drawable_list.Draw(dst, min_z, max_z);
+	if (Player::game_config.netplay_enabled && min_z == std::numeric_limits<Drawable::Z_t>::min()) {
+		Game_ManiacJs::DrawNetplayOverlay(dst);
+	}
 }
 
 std::shared_ptr<Scene> Graphics::UpdateSceneCallback() {

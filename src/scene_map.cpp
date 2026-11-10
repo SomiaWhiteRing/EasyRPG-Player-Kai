@@ -25,6 +25,7 @@
 #include "scene_settings.h"
 #include "main_data.h"
 #include "game_map.h"
+#include "game_netplay.h"
 #include "game_actors.h"
 #include "game_message.h"
 #include "game_party.h"
@@ -263,6 +264,12 @@ void Scene_Map::QueueManiacLoad(AsyncOp operation) {
 }
 
 void Scene_Map::vUpdate() {
+	if (Player::game_config.netplay_enabled && Game_Netplay::PreparesMap(Game_Map::GetMapId()) &&
+			UpdateNetplayOpening({})) return;
+	if (Player::game_config.netplay_enabled && Game_Netplay::UpdateMap()) {
+		UpdateGraphics();
+		return;
+	}
 	if (maniac_pending_load.IsActive()) {
 		const auto operation = maniac_pending_load;
 		maniac_pending_load = {};
@@ -278,6 +285,15 @@ void Scene_Map::vUpdate() {
 
 	MapUpdateAsyncContext actx;
 	UpdateStage1(actx);
+}
+
+bool Scene_Map::UpdateNetplayOpening(MapUpdateAsyncContext actx) {
+	if (!Game_Netplay::UpdatePreparation(actx)) return false;
+	UpdateGraphics();
+	if (actx.IsActive()) {
+		OnAsyncSuspend([this, actx]() { UpdateNetplayOpening(actx); }, actx.GetAsyncOp(), false);
+	}
+	return true;
 }
 
 void Scene_Map::UpdateStage1(MapUpdateAsyncContext actx) {
@@ -366,9 +382,21 @@ void Scene_Map::UpdateSceneCalling() {
 
 void Scene_Map::StartPendingTeleport(TeleportParams tp) {
 	auto& transition = Transition::instance();
+	if (Player::game_config.netplay_enabled) {
+		const auto [erase, show, delay] = Game_Netplay::TakeTransferFade();
+		if (erase > 0) {
+			tp.netplay_fade_out = erase;
+			tp.netplay_fade_in = show;
+			tp.netplay_delay = delay;
+		}
+	}
 
 	if (!transition.IsErasedNotActive() && tp.erase_screen) {
-		transition.InitErase(Main_Data::game_system->GetTransition(Main_Data::game_system->Transition_TeleportErase), this);
+		if (tp.netplay_fade_out > 0) {
+			transition.InitErase(Transition::TransitionFadeOut, this, tp.netplay_fade_out);
+		} else {
+			transition.InitErase(Main_Data::game_system->GetTransition(Main_Data::game_system->Transition_TeleportErase), this);
+		}
 	}
 
 	AsyncNext([=]() { FinishPendingTeleport(tp); });
@@ -385,7 +413,8 @@ void Scene_Map::FinishPendingTeleport(TeleportParams tp) {
 }
 
 void Scene_Map::FinishPendingTeleport2(MapUpdateAsyncContext actx, TeleportParams tp) {
-	PreUpdate(actx);
+	const bool netplay_setup = Player::game_config.netplay_enabled && Game_Netplay::PreparesMap(Game_Map::GetMapId());
+	if (!netplay_setup) PreUpdate(actx);
 
 	if (actx.IsActive()) {
 		OnAsyncSuspend([=] { FinishPendingTeleport2(actx, tp); }, actx.GetAsyncOp(), true);
@@ -405,7 +434,21 @@ void Scene_Map::FinishPendingTeleport2(MapUpdateAsyncContext actx, TeleportParam
 	auto& transition = Transition::instance();
 
 	// This logic was tested against RPG_RT and works this way ...
-	if (tp.use_default_transition_in && transition.IsErasedNotActive()) {
+	if (netplay_setup) {
+		tp.run_foreground_events = false;
+	} else if (tp.netplay_fade_in > 0 && !screen_erased_by_event) {
+		auto reveal = [this, actx, tp]() {
+			Transition::instance().InitShow(Transition::TransitionFadeIn, this, tp.netplay_fade_in);
+			AsyncNext([this, actx, tp]() { FinishPendingTeleport3(actx, tp); });
+		};
+		if (tp.netplay_delay > 0) {
+			SetDelayFrames(tp.netplay_delay);
+			AsyncNext(std::move(reveal));
+		} else {
+			reveal();
+		}
+		return;
+	} else if (tp.use_default_transition_in && transition.IsErasedNotActive()) {
 		transition.InitShow(Transition::TransitionFadeIn, this);
 	} else if (!tp.use_default_transition_in && !screen_erased_by_event) {
 		transition.InitShow(Main_Data::game_system->GetTransition(Main_Data::game_system->Transition_TeleportShow), this);
