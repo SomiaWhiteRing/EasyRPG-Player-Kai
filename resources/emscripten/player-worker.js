@@ -152,7 +152,107 @@ function closeNetplayPort(port) {
   port?.close();
 }
 
-function createNetplayRouteSelection({round, paths, offer}, {sendControl, sendSocket, socketReady, receive, activate, disconnect}) {
+// Like GGPO/Slippi, repeat unacknowledged inputs in new packets. The game still
+// receives each frame exactly once, in order; only the wire is unreliable.
+function createNetplayInputTransport(send, deliver, disconnect) {
+  const marker = 0x31504e49; // INP1
+  const limit = 256;
+  let match = 0, localNext = 1, acknowledged = 0, receivedThrough = 0, delivered = 0;
+  let ready = false, lastSent = 0;
+  const pending = [], incoming = new Map();
+  let packetsSent = 0, packetsReceived = 0, repeatedFrames = 0, highestSent = 0;
+  let lastPacketAt = 0, lastAckAt = 0;
+  const transmit = (ackOnly = false) => {
+    if (!match) return;
+    const count = ackOnly ? 0 : pending.length;
+    const packet = new DataView(new ArrayBuffer(16 + count));
+    packet.setUint32(0, marker, true);
+    packet.setInt32(4, match, true);
+    packet.setInt32(8, receivedThrough, true);
+    packet.setInt32(12, count ? acknowledged + 1 : 0, true);
+    for (let i = 0; i < count; ++i) packet.setUint8(16 + i, pending[i]);
+    repeatedFrames += Math.max(0, Math.min(highestSent, acknowledged + count) - acknowledged);
+    highestSent = Math.max(highestSent, acknowledged + count);
+    ++packetsSent;
+    if (!ackOnly) lastSent = performance.now();
+    send(packet.buffer);
+  };
+  const flush = () => {
+    while (ready && delivered < receivedThrough) {
+      const frame = ++delivered, input = incoming.get(frame);
+      incoming.delete(frame);
+      deliver(match, frame, input);
+    }
+  };
+  // This continues even when prediction has reached its limit and no new game
+  // frames are produced, including when the last input or its ACK was lost.
+  const timer = setInterval(() => {
+    if (pending.length && performance.now() - lastSent >= 50) transmit();
+  }, 50);
+  return {
+    close: () => clearInterval(timer),
+    stats(now) {
+      return {
+        inputSentPackets: packetsSent, inputReceivedPackets: packetsReceived, inputRepeatedFrames: repeatedFrames,
+        inputPending: pending.length, inputIncoming: incoming.size, inputAcknowledged: acknowledged,
+        inputReceivedThrough: receivedThrough, inputDelivered: delivered, inputLocalNext: localNext,
+        inputPacketAgeMs: lastPacketAt ? Math.round(now - lastPacketAt) : -1,
+        inputAckAgeMs: lastAckAt ? Math.round(now - lastAckAt) : -1,
+      };
+    },
+    start(id, remoteReady) {
+      match = id;
+      localNext = 1;
+      acknowledged = receivedThrough = delivered = 0;
+      ready = remoteReady;
+      pending.length = 0;
+      incoming.clear();
+      packetsSent = packetsReceived = repeatedFrames = highestSent = lastPacketAt = lastAckAt = 0;
+    },
+    ready(id) {
+      if (id !== match) return;
+      ready = true;
+      flush();
+    },
+    send(id, frame, input) {
+      if (id !== match || frame !== localNext || pending.length === limit) {
+        disconnect(pending.length === limit ? 'input_backlog' : 'input_sequence');
+        return;
+      }
+      pending.push(input);
+      ++localNext;
+      transmit();
+    },
+    receive(data) {
+      const count = data.byteLength - 16;
+      if (count < 0 || count > limit) return disconnect('input_packet_size');
+      const packet = new DataView(data);
+      if (packet.getUint32(0, true) !== marker) return disconnect('input_packet_marker');
+      if (packet.getInt32(4, true) !== match || !match) return;
+      ++packetsReceived;
+      lastPacketAt = performance.now();
+      const ack = packet.getInt32(8, true), first = packet.getInt32(12, true);
+      if (ack < 0 || ack >= localNext || (count ? first < 1 || first + count - 1 > delivered + limit : first !== 0)) {
+        disconnect('input_ack_range');
+        return;
+      }
+      if (ack > acknowledged) {
+        pending.splice(0, ack - acknowledged);
+        acknowledged = ack;
+        lastAckAt = performance.now();
+      }
+      for (let i = 0; i < count; ++i) {
+        const frame = first + i;
+        if (frame > delivered) incoming.set(frame, packet.getUint8(16 + i));
+      }
+      while (incoming.has(receivedThrough + 1)) ++receivedThrough;
+      flush();
+      if (count) transmit(true);
+    },
+  };
+}
+
+function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {sendControl, sendSocket, socketReady, receive, activate, disconnect, transportStats, reportFailure}) {
   const candidates = new Map();
   let selected, active;
   const send = (type, path, fields) => sendControl({type, round, path, ...fields});
@@ -210,14 +310,17 @@ function createNetplayRouteSelection({round, paths, offer}, {sendControl, sendSo
         if (active === candidate) receive(data.data);
         else if (selected === candidate && candidate.early.length < 256) candidate.early.push(data.data);
       } else if (data.type === 'closed') {
+        if (active === candidate) reportFailure(data.reason || 'peer_closed');
         send('failed', id);
         dispose(candidate);
         if (active === candidate) disconnect();
       } else if (data.type === 'ice-pair' && data.final && active === candidate) {
         send('ice-pair', id, {value: data.value});
+      } else if (data.type === 'transport-stats' && active === candidate) {
+        transportStats(data.value);
       }
     };
-    postMessage({type: 'netplay-rtc', path: id, port: port2, iceServers, offer, relayOnly, compareRelay: false}, [port2]);
+    postMessage({type: 'netplay-rtc', path: id, port: port2, iceServers, offer, relayOnly, inputProtocol, compareRelay: false}, [port2]);
   }
 
   return {
@@ -275,7 +378,7 @@ function createNetplayRouteSelection({round, paths, offer}, {sendControl, sendSo
           if (other === active) stopProbe(other);
           else dispose(other);
         }
-        activate(active.port, round);
+        activate(active.port, round, inputProtocol);
         for (const packet of active.early) receive(packet);
         active.early.length = 0;
         active.port?.postMessage({type: 'ice-pair'});
@@ -284,7 +387,108 @@ function createNetplayRouteSelection({round, paths, offer}, {sendControl, sendSo
   };
 }
 
-function createNetplay(endpoint, rtcSupported) {
+function createNetplayDiagnostics(send, snapshot, requestStats) {
+  let match = 0, startedAt = 0, lastTick = 0, lastPoll = 0, lastSample = 0, lastRequest = 0;
+  let timer, wait, frame = {}, sequence = 0, droppedEvents = 0;
+  let waitCount = 0, waitTotalMs = 0, waitMaxMs = 0, workerGapMs = 0, gameTickGapMs = 0, hostGapMs = 0;
+  let runtime = {visible: 1, focused: 1}, hostAt = 0;
+  const queued = [];
+  const timestamp = now => Math.round(performance.timeOrigin + now);
+  const flush = () => {
+    while (queued.length && send(queued[0])) queued.shift();
+  };
+  const emit = (kind, details = {}) => {
+    if (!match) return;
+    const now = performance.now();
+    const report = {
+      v: 1, kind, sequence: ++sequence, atMs: timestamp(now), match, matchStartedAtMs: timestamp(startedAt),
+      ...frame, ...runtime, waitCount, waitTotalMs: Math.round(waitTotalMs), waitMaxMs: Math.round(waitMaxMs),
+      workerGapMs, gameTickGapMs, hostGapMs, gameTickAgeMs: Math.round(now - lastTick),
+      hostAgeMs: hostAt ? Math.round(now - hostAt) : -1, ...snapshot(now), ...details,
+    };
+    if (queued.length === 32) { queued.shift(); ++droppedEvents; }
+    queued.push({...report, droppedEvents});
+    flush();
+  };
+  const reportWait = now => {
+    if (!wait || wait.reported || now - wait.at < 100) return;
+    wait.reported = true;
+    emit('wait_start', {waitId: wait.id, waitStartedAtMs: timestamp(wait.at),
+      durationMs: Math.round(now - wait.at), waitFrame: wait.frame});
+  };
+  const finishWait = (now, reason) => {
+    if (!wait) return;
+    const duration = now - wait.at;
+    waitTotalMs += duration;
+    waitMaxMs = Math.max(waitMaxMs, duration);
+    reportWait(now);
+    if (wait.reported) emit('wait_end', {reason, waitId: wait.id, waitStartedAtMs: timestamp(wait.at),
+      durationMs: Math.round(duration), waitFrame: wait.frame});
+    wait = undefined;
+  };
+  const end = reason => {
+    if (!match) return;
+    finishWait(performance.now(), reason);
+    emit('end', {reason});
+    clearInterval(timer);
+    timer = undefined;
+    match = 0;
+  };
+  return {
+    flush,
+    end,
+    reset() {
+      end('session_close');
+      queued.length = 0;
+      droppedEvents = 0;
+    },
+    failure(reason) { emit('input_failure', {reason}); },
+    runtime(data) {
+      const previous = runtime;
+      runtime = {visible: Number(data.visible !== false), focused: Number(data.focused !== false)};
+      hostAt = performance.now();
+      hostGapMs = Math.max(hostGapMs, data.gapMs ?? 0);
+      if (previous.visible !== runtime.visible || previous.focused !== runtime.focused) emit('lifecycle');
+      if (data.gapMs >= 250) emit('runtime_gap', {reason: 'host', durationMs: data.gapMs});
+    },
+    progress(id, simulated, confirmed, received, waiting, presentationQueue, peerReady, replayFrame) {
+      const now = performance.now();
+      const starting = id !== match;
+      if (id !== match) {
+        end('match_changed');
+        match = id;
+        startedAt = lastTick = lastPoll = lastSample = lastRequest = now;
+        waitCount = waitTotalMs = waitMaxMs = workerGapMs = gameTickGapMs = hostGapMs = 0;
+        timer = setInterval(() => {
+          const current = performance.now(), gap = Math.max(0, Math.round(current - lastPoll - 250));
+          lastPoll = current;
+          workerGapMs = Math.max(workerGapMs, gap);
+          if (gap >= 250) emit('runtime_gap', {reason: 'worker', durationMs: gap});
+          reportWait(current);
+          if (current - lastRequest >= 1000) { lastRequest = current; requestStats(); }
+          if (current - lastSample >= 5000) {
+            lastSample = current;
+            emit('sample', wait ? {waitId: wait.id, durationMs: Math.round(current - wait.at)} : {});
+          }
+          flush();
+        }, 250);
+      }
+      const tickGap = Math.max(0, Math.round(now - lastTick));
+      gameTickGapMs = Math.max(gameTickGapMs, tickGap);
+      lastTick = now;
+      frame = {frame: simulated, confirmedFrame: confirmed, receivedFrame: received,
+        waiting: Number(waiting), presentationQueue, peerReady: Number(peerReady), replayFrame};
+      if (starting) emit('start');
+      if (tickGap >= 250) emit('runtime_gap', {reason: 'game_tick', durationMs: tickGap});
+      if (waiting) {
+        wait ??= {id: ++waitCount, at: now, frame: simulated, reported: false};
+        reportWait(now);
+      } else finishWait(now, 'input_resumed');
+    },
+  };
+}
+
+function createNetplay(endpoint, rtcSupported, runtimeBase) {
   if (!endpoint) return;
   const base = rtcSupported ? new URL('rtc/', endpoint) : new URL(endpoint);
   if (base.protocol === 'https:') base.protocol = 'wss:';
@@ -296,7 +500,7 @@ function createNetplay(endpoint, rtcSupported) {
   const directoryHttp = new URL(directory);
   directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
   let socket, state = 0, joinResult = 0;
-  let rtcPort, rtcRound, rtcSelected = false, routeSelection;
+  let rtcPort, rtcRound, rtcSelected = false, routeSelection, inputTransport, peerMatch;
   const directoryTimeout = 5000;
   let subscription, directoryDeadline = 0, nextProbe = 0, retry = 0;
   let fallback = false, nextPoll = 0, poll;
@@ -307,6 +511,22 @@ function createNetplay(endpoint, rtcSupported) {
   let sentMatch = 0, sentFrame = -1;
   const avatarPaths = new Set(), avatars = new Map();
   const inbox = [], frames = [];
+  let diagnosticsAccepted = false, rtcStats = {}, rtcStatsAt = 0;
+  const client = new URL(runtimeBase).pathname.split('/').filter(Boolean).at(-1) || 'unknown';
+  const transportStats = value => { rtcStats = value; rtcStatsAt = performance.now(); };
+  const diagnostics = createNetplayDiagnostics(
+    report => {
+      if (!diagnosticsAccepted || socket?.readyState !== WebSocket.OPEN || socket.bufferedAmount > 16_384) return false;
+      socket.send('room:diagnostic:' + JSON.stringify({...report, client}));
+      return true;
+    },
+    now => ({
+      peerRttMs: latency, socketState: socket?.readyState ?? 3, socketBufferedBytes: socket?.bufferedAmount ?? 0,
+      queuedFrames: frames.length, deliveredInputs: inputs, paused: Number(Boolean(engine?.paused)),
+      ...inputTransport?.stats(now), ...rtcStats, rtcStatsAgeMs: rtcStatsAt ? Math.round(now - rtcStatsAt) : -1,
+    }),
+    () => rtcPort?.postMessage({type: 'transport-stats'}),
+  );
   const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
   const updateDirectory = (list, local, count) => {
     if (!Array.isArray(list) || !list.every(room => Number.isSafeInteger(room?.id) &&
@@ -378,16 +598,23 @@ function createNetplay(endpoint, rtcSupported) {
     lastInputAt = inputs = peakInputGap = 0;
     sentMatch = 0;
     sentFrame = -1;
+    peerMatch = undefined;
   };
   const closeRtc = () => {
+    inputTransport?.close();
+    inputTransport = undefined;
     if (routeSelection) routeSelection.close();
     else closeNetplayPort(rtcPort);
     routeSelection = undefined;
     rtcPort = undefined;
     rtcRound = undefined;
     rtcSelected = false;
+    rtcStats = {};
+    rtcStatsAt = 0;
   };
   const close = () => {
+    diagnostics.reset();
+    diagnosticsAccepted = false;
     clearTimeout(resumeTimer);
     resumeToken = undefined;
     resumeDeadline = 0;
@@ -402,9 +629,18 @@ function createNetplay(endpoint, rtcSupported) {
     if (state < 3) return;
     const direct = rtcSelected && (values.length > 1 || resumeToken);
     if (direct ? !rtcPort : socket?.readyState !== WebSocket.OPEN) return;
+    if (values.length === 3) {
+      [sentMatch, sentFrame] = values;
+      if (inputTransport) {
+        if (sentFrame >= 0) {
+          inputTransport.send(...values);
+          return;
+        }
+        inputTransport.start(sentMatch, peerMatch === sentMatch);
+      }
+    }
     const bytes = new DataView(new ArrayBuffer(values.length * 4));
     values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
-    if (values.length === 3) [sentMatch, sentFrame] = values;
     if (direct) {
       rtcPort?.postMessage({type: 'data', data: bytes.buffer}, [bytes.buffer]);
     } else {
@@ -414,6 +650,9 @@ function createNetplay(endpoint, rtcSupported) {
   return {
     close,
     send,
+    progress: diagnostics.progress,
+    endMatch: diagnostics.end,
+    runtime: diagnostics.runtime,
     stopDirectory,
     refreshDirectory,
     state: () => state,
@@ -497,7 +736,9 @@ function createNetplay(endpoint, rtcSupported) {
       }
       address.searchParams.set('heartbeat', '1');
       address.searchParams.set('inputStats', '1');
+      address.searchParams.set('diagnostics', '1');
       address.searchParams.set('routeSelection', '1');
+      address.searchParams.set('inputProtocol', '1');
       if (rtcSupported) address.searchParams.set('rtcResume', '1');
       const sendRtc = value => {
         if (socket?.readyState === WebSocket.OPEN) {
@@ -512,21 +753,41 @@ function createNetplay(endpoint, rtcSupported) {
         joinResult = result;
         if (inRoom || result) refreshDirectory();
       };
+      const receiveInput = (match, frame, input) => {
+        if (frames.length >= 256) {
+          diagnostics.failure('gameplay_queue');
+          return ended();
+        }
+        const now = performance.now();
+        if (inputMatch === match && lastInputAt) peakInputGap = Math.max(peakInputGap, now - lastInputAt);
+        inputMatch = match;
+        lastInputAt = now;
+        inputs++;
+        frames.push([match, frame, input]);
+      };
+      const enableInputTransport = protocol => {
+        if (protocol !== 1) return;
+        inputTransport = createNetplayInputTransport(
+          data => rtcPort?.postMessage({type: 'input', data}, [data]), receiveInput,
+          reason => { diagnostics.failure(reason); ended(); });
+      };
       const receiveMatchData = data => {
-        if (data instanceof ArrayBuffer && data.byteLength === 8) {
+        if (inputTransport && data instanceof ArrayBuffer && data.byteLength >= 16) {
+          inputTransport.receive(data);
+        } else if (data instanceof ArrayBuffer && data.byteLength === 8) {
           const packet = new DataView(data), kind = packet.getInt32(0, true), number = packet.getInt32(4, true);
           if (kind === 0) send(1, number);
           else if (kind === 1 && number === probe) latency = Math.trunc(performance.now() - probeSent);
         } else if (data instanceof ArrayBuffer && data.byteLength === 12 && frames.length < 256) {
           const packet = new DataView(data);
-          const match = packet.getInt32(0, true), frame = packet.getInt32(4, true), now = performance.now();
+          const match = packet.getInt32(0, true), frame = packet.getInt32(4, true);
           if (frame >= 0) {
-            if (inputMatch === match && lastInputAt) peakInputGap = Math.max(peakInputGap, now - lastInputAt);
-            inputMatch = match;
-            lastInputAt = now;
-            inputs++;
+            receiveInput(match, frame, packet.getInt32(8, true));
+          } else {
+            frames.push([match, frame, packet.getInt32(8, true)]);
+            peerMatch = match;
+            inputTransport?.ready(match);
           }
-          frames.push([match, frame, packet.getInt32(8, true)]);
         } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
           inbox.push(new DataView(data).getInt32(0, true));
         } else {
@@ -538,6 +799,11 @@ function createNetplay(endpoint, rtcSupported) {
       };
       const receiveRoomMessage = ({data, target: connection}) => {
         if (socket !== connection) return;
+        if (data === 'room:diagnostics:1') {
+          diagnosticsAccepted = true;
+          diagnostics.flush();
+          return;
+        }
         if (data instanceof ArrayBuffer && data.byteLength === 10) {
           routeSelection?.receiveSocket(data);
           return;
@@ -562,14 +828,19 @@ function createNetplay(endpoint, rtcSupported) {
             routeSelection = createNetplayRouteSelection(message, {
               sendControl: sendRouteControl, socketReady: () => socket?.readyState === WebSocket.OPEN,
               sendSocket: bytes => { if (socket?.readyState === WebSocket.OPEN) socket.send(bytes); },
-              receive: receiveMatchData, disconnect: ended,
-              activate(port, round) { rtcPort = port; rtcRound = round; rtcSelected = Boolean(port); },
+              receive: receiveMatchData, transportStats, disconnect: ended,
+              reportFailure: reason => { diagnostics.failure(reason); diagnostics.end(reason); },
+              activate(port, round, protocol) {
+                rtcPort = port; rtcRound = round; rtcSelected = Boolean(port);
+                if (port) enableInputTransport(protocol);
+              },
             });
           } else if (message) routeSelection?.receive(message);
         } else if (typeof data === 'string' && /^room:resume:[A-Za-z0-9_-]{32}$/.test(data)) {
           resumeToken = data.slice('room:resume:'.length);
         } else if (data === '2' || data === '3' || data === '4') {
           if (data === '2') {
+            diagnostics.end('peer_left');
             clear();
             resumeToken = undefined;
             closeRtc();
@@ -581,6 +852,8 @@ function createNetplay(endpoint, rtcSupported) {
           rtcSelected = true;
           rtcPort?.postMessage({type: 'ice-pair'});
         } else if (data === 'rtc:websocket') {
+          inputTransport?.close();
+          inputTransport = undefined;
           const port = rtcPort;
           rtcPort = undefined;
           rtcRound = undefined;
@@ -593,10 +866,11 @@ function createNetplay(endpoint, rtcSupported) {
           else rtcPort?.postMessage({type: 'socket-probe-pong', sample: Number(sample)});
         } else if (typeof data === 'string' && data.startsWith('rtc:start:')) {
           const {port1, port2} = new MessageChannel();
-          const {iceServers, offer, negotiationStartedAt, scoped, relayOnly, compareRelay} = JSON.parse(data.slice('rtc:start:'.length));
+          const {iceServers, offer, negotiationStartedAt, scoped, relayOnly, compareRelay, inputProtocol} = JSON.parse(data.slice('rtc:start:'.length));
           const diagnostics = Number.isSafeInteger(negotiationStartedAt);
           closeRtc();
           rtcPort = port1;
+          enableInputTransport(inputProtocol);
           rtcRound = diagnostics && scoped ? negotiationStartedAt : undefined;
           port1.onmessage = ({data}) => {
             if (socket !== connection && rtcPort !== port1) return;
@@ -609,6 +883,7 @@ function createNetplay(endpoint, rtcSupported) {
             }
             if (rtcPort !== port1) return;
             if (data.type === 'data') receiveMatchData(data.data);
+            else if (data.type === 'transport-stats') transportStats(data.value);
             else if (data.type === 'signal') sendRtc('signal:' + JSON.stringify(data.value));
             else if (data.type === 'diagnostic') {
               sendRtc('diag:' + data.milestone);
@@ -619,6 +894,8 @@ function createNetplay(endpoint, rtcSupported) {
             else if (data.type === 'socket-probe') sendRtc('probe:ping:' + data.sample);
             else if (data.type === 'open') sendRtc('ready');
             else if (data.type === 'closed') {
+              diagnostics.failure(data.reason || 'peer_closed');
+              diagnostics.end(data.reason || 'peer_closed');
               rtcPort = undefined;
               if (data.diagnosticsPending) setTimeout(() => port1.close(), 500);
               else port1.close();
@@ -626,7 +903,7 @@ function createNetplay(endpoint, rtcSupported) {
               if (rtcSelected && resumeToken) ended();
             }
           };
-          postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics, relayOnly, compareRelay}, [port2]);
+          postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics, relayOnly, compareRelay, inputProtocol}, [port2]);
         } else if (typeof data === 'string' && data.startsWith('rtc:signal:')) {
           try {
             rtcPort?.postMessage({type: 'signal', value: JSON.parse(data.slice('rtc:signal:'.length))});
@@ -652,7 +929,9 @@ function createNetplay(endpoint, rtcSupported) {
         connection.onclose = connection.onerror = () => {
           if (socket !== connection) return;
           if (rtcSelected && resumeToken) {
+            diagnostics.failure('control_disconnected');
             socket = undefined;
+            diagnosticsAccepted = false;
             connection.close();
             resumeDeadline ||= performance.now() + 15_000;
             if (performance.now() < resumeDeadline) resumeTimer = setTimeout(connect, 1000);
@@ -695,7 +974,7 @@ self.onmessage = async ({data}) => {
         canvas: data.canvas, workId: data.workId, sampleRate: data.sampleRate,
         audioCapabilities: data.audioCapabilities,
         gamePackages: data.packages, gameArguments: data.arguments, keyNames: {},
-        netplay: createNetplay(data.netplayEndpoint, data.netplayRtc),
+        netplay: createNetplay(data.netplayEndpoint, data.netplayRtc, data.runtimeBase),
         audioCommand: command => {
           if (command.op === 'config' && command.soundfont?.startsWith('/') && engine && command.soundfont !== forwardedSoundfont) {
             try {
@@ -749,8 +1028,10 @@ self.onmessage = async ({data}) => {
       else if (data.type === 'touch') engine._web_touch(data.id, data.x, data.y, data.pressed ? 1 : 0);
       else if (data.type === 'gamepad') engine._web_gamepad(...data.axes, ...data.triggers);
       else if (data.type === 'netplay-network-change') engine.netplay?.refreshDirectory();
+      else if (data.type === 'netplay-runtime') engine.netplay?.runtime(data);
       else if (data.type === 'focus') {
         engine._web_focus(data.focused ? 1 : 0, data.fullscreen ? 1 : 0);
+        engine.netplay?.runtime(data);
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {
         engine.stopping = true;

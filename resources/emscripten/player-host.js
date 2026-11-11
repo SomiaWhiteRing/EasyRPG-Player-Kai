@@ -511,9 +511,18 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       stopMovie();
     }
   };
-  function connectNetplayRtc({port, iceServers, offer, diagnostics, relayOnly, compareRelay = true}, onClosed) {
+  function connectNetplayRtc({port, iceServers, offer, diagnostics, relayOnly, inputProtocol, compareRelay = true}, onClosed) {
     let peer;
     let channel;
+    let inputChannel, pendingInput, notifiedOpen = false;
+    let inputPacketsSent = 0, inputPacketsReceived = 0, inputReplacements = 0;
+    const flushInput = () => {
+      if (!pendingInput || inputChannel?.readyState !== 'open' || inputChannel.bufferedAmount) return;
+      const packet = pendingInput;
+      pendingInput = undefined;
+      inputChannel.send(packet);
+      ++inputPacketsSent;
+    };
     let open = true;
     let finishing = false;
     let finishTimer;
@@ -549,7 +558,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     const fail = milestone => {
       if (!open || finishing) return;
       mark(milestone);
-      port.postMessage({type: 'closed', diagnosticsPending: diagnostics});
+      port.postMessage({type: 'closed', reason: milestone, diagnosticsPending: diagnostics});
       finishStats('failure');
     };
     const readStats = async () => {
@@ -736,6 +745,9 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       else port.postMessage({type: 'socket-probe', sample});
     });
     const readyChannel = async () => {
+      if (notifiedOpen || channel?.readyState !== 'open' ||
+          (inputProtocol === 1 && inputChannel?.readyState !== 'open')) return;
+      notifiedOpen = true;
       if (relayOnly && compareRelay) {
         let relayTotal = 0;
         let socketTotal = 0;
@@ -754,14 +766,21 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       port.postMessage({type: 'open'});
     };
     const attach = dataChannel => {
-      channel = dataChannel;
-      channel.binaryType = 'arraybuffer';
-      channel.onopen = () => {
-        mark('channel_open');
+      if (dataChannel.label === 'easyrpg-input-v1' && inputProtocol === 1) {
+        inputChannel = dataChannel;
+        inputChannel.bufferedAmountLowThreshold = 0;
+        inputChannel.onbufferedamountlow = flushInput;
+      }
+      else if (dataChannel.label === 'easyrpg-netplay') channel = dataChannel;
+      else return fail('channel_error');
+      dataChannel.binaryType = 'arraybuffer';
+      dataChannel.onopen = () => {
+        mark(dataChannel === inputChannel ? 'input_channel_open' : 'channel_open');
         void readyChannel().catch(() => fail('channel_error'));
       };
-      channel.onmessage = ({data}) => {
+      dataChannel.onmessage = ({data}) => {
         if (!(data instanceof ArrayBuffer)) return fail('channel_error');
+        if (dataChannel === inputChannel) ++inputPacketsReceived;
         if (relayOnly && compareRelay && data.byteLength === 2) {
           const [command, sample] = new Uint8Array(data);
           if (command === relayPing) {
@@ -775,8 +794,8 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         }
         port.postMessage({type: 'data', data}, [data]);
       };
-      channel.onclose = () => fail('channel_closed');
-      channel.onerror = () => fail('channel_error');
+      dataChannel.onclose = () => fail('channel_closed');
+      dataChannel.onerror = () => fail('channel_error');
     };
     peer.onicecandidate = ({candidate}) => {
       if (!open || !candidate) return;
@@ -818,11 +837,29 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         finishStats('fallback');
       } else if (data.type === 'ice-pair') {
         void reportIcePair(true);
+      } else if (data.type === 'transport-stats') {
+        port.postMessage({type: 'transport-stats', value: {
+          rtcBufferedBytes: channel?.bufferedAmount ?? 0, rtcInputBufferedBytes: inputChannel?.bufferedAmount ?? 0,
+          rtcInputPendingBytes: pendingInput?.byteLength ?? 0, rtcInputPacketsSent: inputPacketsSent,
+          rtcInputPacketsReceived: inputPacketsReceived, rtcInputReplacements: inputReplacements,
+        }});
       } else if (data.type === 'socket-probe-pong') {
         probeReplies.get('socket' + data.sample)?.(true);
-      } else if (data.type === 'data') {
-        if (channel?.readyState === 'open') channel.send(data.data);
-        else fail('channel_closed');
+      } else if (data.type === 'data' || data.type === 'input') {
+        const target = data.type === 'input' || (inputProtocol === 1 && data.data.byteLength === 10)
+          ? inputChannel : channel;
+        if (target?.readyState !== 'open') return fail('channel_closed');
+        if (data.type === 'input') {
+          if (pendingInput) ++inputReplacements;
+          // A newer history packet replaces queued copies. An ACK-only packet
+          // updates its acknowledgement without throwing away pending inputs.
+          const next = new DataView(data.data);
+          const pending = pendingInput && new DataView(pendingInput);
+          if (data.data.byteLength === 16 && pending && pending.getInt32(4, true) === next.getInt32(4, true)) {
+            pending.setInt32(8, Math.max(pending.getInt32(8, true), next.getInt32(8, true)), true);
+          } else pendingInput = data.data;
+          flushInput();
+        } else target.send(data.data);
       } else if (data.type === 'signal') {
         signaling = signaling.then(async () => {
           if (!open) return;
@@ -849,6 +886,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     if (offer) {
       try {
         attach(peer.createDataChannel('easyrpg-netplay', {ordered: true}));
+        if (inputProtocol === 1) attach(peer.createDataChannel('easyrpg-input-v1', {ordered: false, maxRetransmits: 0}));
       } catch {
         fail('channel_create_failed');
         return close;
@@ -982,7 +1020,15 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   listen(document, 'keydown', keyEvent); listen(document, 'keyup', keyEvent);
   // The site's touch controls live outside the iframe, but belong to the same player.
   const gameFocused = () => !page.document.hidden && page.document.hasFocus() && !nameInput && !consoleWindow?.dialog.contains(document.activeElement);
-  const focus = () => send({type: 'focus', focused: gameFocused(), fullscreen: !!page.document.fullscreenElement});
+  const focus = () => send({type: 'focus', focused: gameFocused(), visible: !page.document.hidden,
+    fullscreen: !!page.document.fullscreenElement});
+  let lastRuntimePulse = performance.now();
+  const runtimeTimer = options.netplayEndpoint && setInterval(() => {
+    const now = performance.now();
+    send({type: 'netplay-runtime', focused: gameFocused(), visible: !page.document.hidden,
+      gapMs: Math.max(0, Math.round(now - lastRuntimePulse - 1000))});
+    lastRuntimePulse = now;
+  }, 1000);
   // Firefox's blur precedes the settled focus state when entering the iframe.
   // Focus can also return directly to the iframe after switching tabs.
   const scheduleFocus = () => queueMicrotask(focus);
@@ -1085,6 +1131,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   }
   startStartupTimer();
   const shutdown = async () => {
+    clearInterval(runtimeTimer);
     for (const session of netplayRtc.values()) session.close();
     nameInput?.finish(null);
     fileOutputConfirmation?.cancel();

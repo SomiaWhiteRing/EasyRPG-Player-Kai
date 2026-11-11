@@ -324,6 +324,10 @@ struct Match {
 		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), continue_rng(continue_rng),
 		  world(seat, presentation_buffer), timeline(world, seat) {}
 
+	~Match() {
+		EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
+	}
+
 	int id;
 	int seed;
 	int seat;
@@ -624,6 +628,7 @@ void Game_Netplay::Command(std::string_view comment) {
 
 void Game_Netplay::Close() {
 #ifdef PLAYER_WEB
+	EM_ASM({ Module.netplay?.endMatch?.('closed'); });
 	match.reset();
 	ClearPreparation();
 	transfer_fade = {};
@@ -728,8 +733,14 @@ bool Game_Netplay::UpdateMap() {
 		}
 		match->peer_ready = true;
 	}
+	EM_ASM({
+		Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7);
+	}, match->id, match->timeline.VisibleFrame(), match->timeline.ConfirmedFrame(),
+		match->timeline.ReceivedFrame(), match->timeline.WaitingForInput(),
+		match->world.pending.size(), match->peer_ready, match->timeline.ReplayFrame());
 	if (!match->peer_ready) return true;
 	if (WaitingForInput() && Input::IsTriggered(Input::CANCEL)) {
+		EM_ASM({ Module.netplay?.endMatch?.('user_cancel'); });
 		Close();
 		return true;
 	}

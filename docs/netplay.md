@@ -120,6 +120,17 @@ be tracked before it appears. Reserve the immediate track for effects whose
 speculative positions and lifetimes the game can safely expose.
 Use displayed samples and coordinates only for presentation decisions.
 
+Web clients request diagnostics with `diagnostics=1`. A compatible room service
+replies with `room:diagnostics:1` and accepts bounded JSON messages prefixed by
+`room:diagnostic:`. Actual input waits lasting at least 100 ms produce start
+and end events. Shorter waits contribute to the per-match counters. Five-second
+samples include simulation, confirmation, replay and received-input frames,
+unacknowledged inputs, repeated frame transmissions, channel queues, visibility,
+pause state and host/worker scheduling gaps. Match IDs, per-client sequence
+numbers and monotonic durations correlate both seats. Client wall-clock times
+remain subject to device clock differences. The client retains up to 32 pending
+events during control reconnection and reports the number discarded.
+
 During a synchronized map tick, `rm2k3.netplayContinuePicture(id)` captures
 the slot's final pose for an immediate drawing when the native picture is
 absent. `netplayContinuePicture(id, x, y, angle)` updates its position and
