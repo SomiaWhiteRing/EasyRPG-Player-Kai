@@ -867,15 +867,15 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         } else if (typeof data === 'string' && data.startsWith('rtc:start:')) {
           const {port1, port2} = new MessageChannel();
           const {iceServers, offer, negotiationStartedAt, scoped, relayOnly, compareRelay, inputProtocol} = JSON.parse(data.slice('rtc:start:'.length));
-          const diagnostics = Number.isSafeInteger(negotiationStartedAt);
+          const iceDiagnostics = Number.isSafeInteger(negotiationStartedAt);
           closeRtc();
           rtcPort = port1;
           enableInputTransport(inputProtocol);
-          rtcRound = diagnostics && scoped ? negotiationStartedAt : undefined;
+          rtcRound = iceDiagnostics && scoped ? negotiationStartedAt : undefined;
           port1.onmessage = ({data}) => {
             if (socket !== connection && rtcPort !== port1) return;
             if (data.type === 'ice-stats') {
-              if (diagnostics && socket?.readyState === WebSocket.OPEN) {
+              if (iceDiagnostics && socket?.readyState === WebSocket.OPEN) {
                 socket.send('rtc:ice-stats:' + JSON.stringify({...data.snapshot, negotiationStartedAt}));
               }
               if (data.snapshot.phase === 'fallback' || data.snapshot.phase === 'failure') port1.close();
@@ -903,7 +903,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
               if (rtcSelected && resumeToken) ended();
             }
           };
-          postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics, relayOnly, compareRelay, inputProtocol}, [port2]);
+          postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics: iceDiagnostics, relayOnly, compareRelay, inputProtocol}, [port2]);
         } else if (typeof data === 'string' && data.startsWith('rtc:signal:')) {
           try {
             rtcPort?.postMessage({type: 'signal', value: JSON.parse(data.slice('rtc:signal:'.length))});
