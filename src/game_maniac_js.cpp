@@ -28,6 +28,7 @@
 #include <memory>
 #include <new>
 #include <unordered_map>
+#include <utility>
 #ifdef PLAYER_WEB
 #include <emscripten.h>
 #endif
@@ -90,6 +91,8 @@ public:
 		JS_SetClassProto(context, picture_class, prototype);
 		auto rm2k3 = JS_NewObject(context);
 		JS_SetPropertyStr(context, rm2k3, "getPicture", JS_NewCFunction(context, GetPicture, "getPicture", 1));
+		JS_SetPropertyStr(context, rm2k3, "setNextNumberInput",
+			JS_NewCFunction(context, SetNextNumberInput, "setNextNumberInput", 1));
 		if (Player::game_config.netplay_enabled) {
 			JS_SetPropertyStr(context, rm2k3, "setNetplayOverlay",
 				JS_NewCFunction(context, SetNetplayOverlay, "setNetplayOverlay", 1));
@@ -147,6 +150,7 @@ public:
 		JS_FreeRuntime(runtime);
 	}
 
+	int TakeNumberInputInitialValue() { return std::exchange(number_input_initial_value, 0); }
 	void DrawNetplayOverlay(Bitmap& destination) {
 		if (JS_IsUndefined(overlay)) return;
 		overlay_target = &destination;
@@ -225,6 +229,12 @@ public:
 	}
 
 private:
+	static JSValue SetNextNumberInput(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t value = 0;
+		if (argc > 0 && JS_ToInt32(context, &value, argv[0]) < 0) return JS_EXCEPTION;
+		static_cast<Runtime*>(JS_GetContextOpaque(context))->number_input_initial_value = value;
+		return JS_UNDEFINED;
+	}
 	static double NetplayTimeMs() {
 		const auto now = std::chrono::steady_clock::now().time_since_epoch();
 		return std::chrono::duration<double, std::milli>(now).count();
@@ -734,6 +744,7 @@ private:
 	JSRuntime* runtime;
 	JSContext* context;
 	JSClassID picture_class = 0;
+	int32_t number_input_initial_value = 0;
 	const Game_BaseInterpreterContext* caller = nullptr;
 	JSValue overlay = JS_UNDEFINED;
 	JSValue projection = JS_UNDEFINED;
@@ -756,6 +767,10 @@ void Game_ManiacJs::Execute(std::string_view source, Span<const int32_t> paramet
 
 void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination) {
 	if (runtime) runtime->DrawNetplayOverlay(destination);
+}
+
+int Game_ManiacJs::TakeNumberInputInitialValue() {
+	return runtime ? runtime->TakeNumberInputInitialValue() : 0;
 }
 
 void Game_ManiacJs::RunNetplayProjection(int seat, bool stopping) {

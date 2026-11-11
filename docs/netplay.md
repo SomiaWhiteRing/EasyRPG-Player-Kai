@@ -49,6 +49,10 @@ its height, and the current monotonic time in milliseconds. Pass null when
 leaving the online flow. Keep event and simulation updates in event commands.
 The overlay is drawn below native message and number-input windows. Games can use
 the regular RPG Maker number-input event while their room menu remains visible.
+Before that event, `rm2k3.setNextNumberInput(value)` optionally supplies its initial
+number. The value is captured by the next native number-input event, clamped to
+its digit count, and consumed once. Other number-input events still start at zero.
+This scripting API is also available without netplay enabled.
 
 | Canvas method | Operation |
 | --- | --- |

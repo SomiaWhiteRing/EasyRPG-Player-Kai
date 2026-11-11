@@ -13,6 +13,7 @@ namespace Game_ManiacJs {
 		const Game_BaseInterpreterContext& caller);
 	void DrawNetplayOverlay(Bitmap& destination);
 	void RunNetplayProjection(int seat, bool stopping);
+	int TakeNumberInputInitialValue();
 	void Reset();
 }
 

@@ -764,7 +764,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         close();
         state = -1;
         joinResult = result;
-        if (inRoom || result) refreshDirectory();
+        if (inRoom || (result && result !== 4 && result !== 5)) refreshDirectory();
       };
       const receiveInput = (match, frame, input) => {
         if (frames.length >= 256) {
