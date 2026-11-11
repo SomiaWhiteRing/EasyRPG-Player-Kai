@@ -21,6 +21,10 @@ public:
 	}
 
 	int VisibleFrame() const { return next - 1; }
+	int ConfirmedFrame() const { return confirmed - 1; }
+	int ReceivedFrame() const { return remote_next - 1; }
+	int ReplayFrame() const { return replay ? replay->next - 1 : next - 1; }
+	bool WaitingForInput() const { return next - confirmed >= window && remote_next == confirmed; }
 
 	bool Receive(int frame, int input) {
 		if (frame != remote_next || frame > next + window + input_delay) return false;

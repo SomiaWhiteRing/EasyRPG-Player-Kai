@@ -15,6 +15,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   const masterVolume = context.createGain();
   masterVolume.connect(context.destination);
   const worker = new Worker(new URL('player-worker.js', base));
+  const netplayRtc = new Map();
   const audioWorker = new Worker(new URL('player-audio-worker.js', base));
   let audioReadyResolve, audioReadyReject;
   const audioReady = new Promise((resolve, reject) => { audioReadyResolve = resolve; audioReadyReject = reject; });
@@ -510,6 +511,391 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       stopMovie();
     }
   };
+  function connectNetplayRtc({port, iceServers, offer, diagnostics, relayOnly, inputProtocol, compareRelay = true}, onClosed) {
+    let peer;
+    let channel;
+    let inputChannel, pendingInput, notifiedOpen = false;
+    let inputPacketsSent = 0, inputPacketsReceived = 0, inputReplacements = 0;
+    const flushInput = () => {
+      if (!pendingInput || inputChannel?.readyState !== 'open' || inputChannel.bufferedAmount) return;
+      const packet = pendingInput;
+      pendingInput = undefined;
+      inputChannel.send(packet);
+      ++inputPacketsSent;
+    };
+    let open = true;
+    let finishing = false;
+    let finishTimer;
+    let sentDescription = false;
+    let localCandidatesGathered = 0;
+    let remoteCandidatesReceived = 0;
+    let remoteCandidatesApplied = 0;
+    const startedAt = performance.now();
+    const pendingCandidates = [];
+    const milestones = new Set();
+    const candidateNumbers = new Map();
+    const localSignals = [];
+    const remoteSignals = [];
+    const relayProbeRttMs = [];
+    const socketProbeRttMs = [];
+    const probeReplies = new Map();
+    const stunErrors = new Map();
+    const elapsed = () => Math.round(performance.now() - startedAt);
+    const mark = milestone => {
+      if (!open || milestones.has(milestone)) return;
+      milestones.add(milestone);
+      port.postMessage({type: 'diagnostic', milestone});
+    };
+    const close = () => {
+      if (!open) return;
+      open = false;
+      clearTimeout(finishTimer);
+      for (const complete of probeReplies.values()) complete(false);
+      port.close();
+      peer?.close();
+      onClosed();
+    };
+    const fail = milestone => {
+      if (!open || finishing) return;
+      mark(milestone);
+      port.postMessage({type: 'closed', reason: milestone, diagnosticsPending: diagnostics});
+      finishStats('failure');
+    };
+    const readStats = async () => {
+      if (!peer) return {status: 'peer_unavailable'};
+      if (typeof peer.getStats !== 'function') return {status: 'unsupported'};
+      try {
+        return {status: 'ok', stats: await peer.getStats()};
+      } catch {
+        return {status: 'error'};
+      }
+    };
+    const addressKind = address => {
+      if (typeof address !== 'string') return 'unknown';
+      if (/\.local\.?$/i.test(address)) return 'mdns';
+      if (address.includes(':')) return 'ipv6';
+      return /^\d+(?:\.\d+){3}$/.test(address) ? 'ipv4' : 'unknown';
+    };
+    const iceServerName = url => {
+      if (typeof url !== 'string') return;
+      const host = /^[a-z]+:([^:?]+)/i.exec(url)?.[1].toLowerCase();
+      if (host === 'stun.cloudflare.com') return 'cloudflare-stun';
+      if (host === 'stun.nextcloud.com') return 'nextcloud-stun';
+      if (host === 'stun.hitv.com') return 'hitv-stun';
+      if (host === 'turn.cloudflare.com') return 'cloudflare-turn';
+    };
+    const describeCandidate = (candidate, type) => ({
+      type, protocol: candidate.protocol, tcpType: candidate.tcpType,
+      addressKind: addressKind(candidate.address ?? candidate.ip), port: candidate.port,
+      relatedAddressKind: addressKind(candidate.relatedAddress), relatedPort: candidate.relatedPort,
+      relayProtocol: candidate.relayProtocol, priority: candidate.priority, iceServer: iceServerName(candidate.url),
+    });
+    const rememberCandidate = (signals, candidate) => {
+      if (!diagnostics || signals.length >= 32) return;
+      // Remote signaling carries RTCIceCandidateInit. Parse with the browser so mDNS/IPv6 stay identifiable
+      // even if getStats omits the remote address or the candidate was rejected.
+      if (signals === remoteSignals) {
+        try {
+          candidate = new RTCIceCandidate(candidate);
+        } catch {
+          return;
+        }
+      }
+      const entry = {...describeCandidate(candidate, candidate.type), elapsedMs: elapsed()};
+      signals.push(entry);
+      return entry;
+    };
+    const describeSdp = description => {
+      if (!description) return;
+      const sdp = description.sdp;
+      const application = /^m=application (\d+) ([\w/]+) /m.exec(sdp);
+      const iceOptions = /^a=ice-options:([^\r\n]+)/m.exec(sdp)?.[1].split(/\s+/) ?? [];
+      const integer = pattern => {
+        const value = pattern.exec(sdp)?.[1];
+        return value === undefined ? undefined : Number(value);
+      };
+      return {
+        type: description.type, applicationPort: application ? Number(application[1]) : undefined,
+        applicationProtocol: application?.[2],
+        setup: /^a=setup:(\w+)/m.exec(sdp)?.[1],
+        fingerprintAlgorithm: /^a=fingerprint:([\w-]+)/m.exec(sdp)?.[1],
+        sctpPort: integer(/^a=sctp-port:(\d+)/m), maxMessageSize: integer(/^a=max-message-size:(\d+)/m),
+        trickle: iceOptions.includes('trickle'), renomination: iceOptions.includes('renomination'),
+        iceLite: /^a=ice-lite\b/m.test(sdp), bundle: /^a=group:BUNDLE\b/m.test(sdp),
+        endOfCandidates: /^a=end-of-candidates\b/m.test(sdp), candidateCount: sdp.match(/^a=candidate:/gm)?.length ?? 0,
+      };
+    };
+    const sendIceStats = (phase, status, stats) => {
+      if (!open || !diagnostics || (finishing && phase !== 'fallback' && phase !== 'failure')) return;
+      const candidates = new Map();
+      const addCandidate = candidate => {
+        if (candidate?.type !== 'local-candidate' && candidate?.type !== 'remote-candidate') return;
+        if (!candidateNumbers.has(candidate.id)) candidateNumbers.set(candidate.id, candidateNumbers.size + 1);
+        const number = candidateNumbers.get(candidate.id);
+        candidates.set(number, {
+          number, side: candidate.type === 'local-candidate' ? 'local' : 'remote',
+          ...describeCandidate(candidate, candidate.candidateType),
+        });
+        return number;
+      };
+      const rows = stats ? Array.from(stats.values()) : [];
+      const transports = rows.filter(stat => stat.type === 'transport');
+      const transport = transports.find(stat => stat.selectedCandidatePairId) ?? transports[0];
+      const selected = transport?.selectedCandidatePairId;
+      const pairs = rows.filter(stat => stat.type === 'candidate-pair');
+      const rank = pair => (pair.id === selected ? 8 : 0) + (pair.nominated ? 4 : 0) +
+        (pair.state === 'succeeded' || pair.state === 'in-progress' ? 2 : 0) +
+        (pair.requestsSent || pair.requestsReceived ? 1 : 0);
+      const pairStats = pairs.sort((a, b) => rank(b) - rank(a)).slice(0, 32).map(pair => ({
+        local: addCandidate(stats.get(pair.localCandidateId)), remote: addCandidate(stats.get(pair.remoteCandidateId)),
+        state: pair.state, nominated: pair.nominated, selected: pair.id === selected,
+        requestsSent: pair.requestsSent, requestsReceived: pair.requestsReceived,
+        responsesSent: pair.responsesSent, responsesReceived: pair.responsesReceived,
+        consentRequestsSent: pair.consentRequestsSent, bytesSent: pair.bytesSent, bytesReceived: pair.bytesReceived,
+        packetsSent: pair.packetsSent, packetsReceived: pair.packetsReceived,
+        roundTripMs: pair.currentRoundTripTime === undefined ? undefined : Math.round(pair.currentRoundTripTime * 1000),
+      }));
+      const candidateRows = rows.filter(stat => stat.type === 'local-candidate' || stat.type === 'remote-candidate');
+      for (const candidate of candidateRows) {
+        if (candidates.size >= 72) break;
+        addCandidate(candidate);
+      }
+      port.postMessage({type: 'ice-stats', snapshot: {
+        phase, status, elapsedMs: elapsed(),
+        iceState: peer?.iceConnectionState, gatheringState: peer?.iceGatheringState,
+        connectionState: peer?.connectionState, signalingState: peer?.signalingState, channelState: channel?.readyState,
+        dtlsState: transport?.dtlsState, iceRole: transport?.iceRole,
+        localSdp: describeSdp(peer?.localDescription), remoteSdp: describeSdp(peer?.remoteDescription),
+        localCandidatesGathered, remoteCandidatesReceived, remoteCandidatesApplied,
+        candidateCount: candidateRows.length, pairCount: pairs.length,
+        relayProbeRttMs, socketProbeRttMs,
+        stunErrors: Array.from(stunErrors.values()).slice(0, 32),
+        localSignals, remoteSignals,
+        candidates: Array.from(candidates.values()), pairs: pairStats,
+      }});
+    };
+    const sampleStats = async phase => {
+      const {status, stats} = await readStats();
+      sendIceStats(phase, status, stats);
+    };
+    const finishStats = phase => {
+      if (!diagnostics) {
+        close();
+        return;
+      }
+      if (finishing) return;
+      finishing = true;
+      // The game has already fallen back or received the failure. Bound the lifetime of the old peer.
+      finishTimer = setTimeout(() => {
+        sendIceStats(phase, 'timeout');
+        close();
+      }, 250);
+      void sampleStats(phase).finally(close);
+    };
+    const reportIcePair = async final => {
+      const {status, stats} = await readStats();
+      if (final) sendIceStats('connected', status, stats);
+      let value = 'unavailable';
+      if (stats) {
+        const transport = Array.from(stats.values()).find(stat => stat.type === 'transport' && stat.selectedCandidatePairId);
+        const pair = transport && stats.get(transport.selectedCandidatePairId);
+        if (pair?.type === 'candidate-pair') {
+          const local = stats.get(pair.localCandidateId);
+          const remote = stats.get(pair.remoteCandidateId);
+          const types = ['host', 'srflx', 'prflx', 'relay'];
+          if (types.includes(local?.candidateType) && types.includes(remote?.candidateType) &&
+              (local.protocol === 'udp' || local.protocol === 'tcp')) {
+            value = [local.candidateType, remote.candidateType, local.protocol].join(':');
+          }
+        }
+      }
+      if (open && (final || value !== 'unavailable')) port.postMessage({type: 'ice-pair', value, final});
+    };
+    try {
+      peer = new RTCPeerConnection({iceServers, iceTransportPolicy: relayOnly ? 'relay' : 'all'});
+    } catch {
+      fail('peer_create_failed');
+      return close;
+    }
+    mark('peer_created');
+    const signal = value => port.postMessage({type: 'signal', value});
+    const describe = async () => {
+      await peer.setLocalDescription().catch(() => fail('local_description_failed'));
+      if (!open) return;
+      mark('local_description');
+      signal({description: peer.localDescription.toJSON()});
+      sentDescription = true;
+      for (const candidate of pendingCandidates.splice(0)) signal({candidate});
+    };
+    // Probe the same two peers over both transports. Gameplay uses 8- or 12-byte messages.
+    const relayPing = 128;
+    const relayPong = 129;
+    const probeDeadlineMs = 600;
+    const probe = (route, sample) => new Promise(resolve => {
+      const started = performance.now();
+      const key = route + sample;
+      const complete = received => {
+        clearTimeout(timer);
+        probeReplies.delete(key);
+        resolve(received ? Math.round(performance.now() - started) : undefined);
+      };
+      const timer = setTimeout(() => complete(false), probeDeadlineMs);
+      probeReplies.set(key, complete);
+      if (route === 'relay') channel.send(Uint8Array.of(relayPing, sample));
+      else port.postMessage({type: 'socket-probe', sample});
+    });
+    const readyChannel = async () => {
+      if (notifiedOpen || channel?.readyState !== 'open' ||
+          (inputProtocol === 1 && inputChannel?.readyState !== 'open')) return;
+      notifiedOpen = true;
+      if (relayOnly && compareRelay) {
+        let relayTotal = 0;
+        let socketTotal = 0;
+        for (let sample = 0; sample < 2; sample++) {
+          const [relayMs, socketMs] = await Promise.all([probe('relay', sample), probe('socket', sample)]);
+          if (!open || finishing) return;
+          if (socketMs !== undefined) socketProbeRttMs.push(socketMs);
+          if (relayMs === undefined) return fail('relay_probe_timeout');
+          relayProbeRttMs.push(relayMs);
+          relayTotal += relayMs;
+          socketTotal += socketMs ?? probeDeadlineMs;
+        }
+        if (relayTotal >= socketTotal) return fail('relay_probe_slow');
+        mark('relay_probe_ok');
+      }
+      port.postMessage({type: 'open'});
+    };
+    const attach = dataChannel => {
+      if (dataChannel.label === 'easyrpg-input-v1' && inputProtocol === 1) {
+        inputChannel = dataChannel;
+        inputChannel.bufferedAmountLowThreshold = 0;
+        inputChannel.onbufferedamountlow = flushInput;
+      }
+      else if (dataChannel.label === 'easyrpg-netplay') channel = dataChannel;
+      else return fail('channel_error');
+      dataChannel.binaryType = 'arraybuffer';
+      dataChannel.onopen = () => {
+        mark(dataChannel === inputChannel ? 'input_channel_open' : 'channel_open');
+        void readyChannel().catch(() => fail('channel_error'));
+      };
+      dataChannel.onmessage = ({data}) => {
+        if (!(data instanceof ArrayBuffer)) return fail('channel_error');
+        if (dataChannel === inputChannel) ++inputPacketsReceived;
+        if (relayOnly && compareRelay && data.byteLength === 2) {
+          const [command, sample] = new Uint8Array(data);
+          if (command === relayPing) {
+            if (channel.readyState === 'open') channel.send(Uint8Array.of(relayPong, sample));
+            return;
+          }
+          if (command === relayPong) {
+            probeReplies.get('relay' + sample)?.(true);
+            return;
+          }
+        }
+        port.postMessage({type: 'data', data}, [data]);
+      };
+      dataChannel.onclose = () => fail('channel_closed');
+      dataChannel.onerror = () => fail('channel_error');
+    };
+    peer.onicecandidate = ({candidate}) => {
+      if (!open || !candidate) return;
+      if (candidate.candidate) {
+        localCandidatesGathered++;
+        rememberCandidate(localSignals, candidate);
+      }
+      if (candidate.type) mark('candidate_' + candidate.type);
+      if (sentDescription) signal({candidate: candidate.toJSON()});
+      else pendingCandidates.push(candidate.toJSON());
+    };
+    peer.onicegatheringstatechange = () => {
+      if (peer.iceGatheringState === 'complete') mark('gathering_complete');
+    };
+    peer.onicecandidateerror = ({errorCode, address, port, url}) => {
+      const kind = addressKind(address ?? undefined);
+      const scheme = /^(stun|stuns|turn|turns):/i.exec(url)?.[1]?.toLowerCase();
+      const iceServer = iceServerName(url);
+      const key = [errorCode, kind, port, scheme, iceServer].join(':');
+      const previous = stunErrors.get(key);
+      if (previous) previous.count++;
+      else stunErrors.set(key, {code: errorCode, addressKind: kind, port, scheme, iceServer, count: 1});
+      mark(errorCode === 701 ? 'stun_unreachable' : 'stun_error');
+    };
+    peer.oniceconnectionstatechange = () => {
+      const state = peer.iceConnectionState;
+      if (state !== 'new' && state !== 'closed') mark('ice_' + state);
+      if (state === 'connected' || state === 'completed') void reportIcePair(false);
+    };
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === 'failed') fail('peer_connection_failed');
+    };
+    peer.ondatachannel = ({channel}) => attach(channel);
+    let signaling = Promise.resolve();
+    port.onmessage = ({data}) => {
+      if (data.type === 'close') {
+        close();
+      } else if (data.type === 'fallback') {
+        finishStats('fallback');
+      } else if (data.type === 'ice-pair') {
+        void reportIcePair(true);
+      } else if (data.type === 'transport-stats') {
+        port.postMessage({type: 'transport-stats', value: {
+          rtcBufferedBytes: channel?.bufferedAmount ?? 0, rtcInputBufferedBytes: inputChannel?.bufferedAmount ?? 0,
+          rtcInputPendingBytes: pendingInput?.byteLength ?? 0, rtcInputPacketsSent: inputPacketsSent,
+          rtcInputPacketsReceived: inputPacketsReceived, rtcInputReplacements: inputReplacements,
+        }});
+      } else if (data.type === 'socket-probe-pong') {
+        probeReplies.get('socket' + data.sample)?.(true);
+      } else if (data.type === 'data' || data.type === 'input') {
+        const target = data.type === 'input' || (inputProtocol === 1 && data.data.byteLength === 10)
+          ? inputChannel : channel;
+        if (target?.readyState !== 'open') return fail('channel_closed');
+        if (data.type === 'input') {
+          if (pendingInput) ++inputReplacements;
+          // A newer history packet replaces queued copies. An ACK-only packet
+          // updates its acknowledgement without throwing away pending inputs.
+          const next = new DataView(data.data);
+          const pending = pendingInput && new DataView(pendingInput);
+          if (data.data.byteLength === 16 && pending && pending.getInt32(4, true) === next.getInt32(4, true)) {
+            pending.setInt32(8, Math.max(pending.getInt32(8, true), next.getInt32(8, true)), true);
+          } else pendingInput = data.data;
+          flushInput();
+        } else target.send(data.data);
+      } else if (data.type === 'signal') {
+        signaling = signaling.then(async () => {
+          if (!open) return;
+          if (data.value.description) {
+            await peer.setRemoteDescription(data.value.description).catch(() => fail('remote_description_failed'));
+            if (!open) return;
+            mark('remote_description');
+            if (data.value.description.type === 'offer') await describe();
+          } else {
+            const candidate = data.value.candidate;
+            const entry = candidate?.candidate ? rememberCandidate(remoteSignals, candidate) : undefined;
+            if (candidate?.candidate) remoteCandidatesReceived++;
+            await peer.addIceCandidate(candidate).then(() => {
+              if (candidate?.candidate) remoteCandidatesApplied++;
+              if (entry) entry.appliedMs = elapsed();
+            }, () => {
+              if (entry) entry.rejected = true;
+              fail('remote_candidate_failed');
+            });
+          }
+        }).catch(() => fail('invalid_signal'));
+      }
+    };
+    if (offer) {
+      try {
+        attach(peer.createDataChannel('easyrpg-netplay', {ordered: true}));
+        if (inputProtocol === 1) attach(peer.createDataChannel('easyrpg-input-v1', {ordered: false, maxRetransmits: 0}));
+      } catch {
+        fail('channel_create_failed');
+        return close;
+      }
+      signaling = describe().catch(() => fail('local_description_failed'));
+    }
+    return close;
+  }
+
   worker.onmessage = ({data}) => {
     if (data.type === 'ready') {
       keys = data.keys; width = data.width; height = data.height;
@@ -583,6 +969,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         const url = new URL(data.url);
         if (url.protocol === 'https:' || url.protocol === 'http:') window.open(url.href, '_blank', 'noopener,noreferrer');
       } catch { /* Invalid game-supplied URL. */ }
+    } else if (data.type === 'netplay-rtc') {
+      const path = data.path ?? 'legacy';
+      netplayRtc.get(path)?.close();
+      const session = {};
+      netplayRtc.set(path, session);
+      session.close = connectNetplayRtc(data, () => {
+        if (netplayRtc.get(path) === session) netplayRtc.delete(path);
+      });
     } else if (data.type === 'movie-open') {
       void openMovie(data);
     } else if (data.type === 'movie-stop' && data.id === movieId) stopMovie();
@@ -626,7 +1020,15 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   listen(document, 'keydown', keyEvent); listen(document, 'keyup', keyEvent);
   // The site's touch controls live outside the iframe, but belong to the same player.
   const gameFocused = () => !page.document.hidden && page.document.hasFocus() && !nameInput && !consoleWindow?.dialog.contains(document.activeElement);
-  const focus = () => send({type: 'focus', focused: gameFocused(), fullscreen: !!page.document.fullscreenElement});
+  const focus = () => send({type: 'focus', focused: gameFocused(), visible: !page.document.hidden,
+    fullscreen: !!page.document.fullscreenElement});
+  let lastRuntimePulse = performance.now();
+  const runtimeTimer = options.netplayEndpoint && setInterval(() => {
+    const now = performance.now();
+    send({type: 'netplay-runtime', focused: gameFocused(), visible: !page.document.hidden,
+      gapMs: Math.max(0, Math.round(now - lastRuntimePulse - 1000))});
+    lastRuntimePulse = now;
+  }, 1000);
   // Firefox's blur precedes the settled focus state when entering the iframe.
   // Focus can also return directly to the iframe after switching tabs.
   const scheduleFocus = () => queueMicrotask(focus);
@@ -689,6 +1091,11 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   listen(page, 'gamepadconnected', updateJoystickAvailability);
   listen(page, 'gamepaddisconnected', updateJoystickAvailability);
+  if (options.netplayEndpoint) {
+    const networkChanged = () => send({type: 'netplay-network-change'});
+    listen(page, 'online', networkChanged);
+    listen(page, 'offline', networkChanged);
+  }
   const pollGamepad = () => {
     updateJoystickAvailability();
     const pad = gameFocused() ? [...navigator.getGamepads()].find(p => p?.mapping === 'standard') : null;
@@ -706,8 +1113,26 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     gamepadFrame = requestAnimationFrame(pollGamepad);
   };
 
+  const startupProgress = () => {
+    if (!started && !closed && !stopping) startStartupTimer();
+  };
+  for (const target of [worker, audioWorker]) listen(target, 'message', ({data}) => {
+    if (data.type === 'startup-progress') startupProgress();
+  });
+  async function loadRuntimeAsset(name) {
+    const response = await fetch(new URL(name, base), {signal});
+    if (!response.ok) throw new Error(`Runtime download failed: ${response.status} ${name}`);
+    startupProgress();
+    const body = response.body.pipeThrough(new TransformStream({transform(chunk, controller) {
+      startupProgress();
+      controller.enqueue(chunk);
+    }}));
+    return new Response(body, {headers: {'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream'}});
+  }
   startStartupTimer();
   const shutdown = async () => {
+    clearInterval(runtimeTimer);
+    for (const session of netplayRtc.values()) session.close();
     nameInput?.finish(null);
     fileOutputConfirmation?.cancel();
     closeConsoleWindow();
@@ -720,21 +1145,28 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   };
   try {
     // Cancel/timeout must also end startup while the audio module is loading.
-    await Promise.race([context.audioWorklet.addModule(new URL('player-audio.js', base)), ready]);
+    // Download and compile once; both Workers retain their own engine memory.
+    const [wasmModule, runtimeData] = await Promise.race([Promise.all([
+      loadRuntimeAsset(`${engineName}.wasm`).then(response => WebAssembly.compileStreaming(response)),
+      loadRuntimeAsset('easyrpg-player.data').then(response => response.arrayBuffer()),
+      context.audioWorklet.addModule(new URL('player-audio.js', base)),
+    ]), ready]);
     node = new AudioWorkletNode(context, 'easyrpg-audio', {numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2]});
     const audioChannel = new MessageChannel();
     const controlChannel = new MessageChannel();
     node.port.postMessage({type: 'connect', port: audioChannel.port1}, [audioChannel.port1]);
     node.connect(masterVolume);
     audioWorker.postMessage({type: 'start', runtimeBase: base, engineName, packages: options.packages,
-      workId: options.workId, sampleRate: context.sampleRate,
+      workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData,
       audioPort: audioChannel.port2, controlPort: controlChannel.port1},
       [audioChannel.port2, controlChannel.port1]);
     const audioCapabilities = await Promise.race([audioReady, ready]);
     const offscreen = canvas.transferControlToOffscreen();
     worker.postMessage({type: 'start', canvas: offscreen, runtimeBase: base, engineName, packages: options.packages,
-      workId: options.workId, sampleRate: context.sampleRate, arguments: options.arguments || [],
+      workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData, arguments: options.arguments || [],
       netplayEndpoint: options.netplayEndpoint,
+      netplayRtc: typeof RTCPeerConnection === 'function' &&
+        typeof RTCPeerConnection.prototype.createDataChannel === 'function',
       joystickAvailable: joystickAvailable(),
       systemNameInput,
       audioPort: controlChannel.port2, audioCapabilities}, [offscreen, controlChannel.port2]);

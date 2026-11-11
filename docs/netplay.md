@@ -26,6 +26,7 @@ it so players that ignore these comments follow the offline event path.
 | `@netplay stop_directory` | Stop receiving directory updates when leaving the online menu. |
 | `@netplay fade_transfer OUT IN [DELAY]` | Set the fade durations and an optional black-screen delay before the next map's fade-in, in frames. A screen already erased starts with the delay and reveal. |
 | `@netplay state V` | Read the connection state into V. Values are 0 idle, 1 connecting, 2 waiting, 3 first seat paired, 4 second seat paired, and -1 disconnected. |
+| `@netplay join_result V` | Read the last join failure. Values are 0 unspecified, 1 room full, 2 room closed, and 3 transport unavailable. |
 | `@netplay seat V` | Read the local seat as 1 or 2 when paired, or 0 outside a pair. |
 | `@netplay send V` | Send V to the other seat when paired. |
 | `@netplay receive V R` | Consume one message and set V to its value and R to 1. When the inbox is empty, set only R to 0. |
@@ -34,7 +35,9 @@ it so players that ignore these comments follow the offline event path.
 V and R are database variable IDs. Values travel in order as signed 32-bit
 integers. The game chooses its own value ranges within its variable limits.
 The remaining seat returns to waiting when its peer leaves. A room closes
-when its last seat leaves.
+when its last seat leaves. A room service can keep a join pending while it compares
+transports. The Player measures each path and adopts the confirmed selection
+before it reports a paired state.
 
 ## Game-owned presentation
 
@@ -76,6 +79,9 @@ first update. Otherwise the project controls the reveal. The opening's
 tracked pictures remain visible while the first confirmed frames collect.
 An optional SEED variable applies on the destination map before the first
 opening update.
+After `prepare`, `@netplay track` can set live picture transforms on the
+destination map. These transforms carry into `start`; confirmed capture
+begins when the game registers its tracks in synchronized simulation.
 When both seats run the same seeded setup, `@netplay start ID SEED continue_rng`
 continues the random sequence produced by that setup. The two-argument start
 seeds the RNG at frame zero.
@@ -113,6 +119,17 @@ are published once from confirmed frames in simulation order. A picture can
 be tracked before it appears. Reserve the immediate track for effects whose
 speculative positions and lifetimes the game can safely expose.
 Use displayed samples and coordinates only for presentation decisions.
+
+Web clients request diagnostics with `diagnostics=1`. A compatible room service
+replies with `room:diagnostics:1` and accepts bounded JSON messages prefixed by
+`room:diagnostic:`. Actual input waits lasting at least 100 ms produce start
+and end events. Shorter waits contribute to the per-match counters. Five-second
+samples include simulation, confirmation, replay and received-input frames,
+unacknowledged inputs, repeated frame transmissions, channel queues, visibility,
+pause state and host/worker scheduling gaps. Match IDs, per-client sequence
+numbers and monotonic durations correlate both seats. Client wall-clock times
+remain subject to device clock differences. The client retains up to 32 pending
+events during control reconnection and reports the number discarded.
 
 During a synchronized map tick, `rm2k3.netplayContinuePicture(id)` captures
 the slot's final pose for an immediate drawing when the native picture is

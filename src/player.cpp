@@ -116,6 +116,7 @@ namespace Player {
 	bool maniac_rshift_message = false;
 	bool startup_debug_flag;
 	bool hide_title_flag;
+	bool skip_logo_flag;
 	int load_game_id;
 	int party_x_position;
 	int party_y_position;
@@ -475,6 +476,7 @@ Game_Config Player::ParseCommandLine() {
 	Game_Clock::SetTargetGameFps(DEFAULT_FPS);
 	startup_debug_flag = false;
 	hide_title_flag = false;
+	skip_logo_flag = false;
 	exit_flag = false;
 	reset_flag = false;
 	load_game_id = -1;
@@ -547,6 +549,10 @@ Game_Config Player::ParseCommandLine() {
 		if (cp.ParseNext(arg, 0, {"testplay", "--test-play"})) {
 			// Legacy RPG_RT argument - testplay
 			startup_debug_flag = true;
+			continue;
+		}
+		if (cp.ParseNext(arg, 0, "--skip-logo")) {
+			skip_logo_flag = true;
 			continue;
 		}
 		if (cp.ParseNext(arg, 0, {"hidetitle", "--hide-title"})) {
@@ -1596,6 +1602,7 @@ Engine options:
                       messages to this file.
  --new-game           Skip the title scene and start a new game directly.
  --no-log-color       Disable colors in terminal log.
+ --skip-logo          Skip startup logos without enabling TestPlay mode.
  --no-rtp             Disable support for the Runtime Package (RTP).
  --patch-antilag-switch SWITCH
                       Disables event page refreshing when the switch SWITCH is
