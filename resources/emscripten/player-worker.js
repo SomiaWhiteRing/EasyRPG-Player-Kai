@@ -504,7 +504,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   const directoryTimeout = 5000;
   let subscription, directoryDeadline = 0, nextProbe = 0, retry = 0;
   let fallback = false, nextPoll = 0, poll;
-  let rooms, identity, online = -1;
+  let rooms, identity, roomSettings, online = -1;
   let probe = 0, probeSent = 0, latency = -1;
   let resumeToken, resumeTimer, resumeDeadline = 0;
   let inputMatch, lastInputAt = 0, inputs = 0, peakInputGap = 0;
@@ -530,7 +530,8 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
   const updateDirectory = (list, local, count) => {
     if (!Array.isArray(list) || !list.every(room => Number.isSafeInteger(room?.id) &&
-        Array.isArray(room.players) && room.players.every(isIdentity))) return;
+        Array.isArray(room.players) && room.players.every(isIdentity) &&
+        (room.locked === undefined || typeof room.locked === 'boolean'))) return;
     avatarPaths.clear();
     for (const {players} of list) for (const {avatar} of players) avatarPaths.add(avatar);
     if (local) avatarPaths.add(local.avatar);
@@ -622,6 +623,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     socket = undefined;
     clear();
     state = joinResult = 0;
+    roomSettings = '';
     closeRtc();
     old?.close();
   };
@@ -657,6 +659,16 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     refreshDirectory,
     state: () => state,
     joinResult: () => joinResult,
+    roomSettings() {
+      const snapshot = roomSettings;
+      roomSettings = undefined;
+      return snapshot;
+    },
+    setPassword(enabled, code) {
+      if ((state === 2 || state === 3) && socket?.readyState === WebSocket.OPEN) {
+        socket.send('room:password:' + JSON.stringify({enabled, code}));
+      }
+    },
     rooms() {
       const now = performance.now();
       if (subscription && directoryDeadline && now >= directoryDeadline) endDirectory(subscription);
@@ -724,11 +736,12 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       engine.HEAPU8.set(bytes, pointer);
       return 1;
     },
-    open(room, mode) {
+    open(room, mode, password = null) {
       if (room < 1 || room > 999999) return;
       close();
       const address = new URL(String(room), base);
       address.searchParams.set('guest', guest);
+      address.searchParams.set('roomAccess', '1');
       if (mode) address.searchParams.set('mode', mode);
       if (rtcSupported) {
         address.searchParams.set('rtc', '1');
@@ -799,6 +812,20 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       };
       const receiveRoomMessage = ({data, target: connection}) => {
         if (socket !== connection) return;
+        if (typeof data === 'string' && data.startsWith('room:settings:')) {
+          let settings;
+          try { settings = JSON.parse(data.slice(14)); } catch { return; }
+          if (typeof settings?.enabled === 'boolean' && typeof settings.code === 'string' && settings.code.length <= 64) {
+            roomSettings = JSON.stringify({enabled: settings.enabled, code: settings.code});
+          }
+          return;
+        }
+        if (typeof data === 'string' && data.startsWith('room:rejected:')) {
+          const reasons = {full: 1, closed: 2, password_required: 4, password_incorrect: 5};
+          const reason = data.slice(14);
+          ended(Object.hasOwn(reasons, reason) ? reasons[reason] : 0);
+          return;
+        }
         if (data === 'room:diagnostics:1') {
           diagnosticsAccepted = true;
           diagnostics.flush();
@@ -925,6 +952,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         }
         const connection = socket = new WebSocket(url);
         connection.binaryType = 'arraybuffer';
+        connection.onopen = () => {
+          if (socket === connection && !resumeToken) connection.send('room:join:' + JSON.stringify({code: password}));
+        };
         connection.onmessage = receiveRoomMessage;
         connection.onclose = connection.onerror = () => {
           if (socket !== connection) return;

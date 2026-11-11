@@ -19,14 +19,16 @@ it so players that ignore these comments follow the offline event path.
 | `@netplay available V` | Set variable V to 1 when the Web host supplies a relay, or 0 otherwise. |
 | `@netplay open V` | Open the room numbered by V. Valid room numbers range from 1 to 999999. |
 | `@netplay create V` | Open a new room numbered by V. An occupied room is rejected. |
-| `@netplay join V` | Join an existing room numbered by V. An absent or full room is rejected. |
-| `@netplay rooms T` | Read the latest room directory into Maniac string T. Each row has a numeric `id` and a `players` array with `name` and `avatar` fields. |
+| `@netplay join V [T]` | Join an existing room numbered by V, optionally using the password in Maniac string T. Admission is checked before occupying a seat. |
+| `@netplay rooms T` | Read the latest room directory into Maniac string T. Each row has a numeric `id`, a `players` array with `name` and `avatar` fields, and an optional `locked` flag. |
+| `@netplay room_settings T` | Read the latest private room settings into Maniac string T. The password settings are `{enabled, code}`. An empty string clears the settings when leaving. |
+| `@netplay password V T` | Ask the room service to set password enforcement from V and use the password in Maniac string T. Only the current host can change it. Wait for the room settings snapshot before updating the display. |
 | `@netplay identity T` | Read the local directory profile as a JSON object with `name` and `avatar` fields. |
 | `@netplay online V` | Read the current number of directory sessions, or -1 if unavailable. The room list request opens the directory subscription. |
 | `@netplay stop_directory` | Stop receiving directory updates when leaving the online menu. |
 | `@netplay fade_transfer OUT IN [DELAY]` | Set the fade durations and an optional black-screen delay before the next map's fade-in, in frames. A screen already erased starts with the delay and reveal. |
 | `@netplay state V` | Read the connection state into V. Values are 0 idle, 1 connecting, 2 waiting, 3 first seat paired, 4 second seat paired, and -1 disconnected. |
-| `@netplay join_result V` | Read the last join failure. Values are 0 unspecified, 1 room full, 2 room closed, and 3 transport unavailable. |
+| `@netplay join_result V` | Read the last join failure. Values are 0 unspecified, 1 room full, 2 room closed, 3 transport unavailable, 4 password required, and 5 incorrect password. |
 | `@netplay seat V` | Read the local seat as 1 or 2 when paired, or 0 outside a pair. |
 | `@netplay send V` | Send V to the other seat when paired. |
 | `@netplay receive V R` | Consume one message and set V to its value and R to 1. When the inbox is empty, set only R to 0. |
@@ -45,6 +47,8 @@ With netplay enabled, a Maniac JavaScript event can register
 `rm2k3.setNetplayOverlay(draw)`. The callback receives the canvas, its width,
 its height, and the current monotonic time in milliseconds. Pass null when
 leaving the online flow. Keep event and simulation updates in event commands.
+The overlay is drawn below native message and number-input windows. Games can use
+the regular RPG Maker number-input event while their room menu remains visible.
 
 | Canvas method | Operation |
 | --- | --- |
