@@ -268,6 +268,9 @@ BitmapFont::BitmapFont(std::string_view name, function_type func)
 Rect BitmapFont::vGetSize(char32_t glyph) const {
 	if (current_style.size > 0 && current_style.size < HEIGHT) {
 		const auto small = GetSmallGlyph(glyph);
+		if (!small.first) {
+			return {0, 0, std::max(1, current_style.size / 2), current_style.size};
+		}
 		if (small.first->width == 0) return {};
 		// Zfull's native 9px design has an 8px Han advance.
 		const int cell_width = current_style.size == 9 ? 8 : current_style.size;
@@ -299,6 +302,8 @@ std::pair<const SmallPixelFallback::Glyph*, int> BitmapFont::GetSmallGlyph(char3
 	if (auto* small = find(font_11, glyph)) return {small, 11};
 	if (auto* small = find(font_9, glyph)) return {small, 9};
 	if (auto* small = find(font_8, glyph)) return {small, 8};
+	// The regular bitmap fonts cover half-width kana and punctuation.
+	if (glyph >= U'\uff61' && glyph <= U'\uff9f') return {nullptr, HEIGHT};
 	return {find(font_10, U'?'), 10};
 }
 
@@ -319,14 +324,24 @@ Font::GlyphRet BitmapFont::vRender(char32_t glyph) const {
 	auto* data = reinterpret_cast<uint8_t*>(glyph_bm->pixels());
 	const int pitch = glyph_bm->pitch();
 	const bool keep_pixels = small.first && height >= native_height;
+	const bool shrink_legacy = !small.first && height < native_height;
 	for (int y = 0; y < height; ++y) {
 		const int sy = keep_pixels ? y - (height - native_height) / 2 : y * native_height / height;
 		if (sy < 0 || sy >= native_height) continue;
-		const auto row = small.first ? small.first->rows[sy] : legacy->data[sy];
+		auto row = small.first ? small.first->rows[sy] : legacy->data[sy];
+		if (shrink_legacy) {
+			// A thin stroke can disappear if we sample only one source pixel.
+			for (int source_y = sy + 1; source_y < (y + 1) * native_height / height; ++source_y) {
+				row |= legacy->data[source_y];
+			}
+		}
 		for (int x = 0; x < width; ++x) {
 			const int sx = keep_pixels && width >= native_width
 				? x - (width - native_width) / 2 : x * native_width / width;
-			if (sx >= 0 && sx < native_width && (row & (1 << sx))) data[y * pitch + x] = 255;
+			if (sx < 0 || sx >= native_width) continue;
+			const int end = shrink_legacy ? (x + 1) * native_width / width : sx + 1;
+			const auto mask = (1u << end) - (1u << sx);
+			if (row & mask) data[y * pitch + x] = 255;
 		}
 	}
 	return {glyph_bm, {width, 0}, {0, 0}};
