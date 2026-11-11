@@ -332,6 +332,7 @@ struct Match {
 	bool announced = false;
 	bool peer_ready = false;
 	bool started = false;
+	bool stall_exit = false;
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
 };
@@ -340,7 +341,14 @@ std::unique_ptr<Match> match;
 int prepare_map = 0;
 int prepare_fade = 0;
 std::optional<uint32_t> prepare_seed;
+std::map<int, Game_Netplay::PictureView> prepare_picture_transforms;
 Game_Netplay::TransferFade transfer_fade;
+
+void ClearPreparation() {
+	prepare_map = 0;
+	prepare_seed.reset();
+	prepare_picture_transforms.clear();
+}
 
 void SeedRng(uint32_t seed) {
 	Main_Data::maniac_random_seed = seed;
@@ -424,6 +432,40 @@ void Game_Netplay::Command(std::string_view comment) {
 #endif
 		return;
 	}
+#ifdef PLAYER_WEB
+	if (command == "track" && (frame || prepare_map > 0)) {
+		constexpr int confirmed = 1, fallback = 8, record = 16, per_pose = 32, unseen = 64;
+		int last_var, flags;
+		if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 127 ||
+				(flags & 6) == 6 || ((flags & confirmed) && (flags & (fallback | unseen)))) return;
+		const int first = vars.Get(variable), last = vars.Get(last_var);
+		if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
+		PictureView view;
+		view.reflection = (flags & 6) >> 1;
+		view.fallback = (flags & (fallback | unseen)) != 0;
+		view.draw_live = (flags & record) && !(flags & (confirmed | fallback | unseen));
+		view.per_pose = (flags & (per_pose | unseen)) != 0;
+		view.unseen_fallback = (flags & unseen) != 0;
+		for (int* offset : {&view.offset_x, &view.offset_y, &view.confirmed_offset_x, &view.confirmed_offset_y}) {
+			if (!view.fallback && offset == &view.confirmed_offset_x) break;
+			int offset_var;
+			if (!(args >> offset_var)) break;
+			if (!vars.IsValid(offset_var)) return;
+			*offset = std::clamp(vars.Get(offset_var), -4096, 4096);
+		}
+		auto& transforms = frame ? frame->picture_transforms : prepare_picture_transforms;
+		for (int id = first; id <= last; ++id) {
+			if (frame) {
+				if (flags & (confirmed | fallback | record | unseen)) frame->captured_pictures.insert(id);
+				else frame->captured_pictures.erase(id);
+			}
+			if (view.reflection || view.offset_x || view.offset_y || view.fallback || view.draw_live || view.per_pose)
+				transforms.insert_or_assign(id, view);
+			else transforms.erase(id);
+		}
+		return;
+	}
+#endif
 	if (frame) {
 		if (command == "input") {
 			int guest;
@@ -496,33 +538,6 @@ void Game_Netplay::Command(std::string_view comment) {
 			} else if (const auto birth = frame->picture_births.find(picture); birth != frame->picture_births.end()) {
 				frame->effects.picture_retirements.insert_or_assign(picture, birth->second);
 			}
-		} else if (command == "track") {
-			constexpr int confirmed = 1, fallback = 8, record = 16, per_pose = 32, unseen = 64;
-			int last_var, flags;
-			if (!(args >> last_var >> flags) || !vars.IsValid(last_var) || flags < 0 || flags > 127 ||
-					(flags & 6) == 6 || ((flags & confirmed) && (flags & (fallback | unseen)))) return;
-			const int first = vars.Get(variable), last = vars.Get(last_var);
-			if (first <= 0 || first > last || last > Main_Data::game_pictures->GetMaxPictureId()) return;
-			PictureView view;
-			view.reflection = (flags & 6) >> 1;
-			view.fallback = (flags & (fallback | unseen)) != 0;
-			view.draw_live = (flags & record) && !(flags & (confirmed | fallback | unseen));
-			view.per_pose = (flags & (per_pose | unseen)) != 0;
-			view.unseen_fallback = (flags & unseen) != 0;
-			for (int* offset : {&view.offset_x, &view.offset_y, &view.confirmed_offset_x, &view.confirmed_offset_y}) {
-				if (!view.fallback && offset == &view.confirmed_offset_x) break;
-				int offset_var;
-				if (!(args >> offset_var)) break;
-				if (!vars.IsValid(offset_var)) return;
-				*offset = std::clamp(vars.Get(offset_var), -4096, 4096);
-			}
-			for (int id = first; id <= last; ++id) {
-				if (flags & (confirmed | fallback | record | unseen)) frame->captured_pictures.insert(id);
-				else frame->captured_pictures.erase(id);
-				if (view.reflection || view.offset_x || view.offset_y || view.fallback || view.draw_live || view.per_pose)
-					frame->picture_transforms.insert_or_assign(id, view);
-				else frame->picture_transforms.erase(id);
-			}
 		}
 		return;
 	}
@@ -537,6 +552,18 @@ void Game_Netplay::Command(std::string_view comment) {
 		write(variable, ReadTransportState());
 #else
 		write(variable, 0);
+#endif
+	} else if (command == "join_result") {
+#ifdef PLAYER_WEB
+		write(variable, EM_ASM_INT({ return Module.netplay?.joinResult?.() ?? 0; }));
+#else
+		write(variable, 0);
+#endif
+	} else if (command == "online") {
+#ifdef PLAYER_WEB
+		write(variable, EM_ASM_INT({ return Module.netplay?.online?.() ?? -1; }));
+#else
+		write(variable, -1);
 #endif
 	} else if (command == "receive") {
 		int received;
@@ -567,12 +594,12 @@ void Game_Netplay::Command(std::string_view comment) {
 	} else if (command == "seed" && ReadTransportState() >= 3) {
 		SeedRng(static_cast<uint32_t>(vars.Get(variable)));
 	} else if (command == "prepare" && !match && ReadTransportState() >= 3) {
+		ClearPreparation();
 		prepare_map = std::max(0, vars.Get(variable));
 		int frames = 0;
 		args >> frames;
 		prepare_fade = std::max(0, frames);
 		int seed;
-		prepare_seed.reset();
 		if (args >> seed && vars.IsValid(seed)) prepare_seed = static_cast<uint32_t>(vars.Get(seed));
 	} else if (command == "start" && !match) {
 		int seed;
@@ -582,10 +609,14 @@ void Game_Netplay::Command(std::string_view comment) {
 		int buffer_variable;
 		const int buffer = args >> buffer_variable && vars.IsValid(buffer_variable)
 			? std::clamp(vars.Get(buffer_variable), 1, 60) : 1;
+		std::string stall_mode;
+		args >> stall_mode;
 		const int state = ReadTransportState();
 		if (state >= 3 && vars.Get(variable) > 0) {
 			match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), state - 3, rng_mode == "continue_rng", buffer);
-			prepare_map = 0;
+			match->stall_exit = stall_mode == "stall_exit";
+			if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
+			ClearPreparation();
 		}
 	}
 #endif
@@ -594,10 +625,25 @@ void Game_Netplay::Command(std::string_view comment) {
 void Game_Netplay::Close() {
 #ifdef PLAYER_WEB
 	match.reset();
-	prepare_map = 0;
-	prepare_seed.reset();
+	ClearPreparation();
 	transfer_fade = {};
 	EM_ASM({ Module.netplay?.close(); });
+#endif
+}
+
+bool Game_Netplay::InMatch() {
+#ifdef PLAYER_WEB
+	return match != nullptr;
+#else
+	return false;
+#endif
+}
+
+bool Game_Netplay::WaitingForInput() {
+#ifdef PLAYER_WEB
+	return match && match->stall_exit && !match->world.stopping && match->timeline.WaitingForInput();
+#else
+	return false;
 #endif
 }
 
@@ -621,8 +667,7 @@ bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
 #ifdef PLAYER_WEB
 	if (!PreparesMap(Game_Map::GetMapId())) return false;
 	if (ReadTransportState() < 3) {
-		prepare_map = 0;
-		prepare_seed.reset();
+		ClearPreparation();
 		return false;
 	}
 	if (prepare_seed) {
@@ -684,6 +729,10 @@ bool Game_Netplay::UpdateMap() {
 		match->peer_ready = true;
 	}
 	if (!match->peer_ready) return true;
+	if (WaitingForInput() && Input::IsTriggered(Input::CANCEL)) {
+		Close();
+		return true;
+	}
 	if (!match->started && !match->continue_rng) {
 		SeedRng(static_cast<uint32_t>(match->seed));
 	}
@@ -755,9 +804,12 @@ bool Game_Netplay::UsesConfirmedPicture(int id, const PictureView* captured_view
 Game_Netplay::PictureView Game_Netplay::PictureTransform(int id, const PictureView* captured_view) {
 	PictureView view = captured_view ? *captured_view : PictureView{};
 #ifdef PLAYER_WEB
+	const auto& transforms = match ? match->world.picture_transforms : prepare_picture_transforms;
+	if (!captured_view && !transforms.empty() && (match || PreparesMap(Game_Map::GetMapId()))) {
+		const auto it = transforms.find(id);
+		if (it != transforms.end()) view = it->second;
+	}
 	if (match) {
-		const auto it = match->world.picture_transforms.find(id);
-		if (!captured_view && it != match->world.picture_transforms.end()) view = it->second;
 		const auto projection = match->world.projections.find(id);
 		if (projection != match->world.projections.end()) {
 			const auto& value = projection->second;

@@ -96,6 +96,7 @@ public:
 			JS_SetPropertyStr(context, rm2k3, "netplayTime", JS_NewCFunction(context, NetplayTime, "netplayTime", 0));
 			JS_SetPropertyStr(context, rm2k3, "netplayFade", JS_NewCFunction(context, NetplayFade, "netplayFade", 2));
 			JS_SetPropertyStr(context, rm2k3, "netplayButtons", JS_NewCFunction(context, NetplayButtons, "netplayButtons", 1));
+			JS_SetPropertyStr(context, rm2k3, "netplayWaitingForInput", JS_NewCFunction(context, NetplayWaitingForInput, "netplayWaitingForInput", 0));
 			JS_SetPropertyStr(context, rm2k3, "netplayContinuePicture",
 				JS_NewCFunction(context, NetplayContinuePicture, "netplayContinuePicture", 4));
 			JS_SetPropertyStr(context, rm2k3, "setNetplayProjection",
@@ -231,6 +232,10 @@ private:
 
 	static JSValue NetplayTime(JSContext* context, JSValueConst, int, JSValueConst*) {
 		return JS_NewFloat64(context, NetplayTimeMs());
+	}
+
+	static JSValue NetplayWaitingForInput(JSContext* context, JSValueConst, int, JSValueConst*) {
+		return JS_NewBool(context, Game_Netplay::WaitingForInput());
 	}
 
 	static JSValue NetplayButtons(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {

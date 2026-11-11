@@ -16,6 +16,8 @@ namespace Game_Netplay {
 	// Called only for an explicitly enabled project.
 	void Command(std::string_view comment);
 	void Close();
+	bool InMatch();
+	bool WaitingForInput();
 	struct TransferFade {
 		int erase = 0;
 		int show = 0;

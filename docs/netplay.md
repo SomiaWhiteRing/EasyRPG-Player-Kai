@@ -7,6 +7,9 @@ Place the declaration in the project root next to RPG_RT.ldb.
 Enabled=1
 ```
 
+Netplay-enabled projects default to running when focus is lost. An explicit
+`Pause when focus lost` setting still takes precedence.
+
 The game uses regular RPG Maker comment commands for room controls. Initialize
 the availability variable to zero in a regular event command before querying
 it so players that ignore these comments follow the offline event path.
@@ -19,9 +22,11 @@ it so players that ignore these comments follow the offline event path.
 | `@netplay join V` | Join an existing room numbered by V. An absent or full room is rejected. |
 | `@netplay rooms T` | Read the latest room directory into Maniac string T. Each row has a numeric `id` and a `players` array with `name` and `avatar` fields. |
 | `@netplay identity T` | Read the local directory profile as a JSON object with `name` and `avatar` fields. |
+| `@netplay online V` | Read the current number of directory sessions, or -1 if unavailable. The room list request opens the directory subscription. |
 | `@netplay stop_directory` | Stop receiving directory updates when leaving the online menu. |
 | `@netplay fade_transfer OUT IN [DELAY]` | Set the fade durations and an optional black-screen delay before the next map's fade-in, in frames. A screen already erased starts with the delay and reveal. |
 | `@netplay state V` | Read the connection state into V. Values are 0 idle, 1 connecting, 2 waiting, 3 first seat paired, 4 second seat paired, and -1 disconnected. |
+| `@netplay join_result V` | Read the last join failure. Values are 0 unspecified, 1 room full, 2 room closed, and 3 transport unavailable. |
 | `@netplay seat V` | Read the local seat as 1 or 2 when paired, or 0 outside a pair. |
 | `@netplay send V` | Send V to the other seat when paired. |
 | `@netplay receive V R` | Consume one message and set V to its value and R to 1. When the inbox is empty, set only R to 0. |
@@ -30,7 +35,9 @@ it so players that ignore these comments follow the offline event path.
 V and R are database variable IDs. Values travel in order as signed 32-bit
 integers. The game chooses its own value ranges within its variable limits.
 The remaining seat returns to waiting when its peer leaves. A room closes
-when its last seat leaves.
+when its last seat leaves. A room service can keep a join pending while it compares
+transports. The Player measures each path and adopts the confirmed selection
+before it reports a paired state.
 
 ## Game-owned presentation
 
@@ -72,6 +79,9 @@ first update. Otherwise the project controls the reveal. The opening's
 tracked pictures remain visible while the first confirmed frames collect.
 An optional SEED variable applies on the destination map before the first
 opening update.
+After `prepare`, `@netplay track` can set live picture transforms on the
+destination map. These transforms carry into `start`; confirmed capture
+begins when the game registers its tracks in synchronized simulation.
 When both seats run the same seeded setup, `@netplay start ID SEED continue_rng`
 continues the random sequence produced by that setup. The two-argument start
 seeds the RNG at frame zero.
@@ -100,7 +110,8 @@ starts or resumes. The default is one frame.
 | `@netplay stop` | End the synchronized map after this frame is confirmed. The next map tick resumes regular event processing at the confirmed state. |
 
 Parallel map and common events advance on the synchronized clock. Use the
-synchronized input variables for rules. The snapshot covers map events,
+synchronized input variables for rules. Fast-forward is suspended during
+a synchronized match. The snapshot covers map events,
 switches, variables, seeded randomness, and resource pictures. Transitions,
 foreground events, interactive messages, save I/O, and mutable images belong
 outside the synchronized map. Play BGM, fade BGM and play sound event commands

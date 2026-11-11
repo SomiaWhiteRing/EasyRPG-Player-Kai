@@ -147,9 +147,146 @@ function createRenderer(canvas) {
   };
 }
 
-function createNetplay(endpoint) {
+function closeNetplayPort(port) {
+  port?.postMessage({type: 'close'});
+  port?.close();
+}
+
+function createNetplayRouteSelection({round, paths, offer}, {sendControl, sendSocket, socketReady, receive, activate, disconnect}) {
+  const candidates = new Map();
+  let selected, active;
+  const send = (type, path, fields) => sendControl({type, round, path, ...fields});
+  const sendData = (candidate, data) => {
+    if (candidate.port) candidate.port.postMessage({type: 'data', data}, [data]);
+    else sendSocket(data);
+  };
+  const stopProbe = candidate => {
+    clearInterval(candidate.interval);
+    clearTimeout(candidate.deadline);
+  };
+  const dispose = candidate => {
+    stopProbe(candidate);
+    closeNetplayPort(candidate.port);
+    candidates.delete(candidate.id);
+  };
+  const isOpen = candidate => candidate?.id === 'websocket' ? socketReady() : candidate?.open;
+  const receiveProbe = (candidate, data) => {
+    if (!(data instanceof ArrayBuffer) || data.byteLength !== 10) return false;
+    if (!candidate || active) return true;
+    const packet = new DataView(data);
+    const kind = packet.getUint8(0), sequence = packet.getUint8(1);
+    if (packet.getFloat64(2, true) !== round) return true;
+    if (kind === 128) {
+      packet.setUint8(0, 129);
+      sendData(candidate, data);
+    } else if (kind === 129 && candidate.sentAt?.[sequence] !== undefined && candidate.rtts[sequence] === null) {
+      const now = performance.now();
+      if (now > candidate.probeUntil) return true;
+      candidate.rtts[sequence] = Math.round(now - candidate.sentAt[sequence]);
+      if (candidate.lastReply !== undefined) candidate.longestGap = Math.max(candidate.longestGap, now - candidate.lastReply);
+      candidate.lastReply = now;
+    }
+    return true;
+  };
+
+  for (const {id, iceServers, relayOnly} of paths) {
+    const candidate = {id, open: id === 'websocket', early: []};
+    candidates.set(id, candidate);
+    if (id === 'websocket') {
+      send('ready', id);
+      continue;
+    }
+    const {port1, port2} = new MessageChannel();
+    candidate.port = port1;
+    port1.onmessage = ({data}) => {
+      if (candidates.get(id) !== candidate) return;
+      if (data.type === 'open') {
+        candidate.open = true;
+        send('ready', id);
+      } else if (data.type === 'signal') {
+        send('signal', id, {value: data.value});
+      } else if (data.type === 'data') {
+        if (receiveProbe(candidate, data.data)) return;
+        if (active === candidate) receive(data.data);
+        else if (selected === candidate && candidate.early.length < 256) candidate.early.push(data.data);
+      } else if (data.type === 'closed') {
+        send('failed', id);
+        dispose(candidate);
+        if (active === candidate) disconnect();
+      } else if (data.type === 'ice-pair' && data.final && active === candidate) {
+        send('ice-pair', id, {value: data.value});
+      }
+    };
+    postMessage({type: 'netplay-rtc', path: id, port: port2, iceServers, offer, relayOnly, compareRelay: false}, [port2]);
+  }
+
+  return {
+    round,
+    close() {
+      for (const candidate of candidates.values()) dispose(candidate);
+    },
+    receiveSocket(data) {
+      return receiveProbe(candidates.get('websocket'), data);
+    },
+    receive(message) {
+      const {type, path} = message;
+      if (message.round !== round || active) return;
+      const candidate = candidates.get(path);
+      if (type === 'signal') {
+        candidate?.port?.postMessage({type: 'signal', value: message.value});
+      } else if (type === 'probe' && isOpen(candidate) && !candidate.rtts) {
+        const {samples, intervalMs, durationMs} = message;
+        if (!Number.isSafeInteger(samples) || samples < 1 || samples > 32 ||
+            !Number.isSafeInteger(intervalMs) || intervalMs < 1 ||
+            !Number.isSafeInteger(durationMs) || durationMs < samples * intervalMs || durationMs > 5_000) return;
+        candidate.sentAt = [];
+        candidate.probeUntil = performance.now() + durationMs;
+        candidate.rtts = Array(samples).fill(null);
+        candidate.longestGap = 0;
+        const sendSample = () => {
+          const index = candidate.sentAt.length;
+          const packet = new DataView(new ArrayBuffer(10));
+          packet.setUint8(0, 128);
+          packet.setUint8(1, index);
+          packet.setFloat64(2, round, true);
+          candidate.sentAt.push(performance.now());
+          sendData(candidate, packet.buffer);
+          if (candidate.sentAt.length === samples) clearInterval(candidate.interval);
+        };
+        candidate.interval = setInterval(sendSample, intervalMs);
+        candidate.deadline = setTimeout(() => {
+          stopProbe(candidate);
+          candidate.sentAt = undefined;
+          send('measurement', path, {rtts: candidate.rtts, longestGapMs: Math.round(candidate.longestGap)});
+        }, durationMs);
+        sendSample();
+      } else if (type === 'select') {
+        if (selected) selected.early.length = 0;
+        selected = candidate;
+        send(isOpen(candidate) ? 'accept' : 'failed', path);
+      } else if (type === 'commit' && selected === candidate && candidate) {
+        if (!isOpen(candidate)) {
+          send('failed', path);
+          disconnect();
+          return;
+        }
+        active = candidate;
+        for (const other of candidates.values()) {
+          if (other === active) stopProbe(other);
+          else dispose(other);
+        }
+        activate(active.port, round);
+        for (const packet of active.early) receive(packet);
+        active.early.length = 0;
+        active.port?.postMessage({type: 'ice-pair'});
+      }
+    },
+  };
+}
+
+function createNetplay(endpoint, rtcSupported) {
   if (!endpoint) return;
-  const base = new URL(endpoint);
+  const base = rtcSupported ? new URL('rtc/', endpoint) : new URL(endpoint);
   if (base.protocol === 'https:') base.protocol = 'wss:';
   else if (base.protocol === 'http:') base.protocol = 'ws:';
   else if (base.protocol !== 'wss:' && base.protocol !== 'ws:') return;
@@ -158,14 +295,20 @@ function createNetplay(endpoint) {
   directory.searchParams.set('guest', guest);
   const directoryHttp = new URL(directory);
   directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
-  let socket, state = 0;
-  let subscription, retry = 0, fallback = false, nextPoll = 0, polling = false;
-  let rooms, identity;
-  let probe = 0, probeSent = 0, latency = -1, pendingProbe;
+  let socket, state = 0, joinResult = 0;
+  let rtcPort, rtcRound, rtcSelected = false, routeSelection;
+  const directoryTimeout = 5000;
+  let subscription, directoryDeadline = 0, nextProbe = 0, retry = 0;
+  let fallback = false, nextPoll = 0, poll;
+  let rooms, identity, online = -1;
+  let probe = 0, probeSent = 0, latency = -1;
+  let resumeToken, resumeTimer, resumeDeadline = 0;
+  let inputMatch, lastInputAt = 0, inputs = 0, peakInputGap = 0;
+  let sentMatch = 0, sentFrame = -1;
   const avatarPaths = new Set(), avatars = new Map();
   const inbox = [], frames = [];
   const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
-  const updateDirectory = (list, local) => {
+  const updateDirectory = (list, local, count) => {
     if (!Array.isArray(list) || !list.every(room => Number.isSafeInteger(room?.id) &&
         Array.isArray(room.players) && room.players.every(isIdentity))) return;
     avatarPaths.clear();
@@ -173,74 +316,135 @@ function createNetplay(endpoint) {
     if (local) avatarPaths.add(local.avatar);
     rooms = JSON.stringify(list);
     if (local) identity = JSON.stringify(local);
+    online = Number.isInteger(count) && count >= 0 && count <= 0x7fffffff ? count : -1;
+    return true;
+  };
+  const endDirectory = connection => {
+    if (subscription !== connection) return;
+    subscription = undefined;
+    if (!fallback) {
+      rooms = '';
+      online = -1;
+    }
+    fallback = true;
+    retry = performance.now() + 2000;
+    connection.close();
   };
   const subscribe = () => {
     const connection = subscription = new WebSocket(directory);
-    const ended = () => {
-      if (subscription !== connection) return;
-      subscription = undefined;
-      fallback = true;
-      retry = performance.now() + 2000;
-      connection.close();
-    };
-    connection.onerror = connection.onclose = ended;
+    directoryDeadline = performance.now() + directoryTimeout;
+    nextProbe = 0;
+    connection.onerror = connection.onclose = () => endDirectory(connection);
     connection.onmessage = ({data}) => {
       if (subscription !== connection || typeof data !== 'string') return;
+      if (data === 'directory:pong') {
+        if (nextProbe) {
+          directoryDeadline = 0;
+          nextProbe = performance.now() + directoryTimeout;
+        }
+        return;
+      }
       let snapshot;
       try { snapshot = JSON.parse(data); } catch { return; }
-      if (!isIdentity(snapshot?.identity)) return;
+      if (!isIdentity(snapshot?.identity) || !updateDirectory(snapshot.rooms, snapshot.identity, snapshot.online)) return;
       fallback = false;
-      updateDirectory(snapshot.rooms, snapshot.identity);
+      directoryDeadline = 0;
+      nextProbe = performance.now() + directoryTimeout;
+      poll?.abort();
     };
   };
   const stopDirectory = () => {
     const previous = subscription;
     subscription = undefined;
+    poll?.abort();
+    poll = undefined;
     fallback = false;
     retry = 0;
+    nextPoll = 0;
     rooms = identity = undefined;
+    online = -1;
     previous?.close();
+  };
+  const refreshDirectory = () => {
+    stopDirectory();
+    rooms = '';
+    fallback = true;
   };
   const clear = () => {
     inbox.length = 0;
     frames.length = 0;
     latency = -1;
-    pendingProbe = undefined;
+    inputMatch = undefined;
+    lastInputAt = inputs = peakInputGap = 0;
+    sentMatch = 0;
+    sentFrame = -1;
+  };
+  const closeRtc = () => {
+    if (routeSelection) routeSelection.close();
+    else closeNetplayPort(rtcPort);
+    routeSelection = undefined;
+    rtcPort = undefined;
+    rtcRound = undefined;
+    rtcSelected = false;
   };
   const close = () => {
+    clearTimeout(resumeTimer);
+    resumeToken = undefined;
+    resumeDeadline = 0;
     const old = socket;
     socket = undefined;
     clear();
-    state = 0;
+    state = joinResult = 0;
+    closeRtc();
     old?.close();
   };
   const send = (...values) => {
-    if (state < 3 || socket.readyState !== WebSocket.OPEN) return;
+    if (state < 3) return;
+    const direct = rtcSelected && (values.length > 1 || resumeToken);
+    if (direct ? !rtcPort : socket?.readyState !== WebSocket.OPEN) return;
     const bytes = new DataView(new ArrayBuffer(values.length * 4));
     values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
-    socket.send(bytes.buffer);
-  };
-  const echoProbe = () => {
-    if (pendingProbe === undefined) return;
-    send(1, pendingProbe);
-    pendingProbe = undefined;
+    if (values.length === 3) [sentMatch, sentFrame] = values;
+    if (direct) {
+      rtcPort?.postMessage({type: 'data', data: bytes.buffer}, [bytes.buffer]);
+    } else {
+      socket.send(bytes.buffer);
+    }
   };
   return {
     close,
     send,
     stopDirectory,
-    state() {
-      echoProbe();
-      return state;
-    },
+    refreshDirectory,
+    state: () => state,
+    joinResult: () => joinResult,
     rooms() {
-      if (!subscription && performance.now() >= retry) subscribe();
-      if (fallback && !polling && performance.now() >= nextPoll) {
-        polling = true;
-        nextPoll = performance.now() + 1200;
-        fetch(directoryHttp, {credentials: 'same-origin', cache: 'no-store'}).then(async response => {
-          if (response.ok && fallback) updateDirectory(await response.json());
-        }).catch(() => {}).finally(() => { polling = false; });
+      const now = performance.now();
+      if (subscription && directoryDeadline && now >= directoryDeadline) endDirectory(subscription);
+      if (subscription?.readyState === WebSocket.OPEN && !directoryDeadline && now >= nextProbe) {
+        directoryDeadline = now + directoryTimeout;
+        subscription.send('directory:ping');
+      }
+      if (!subscription && now >= retry) subscribe();
+      if (fallback && !poll && now >= nextPoll) {
+        const request = poll = new AbortController();
+        const deadline = setTimeout(() => request.abort(), directoryTimeout);
+        nextPoll = now + 1200;
+        fetch(directoryHttp, {credentials: 'same-origin', cache: 'no-store', signal: request.signal}).then(async response => {
+          const list = response.ok ? await response.json() : undefined;
+          if (poll === request && fallback && !updateDirectory(list)) {
+            rooms = '';
+            online = -1;
+          }
+        }).catch(() => {
+          if (poll === request && fallback) {
+            rooms = '';
+            online = -1;
+          }
+        }).finally(() => {
+          clearTimeout(deadline);
+          if (poll === request) poll = undefined;
+        });
       }
       const snapshot = rooms;
       rooms = undefined;
@@ -251,8 +455,8 @@ function createNetplay(endpoint) {
       identity = undefined;
       return snapshot;
     },
+    online: () => online,
     peerLatency(poll, reset) {
-      echoProbe();
       if (reset) latency = -1;
       if (poll && state >= 3) {
         probe = (probe + 1) | 0;
@@ -287,37 +491,185 @@ function createNetplay(endpoint) {
       const address = new URL(String(room), base);
       address.searchParams.set('guest', guest);
       if (mode) address.searchParams.set('mode', mode);
-      const connection = socket = new WebSocket(address);
+      if (rtcSupported) {
+        address.searchParams.set('rtc', '1');
+        address.searchParams.set('rtcProbe', '2');
+      }
+      address.searchParams.set('heartbeat', '1');
+      address.searchParams.set('inputStats', '1');
+      address.searchParams.set('routeSelection', '1');
+      if (rtcSupported) address.searchParams.set('rtcResume', '1');
+      const sendRtc = value => {
+        if (socket?.readyState === WebSocket.OPEN) {
+          socket.send(rtcRound === undefined ? 'rtc:' + value : `rtc:round:${rtcRound}:${value}`);
+        }
+      };
       state = 1;
-      connection.binaryType = 'arraybuffer';
-      const ended = () => {
-        if (socket !== connection) return;
+      const ended = (result = 0) => {
+        const inRoom = state >= 2;
         close();
         state = -1;
+        joinResult = result;
+        if (inRoom || result) refreshDirectory();
       };
-      connection.onclose = connection.onerror = ended;
-      connection.onmessage = ({data}) => {
-        if (socket !== connection) return;
-        if (data === '2' || data === '3' || data === '4') {
-          if (data === '2') clear();
-          state = Number(data);
-          nextPoll = 0;
-        } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
-          inbox.push(new DataView(data).getInt32(0, true));
-        } else if (data instanceof ArrayBuffer && data.byteLength === 8) {
+      const receiveMatchData = data => {
+        if (data instanceof ArrayBuffer && data.byteLength === 8) {
           const packet = new DataView(data), kind = packet.getInt32(0, true), number = packet.getInt32(4, true);
-          if (kind === 0) pendingProbe = number;
+          if (kind === 0) send(1, number);
           else if (kind === 1 && number === probe) latency = Math.trunc(performance.now() - probeSent);
         } else if (data instanceof ArrayBuffer && data.byteLength === 12 && frames.length < 256) {
           const packet = new DataView(data);
-          frames.push([packet.getInt32(0, true), packet.getInt32(4, true), packet.getInt32(8, true)]);
+          const match = packet.getInt32(0, true), frame = packet.getInt32(4, true), now = performance.now();
+          if (frame >= 0) {
+            if (inputMatch === match && lastInputAt) peakInputGap = Math.max(peakInputGap, now - lastInputAt);
+            inputMatch = match;
+            lastInputAt = now;
+            inputs++;
+          }
+          frames.push([match, frame, packet.getInt32(8, true)]);
+        } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
+          inbox.push(new DataView(data).getInt32(0, true));
         } else {
           ended();
         }
       };
+      const sendRouteControl = message => {
+        if (socket?.readyState === WebSocket.OPEN) socket.send('route:' + JSON.stringify(message));
+      };
+      const receiveRoomMessage = ({data, target: connection}) => {
+        if (socket !== connection) return;
+        if (data instanceof ArrayBuffer && data.byteLength === 10) {
+          routeSelection?.receiveSocket(data);
+          return;
+        }
+        if (data === 'room:ping' || data === 'room:ping:stats') {
+          connection.send('room:pong');
+          if (data === 'room:ping:stats' && inputs) {
+            connection.send(`room:input:${inputs}:${Math.round(peakInputGap)}:${latency}`);
+          }
+        } else if (typeof data === 'string' && data.startsWith('route:')) {
+          let message;
+          try { message = JSON.parse(data.slice(6)); } catch { return; }
+          if (message?.type === 'rejected') {
+            if (state === 1 && (message.round === undefined || message.round === routeSelection?.round)) {
+              const reasons = {full: 1, closed: 2, transport: 3};
+              ended(Object.hasOwn(reasons, message.reason) ? reasons[message.reason] : 0);
+            }
+          } else if (message?.type === 'start' && (state === 1 || state === 2)) {
+            if (!Number.isSafeInteger(message.round) || !Array.isArray(message.paths) || message.paths.length > 3 ||
+                !message.paths.every(path => ['websocket', 'direct', 'turn'].includes(path?.id))) return;
+            closeRtc();
+            routeSelection = createNetplayRouteSelection(message, {
+              sendControl: sendRouteControl, socketReady: () => socket?.readyState === WebSocket.OPEN,
+              sendSocket: bytes => { if (socket?.readyState === WebSocket.OPEN) socket.send(bytes); },
+              receive: receiveMatchData, disconnect: ended,
+              activate(port, round) { rtcPort = port; rtcRound = round; rtcSelected = Boolean(port); },
+            });
+          } else if (message) routeSelection?.receive(message);
+        } else if (typeof data === 'string' && /^room:resume:[A-Za-z0-9_-]{32}$/.test(data)) {
+          resumeToken = data.slice('room:resume:'.length);
+        } else if (data === '2' || data === '3' || data === '4') {
+          if (data === '2') {
+            clear();
+            resumeToken = undefined;
+            closeRtc();
+          }
+          state = Number(data);
+          resumeDeadline = 0;
+          nextPoll = 0;
+        } else if (data === 'rtc:webrtc') {
+          rtcSelected = true;
+          rtcPort?.postMessage({type: 'ice-pair'});
+        } else if (data === 'rtc:websocket') {
+          const port = rtcPort;
+          rtcPort = undefined;
+          rtcRound = undefined;
+          rtcSelected = false;
+          port?.postMessage({type: 'fallback'});
+          if (port) setTimeout(() => port.close(), 500);
+        } else if (typeof data === 'string' && /^rtc:probe:(ping|pong):[01]$/.test(data)) {
+          const [, , kind, sample] = data.split(':');
+          if (kind === 'ping') sendRtc('probe:pong:' + sample);
+          else rtcPort?.postMessage({type: 'socket-probe-pong', sample: Number(sample)});
+        } else if (typeof data === 'string' && data.startsWith('rtc:start:')) {
+          const {port1, port2} = new MessageChannel();
+          const {iceServers, offer, negotiationStartedAt, scoped, relayOnly, compareRelay} = JSON.parse(data.slice('rtc:start:'.length));
+          const diagnostics = Number.isSafeInteger(negotiationStartedAt);
+          closeRtc();
+          rtcPort = port1;
+          rtcRound = diagnostics && scoped ? negotiationStartedAt : undefined;
+          port1.onmessage = ({data}) => {
+            if (socket !== connection && rtcPort !== port1) return;
+            if (data.type === 'ice-stats') {
+              if (diagnostics && socket?.readyState === WebSocket.OPEN) {
+                socket.send('rtc:ice-stats:' + JSON.stringify({...data.snapshot, negotiationStartedAt}));
+              }
+              if (data.snapshot.phase === 'fallback' || data.snapshot.phase === 'failure') port1.close();
+              return;
+            }
+            if (rtcPort !== port1) return;
+            if (data.type === 'data') receiveMatchData(data.data);
+            else if (data.type === 'signal') sendRtc('signal:' + JSON.stringify(data.value));
+            else if (data.type === 'diagnostic') {
+              sendRtc('diag:' + data.milestone);
+            }
+            else if (data.type === 'ice-pair' && data.final === rtcSelected) {
+              sendRtc(`ice-pair:${data.final ? 'webrtc' : 'pending'}:${data.value}`);
+            }
+            else if (data.type === 'socket-probe') sendRtc('probe:ping:' + data.sample);
+            else if (data.type === 'open') sendRtc('ready');
+            else if (data.type === 'closed') {
+              rtcPort = undefined;
+              if (data.diagnosticsPending) setTimeout(() => port1.close(), 500);
+              else port1.close();
+              sendRtc('fail');
+              if (rtcSelected && resumeToken) ended();
+            }
+          };
+          postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics, relayOnly, compareRelay}, [port2]);
+        } else if (typeof data === 'string' && data.startsWith('rtc:signal:')) {
+          try {
+            rtcPort?.postMessage({type: 'signal', value: JSON.parse(data.slice('rtc:signal:'.length))});
+          } catch {
+            sendRtc('diag:invalid_signal');
+            sendRtc('fail');
+          }
+        } else if (data instanceof ArrayBuffer && data.byteLength === 4 && inbox.length < 256) {
+          inbox.push(new DataView(data).getInt32(0, true));
+        } else if (!rtcSelected) {
+          receiveMatchData(data);
+        }
+      };
+      const connect = () => {
+        const url = new URL(address);
+        if (resumeToken) {
+          url.searchParams.delete('mode');
+          url.searchParams.set('resume', resumeToken);
+        }
+        const connection = socket = new WebSocket(url);
+        connection.binaryType = 'arraybuffer';
+        connection.onmessage = receiveRoomMessage;
+        connection.onclose = connection.onerror = () => {
+          if (socket !== connection) return;
+          if (rtcSelected && resumeToken) {
+            socket = undefined;
+            connection.close();
+            resumeDeadline ||= performance.now() + 15_000;
+            if (performance.now() < resumeDeadline) resumeTimer = setTimeout(connect, 1000);
+          } else {
+            ended();
+          }
+        };
+      };
+      connect();
     },
     receive: () => inbox.shift(),
-    receiveFrame: () => frames.shift(),
+    receiveFrame() {
+      const next = frames[0];
+      // A faster peer can reach the rollback window before this browser's next tick.
+      if (next?.[0] === sentMatch && next[1] > sentFrame + 1) return;
+      return frames.shift();
+    },
   };
 }
 
@@ -343,7 +695,7 @@ self.onmessage = async ({data}) => {
         canvas: data.canvas, workId: data.workId, sampleRate: data.sampleRate,
         audioCapabilities: data.audioCapabilities,
         gamePackages: data.packages, gameArguments: data.arguments, keyNames: {},
-        netplay: createNetplay(data.netplayEndpoint),
+        netplay: createNetplay(data.netplayEndpoint, data.netplayRtc),
         audioCommand: command => {
           if (command.op === 'config' && command.soundfont?.startsWith('/') && engine && command.soundfont !== forwardedSoundfont) {
             try {
@@ -357,7 +709,14 @@ self.onmessage = async ({data}) => {
           }
           audioPort.postMessage({...command, generation}, command.file ? [command.file.bytes.buffer] : []);
         },
+        getPreloadedPackage: () => data.runtimeData,
+        instantiateWasm: (imports, receiveInstance) => {
+          const instance = new WebAssembly.Instance(data.wasmModule, imports);
+          receiveInstance(instance, data.wasmModule);
+          return instance.exports;
+        },
         locateFile: path => new URL(path.replace(/^easyrpg-player\.wasm$/, `${engineName}.wasm`), data.runtimeBase).href,
+        setStatus: () => postMessage({type: 'startup-progress'}),
         readConsoleLine,
         useSystemNameInput: () => data.systemNameInput === true,
         beginNameInput, pollNameInput, cancelNameInput,
@@ -389,6 +748,7 @@ self.onmessage = async ({data}) => {
       else if (data.type === 'mouse') engine._web_mouse(data.x, data.y, data.focus ? 1 : 0);
       else if (data.type === 'touch') engine._web_touch(data.id, data.x, data.y, data.pressed ? 1 : 0);
       else if (data.type === 'gamepad') engine._web_gamepad(...data.axes, ...data.triggers);
+      else if (data.type === 'netplay-network-change') engine.netplay?.refreshDirectory();
       else if (data.type === 'focus') {
         engine._web_focus(data.focused ? 1 : 0, data.fullscreen ? 1 : 0);
       } else if (data.type === 'capture') engine._web_capture();

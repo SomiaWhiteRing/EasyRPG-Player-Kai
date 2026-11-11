@@ -21,6 +21,7 @@ public:
 	}
 
 	int VisibleFrame() const { return next - 1; }
+	bool WaitingForInput() const { return next - confirmed >= window && remote_next == confirmed; }
 
 	bool Receive(int frame, int input) {
 		if (frame != remote_next || frame > next + window + input_delay) return false;
