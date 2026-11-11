@@ -151,14 +151,14 @@ public:
 	}
 
 	int TakeNumberInputInitialValue() { return std::exchange(number_input_initial_value, 0); }
-	void DrawNetplayOverlay(Bitmap& destination) {
-		if (JS_IsUndefined(overlay)) return;
+	void DrawNetplayOverlay(Bitmap& destination, bool above_windows) {
+		if (JS_IsUndefined(overlay) || (above_windows && !overlay_after_windows)) return;
 		overlay_target = &destination;
 		JSValue args[] = {
 			canvas, JS_NewInt32(context, destination.GetWidth()), JS_NewInt32(context, destination.GetHeight()),
-			JS_NewFloat64(context, NetplayTimeMs())
+			JS_NewFloat64(context, NetplayTimeMs()), JS_NewBool(context, above_windows)
 		};
-		auto result = JS_Call(context, overlay, JS_UNDEFINED, 4, args);
+		auto result = JS_Call(context, overlay, JS_UNDEFINED, overlay_after_windows ? 5 : 4, args);
 		overlay_target = nullptr;
 		JS_FreeValue(context, args[3]);
 		if (JS_IsException(result)) {
@@ -373,6 +373,7 @@ private:
 		}
 		JS_FreeValue(context, self.overlay);
 		self.overlay = clear ? JS_UNDEFINED : JS_DupValue(context, callback);
+		self.overlay_after_windows = !clear && argc > 1 && JS_IsBool(argv[1]) && JS_ToBool(context, argv[1]);
 		if (clear) {
 			self.overlay_frame.reset();
 #ifdef PLAYER_WEB
@@ -747,6 +748,7 @@ private:
 	int32_t number_input_initial_value = 0;
 	const Game_BaseInterpreterContext* caller = nullptr;
 	JSValue overlay = JS_UNDEFINED;
+	bool overlay_after_windows = false;
 	JSValue projection = JS_UNDEFINED;
 	JSValue canvas = JS_UNDEFINED;
 	Bitmap* overlay_target = nullptr;
@@ -765,8 +767,8 @@ void Game_ManiacJs::Execute(std::string_view source, Span<const int32_t> paramet
 	runtime->Execute(source, parameters, caller);
 }
 
-void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination) {
-	if (runtime) runtime->DrawNetplayOverlay(destination);
+void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination, bool above_windows) {
+	if (runtime) runtime->DrawNetplayOverlay(destination, above_windows);
 }
 
 int Game_ManiacJs::TakeNumberInputInitialValue() {

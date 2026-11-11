@@ -155,8 +155,11 @@ void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) 
 	};
 	if (Player::game_config.netplay_enabled && min_z == std::numeric_limits<Drawable::Z_t>::min()) {
 		draw(min_z, std::min(max_z, static_cast<Drawable::Z_t>(Priority_Window) - 1));
-		Game_ManiacJs::DrawNetplayOverlay(dst);
-		if (max_z >= Priority_Window) draw(Priority_Window, max_z);
+		Game_ManiacJs::DrawNetplayOverlay(dst, false);
+		if (max_z >= Priority_Window) {
+			draw(Priority_Window, max_z);
+			Game_ManiacJs::DrawNetplayOverlay(dst, true);
+		}
 	} else {
 		draw(min_z, max_z);
 	}

@@ -11,7 +11,7 @@ class Bitmap;
 namespace Game_ManiacJs {
 	void Execute(std::string_view source, Span<const int32_t> parameters,
 		const Game_BaseInterpreterContext& caller);
-	void DrawNetplayOverlay(Bitmap& destination);
+	void DrawNetplayOverlay(Bitmap& destination, bool above_windows);
 	void RunNetplayProjection(int seat, bool stopping);
 	int TakeNumberInputInitialValue();
 	void Reset();

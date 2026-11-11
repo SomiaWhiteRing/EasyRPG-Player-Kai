@@ -47,8 +47,12 @@ With netplay enabled, a Maniac JavaScript event can register
 `rm2k3.setNetplayOverlay(draw)`. The callback receives the canvas, its width,
 its height, and the current monotonic time in milliseconds. Pass null when
 leaving the online flow. Keep event and simulation updates in event commands.
-The overlay is drawn below native message and number-input windows. Games can use
-the regular RPG Maker number-input event while their room menu remains visible.
+The overlay normally draws below native windows, so the RPG Maker number-input
+event can appear over a room menu. `rm2k3.setNetplayOverlay(draw, true)` draws in
+two passes. The callback receives a fifth argument of `false` before native
+windows and `true` after them. A result screen can restore its arena snapshot in
+the first pass and draw its dimming and result panel in the second pass.
+
 Before that event, `rm2k3.setNextNumberInput(value)` optionally supplies its initial
 number. The value is captured by the next native number-input event, clamped to
 its digit count, and consumed once. Other number-input events still start at zero.
