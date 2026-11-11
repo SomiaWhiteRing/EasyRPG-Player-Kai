@@ -142,19 +142,23 @@ void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) 
 			zoom_z = Drawable::GetPriorityForBattleLayer(layer);
 		}
 	}
-	if (zoom_z != 0) {
-		// Pictures assigned to a layer are drawn before that layer's zoom pass.
-		zoom_z += (1ULL << z_offset) - 1;
-		if (min_z <= zoom_z && zoom_z <= max_z) {
-			drawable_list.Draw(dst, min_z, zoom_z);
+	// Pictures assigned to a layer are drawn before that layer's zoom pass.
+	if (zoom_z != 0) zoom_z += (1ULL << z_offset) - 1;
+	const auto draw = [&](Drawable::Z_t first, Drawable::Z_t last) {
+		if (zoom_z != 0 && first <= zoom_z && zoom_z <= last) {
+			drawable_list.Draw(dst, first, zoom_z);
 			screen->DrawZoom(dst);
-			drawable_list.Draw(dst, zoom_z + 1, max_z);
-			return;
+			drawable_list.Draw(dst, zoom_z + 1, last);
+		} else {
+			drawable_list.Draw(dst, first, last);
 		}
-	}
-	drawable_list.Draw(dst, min_z, max_z);
+	};
 	if (Player::game_config.netplay_enabled && min_z == std::numeric_limits<Drawable::Z_t>::min()) {
+		draw(min_z, std::min(max_z, static_cast<Drawable::Z_t>(Priority_Window) - 1));
 		Game_ManiacJs::DrawNetplayOverlay(dst);
+		if (max_z >= Priority_Window) draw(Priority_Window, max_z);
+	} else {
+		draw(min_z, max_z);
 	}
 }
 

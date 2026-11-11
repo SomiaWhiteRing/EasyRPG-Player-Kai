@@ -61,6 +61,7 @@ class PendingMessage {
 		bool HasNumberInput() const { return num_input_digits > 0; }
 		int GetNumberInputDigits() const { return num_input_digits; }
 		int GetNumberInputVariable() const { return num_input_variable; }
+		int GetNumberInputInitialValue() const { return num_input_initial_value; }
 		int GetNumberInputStartLine() const { return NumLines(); }
 
 		void SetEnableFace(bool value) { enable_face = value; }
@@ -82,6 +83,7 @@ class PendingMessage {
 		int choice_cancel_type = 5;
 		int num_input_variable = 0;
 		int num_input_digits = 0;
+		int num_input_initial_value = 0;
 		std::bitset<8> choice_enabled = {};
 		bool word_wrapped = false;
 		bool choice_reset_color = false;

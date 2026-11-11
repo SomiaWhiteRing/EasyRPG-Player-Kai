@@ -20,6 +20,7 @@
 #include "game_strings.h"
 #include "game_actors.h"
 #include "game_message.h"
+#include "game_maniac_js.h"
 #include "game_switches.h"
 #include <lcf/data.h>
 #include "output.h"
@@ -69,6 +70,7 @@ int PendingMessage::PushNumInput(int variable_id, int num_digits) {
 	assert(!HasNumberInput());
 	num_input_variable = variable_id;
 	num_input_digits = num_digits;
+	num_input_initial_value = Game_ManiacJs::TakeNumberInputInitialValue();
 	return NumLines();
 }
 
