@@ -396,18 +396,18 @@ void Game_Netplay::Command(std::string_view comment) {
 #endif
 		return;
 	}
-	if ((command == "rooms" || command == "identity") && !frame) {
+	if ((command == "rooms" || command == "identity" || command == "room_settings") && !frame) {
 #ifdef PLAYER_WEB
 		int string_id;
 		if (!(args >> string_id) || string_id <= 0) return;
 		auto* data = reinterpret_cast<char*>(EM_ASM_PTR({
-			const text = $0 ? Module.netplay?.identity?.() : Module.netplay?.rooms();
+			const text = $0 === 2 ? Module.netplay?.roomSettings?.() : $0 === 1 ? Module.netplay?.identity?.() : Module.netplay?.rooms();
 			if (text === undefined) return 0;
 			const size = lengthBytesUTF8(text) + 1;
 			const buffer = _malloc(size);
 			if (buffer) stringToUTF8(text, buffer, size);
 			return buffer;
-		}, command == "identity"));
+		}, command == "room_settings" ? 2 : command == "identity" ? 1 : 0));
 		if (data) {
 			Main_Data::game_strings->SetManiacRawSlot(string_id, data);
 			std::free(data);
@@ -592,7 +592,16 @@ void Game_Netplay::Command(std::string_view comment) {
 	} else if (command == "create") {
 		EM_ASM({ Module.netplay?.open($0, 'create'); }, vars.Get(variable));
 	} else if (command == "join") {
-		EM_ASM({ Module.netplay?.open($0, 'join'); }, vars.Get(variable));
+		int string_id = 0;
+		args >> string_id;
+		const auto code = string_id > 0 ? Main_Data::game_strings->GetManiacRawSlot(string_id) : std::string_view();
+		EM_ASM({ Module.netplay?.open($0, 'join', $3 ? UTF8ToString($1, $2) : null); },
+			vars.Get(variable), code.data(), code.size(), string_id > 0);
+	} else if (command == "password") {
+		int string_id;
+		if (!(args >> string_id) || string_id <= 0) return;
+		const auto code = Main_Data::game_strings->GetManiacRawSlot(string_id);
+		EM_ASM({ Module.netplay?.setPassword($0 !== 0, UTF8ToString($1, $2)); }, vars.Get(variable), code.data(), code.size());
 	} else if (command == "send") {
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
 	} else if (command == "seed" && ReadTransportState() >= 3) {
