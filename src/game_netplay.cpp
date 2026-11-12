@@ -40,6 +40,9 @@ struct Effects {
 	std::map<int, int> picture_retirements;
 	bool input_signal = false;
 	bool stop = false;
+	bool result = false;
+	std::optional<std::array<int, 2>> score;
+	std::optional<uint32_t> checkpoint;
 };
 
 struct PictureContinuationUpdate {
@@ -266,7 +269,14 @@ struct MapWorld {
 		return true;
 	}
 
-	bool Publish(int, Effects effects) {
+	bool Publish(int index, Effects effects) {
+		if (effects.checkpoint) {
+			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
+		}
+		if (effects.stop) {
+			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
+			EM_ASM({ Module.netplay?.recordTerminal?.($0, $1, $2); }, index, score[0], score[1]);
+		}
 		stopping = effects.stop;
 		if (stopping) PresentContinuations();
 		pending_signal |= effects.input_signal;
@@ -295,6 +305,9 @@ struct MapWorld {
 			else system.BgmFade(std::get<int>(effect));
 		}
 		if (effects.terminal) Restore(std::move(*effects.terminal));
+		if (effects.result) {
+			EM_ASM({ Module.netplay?.recordResult?.(); });
+		}
 		return effects.stop;
 	}
 
@@ -337,6 +350,7 @@ struct Match {
 	bool peer_ready = false;
 	bool started = false;
 	bool stall_exit = false;
+	std::array<int, 3> rules{};
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
 };
@@ -377,6 +391,30 @@ void Game_Netplay::Command(std::string_view comment) {
 	}
 	if (command == "stop" && frame) {
 		frame->effects.stop = true;
+		int first, second;
+		if (args >> first >> second) {
+			auto& vars = *Main_Data::game_variables;
+			if (vars.IsValid(first) && vars.IsValid(second)) frame->effects.score = std::array{vars.Get(first), vars.Get(second)};
+		}
+		return;
+	}
+	if (command == "checkpoint" && frame && frame->index % 60 == 0) {
+		auto& vars = *Main_Data::game_variables;
+		uint32_t digest = 2166136261u;
+		int id;
+		while (args >> id) {
+			if (vars.IsValid(id)) digest = (digest ^ static_cast<uint32_t>(vars.Get(id))) * 16777619u;
+		}
+		auto rng = Rand::GetRNG();
+		digest = (digest ^ rng()) * 16777619u;
+		frame->effects.checkpoint = (digest ^ Main_Data::maniac_random_seed) * 16777619u;
+		return;
+	}
+	if (command == "result_record") {
+#ifdef PLAYER_WEB
+		if (frame) frame->effects.result = true;
+		else EM_ASM({ Module.netplay?.recordResult?.(); });
+#endif
 		return;
 	}
 	if (command == "stop_directory" && !frame) {
@@ -426,6 +464,14 @@ void Game_Netplay::Command(std::string_view comment) {
 	};
 	if (command == "active") {
 		write(variable, frame != nullptr);
+		return;
+	}
+	if (command == "finish") {
+#ifdef PLAYER_WEB
+		write(variable, frame ? 0 : EM_ASM_INT({ return Module.netplay?.finishStatus?.() ?? 1; }));
+#else
+		write(variable, 1);
+#endif
 		return;
 	}
 	if (command == "seat") {
@@ -628,6 +674,13 @@ void Game_Netplay::Command(std::string_view comment) {
 		if (state >= 3 && vars.Get(variable) > 0) {
 			match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), state - 3, rng_mode == "continue_rng", buffer);
 			match->stall_exit = stall_mode == "stall_exit";
+			for (int& rule : match->rules) {
+				int id;
+				if (args >> id && vars.IsValid(id)) rule = vars.Get(id);
+			}
+			std::string finish_mode;
+			args >> finish_mode;
+			EM_ASM({ Module.netplay?.setFinishSync?.(Boolean($0)); }, finish_mode == "finish_sync");
 			if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
 			ClearPreparation();
 		}
@@ -742,19 +795,33 @@ bool Game_Netplay::UpdateMap() {
 		}
 		match->peer_ready = true;
 	}
-	EM_ASM({
-		Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7);
+	const bool finish_aborted = EM_ASM_INT({
+		return Number(Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7) ?? false);
 	}, match->id, match->timeline.VisibleFrame(), match->timeline.ConfirmedFrame(),
 		match->timeline.ReceivedFrame(), match->timeline.WaitingForInput(),
 		match->world.pending.size(), match->peer_ready, match->timeline.ReplayFrame());
+	if (finish_aborted) {
+		match.reset();
+		return true;
+	}
 	if (!match->peer_ready) return true;
 	if (WaitingForInput() && Input::IsTriggered(Input::CANCEL)) {
 		EM_ASM({ Module.netplay?.endMatch?.('user_cancel'); });
 		Close();
 		return true;
 	}
-	if (!match->started && !match->continue_rng) {
-		SeedRng(static_cast<uint32_t>(match->seed));
+	if (!match->started) {
+		if (!match->continue_rng) SeedRng(static_cast<uint32_t>(match->seed));
+		if (EM_ASM_INT({ return Number(Module.netplay?.recording?.() ?? false); })) {
+			std::ostringstream rng;
+			rng << Rand::GetRNG();
+			const auto state = rng.str();
+			const auto& rules = match->rules;
+			EM_ASM({
+				Module.netplay.recordStart($0, $1, $2, $3, $4, $5, $6, UTF8ToString($7));
+			}, match->id, match->seed, match->map_id, rules[0], rules[1], rules[2],
+				Main_Data::maniac_random_seed, state.c_str());
+		}
 	}
 	match->started = true;
 	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {

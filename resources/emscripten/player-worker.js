@@ -179,9 +179,9 @@ function createNetplayInputTransport(send, deliver, disconnect) {
   };
   const flush = () => {
     while (ready && delivered < receivedThrough) {
-      const frame = ++delivered, input = incoming.get(frame);
+      const frame = ++delivered, [input, at, path] = incoming.get(frame);
       incoming.delete(frame);
-      deliver(match, frame, input);
+      deliver(match, frame, input, at, path);
     }
   };
   // This continues even when prediction has reached its limit and no new game
@@ -214,6 +214,23 @@ function createNetplayInputTransport(send, deliver, disconnect) {
       ready = true;
       flush();
     },
+    repair(id, first, masks, path) {
+      if (id !== match || first + masks.length - 1 > delivered + limit) return;
+      const at = performance.now();
+      for (let index = 0; index < masks.length; index++) {
+        const frame = first + index;
+        if (frame > delivered && !incoming.has(frame)) incoming.set(frame, [masks[index], at, path]);
+      }
+      while (incoming.has(receivedThrough + 1)) ++receivedThrough;
+      flush();
+      transmit(true);
+    },
+    discard(id) {
+      if (id !== match) return;
+      pending.length = 0;
+      incoming.clear();
+      ready = false;
+    },
     send(id, frame, input) {
       if (id !== match || frame !== localNext || pending.length === limit) {
         disconnect(pending.length === limit ? 'input_backlog' : 'input_sequence');
@@ -223,7 +240,7 @@ function createNetplayInputTransport(send, deliver, disconnect) {
       ++localNext;
       transmit();
     },
-    receive(data) {
+    receive(data, path) {
       const count = data.byteLength - 16;
       if (count < 0 || count > limit) return disconnect('input_packet_size');
       const packet = new DataView(data);
@@ -243,7 +260,12 @@ function createNetplayInputTransport(send, deliver, disconnect) {
       }
       for (let i = 0; i < count; ++i) {
         const frame = first + i;
-        if (frame > delivered) incoming.set(frame, packet.getUint8(16 + i));
+        if (frame > delivered) {
+          const arrival = incoming.get(frame);
+          const input = packet.getUint8(16 + i);
+          if (arrival) arrival[0] = input;
+          else incoming.set(frame, [input, lastPacketAt, path]);
+        }
       }
       while (incoming.has(receivedThrough + 1)) ++receivedThrough;
       flush();
@@ -307,7 +329,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         send('signal', id, {value: data.value});
       } else if (data.type === 'data') {
         if (receiveProbe(candidate, data.data)) return;
-        if (active === candidate || backup === candidate) receive(data.data);
+        if (active === candidate || backup === candidate) receive(data.data, candidate.id);
         else if (selected === candidate && candidate.early.length < 256) candidate.early.push(data.data);
       } else if (data.type === 'closed') {
         if (active === candidate) reportFailure(data.reason || 'peer_closed');
@@ -328,6 +350,10 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
   return {
     round,
     hasBackup: () => Boolean(backup),
+    sendFinish(data) {
+      const port = active?.port ?? backup?.port;
+      port?.postMessage({type: 'data', data}, [data]);
+    },
     requestBackupStats: () => backup?.port.postMessage({type: 'transport-stats'}),
     close() {
       for (const candidate of candidates.values()) dispose(candidate);
@@ -501,8 +527,156 @@ function createNetplayDiagnostics(send, snapshot, requestStats) {
   };
 }
 
+function createNetplayRecordingOutbox() {
+  if (!self.indexedDB || !navigator.locks) return;
+  const writers = new Set();
+  const range = id => IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER]);
+  const result = request => new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const committed = transaction => new Promise((resolve, reject) => {
+    transaction.oncomplete = resolve;
+    transaction.onabort = () => reject(transaction.error);
+  });
+  let database, uploading, controller, nextUpload = 0;
+  const open = () => {
+    if (!database) {
+      const request = indexedDB.open('easyrpg-netplay-recording', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('outbox', {keyPath: 'id'});
+        request.result.createObjectStore('segments', {keyPath: ['id', 'seq']});
+      };
+      database = result(request).catch(error => {
+        database = undefined;
+        throw error;
+      });
+    }
+    return database;
+  };
+
+  const save = record => {
+    if (record.saving || (!record.events.length && record.grant === record.savedGrant && !record.ended)) return;
+    const events = record.events.slice();
+    const closed = record.ended;
+    const grant = record.grant;
+    record.saving = (async () => {
+      await record.lock;
+      const db = await open();
+      const tx = db.transaction(['outbox', 'segments'], 'readwrite');
+      const done = committed(tx);
+      tx.objectStore('outbox').put({
+        id: record.id, grant, closed,
+        elapsed: Math.round(performance.now() - record.at), dropped: record.dropped,
+      });
+      if (events.length) tx.objectStore('segments').put({id: record.id, seq: record.seq, events});
+      await done;
+      record.events.splice(0, events.length);
+      if (events.length) ++record.seq;
+      record.savedGrant = grant;
+      if (closed && !record.events.length && grant === record.grant) {
+        writers.delete(record);
+        record.release();
+        nextUpload = 0;
+      }
+    })().catch(error => console.warn('netplay recording local save', error)).finally(() => { record.saving = undefined; });
+  };
+
+  const upload = async (db, record) => {
+    const segments = await result(db.transaction('segments').objectStore('segments').getAll(range(record.id)));
+    const events = segments.flatMap(segment => segment.events);
+    if (!record.closed) events.push(['end', 'interrupted', record.elapsed, record.dropped]);
+    const encoder = new TextEncoder();
+    let seq = 0, index = 0;
+    while (index < events.length) {
+      if (writers.size) return;
+      const batch = [];
+      let size = 0;
+      while (index < events.length) {
+        const text = JSON.stringify(events[index]);
+        const bytes = encoder.encode(text).byteLength + 1;
+        if (batch.length && size + bytes > 240_000) break;
+        batch.push(text);
+        size += bytes;
+        ++index;
+      }
+      if (seq >= (record.uploaded ?? 0)) {
+        controller = new AbortController();
+        const timeout = setTimeout(() => controller?.abort(), 15_000);
+        try {
+          const response = await fetch('/api/netplay-recordings/upload', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Netplay-Recording-Grant': record.grant},
+            body: `{"seq":${seq},"events":[${batch.join(',')}]}`,
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } finally {
+          clearTimeout(timeout);
+          controller = undefined;
+        }
+        record.uploaded = seq + 1;
+        const tx = db.transaction('outbox', 'readwrite');
+        const done = committed(tx);
+        tx.objectStore('outbox').put(record);
+        await done;
+      }
+      ++seq;
+    }
+    const tx = db.transaction(['outbox', 'segments'], 'readwrite');
+    const done = committed(tx);
+    tx.objectStore('outbox').delete(record.id);
+    tx.objectStore('segments').delete(range(record.id));
+    await done;
+  };
+
+  const tick = () => {
+    for (const record of writers) {
+      if (!record.ended && !record.grant) record.requestGrant();
+      save(record);
+    }
+    if (writers.size || uploading || !navigator.onLine || performance.now() < nextUpload) return;
+    nextUpload = performance.now() + 5000;
+    uploading = (async () => {
+      const db = await open();
+      const records = await result(db.transaction('outbox').objectStore('outbox').getAll());
+      for (const record of records) {
+        if (writers.size) return;
+        if (!record.grant) continue;
+        await navigator.locks.request('netplay-recording:' + record.id, {ifAvailable: true}, async lock => {
+          if (!lock || writers.size) return;
+          // The outbox entry may have changed while another tab held the lock.
+          const latest = await result(db.transaction('outbox').objectStore('outbox').get(record.id));
+          if (latest) await upload(db, latest);
+        });
+      }
+    })().catch(() => {}).finally(() => { uploading = undefined; });
+  };
+  setInterval(tick, 1000);
+  return {
+    start(record) {
+      record.id = crypto.randomUUID();
+      record.seq = 0;
+      const hold = new Promise(resolve => { record.release = resolve; });
+      record.lock = new Promise((resolve, reject) => {
+        navigator.locks.request('netplay-recording:' + record.id, async () => {
+          resolve();
+          await hold;
+        }).catch(reject);
+      });
+      writers.add(record);
+      controller?.abort();
+      tick();
+    },
+    save,
+  };
+}
+
+const netplayRecordingOutbox = createNetplayRecordingOutbox();
+
 function createNetplay(endpoint, rtcSupported, runtimeBase) {
   if (!endpoint) return;
+  const archive = new URL(endpoint).searchParams.get('archive');
   const base = rtcSupported ? new URL('rtc/', endpoint) : new URL(endpoint);
   if (base.protocol === 'https:') base.protocol = 'wss:';
   else if (base.protocol === 'http:') base.protocol = 'ws:';
@@ -524,11 +698,88 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   let sentMatch = 0, sentFrame = -1;
   const avatarPaths = new Set(), avatars = new Map();
   const inbox = [], frames = [];
+  const finishMarker = 0x314e4946;
+  let finishCapable = false, finishOptIn = false, finish, finishTimer;
+  let repairPlainInputs;
   let diagnosticsAccepted = false, rtcStats = {}, rtcStatsAt = 0;
   const client = new URL(runtimeBase).pathname.split('/').filter(Boolean).at(-1) || 'unknown';
+  let recordingEnabled = false, recording;
+  const recordEvent = event => {
+    if (!recording || recording.ended) return;
+    // Bound the unsaved tail when the device cannot commit a checkpoint.
+    if (recording.events.length < 4096) recording.events.push(event);
+    else recording.dropped++;
+  };
+  const finishRecord = reason => {
+    if (recording?.started && !recording.ended) {
+      recording.events.push(['end', reason, Math.round(performance.now() - recording.at), recording.dropped]);
+      recording.ended = true;
+      netplayRecordingOutbox.save(recording);
+    }
+  };
+  const sendFinish = (packet, peer = false) => {
+    const text = JSON.stringify(packet);
+    if (socket?.readyState === WebSocket.OPEN) socket.send('room:finish:' + text);
+    if (peer && (rtcSelected || routeSelection?.hasBackup())) {
+      const payload = new TextEncoder().encode(text);
+      const data = new Uint8Array(4 + payload.length);
+      new DataView(data.buffer).setUint32(0, finishMarker, true);
+      data.set(payload, 4);
+      if (routeSelection) routeSelection.sendFinish(data.buffer);
+      else rtcPort?.postMessage({type: 'data', data: data.buffer}, [data.buffer]);
+    }
+  };
+  const applyFinishDecision = (status, reason) => {
+    if (!finish || finish.status) return;
+    finish.status = status;
+    clearTimeout(finishTimer);
+    if (status < 0) {
+      inputTransport?.discard(finish.match);
+      finish.incoming.clear();
+      diagnostics.end(reason);
+      finishRecord(reason);
+    }
+  };
+  const expireFinish = () => {
+    if (!finish || finish.status || finish.mode === 'legacy') return;
+    sendFinish({type: 'abort', match: finish.match});
+    applyFinishDecision(-1, 'finish_timeout');
+  };
+  const announceFinish = () => {
+    if (!finishCapable || !finish) return;
+    sendFinish({type: 'start', match: finish.match, enabled: finish.enabled});
+    if (finish.status < 0) sendFinish({type: 'abort', match: finish.match});
+    else if (finish.terminal && finish.mode !== 'legacy') sendFinish(finish.terminal, true);
+  };
+  const receiveFinish = (text, path, server) => {
+    let packet;
+    if (!finish || text.length > 1024) return;
+    try { packet = JSON.parse(text); } catch { return; }
+    if (packet?.match !== finish.match) return;
+    if (server && packet.type === 'ready') {
+      finish.mode = packet.enabled ? 'sync' : 'legacy';
+      if (finish.mode === 'legacy') clearTimeout(finishTimer);
+      return;
+    }
+    if (server && packet.type === 'decision') {
+      if (packet.status === -1) applyFinishDecision(-1, packet.reason);
+      else if (packet.status === 1 && finish.terminal && ['frame', 'first', 'second'].every(key => finish.terminal[key] === packet[key])) {
+        applyFinishDecision(1);
+      }
+      return;
+    }
+    if (packet.type !== 'terminal' || !finish.enabled || finish.mode === 'legacy' || finish.status || finish.terminal ||
+        !Number.isSafeInteger(packet.frame) || packet.frame < 1 || packet.frame > 0x7fffffff ||
+        !Array.isArray(packet.inputs) || packet.inputs.length > Math.min(192, packet.frame) ||
+        !packet.inputs.every(mask => Number.isInteger(mask) && mask >= 0 && mask <= 255)) return;
+    const first = packet.frame - packet.inputs.length + 1;
+    if (inputTransport) inputTransport.repair(finish.match, first, packet.inputs, path);
+    else repairPlainInputs?.(finish.match, first, packet.inputs, path);
+  };
   const transportStats = value => { rtcStats = value; rtcStatsAt = performance.now(); };
   const diagnostics = createNetplayDiagnostics(
     report => {
+      if (recording?.match === report.match) recordEvent(['diagnostic', report]);
       if (!diagnosticsAccepted || socket?.readyState !== WebSocket.OPEN || socket.bufferedAmount > 16_384) return false;
       socket.send('room:diagnostic:' + JSON.stringify({...report, client}));
       return true;
@@ -631,6 +882,12 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     rtcStatsAt = 0;
   };
   const close = () => {
+    finishRecord('closed');
+    recording = undefined;
+    recordingEnabled = false;
+    clearTimeout(finishTimer);
+    finishCapable = finishOptIn = false;
+    finish = undefined;
     diagnostics.reset();
     diagnosticsAccepted = false;
     clearTimeout(resumeTimer);
@@ -649,6 +906,23 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     const direct = rtcSelected && (values.length > 1 || resumeToken);
     if (values.length === 3) {
       [sentMatch, sentFrame] = values;
+      if (sentFrame === -1) {
+        clearTimeout(finishTimer);
+        finish = finishCapable ? {
+          match: sentMatch, enabled: finishOptIn, mode: finishOptIn ? 'pending' : 'legacy',
+          status: 0, history: new Map(), incoming: new Map(), received: 0,
+          waitAt: 0, waitFrame: -1,
+        } : undefined;
+        announceFinish();
+      } else if (finish?.enabled && finish.mode !== 'legacy') {
+        finish.history.set(sentFrame, values[2]);
+        finish.history.delete(sentFrame - 256);
+      }
+      if (recordingEnabled && sentFrame === -1) {
+        finishRecord('next_match');
+        recording = {match: sentMatch, at: performance.now(), events: [], dropped: 0};
+      }
+      if (recording?.match === sentMatch && sentFrame >= 0) recordEvent(['local', sentFrame, values[2]]);
       if (inputTransport) {
         if (sentFrame >= 0) {
           inputTransport.send(...values);
@@ -670,8 +944,70 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   return {
     close,
     send,
-    progress: diagnostics.progress,
-    endMatch: diagnostics.end,
+    progress(match, frame, confirmed, received, waiting, pending, ready, replay) {
+      diagnostics.progress(match, frame, confirmed, received, waiting, pending, ready, replay);
+      if (finish?.match !== match) return false;
+      if (finish.status < 0) return true;
+      if (finish.mode !== 'sync' || !waiting) {
+        finish.waitAt = 0;
+      } else {
+        const now = performance.now();
+        if (!finish.waitAt || finish.waitFrame !== received) {
+          finish.waitAt = now;
+          finish.waitFrame = received;
+        } else if (now - finish.waitAt >= 10_000) {
+          expireFinish();
+        }
+      }
+      return finish.status < 0;
+    },
+    setFinishSync: enabled => { finishOptIn = enabled; },
+    finishStatus: () => !finish || finish.mode === 'legacy' ? 1 : finish.status,
+    endMatch(reason) {
+      diagnostics.end(reason);
+      if (recording?.terminal && reason === 'match_end') {
+        recordEvent(['cleanup', Math.round(performance.now() - recording.at)]);
+      } else {
+        finishRecord(reason);
+      }
+    },
+    recording: () => recordingEnabled,
+    recordStart(match, seed, map, first, second, rounds, maniacSeed, rng) {
+      if (recording?.match !== match || recording.started) return;
+      recording.events.unshift(['start', {client, seed, map, fighters: [first, second], rounds, maniacSeed, rng}]);
+      recording.started = true;
+      let requestedAt = -Infinity;
+      recording.requestGrant = () => {
+        const now = performance.now();
+        if (socket?.readyState !== WebSocket.OPEN || now - requestedAt < 3000) return;
+        requestedAt = now;
+        socket.send('room:record:open:' + match);
+      };
+      netplayRecordingOutbox.start(recording);
+    },
+    recordCheckpoint(frame, digest) {
+      recordEvent(['checkpoint', frame, digest]);
+    },
+    recordTerminal(frame, first, second) {
+      if (finish?.enabled && finish.mode !== 'legacy' && !finish.status && first >= 0 && second >= 0) {
+        const inputs = [];
+        for (let index = frame; index > 0 && inputs.length < 192 && finish.history.has(index); index--) {
+          inputs.push(finish.history.get(index));
+        }
+        finish.terminal = {type: 'terminal', match: finish.match, frame, first, second, inputs: inputs.reverse()};
+        sendFinish(finish.terminal, true);
+        clearTimeout(finishTimer);
+        finishTimer = setTimeout(expireFinish, 16_000);
+      }
+      if (!recording) return;
+      recording.terminal = true;
+      recordEvent(['terminal', frame, first, second, Math.round(performance.now() - recording.at)]);
+    },
+    recordResult() {
+      if (!recording?.terminal) return;
+      recordEvent(['result', Math.round(performance.now() - recording.at)]);
+      finishRecord('settled');
+    },
     runtime: diagnostics.runtime,
     stopDirectory,
     refreshDirectory,
@@ -768,6 +1104,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       address.searchParams.set('heartbeat', '1');
       address.searchParams.set('inputStats', '1');
       address.searchParams.set('diagnostics', '1');
+      if (netplayRecordingOutbox) address.searchParams.set('recording', '2');
+      address.searchParams.set('finishSync', '1');
+      if (archive) address.searchParams.set('archive', archive);
       address.searchParams.set('routeSelection', '1');
       if (rtcSupported) address.searchParams.set('routeInputMirror', '1');
       address.searchParams.set('inputProtocol', '1');
@@ -785,8 +1124,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         joinResult = result;
         if (inRoom || (result && result !== 4 && result !== 5)) refreshDirectory();
       };
-      const receiveInput = (match, frame, input) => {
-        if (frames.length >= 256) {
+      const receiveInput = (match, frame, input, at = performance.now(), path = 'websocket') => {
+        const settled = finish?.match === match && (finish.status < 0 || finish.terminal);
+        if (!settled && frames.length >= 256) {
           diagnostics.failure('gameplay_queue');
           return ended();
         }
@@ -795,7 +1135,21 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         inputMatch = match;
         lastInputAt = now;
         inputs++;
-        frames.push([match, frame, input]);
+        if (recording?.match === match) recordEvent(['remote', frame, input, Math.round(at - recording.at), path]);
+        if (!settled) frames.push([match, frame, input]);
+      };
+      repairPlainInputs = (match, first, masks, path, at = performance.now()) => {
+        if (finish?.match !== match || finish.status < 0 || first + masks.length - 1 > finish.received + 256) return;
+        for (let i = 0; i < masks.length; i++) {
+          const frame = first + i;
+          if (frame > finish.received && !finish.incoming.has(frame)) finish.incoming.set(frame, [masks[i], at, path]);
+        }
+        while (finish?.match === match && finish.incoming.has(finish.received + 1)) {
+          const frame = ++finish.received;
+          const input = finish.incoming.get(frame);
+          finish.incoming.delete(frame);
+          receiveInput(match, frame, ...input);
+        }
       };
       const enableInputTransport = (protocol, sendInput = data => rtcPort?.postMessage({type: 'input', data}, [data])) => {
         if (protocol !== 1) return;
@@ -803,9 +1157,12 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           sendInput, receiveInput,
           reason => { diagnostics.failure(reason); ended(); });
       };
-      const receiveMatchData = data => {
-        if (inputTransport && data instanceof ArrayBuffer && data.byteLength >= 16) {
-          inputTransport.receive(data);
+      const receiveMatchData = (data, path = 'websocket') => {
+        if (finishCapable && data instanceof ArrayBuffer && data.byteLength > 16 && data.byteLength <= 1028 &&
+            new DataView(data).getUint32(0, true) === finishMarker) {
+          receiveFinish(new TextDecoder().decode(new Uint8Array(data, 4)), 'finish_' + path, false);
+        } else if (inputTransport && data instanceof ArrayBuffer && data.byteLength >= 16) {
+          if (!(finish?.status < 0 && new DataView(data).getInt32(4, true) === finish.match)) inputTransport.receive(data, path);
         } else if (data instanceof ArrayBuffer && data.byteLength === 8) {
           const packet = new DataView(data), kind = packet.getInt32(0, true), number = packet.getInt32(4, true);
           if (kind === 0) send(1, number);
@@ -814,7 +1171,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           const packet = new DataView(data);
           const match = packet.getInt32(0, true), frame = packet.getInt32(4, true);
           if (frame >= 0) {
-            receiveInput(match, frame, packet.getInt32(8, true));
+            const input = packet.getInt32(8, true);
+            if (finish?.enabled && finish.match === match && finish.mode !== 'legacy' && frame > 0) repairPlainInputs(match, frame, [input], path);
+            else receiveInput(match, frame, input, performance.now(), path);
           } else {
             frames.push([match, frame, packet.getInt32(8, true)]);
             peerMatch = match;
@@ -831,6 +1190,26 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       };
       const receiveRoomMessage = ({data, target: connection}) => {
         if (socket !== connection) return;
+        if (data === 'room:finish:1') {
+          finishCapable = true;
+          return;
+        }
+        if (typeof data === 'string' && data.startsWith('room:finish:')) {
+          receiveFinish(data.slice(12), 'finish_websocket', true);
+          return;
+        }
+        if (data === 'room:record:2') {
+          recordingEnabled = !!netplayRecordingOutbox;
+          return;
+        }
+        if (typeof data === 'string' && data.startsWith('room:record:grant:')) {
+          const [, , , match, grant] = data.split(':');
+          if (recording?.match === Number(match) && recording.started && !recording.grant) {
+            recording.grant = grant;
+            netplayRecordingOutbox.save(recording);
+          }
+          return;
+        }
         if (typeof data === 'string' && data.startsWith('room:settings:')) {
           let settings;
           try { settings = JSON.parse(data.slice(14)); } catch { return; }
@@ -887,6 +1266,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         } else if (data === '2' || data === '3' || data === '4') {
           if (data === '2') {
             diagnostics.end('peer_left');
+            finishRecord('peer_left');
+            if (finish && finish.mode !== 'legacy' && !finish.status) applyFinishDecision(-1, 'peer_left');
+            finishCapable = false;
             clear();
             resumeToken = undefined;
             closeRtc();
@@ -898,6 +1280,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
             connection.send(pendingReady);
             pendingReady = undefined;
           }
+          if (state >= 3) announceFinish();
         } else if (data === 'rtc:webrtc') {
           rtcSelected = true;
           rtcPort?.postMessage({type: 'ice-pair'});
@@ -932,7 +1315,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
               return;
             }
             if (rtcPort !== port1) return;
-            if (data.type === 'data') receiveMatchData(data.data);
+            if (data.type === 'data') receiveMatchData(data.data, 'rtc');
             else if (data.type === 'transport-stats') transportStats(data.value);
             else if (data.type === 'signal') sendRtc('signal:' + JSON.stringify(data.value));
             else if (data.type === 'diagnostic') {
