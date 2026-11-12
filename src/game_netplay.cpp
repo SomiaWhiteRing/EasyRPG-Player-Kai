@@ -269,11 +269,11 @@ struct MapWorld {
 		return true;
 	}
 
-	bool Publish(int index, Effects effects) {
-		if (effects.checkpoint) {
+	bool Publish(int index, Effects effects, bool record = true) {
+		if (record && effects.checkpoint) {
 			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
 		}
-		if (effects.stop) {
+		if (record && effects.stop) {
 			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
 			EM_ASM({ Module.netplay?.recordTerminal?.($0, $1, $2); }, index, score[0], score[1]);
 		}
@@ -284,7 +284,7 @@ struct MapWorld {
 		return stopping;
 	}
 
-	bool Present() {
+	bool Present(bool sound_effects = true, bool record = true) {
 		if (pending.empty()) {
 			presentation_playing = false;
 			return false;
@@ -301,14 +301,29 @@ struct MapWorld {
 		auto& system = *Main_Data::game_system;
 		for (const auto& effect : effects.audio) {
 			if (auto* music = std::get_if<lcf::rpg::Music>(&effect)) system.BgmPlay(*music);
-			else if (auto* sound = std::get_if<lcf::rpg::Sound>(&effect)) system.SePlay(*sound, true);
+			else if (auto* sound = std::get_if<lcf::rpg::Sound>(&effect)) {
+				if (sound_effects) system.SePlay(*sound, true);
+			}
 			else system.BgmFade(std::get<int>(effect));
 		}
 		if (effects.terminal) Restore(std::move(*effects.terminal));
-		if (effects.result) {
+		if (record && effects.result) {
 			EM_ASM({ Module.netplay?.recordResult?.(); });
 		}
 		return effects.stop;
+	}
+
+	void RestartPresentation() {
+		pending.clear();
+		displayed.clear();
+		displayed_continuations.clear();
+		presented_samples.clear();
+		presented_retirements.clear();
+		drawn_pictures.clear();
+		projections.clear();
+		stopping = false;
+		pending_signal = false;
+		presentation_playing = false;
 	}
 
 	std::set<int> captured_pictures;
@@ -333,12 +348,18 @@ struct MapWorld {
 };
 
 struct Match {
+	struct InputStream {
+		std::optional<MapWorld::Snapshot> initial;
+		std::vector<Sprite_Picture::NetplayPose> opening;
+		int next = 0;
+		bool stopped = false;
+	};
 	Match(int id, int seed, int seat, bool continue_rng, int presentation_buffer)
 		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), continue_rng(continue_rng),
 		  world(seat, presentation_buffer), timeline(world, seat) {}
 
 	~Match() {
-		EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
+		if (!input_stream) EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
 	}
 
 	int id;
@@ -351,6 +372,7 @@ struct Match {
 	bool started = false;
 	bool stall_exit = false;
 	std::array<int, 3> rules{};
+	std::optional<InputStream> input_stream;
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
 };
@@ -358,12 +380,14 @@ struct Match {
 std::unique_ptr<Match> match;
 int prepare_map = 0;
 int prepare_fade = 0;
+bool prepare_local = false;
 std::optional<uint32_t> prepare_seed;
 std::map<int, Game_Netplay::PictureView> prepare_picture_transforms;
 Game_Netplay::TransferFade transfer_fade;
 
 void ClearPreparation() {
 	prepare_map = 0;
+	prepare_local = false;
 	prepare_seed.reset();
 	prepare_picture_transforms.clear();
 }
@@ -476,7 +500,7 @@ void Game_Netplay::Command(std::string_view comment) {
 	}
 	if (command == "seat") {
 #ifdef PLAYER_WEB
-		write(variable, frame ? frame->seat + 1 : std::max(0, ReadTransportState() - 2));
+		write(variable, frame ? frame->seat + 1 : prepare_local ? 1 : std::max(0, ReadTransportState() - 2));
 #else
 		write(variable, 0);
 #endif
@@ -652,14 +676,23 @@ void Game_Netplay::Command(std::string_view comment) {
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
 	} else if (command == "seed" && ReadTransportState() >= 3) {
 		SeedRng(static_cast<uint32_t>(vars.Get(variable)));
-	} else if (command == "prepare" && !match && ReadTransportState() >= 3) {
+	} else if (!match && ((command == "prepare" && ReadTransportState() >= 3) ||
+			(command == "prepare_local" && Game_ManiacJs::HasInputFrameDriver()))) {
 		ClearPreparation();
+		prepare_local = command == "prepare_local";
 		prepare_map = std::max(0, vars.Get(variable));
 		int frames = 0;
 		args >> frames;
 		prepare_fade = std::max(0, frames);
 		int seed;
 		if (args >> seed && vars.IsValid(seed)) prepare_seed = static_cast<uint32_t>(vars.Get(seed));
+	} else if (command == "start_local" && !match && prepare_local && Game_ManiacJs::HasInputFrameDriver()) {
+		int seed;
+		if (!(args >> seed) || !vars.IsValid(seed)) return;
+		match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), 0, true, 1);
+		match->input_stream.emplace();
+		if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
+		ClearPreparation();
 	} else if (command == "start" && !match) {
 		int seed;
 		if (!(args >> seed) || !vars.IsValid(seed)) return;
@@ -690,11 +723,12 @@ void Game_Netplay::Command(std::string_view comment) {
 
 void Game_Netplay::Close() {
 #ifdef PLAYER_WEB
-	EM_ASM({ Module.netplay?.endMatch?.('closed'); });
+	const bool local = prepare_local || (match && match->input_stream);
+	if (!local) EM_ASM({ Module.netplay?.endMatch?.('closed'); });
 	match.reset();
 	ClearPreparation();
 	transfer_fade = {};
-	EM_ASM({ Module.netplay?.close(); });
+	if (!local) EM_ASM({ Module.netplay?.close(); });
 #endif
 }
 
@@ -733,7 +767,7 @@ bool Game_Netplay::PreparesMap(int map_id) {
 bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
 #ifdef PLAYER_WEB
 	if (!PreparesMap(Game_Map::GetMapId())) return false;
-	if (ReadTransportState() < 3) {
+	if (!prepare_local && ReadTransportState() < 3) {
 		ClearPreparation();
 		return false;
 	}
@@ -760,6 +794,40 @@ bool Game_Netplay::UpdateMap() {
 	if (match->map_id != Game_Map::GetMapId()) {
 		Close();
 		return false;
+	}
+	if (match->input_stream) {
+		auto& stream = *match->input_stream;
+		auto& world = match->world;
+		if (!stream.initial) {
+			stream.initial.emplace(world.Capture());
+			stream.opening = world.opening_pictures;
+		}
+		auto plan = Game_ManiacJs::ReadInputFramePlan(stream.next, stream.stopped);
+		if (plan.close) {
+			match.reset();
+			return true;
+		}
+		if (plan.restart) {
+			world.Restore(*stream.initial);
+			world.RestartPresentation();
+			world.opening_pictures = stream.opening;
+			stream.next = 0;
+			stream.stopped = false;
+		}
+		for (const auto& inputs : plan.inputs) {
+			if (stream.stopped) break;
+			MapWorld::Effects effects;
+			bool needs_confirmation = false;
+			if (!world.Step(stream.next, inputs, true, effects, needs_confirmation)) {
+				stream.stopped = true;
+				break;
+			}
+			stream.stopped = world.Publish(stream.next++, std::move(effects), false);
+			world.Present(!plan.silent, false);
+		}
+		world.Project(0);
+		world.PresentContinuations();
+		return true;
 	}
 	if (match->world.stopping) {
 		if (match->world.Present()) match.reset();

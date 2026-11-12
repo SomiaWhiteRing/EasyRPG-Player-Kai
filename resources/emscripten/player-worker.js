@@ -674,6 +674,56 @@ function createNetplayRecordingOutbox() {
 
 const netplayRecordingOutbox = createNetplayRecordingOutbox();
 
+function createAvatarReader(paths, origin) {
+  const avatars = new Map();
+  return (path, pointer, size) => {
+    if (!paths.has(path)) return 0;
+    if (!avatars.has(path)) {
+      const source = new URL(path, origin);
+      if (source.origin !== new URL(origin).origin) return 0;
+      avatars.set(path, null);
+      fetch(source).then(response => response.blob()).then(createImageBitmap).then(image => {
+        const canvas = new OffscreenCanvas(size, size);
+        const ctx = canvas.getContext('2d');
+        const crop = Math.min(image.width, image.height);
+        ctx.drawImage(image, (image.width - crop) / 2, (image.height - crop) / 2, crop, crop, 0, 0, size, size);
+        image.close();
+        avatars.set(path, ctx.getImageData(0, 0, size, size).data);
+      }).catch(() => {});
+    }
+    const bytes = avatars.get(path);
+    if (!bytes) return 0;
+    engine.HEAPU8.set(bytes, pointer);
+    return 1;
+  };
+}
+
+function createGameServices(path, workId, runtimeBase) {
+  if (!path) return;
+  try { importScripts(new URL(path, runtimeBase).href); }
+  catch { return; }
+  if (typeof self.createEasyRpgGameServices !== 'function') return;
+  const send = self.createEasyRpgGameServices(workId);
+  const responses = new Map(), assets = new Set();
+  let sequence = 0;
+  return {
+    request(name, payload) {
+      const id = ++sequence;
+      Promise.resolve().then(() => send(name, JSON.parse(payload))).then(result => {
+        for (const asset of result.avatars ?? []) assets.add(asset);
+        responses.set(id, JSON.stringify(result.data));
+      }).catch(() => responses.set(id, '{"error":"unavailable"}'));
+      return id;
+    },
+    take(id) {
+      const value = responses.get(id);
+      responses.delete(id);
+      return value;
+    },
+    avatar: createAvatarReader(assets, location.origin),
+  };
+}
+
 function createNetplay(endpoint, rtcSupported, runtimeBase) {
   if (!endpoint) return;
   const archive = new URL(endpoint).searchParams.get('archive');
@@ -696,7 +746,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   let resumeToken, resumeTimer, resumeDeadline = 0;
   let inputMatch, lastInputAt = 0, inputs = 0, peakInputGap = 0;
   let sentMatch = 0, sentFrame = -1;
-  const avatarPaths = new Set(), avatars = new Map();
+  const avatarPaths = new Set();
   const inbox = [], frames = [];
   const finishMarker = 0x314e4946;
   let finishCapable = false, finishOptIn = false, finish, finishTimer;
@@ -1070,26 +1120,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       }
       return latency;
     },
-    avatar(path, pointer, size) {
-      if (!avatarPaths.has(path)) return 0;
-      if (!avatars.has(path)) {
-        const source = new URL(path, directoryHttp);
-        if (source.origin !== directoryHttp.origin) return 0;
-        avatars.set(path, null);
-        fetch(source).then(response => response.blob()).then(createImageBitmap).then(image => {
-          const canvas = new OffscreenCanvas(size, size);
-          const ctx = canvas.getContext('2d');
-          const crop = Math.min(image.width, image.height);
-          ctx.drawImage(image, (image.width - crop) / 2, (image.height - crop) / 2, crop, crop, 0, 0, size, size);
-          image.close();
-          avatars.set(path, ctx.getImageData(0, 0, size, size).data);
-        }).catch(() => {});
-      }
-      const bytes = avatars.get(path);
-      if (!bytes) return 0;
-      engine.HEAPU8.set(bytes, pointer);
-      return 1;
-    },
+    avatar: createAvatarReader(avatarPaths, directoryHttp),
     open(room, mode, password = null) {
       if (room < 1 || room > 999999) return;
       close();
@@ -1437,6 +1468,7 @@ self.onmessage = async ({data}) => {
         mountSaves: storage && ((FS, paths) => storage.mountSaves(FS, paths, writeStorage)),
         movieSource: storage?.movieSource,
         netplay: createNetplay(data.netplayEndpoint, data.netplayRtc, data.runtimeBase),
+        gameServices: createGameServices(data.gameServices, data.workId, data.runtimeBase),
         audioCommand: command => {
           if (command.op === 'config' && command.soundfont?.startsWith('/') && engine && command.soundfont !== forwardedSoundfont) {
             try {

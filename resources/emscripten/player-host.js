@@ -1313,6 +1313,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       observe: typeof options.onEvent === 'function',
       workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData, arguments: options.arguments || [],
       netplayEndpoint: options.netplayEndpoint,
+      gameServices: options.gameServices ?? (options.netplayEndpoint ? 'game-services.js' : undefined),
       netplayRtc: typeof RTCPeerConnection === 'function' &&
         typeof RTCPeerConnection.prototype.createDataChannel === 'function',
       joystickAvailable: joystickAvailable(),
