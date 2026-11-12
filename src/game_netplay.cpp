@@ -40,6 +40,8 @@ struct Effects {
 	std::map<int, int> picture_retirements;
 	bool input_signal = false;
 	bool stop = false;
+	std::optional<std::array<int, 2>> score;
+	std::optional<uint32_t> checkpoint;
 };
 
 struct PictureContinuationUpdate {
@@ -266,7 +268,14 @@ struct MapWorld {
 		return true;
 	}
 
-	bool Publish(int, Effects effects) {
+	bool Publish(int index, Effects effects) {
+		if (effects.checkpoint) {
+			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
+		}
+		if (effects.stop) {
+			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
+			EM_ASM({ Module.netplay?.recordTerminal?.($0, $1, $2); }, index, score[0], score[1]);
+		}
 		stopping = effects.stop;
 		if (stopping) PresentContinuations();
 		pending_signal |= effects.input_signal;
@@ -337,6 +346,7 @@ struct Match {
 	bool peer_ready = false;
 	bool started = false;
 	bool stall_exit = false;
+	std::array<int, 3> rules{};
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
 };
@@ -377,6 +387,29 @@ void Game_Netplay::Command(std::string_view comment) {
 	}
 	if (command == "stop" && frame) {
 		frame->effects.stop = true;
+		int first, second;
+		if (args >> first >> second) {
+			auto& vars = *Main_Data::game_variables;
+			if (vars.IsValid(first) && vars.IsValid(second)) frame->effects.score = std::array{vars.Get(first), vars.Get(second)};
+		}
+		return;
+	}
+	if (command == "checkpoint" && frame && frame->index % 60 == 0) {
+		auto& vars = *Main_Data::game_variables;
+		uint32_t digest = 2166136261u;
+		int id;
+		while (args >> id) {
+			if (vars.IsValid(id)) digest = (digest ^ static_cast<uint32_t>(vars.Get(id))) * 16777619u;
+		}
+		auto rng = Rand::GetRNG();
+		digest = (digest ^ rng()) * 16777619u;
+		frame->effects.checkpoint = (digest ^ Main_Data::maniac_random_seed) * 16777619u;
+		return;
+	}
+	if (command == "result_record" && !frame) {
+#ifdef PLAYER_WEB
+		EM_ASM({ Module.netplay?.recordResult?.(); });
+#endif
 		return;
 	}
 	if (command == "stop_directory" && !frame) {
@@ -628,6 +661,10 @@ void Game_Netplay::Command(std::string_view comment) {
 		if (state >= 3 && vars.Get(variable) > 0) {
 			match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), state - 3, rng_mode == "continue_rng", buffer);
 			match->stall_exit = stall_mode == "stall_exit";
+			for (int& rule : match->rules) {
+				int id;
+				if (args >> id && vars.IsValid(id)) rule = vars.Get(id);
+			}
 			if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
 			ClearPreparation();
 		}
@@ -753,8 +790,18 @@ bool Game_Netplay::UpdateMap() {
 		Close();
 		return true;
 	}
-	if (!match->started && !match->continue_rng) {
-		SeedRng(static_cast<uint32_t>(match->seed));
+	if (!match->started) {
+		if (!match->continue_rng) SeedRng(static_cast<uint32_t>(match->seed));
+		if (EM_ASM_INT({ return Number(Module.netplay?.recording?.() ?? false); })) {
+			std::ostringstream rng;
+			rng << Rand::GetRNG();
+			const auto state = rng.str();
+			const auto& rules = match->rules;
+			EM_ASM({
+				Module.netplay.recordStart($0, $1, $2, $3, $4, $5, $6, UTF8ToString($7));
+			}, match->id, match->seed, match->map_id, rules[0], rules[1], rules[2],
+				Main_Data::maniac_random_seed, state.c_str());
+		}
 	}
 	match->started = true;
 	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {
