@@ -254,7 +254,7 @@ function createNetplayInputTransport(send, deliver, disconnect) {
 
 function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {sendControl, sendSocket, socketReady, receive, activate, disconnect, transportStats, reportFailure}) {
   const candidates = new Map();
-  let selected, active;
+  let selected, active, backup;
   const send = (type, path, fields) => sendControl({type, round, path, ...fields});
   const sendData = (candidate, data) => {
     if (candidate.port) candidate.port.postMessage({type: 'data', data}, [data]);
@@ -307,16 +307,18 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         send('signal', id, {value: data.value});
       } else if (data.type === 'data') {
         if (receiveProbe(candidate, data.data)) return;
-        if (active === candidate) receive(data.data);
+        if (active === candidate || backup === candidate) receive(data.data);
         else if (selected === candidate && candidate.early.length < 256) candidate.early.push(data.data);
       } else if (data.type === 'closed') {
         if (active === candidate) reportFailure(data.reason || 'peer_closed');
+        const backupClosed = backup === candidate;
+        if (backupClosed) backup = undefined;
         send('failed', id);
         dispose(candidate);
-        if (active === candidate) disconnect();
-      } else if (data.type === 'ice-pair' && data.final && active === candidate) {
+        if (active === candidate || (backupClosed && !socketReady())) disconnect();
+      } else if (data.type === 'ice-pair' && data.final && (active === candidate || backup === candidate)) {
         send('ice-pair', id, {value: data.value});
-      } else if (data.type === 'transport-stats' && active === candidate) {
+      } else if (data.type === 'transport-stats' && (active === candidate || backup === candidate)) {
         transportStats(data.value);
       }
     };
@@ -325,6 +327,8 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
 
   return {
     round,
+    hasBackup: () => Boolean(backup),
+    requestBackupStats: () => backup?.port.postMessage({type: 'transport-stats'}),
     close() {
       for (const candidate of candidates.values()) dispose(candidate);
     },
@@ -374,14 +378,23 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
           return;
         }
         active = candidate;
+        const mirror = message.backup === 'turn';
+        const backupCandidate = mirror ? candidates.get('turn') : undefined;
+        if (isOpen(backupCandidate)) backup = backupCandidate;
         for (const other of candidates.values()) {
-          if (other === active) stopProbe(other);
+          if (other === active || other === backup) stopProbe(other);
           else dispose(other);
         }
-        activate(active.port, round, inputProtocol);
+        const sendMirroredInput = mirror ? data => {
+          sendSocket(data);
+          backup?.port.postMessage({type: 'input', data}, [data]);
+        } : undefined;
+        backup?.port.postMessage({type: 'pace-input'});
+        activate(active.port, round, inputProtocol, sendMirroredInput);
         for (const packet of active.early) receive(packet);
         active.early.length = 0;
         active.port?.postMessage({type: 'ice-pair'});
+        backup?.port.postMessage({type: 'ice-pair'});
       }
     },
   };
@@ -500,7 +513,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   const directoryHttp = new URL(directory);
   directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
   let socket, state = 0, joinResult = 0;
-  let rtcPort, rtcRound, rtcSelected = false, routeSelection, inputTransport, peerMatch;
+  let rtcPort, rtcRound, rtcSelected = false, routeSelection, inputTransport, peerMatch, pendingReady;
   const directoryTimeout = 5000;
   let subscription, directoryDeadline = 0, nextProbe = 0, retry = 0;
   let fallback = false, nextPoll = 0, poll;
@@ -525,7 +538,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       queuedFrames: frames.length, deliveredInputs: inputs, paused: Number(Boolean(engine?.paused)),
       ...inputTransport?.stats(now), ...rtcStats, rtcStatsAgeMs: rtcStatsAt ? Math.round(now - rtcStatsAt) : -1,
     }),
-    () => rtcPort?.postMessage({type: 'transport-stats'}),
+    () => {
+      rtcPort?.postMessage({type: 'transport-stats'});
+      routeSelection?.requestBackupStats();
+    },
   );
   const isIdentity = person => typeof person?.name === 'string' && typeof person.avatar === 'string';
   const updateDirectory = (list, local, count) => {
@@ -600,6 +616,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     sentMatch = 0;
     sentFrame = -1;
     peerMatch = undefined;
+    pendingReady = undefined;
   };
   const closeRtc = () => {
     inputTransport?.close();
@@ -625,12 +642,11 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     state = joinResult = 0;
     roomSettings = '';
     closeRtc();
-    old?.close();
+    old?.close(1000);
   };
   const send = (...values) => {
     if (state < 3) return;
     const direct = rtcSelected && (values.length > 1 || resumeToken);
-    if (direct ? !rtcPort : socket?.readyState !== WebSocket.OPEN) return;
     if (values.length === 3) {
       [sentMatch, sentFrame] = values;
       if (inputTransport) {
@@ -645,8 +661,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     values.forEach((value, index) => bytes.setInt32(index * 4, value, true));
     if (direct) {
       rtcPort?.postMessage({type: 'data', data: bytes.buffer}, [bytes.buffer]);
-    } else {
+    } else if (socket?.readyState === WebSocket.OPEN) {
       socket.send(bytes.buffer);
+    } else if (values.length === 3 && sentFrame === -1 && routeSelection?.hasBackup()) {
+      pendingReady = bytes.buffer;
     }
   };
   return {
@@ -751,6 +769,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       address.searchParams.set('inputStats', '1');
       address.searchParams.set('diagnostics', '1');
       address.searchParams.set('routeSelection', '1');
+      if (rtcSupported) address.searchParams.set('routeInputMirror', '1');
       address.searchParams.set('inputProtocol', '1');
       if (rtcSupported) address.searchParams.set('rtcResume', '1');
       const sendRtc = value => {
@@ -778,10 +797,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         inputs++;
         frames.push([match, frame, input]);
       };
-      const enableInputTransport = protocol => {
+      const enableInputTransport = (protocol, sendInput = data => rtcPort?.postMessage({type: 'input', data}, [data])) => {
         if (protocol !== 1) return;
         inputTransport = createNetplayInputTransport(
-          data => rtcPort?.postMessage({type: 'input', data}, [data]), receiveInput,
+          sendInput, receiveInput,
           reason => { diagnostics.failure(reason); ended(); });
       };
       const receiveMatchData = data => {
@@ -857,9 +876,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
               sendSocket: bytes => { if (socket?.readyState === WebSocket.OPEN) socket.send(bytes); },
               receive: receiveMatchData, transportStats, disconnect: ended,
               reportFailure: reason => { diagnostics.failure(reason); diagnostics.end(reason); },
-              activate(port, round, protocol) {
+              activate(port, round, protocol, sendMirroredInput) {
                 rtcPort = port; rtcRound = round; rtcSelected = Boolean(port);
-                if (port) enableInputTransport(protocol);
+                if (port || sendMirroredInput) enableInputTransport(protocol, sendMirroredInput);
               },
             });
           } else if (message) routeSelection?.receive(message);
@@ -875,6 +894,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           state = Number(data);
           resumeDeadline = 0;
           nextPoll = 0;
+          if (pendingReady) {
+            connection.send(pendingReady);
+            pendingReady = undefined;
+          }
         } else if (data === 'rtc:webrtc') {
           rtcSelected = true;
           rtcPort?.postMessage({type: 'ice-pair'});
@@ -958,7 +981,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         connection.onmessage = receiveRoomMessage;
         connection.onclose = connection.onerror = () => {
           if (socket !== connection) return;
-          if (rtcSelected && resumeToken) {
+          if (resumeToken && (rtcSelected || routeSelection?.hasBackup())) {
             diagnostics.failure('control_disconnected');
             socket = undefined;
             diagnosticsAccepted = false;

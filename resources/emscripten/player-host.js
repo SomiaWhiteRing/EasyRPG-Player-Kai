@@ -565,8 +565,22 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     let channel;
     let inputChannel, pendingInput, notifiedOpen = false;
     let inputPacketsSent = 0, inputPacketsReceived = 0, inputReplacements = 0;
+    let pacedInput = false, nextInputAt = 0, inputTimer;
     const flushInput = () => {
       if (!pendingInput || inputChannel?.readyState !== 'open' || inputChannel.bufferedAmount) return;
+      if (pacedInput) {
+        const now = performance.now(), delay = nextInputAt - now;
+        if (delay > 0) {
+          inputTimer ??= setTimeout(() => {
+            inputTimer = undefined;
+            flushInput();
+          }, delay);
+          return;
+        }
+        // A spare path carries the latest unacknowledged history in each packet.
+        // Keep its packet rate low while the WebSocket sends inputs immediately.
+        nextInputAt = now + 250;
+      }
       const packet = pendingInput;
       pendingInput = undefined;
       inputChannel.send(packet);
@@ -599,6 +613,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       if (!open) return;
       open = false;
       clearTimeout(finishTimer);
+      clearTimeout(inputTimer);
       for (const complete of probeReplies.values()) complete(false);
       port.close();
       peer?.close();
@@ -886,6 +901,8 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         finishStats('fallback');
       } else if (data.type === 'ice-pair') {
         void reportIcePair(true);
+      } else if (data.type === 'pace-input') {
+        pacedInput = true;
       } else if (data.type === 'transport-stats') {
         port.postMessage({type: 'transport-stats', value: {
           rtcBufferedBytes: channel?.bufferedAmount ?? 0, rtcInputBufferedBytes: inputChannel?.bufferedAmount ?? 0,
