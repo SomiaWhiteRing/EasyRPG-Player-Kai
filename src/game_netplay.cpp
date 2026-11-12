@@ -40,6 +40,7 @@ struct Effects {
 	std::map<int, int> picture_retirements;
 	bool input_signal = false;
 	bool stop = false;
+	bool result = false;
 	std::optional<std::array<int, 2>> score;
 	std::optional<uint32_t> checkpoint;
 };
@@ -304,6 +305,9 @@ struct MapWorld {
 			else system.BgmFade(std::get<int>(effect));
 		}
 		if (effects.terminal) Restore(std::move(*effects.terminal));
+		if (effects.result) {
+			EM_ASM({ Module.netplay?.recordResult?.(); });
+		}
 		return effects.stop;
 	}
 
@@ -406,9 +410,10 @@ void Game_Netplay::Command(std::string_view comment) {
 		frame->effects.checkpoint = (digest ^ Main_Data::maniac_random_seed) * 16777619u;
 		return;
 	}
-	if (command == "result_record" && !frame) {
+	if (command == "result_record") {
 #ifdef PLAYER_WEB
-		EM_ASM({ Module.netplay?.recordResult?.(); });
+		if (frame) frame->effects.result = true;
+		else EM_ASM({ Module.netplay?.recordResult?.(); });
 #endif
 		return;
 	}
