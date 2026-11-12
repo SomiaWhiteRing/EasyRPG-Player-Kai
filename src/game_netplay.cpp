@@ -466,6 +466,14 @@ void Game_Netplay::Command(std::string_view comment) {
 		write(variable, frame != nullptr);
 		return;
 	}
+	if (command == "finish") {
+#ifdef PLAYER_WEB
+		write(variable, frame ? 0 : EM_ASM_INT({ return Module.netplay?.finishStatus?.() ?? 1; }));
+#else
+		write(variable, 1);
+#endif
+		return;
+	}
 	if (command == "seat") {
 #ifdef PLAYER_WEB
 		write(variable, frame ? frame->seat + 1 : std::max(0, ReadTransportState() - 2));
@@ -670,6 +678,9 @@ void Game_Netplay::Command(std::string_view comment) {
 				int id;
 				if (args >> id && vars.IsValid(id)) rule = vars.Get(id);
 			}
+			std::string finish_mode;
+			args >> finish_mode;
+			EM_ASM({ Module.netplay?.setFinishSync?.(Boolean($0)); }, finish_mode == "finish_sync");
 			if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
 			ClearPreparation();
 		}
@@ -784,11 +795,15 @@ bool Game_Netplay::UpdateMap() {
 		}
 		match->peer_ready = true;
 	}
-	EM_ASM({
-		Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7);
+	const bool finish_aborted = EM_ASM_INT({
+		return Number(Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7) ?? false);
 	}, match->id, match->timeline.VisibleFrame(), match->timeline.ConfirmedFrame(),
 		match->timeline.ReceivedFrame(), match->timeline.WaitingForInput(),
 		match->world.pending.size(), match->peer_ready, match->timeline.ReplayFrame());
+	if (finish_aborted) {
+		match.reset();
+		return true;
+	}
 	if (!match->peer_ready) return true;
 	if (WaitingForInput() && Input::IsTriggered(Input::CANCEL)) {
 		EM_ASM({ Module.netplay?.endMatch?.('user_cancel'); });
