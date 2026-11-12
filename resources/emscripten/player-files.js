@@ -1,7 +1,8 @@
 // WORKERFS files are immutable slices of installed OPFS packs. Amortize the
 // browser's per-read cost without copying the entire game into WASM memory.
-self.installPlayerFileCache = function installPlayerFileCache(FS, budget = 32 * 1024 * 1024) {
-  const ops = FS.lookupPath('/game').node.stream_ops;
+self.installPlayerFileCache = function installPlayerFileCache(FS, root = '/game', read) {
+  const budget = 32 * 1024 * 1024;
+  const ops = FS.lookupPath(root).node.stream_ops;
   const entries = new Map();
   const reader = new FileReaderSync();
   const wholeFileLimit = 16 * 1024 * 1024;
@@ -28,7 +29,7 @@ self.installPlayerFileCache = function installPlayerFileCache(FS, budget = 32 * 
           entries.delete(oldest);
         }
         const t = performance.now();
-        value = new Uint8Array(reader.readAsArrayBuffer(node.contents.slice(start, end)));
+        value = read ? read(node.contents, start, end) : new Uint8Array(reader.readAsArrayBuffer(node.contents.slice(start, end)));
         stats.readMs += performance.now() - t;
         bytes += value.length;
       }
@@ -43,4 +44,16 @@ self.installPlayerFileCache = function installPlayerFileCache(FS, budget = 32 * 
     return count;
   };
   return stats;
+};
+
+self.openPlayerStorage = function openPlayerStorage(options) {
+  if (!options) return;
+  importScripts(options.module);
+  const adapter = self.easyRpgStorage;
+  return {
+    packages: adapter.packages(options.data),
+    read: adapter.read,
+    mountSaves: (FS, paths, write) => adapter.mountSaves(FS, paths, options.data, write),
+    movieSource: source => ({url: adapter.movieUrl(source), source, module: options.module}),
+  };
 };

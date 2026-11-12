@@ -1,4 +1,4 @@
-// This build runs only in a dedicated Worker owned by the archive site.
+// The Web engine runs in a dedicated Worker.
 Module.arguments = ['--project-path', '/game', '--save-path', `/work-saves/${Module.workId}`,
   ...(Module.gameArguments || [])];
 Module.preRun = [].concat(Module.preRun || [], () => {
@@ -6,16 +6,18 @@ Module.preRun = [].concat(Module.preRun || [], () => {
     throw new Error('Invalid workId');
   FS.mkdir('/game');
   FS.mount(WORKERFS, {packages: Module.gamePackages}, '/game');
-  Module.fileCache = self.installPlayerFileCache(FS);
+  Module.fileCache = self.installPlayerFileCache(FS, '/game', Module.readGameFile);
   FS.chdir('/game');
   // The audio instance has no game loop or persistent state of its own.
   if (Module.audioOnly) return;
   FS.mkdir('/work-saves');
   const savePath = `/work-saves/${Module.workId}`;
   FS.mkdir(savePath);
-  FS.mount(IDBFS, {}, savePath);
-  FS.mkdir('/home/web_user/.config');
-  FS.mount(IDBFS, {}, '/home/web_user/.config');
+  const configPath = '/home/web_user/.config';
+  FS.mkdir(configPath);
+  const paths = [savePath, configPath];
+  if (Module.mountSaves) Module.mountSaves(FS, paths);
+  else for (const path of paths) FS.mount(IDBFS, {}, path);
   addRunDependency('player-storage');
   FS.syncfs(true, error => {
     if (error) { abort(`Could not load player storage: ${error}`); return; }

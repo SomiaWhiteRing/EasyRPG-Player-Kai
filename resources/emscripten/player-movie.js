@@ -20,7 +20,7 @@ export class MoviePlayback {
     this.nativeAudio = this.context.createMediaElementSource(video);
     this.nativeAudio.connect(this.output);
     this.attach();
-    this.url = URL.createObjectURL(blob);
+    this.url = blob instanceof Blob ? URL.createObjectURL(blob) : blob.url;
     video.src = this.url;
     video.onloadedmetadata = () => this.state({playing: true, width: video.videoWidth, height: video.videoHeight});
     video.onended = () => this.finish();
@@ -75,7 +75,7 @@ export class MoviePlayback {
       this.element.load();
     }
     this.element?.remove();
-    if (this.url) URL.revokeObjectURL(this.url);
+    if (this.url && this.blob instanceof Blob) URL.revokeObjectURL(this.url);
     this.url = undefined;
   }
 

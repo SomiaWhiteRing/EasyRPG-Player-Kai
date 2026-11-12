@@ -982,8 +982,29 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   };
 }
 
+const storageWrites = new Map();
+function writeStorage(files, callback) {
+  const id = crypto.randomUUID();
+  const timer = setTimeout(() => {
+    storageWrites.delete(id);
+    callback(new Error('存档写入超时。'));
+  }, 120000);
+  storageWrites.set(id, error => {
+    clearTimeout(timer);
+    callback(error ? new Error(error) : null);
+  });
+  postMessage({type: 'storage-write', id, files});
+}
+
+let observe;
 self.onmessage = async ({data}) => {
   try {
+    if (data.type === 'storage-written') {
+      const complete = storageWrites.get(data.id);
+      storageWrites.delete(data.id);
+      complete?.(data.error);
+      return;
+    }
     if (data.type === 'joystick-availability') {
       joystickAvailable = data.available === true;
       return;
@@ -995,6 +1016,8 @@ self.onmessage = async ({data}) => {
       const engineName = data.engineName;
       importScripts(new URL('player-files.js', data.runtimeBase).href,
         new URL(`${engineName}.js`, data.runtimeBase).href);
+      const storage = self.openPlayerStorage(data.storage);
+      observe = data.observe;
       let generation = 0;
       const audioPort = data.audioPort;
       audioPort.onmessage = ({data: state}) => {
@@ -1003,7 +1026,10 @@ self.onmessage = async ({data}) => {
       engine = await createEasyRpgEngine({
         canvas: data.canvas, workId: data.workId, sampleRate: data.sampleRate,
         audioCapabilities: data.audioCapabilities,
-        gamePackages: data.packages, gameArguments: data.arguments, keyNames: {},
+        gamePackages: storage?.packages ?? data.packages, gameArguments: data.arguments, keyNames: {},
+        readGameFile: storage?.read,
+        mountSaves: storage && ((FS, paths) => storage.mountSaves(FS, paths, writeStorage)),
+        movieSource: storage?.movieSource,
         netplay: createNetplay(data.netplayEndpoint, data.netplayRtc, data.runtimeBase),
         audioCommand: command => {
           if (command.op === 'config' && command.soundfont?.startsWith('/') && engine && command.soundfont !== forwardedSoundfont) {
@@ -1016,6 +1042,7 @@ self.onmessage = async ({data}) => {
             generation++;
             if (engine) engine.audioState = {playing: command.op === 'bgm', playedOnce: false, ticks: 0};
           }
+          if (observe) postMessage({type: 'player-event', event: {type: 'audio', op: command.op, path: command.path}});
           audioPort.postMessage({...command, generation}, command.file ? [command.file.bytes.buffer] : []);
         },
         getPreloadedPackage: () => data.runtimeData,
@@ -1061,6 +1088,7 @@ self.onmessage = async ({data}) => {
       else if (data.type === 'netplay-runtime') engine.netplay?.runtime(data);
       else if (data.type === 'focus') {
         engine._web_focus(data.focused ? 1 : 0, data.fullscreen ? 1 : 0);
+        if (observe) postMessage({type: 'player-event', event: {type: 'focus', focused: data.focused, paused: Boolean(engine.paused)}});
         engine.netplay?.runtime(data);
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {

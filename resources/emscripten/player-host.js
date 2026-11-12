@@ -6,6 +6,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     throw new Error('当前浏览器不支持本站播放器所需的画面或音频功能。');
   if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = 0;
   const base = new URL(options.runtimeBase, location.href).href;
+  const storage = options.storage ?? (options.nativeResources && {
+    module: new URL('native-storage.js', base).href, data: options.nativeResources,
+  });
+  const writeStorage = options.writeStorage ?? options.saveNative;
   const engineName = typeof WebAssembly.promising === 'function' && typeof WebAssembly.Suspending === 'function'
     ? 'easyrpg-player' : 'easyrpg-player-asyncify';
   const controller = new AbortController();
@@ -25,6 +29,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   let closed = false, started = false, stopping = false, stopPromise;
   let movie, movieId, movieRect, movieLoadTimer;
   let consoleInput, consoleWindow, startupTimer;
+  let mousePosition;
   let fileOutputConfirmation;
   let nameInput;
   const systemNameInput = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
@@ -113,6 +118,13 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   // Cancellation can arrive while the audio module is still being fetched.
   void ready.catch(() => {});
   const send = data => { if (!closed) worker.postMessage(data); };
+  // Keep a position even when no physical pointer is hovering the canvas.
+  const mouse = (position, focus = true) => {
+    if (position) mousePosition = position;
+    const current = mousePosition ?? {x: Math.floor(width / 2), y: Math.floor(height / 2)};
+    send({type: 'mouse', ...current, focus});
+    return current;
+  };
   const report = message => {
     nameInput?.finish(null);
     closeConsoleWindow(true);
@@ -233,17 +245,39 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     const panel = consoleWindow;
     consoleWindow = undefined;
     if (!panel) return;
+    cancelAnimationFrame(panel.scrollFrame);
     panel.dialog.remove();
     if (notify) send({type: 'console-closed', generation: panel.generation});
     if (!closed && !stopping) canvas.focus();
   }
+  // Bound both DOM rows and UTF-16 text, including unusually wide/combining lines.
+  const consoleMaxRows = 1000, consoleMaxText = 128 * 1024, consoleMaxRowText = 4096;
+  function trimConsoleHistory(panel) {
+    while (panel.output.children.length > 1 &&
+        (panel.output.children.length > consoleMaxRows || panel.textLength > consoleMaxText)) {
+      const oldest = panel.output.firstElementChild;
+      panel.textLength -= oldest.textContent.length + 1;
+      oldest.nextSibling.remove(); // The newline separating this completed row.
+      oldest.remove();
+    }
+  }
+  function scheduleConsoleScroll(panel) {
+    if (panel.scrollFrame) return;
+    panel.scrollFrame = requestAnimationFrame(() => {
+      panel.scrollFrame = 0;
+      if (consoleWindow === panel && !closed && !stopping)
+        panel.output.scrollTop = panel.output.scrollHeight;
+    });
+  }
   function appendConsoleText(text, foreground, background) {
     const panel = consoleWindow;
     if (!panel || !text) return;
-    const font = getComputedStyle(panel.output);
-    panel.measure.font = `${font.fontStyle} ${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
-    const space = panel.measure.measureText(' ').width;
-    panel.columns ||= Math.max(1, Math.floor(panel.output.clientWidth / space));
+    if (!panel.columns) {
+      const font = getComputedStyle(panel.output);
+      panel.measure.font = `${font.fontStyle} ${font.fontWeight} ${font.fontSize} ${font.fontFamily}`;
+      const space = panel.measure.measureText(' ').width;
+      panel.columns = Math.max(1, Math.min(1024, Math.floor(panel.output.clientWidth / space) || 1));
+    }
     const color = `${foreground}:${background}`;
     const styled = value => {
       const run = document.createElement('span'); run.dataset.color = color;
@@ -266,6 +300,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       }
       if (start === before.length) firstColumn = lastColumn = column;
       const left = Math.max(0, panel.column - firstColumn), right = Math.max(0, lastColumn - panel.column - width);
+      // Cursor gaps and half-wide-glyph padding also count toward the row budget.
+      if (before.length - (end - start) + left + value.length + right > consoleMaxRowText) {
+        nextRow(); writeRun(value); return;
+      }
       if (start === before.length && !left) {
         const last = panel.row.lastElementChild;
         if (last?.dataset.color === color) last.firstChild.appendData(value);
@@ -310,11 +348,15 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       }
       panel.cursor = start + left + value.length; panel.column += width;
       panel.rowLength = panel.row.textContent.length;
+      panel.textLength += panel.rowLength - before.length;
+      trimConsoleHistory(panel);
     };
     const nextRow = () => {
       panel.output.append(document.createTextNode('\n'));
       panel.row = document.createElement('span'); panel.output.append(panel.row);
       panel.cursor = panel.rowLength = panel.column = 0;
+      ++panel.textLength;
+      trimConsoleHistory(panel);
     };
     const write = value => {
       const width = panel.columns;
@@ -322,10 +364,16 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       let run = '';
       const glyphs = panel.segmenter ? panel.segmenter.segment(value) : value;
       for (const item of glyphs) {
-        const glyph = item.segment ?? item;
+        // A malicious combining sequence can itself be arbitrarily long. Keep normal
+        // graphemes intact; replace only a single grapheme exceeding the row budget.
+        const segment = item.segment ?? item;
+        const glyph = segment.length > consoleMaxRowText ? '\uFFFD' : segment;
         const advance = glyphColumns(glyph);
         // Filling the last column delays wrapping until the next printable glyph.
-        if (used > 0 && used + advance > width + 0.01) {
+        // Bound the pending run here. writeRun checks the exact resulting row length,
+        // subtracting overwritten glyphs before counting cursor gaps and padding.
+        if ((used > 0 && used + advance > width + 0.01) ||
+            run.length + glyph.length > consoleMaxRowText) {
           if (run) writeRun(run);
           nextRow(); run = ''; used = 0;
         }
@@ -368,7 +416,8 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     }
     // A page has no OS console bell; coalesce this write into a visual alert.
     if (bell) panel.dialog.animate([{opacity: 0.5}, {opacity: 1}], {duration: 150});
-    panel.output.scrollTop = panel.output.scrollHeight;
+    // Writes stay synchronous (including input echo); only layout/scroll is coalesced.
+    scheduleConsoleScroll(panel);
   }
   function setConsoleColor(foreground, background) {
     const panel = consoleWindow;
@@ -400,7 +449,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     form.append(input, submit, cancel); dialog.append(header, output, form); document.body.append(dialog);
     const row = document.createElement('span'); output.append(row);
     consoleWindow = {dialog, caption, output, form, input, cancel, generation: data.generation,
-      row, cursor: 0, rowLength: 0, column: 0,
+      row, cursor: 0, rowLength: 0, column: 0, textLength: 0, scrollFrame: 0,
       segmenter: typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : null,
       measure: document.createElement('canvas').getContext('2d')};
     setConsoleColor(data.foreground, data.background);
@@ -897,8 +946,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   }
 
   worker.onmessage = ({data}) => {
-    if (data.type === 'ready') {
+    if (data.type === 'storage-write') {
+      Promise.resolve().then(() => writeStorage(data.files)).then(
+        () => send({type: 'storage-written', id: data.id}),
+        error => send({type: 'storage-written', id: data.id, error: String(error)}));
+    } else if (data.type === 'player-event') options.onEvent?.(data.event);
+    else if (data.type === 'ready') {
       keys = data.keys; width = data.width; height = data.height;
+      mouse();
       started = true;
       node.port.postMessage({type: 'start'});
       readyResolve();
@@ -947,7 +1002,11 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     else if (data.type === 'console-input') requestConsoleInput(data);
     else if (data.type === 'file-output-confirmation') requestFileOutputConfirmation(data);
     else if (data.type === 'console-command') {
-      try { consoleCommand(data); } catch (error) { report(String(error)); }
+      try {
+        if (options.consoleOutput) {
+          if (data.op === 'write') options.consoleOutput(data.text);
+        } else consoleCommand(data);
+      } catch (error) { report(String(error)); }
     }
     else if (data.type === 'screenshot' && screenshot) {
       screenshot.resolve({blob: new Blob([data.bytes], {type: 'image/png'}), width: data.width, height: data.height});
@@ -1042,7 +1101,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   listen(document, 'fullscreenchange', applyVideoLayout);
   for (const target of new Set([page, window])) listen(target, 'resize', applyVideoLayout);
   listen(document, 'focusin', focus);
-  listen(canvas, 'pointerleave', () => send({type: 'mouse', x: -1, y: -1, focus: false}));
+  listen(canvas, 'pointerleave', () => mouse(undefined, false));
   listen(canvas, 'wheel', event => {
     const key = keys[event.deltaY < 0 ? 'MOUSE_SCROLLUP' : 'MOUSE_SCROLLDOWN'];
     if (!key) return;
@@ -1055,7 +1114,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     return {x: Math.floor((event.clientX-rect.left)*width/rect.width), y: Math.floor((event.clientY-rect.top)*height/rect.height)};
   };
   listen(canvas, 'pointermove', event => {
-    send({type: 'mouse', ...pointerPosition(event), focus: true});
+    mouse(pointerPosition(event));
   });
   for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'lostpointercapture']) listen(canvas, type, event => {
     const pressed = type === 'pointerdown';
@@ -1063,8 +1122,8 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       event.preventDefault(); canvas.focus(); canvas.setPointerCapture(event.pointerId);
       void context.resume().catch(() => {});
     }
-    const position = pointerPosition(event);
-    send({type: 'mouse', ...position, focus: true});
+    // Capture-loss and cancellation events need not contain usable coordinates.
+    const position = mouse(type === 'pointerdown' || type === 'pointerup' ? pointerPosition(event) : undefined);
     if (event.pointerType === 'touch') {
       send({type: 'touch', ...position, id: event.pointerId, pressed});
     } else if (type === 'pointercancel' || type === 'lostpointercapture') {
@@ -1120,13 +1179,84 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     if (data.type === 'startup-progress') startupProgress();
   });
   async function loadRuntimeAsset(name) {
-    const response = await fetch(new URL(name, base), {signal});
-    if (!response.ok) throw new Error(`Runtime download failed: ${response.status} ${name}`);
-    startupProgress();
-    const body = response.body.pipeThrough(new TransformStream({transform(chunk, controller) {
-      startupProgress();
-      controller.enqueue(chunk);
-    }}));
+    signal.throwIfAborted();
+    const urls = [...new Set([new URL(name, base).href, new URL(name, options.assetBase || base).href])];
+    const preferenceKey = 'easyrpg-runtime-asset:' + base + name;
+    if (urls.length > 1) {
+      try { if (sessionStorage.getItem(preferenceKey) === urls[1]) urls.reverse(); } catch {}
+    }
+    const controllers = urls.map(() => new AbortController());
+    const abortDownloads = () => controllers.forEach(controller => controller.abort(signal.reason));
+    signal.addEventListener('abort', abortDownloads, {once: true});
+    const probe = async index => {
+      try {
+        const response = await fetch(urls[index], {signal: controllers[index].signal});
+        if (!response.ok) throw new Error('Runtime download failed: ' + response.status + ' ' + urls[index]);
+        startupProgress();
+        const reader = response.body.getReader();
+        const prefix = [];
+        let size = 0;
+        // Compare actual transfer progress, not merely a fast response header.
+        while (urls.length > 1 && size < 512 * 1024) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          prefix.push(value);
+          size += value.byteLength;
+          startupProgress();
+        }
+        return {index, response, reader, prefix};
+      } catch (error) {
+        controllers[index].abort(error);
+        throw error;
+      }
+    };
+    let delayedStart, selected;
+    try {
+      const primary = probe(0);
+      selected = urls.length === 1 ? await primary : await Promise.any([
+        primary,
+        new Promise((resolve, reject) => {
+          delayedStart = setTimeout(() => probe(1).then(resolve, reject), 700);
+        }),
+      ]);
+    } catch (error) {
+      signal.throwIfAborted();
+      if (error instanceof AggregateError)
+        throw new Error(error.errors.map(value => value?.message || String(value)).join('; '));
+      throw error;
+    } finally {
+      clearTimeout(delayedStart);
+      if (!selected) signal.removeEventListener('abort', abortDownloads);
+      controllers.forEach((controller, index) => { if (index !== selected?.index) controller.abort(); });
+    }
+    const {index, response, reader, prefix} = selected;
+    const body = new ReadableStream({
+      start(controller) { for (const chunk of prefix) controller.enqueue(chunk); },
+      async pull(controller) {
+        try {
+          const {done, value} = await reader.read();
+          if (done) {
+            signal.removeEventListener('abort', abortDownloads);
+            if (urls.length > 1) {
+              try { sessionStorage.setItem(preferenceKey, urls[index]); } catch {}
+            }
+            controller.close();
+          } else {
+            startupProgress();
+            controller.enqueue(value);
+          }
+        } catch (error) {
+          signal.removeEventListener('abort', abortDownloads);
+          controller.error(error);
+          controllers[index].abort(error);
+        }
+      },
+      async cancel(reason) {
+        signal.removeEventListener('abort', abortDownloads);
+        controllers[index].abort(reason);
+        await reader.cancel(reason).catch(() => {});
+      },
+    });
     return new Response(body, {headers: {'Content-Type': response.headers.get('Content-Type') || 'application/octet-stream'}});
   }
   startStartupTimer();
@@ -1156,13 +1286,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     const controlChannel = new MessageChannel();
     node.port.postMessage({type: 'connect', port: audioChannel.port1}, [audioChannel.port1]);
     node.connect(masterVolume);
-    audioWorker.postMessage({type: 'start', runtimeBase: base, engineName, packages: options.packages,
+    audioWorker.postMessage({type: 'start', runtimeBase: base, engineName, packages: options.packages, storage,
       workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData,
       audioPort: audioChannel.port2, controlPort: controlChannel.port1},
       [audioChannel.port2, controlChannel.port1]);
     const audioCapabilities = await Promise.race([audioReady, ready]);
     const offscreen = canvas.transferControlToOffscreen();
-    worker.postMessage({type: 'start', canvas: offscreen, runtimeBase: base, engineName, packages: options.packages,
+    worker.postMessage({type: 'start', canvas: offscreen, runtimeBase: base, engineName, packages: options.packages, storage,
+      observe: typeof options.onEvent === 'function',
       workId: options.workId, sampleRate: context.sampleRate, wasmModule, runtimeData, arguments: options.arguments || [],
       netplayEndpoint: options.netplayEndpoint,
       netplayRtc: typeof RTCPeerConnection === 'function' &&

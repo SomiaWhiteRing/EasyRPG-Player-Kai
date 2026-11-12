@@ -19,8 +19,13 @@ self.onmessage = async ({data}) => {
       });
       decoder.FS.mkdir('/movie');
       // Read Blob slices on demand instead of copying an entire movie into WASM.
+      const external = !(data.blob instanceof Blob);
       decoder.FS.mount(decoder.FS.filesystems.WORKERFS,
-        {blobs: [{name: 'input', data: data.blob}]}, '/movie');
+        {blobs: [{name: 'input', data: external ? data.blob.source : data.blob}]}, '/movie');
+      if (external) {
+        importScripts(new URL('player-files.js', self.location.href).href, data.blob.module);
+        self.installPlayerFileCache(decoder.FS, '/movie', self.easyRpgStorage.read);
+      }
       if (decoder.ccall('movie_open', 'number', ['string'], ['/movie/input']) < 0)
         throw new Error(decoder.UTF8ToString(decoder._movie_error()));
       opened = true;

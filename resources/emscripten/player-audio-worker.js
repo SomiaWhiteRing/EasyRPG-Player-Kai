@@ -29,9 +29,10 @@ self.onmessage = async ({data}) => {
     const engineName = data.engineName;
     importScripts(new URL('player-files.js', data.runtimeBase).href,
       new URL(`${engineName}.js`, data.runtimeBase).href);
+    const storage = self.openPlayerStorage(data.storage);
     engine = await createEasyRpgEngine({
       audioOnly: true, noInitialRun: true, workId: data.workId,
-      gamePackages: data.packages, sampleRate: data.sampleRate,
+      gamePackages: storage?.packages ?? data.packages, readGameFile: storage?.read, sampleRate: data.sampleRate,
       getPreloadedPackage: () => data.runtimeData,
       instantiateWasm: (imports, receiveInstance) => {
         const instance = new WebAssembly.Instance(data.wasmModule, imports);

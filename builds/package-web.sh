@@ -48,7 +48,20 @@ player-worker.js, player-audio.js, player-audio-worker.js, player-files.js,
 player-movie.js, player-movie-worker.js,
 movie-decoder.js and movie-decoder.wasm together at one immutable runtime URL.
 Both engine variants share easyrpg-player.data, containing the recommended
-SoundFont. Saves use /work-saves/<workId> IDBFS.
+SoundFont. Saves default to /work-saves/<workId> IDBFS.
+
+An optional storage descriptor {module, data} loads a trusted same-origin
+adapter script in the game and audio Workers. The script exposes
+self.easyRpgStorage with packages(data), read(source, start, end),
+mountSaves(FS, paths, data, write) and movieUrl(source). The host supplies
+writeStorage(files), returning a Promise. The read method returns a Uint8Array
+for the requested range. Sources passed to the movie Worker are cloneable.
+The existing nativeResources and saveNative options select native-storage.js
+for installed hosts that already use that interface.
+
+assetBase can name a second runtime asset origin. onEvent, when supplied,
+observes focus {focused, paused} and audio {op, path} events.
+consoleOutput(text), when supplied, directs console output to the embedder.
 Await player.stop() before destroying the player document.
 
 Legacy movies use a lazy-loaded, decode-only FFmpeg WASM worker. See web-movies.md
