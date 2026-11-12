@@ -225,6 +225,12 @@ function createNetplayInputTransport(send, deliver, disconnect) {
       flush();
       transmit(true);
     },
+    discard(id) {
+      if (id !== match) return;
+      pending.length = 0;
+      incoming.clear();
+      ready = false;
+    },
     send(id, frame, input) {
       if (id !== match || frame !== localNext || pending.length === limit) {
         disconnect(pending.length === limit ? 'input_backlog' : 'input_sequence');
@@ -604,6 +610,8 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     finish.status = status;
     clearTimeout(finishTimer);
     if (status < 0) {
+      inputTransport?.discard(finish.match);
+      finish.incoming.clear();
       diagnostics.end(reason);
       finishRecord(reason);
     }
@@ -991,7 +999,8 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         if (inRoom || (result && result !== 4 && result !== 5)) refreshDirectory();
       };
       const receiveInput = (match, frame, input, at = performance.now(), path = 'websocket') => {
-        if (frames.length >= 256) {
+        const settled = finish?.match === match && (finish.status < 0 || finish.terminal);
+        if (!settled && frames.length >= 256) {
           diagnostics.failure('gameplay_queue');
           return ended();
         }
@@ -1001,10 +1010,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         lastInputAt = now;
         inputs++;
         if (recording?.match === match) recordEvent(['remote', frame, input, Math.round(at - recording.at), path]);
-        frames.push([match, frame, input]);
+        if (!settled) frames.push([match, frame, input]);
       };
       repairPlainInputs = (match, first, masks, path, at = performance.now()) => {
-        if (finish?.match !== match || first + masks.length - 1 > finish.received + 256) return;
+        if (finish?.match !== match || finish.status < 0 || first + masks.length - 1 > finish.received + 256) return;
         for (let i = 0; i < masks.length; i++) {
           const frame = first + i;
           if (frame > finish.received && !finish.incoming.has(frame)) finish.incoming.set(frame, [masks[i], at, path]);
@@ -1023,11 +1032,11 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           reason => { diagnostics.failure(reason); ended(); });
       };
       const receiveMatchData = (data, path = 'websocket') => {
-        if (data instanceof ArrayBuffer && data.byteLength >= 4 && data.byteLength <= 1028 &&
+        if (finishCapable && data instanceof ArrayBuffer && data.byteLength > 16 && data.byteLength <= 1028 &&
             new DataView(data).getUint32(0, true) === finishMarker) {
           receiveFinish(new TextDecoder().decode(new Uint8Array(data, 4)), 'finish_' + path, false);
         } else if (inputTransport && data instanceof ArrayBuffer && data.byteLength >= 16) {
-          inputTransport.receive(data, path);
+          if (!(finish?.status < 0 && new DataView(data).getInt32(4, true) === finish.match)) inputTransport.receive(data, path);
         } else if (data instanceof ArrayBuffer && data.byteLength === 8) {
           const packet = new DataView(data), kind = packet.getInt32(0, true), number = packet.getInt32(4, true);
           if (kind === 0) send(1, number);
