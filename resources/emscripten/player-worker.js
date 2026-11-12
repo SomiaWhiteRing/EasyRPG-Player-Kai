@@ -527,6 +527,153 @@ function createNetplayDiagnostics(send, snapshot, requestStats) {
   };
 }
 
+function createNetplayRecordingOutbox() {
+  if (!self.indexedDB || !navigator.locks) return;
+  const writers = new Set();
+  const range = id => IDBKeyRange.bound([id, 0], [id, Number.MAX_SAFE_INTEGER]);
+  const result = request => new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const committed = transaction => new Promise((resolve, reject) => {
+    transaction.oncomplete = resolve;
+    transaction.onabort = () => reject(transaction.error);
+  });
+  let database, uploading, controller, nextUpload = 0;
+  const open = () => {
+    if (!database) {
+      const request = indexedDB.open('easyrpg-netplay-recording', 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('outbox', {keyPath: 'id'});
+        request.result.createObjectStore('segments', {keyPath: ['id', 'seq']});
+      };
+      database = result(request).catch(error => {
+        database = undefined;
+        throw error;
+      });
+    }
+    return database;
+  };
+
+  const save = record => {
+    if (record.saving || (!record.events.length && record.grant === record.savedGrant && !record.ended)) return;
+    const events = record.events.slice();
+    const closed = record.ended;
+    const grant = record.grant;
+    record.saving = (async () => {
+      await record.lock;
+      const db = await open();
+      const tx = db.transaction(['outbox', 'segments'], 'readwrite');
+      const done = committed(tx);
+      tx.objectStore('outbox').put({
+        id: record.id, grant, closed,
+        elapsed: Math.round(performance.now() - record.at), dropped: record.dropped,
+      });
+      if (events.length) tx.objectStore('segments').put({id: record.id, seq: record.seq, events});
+      await done;
+      record.events.splice(0, events.length);
+      if (events.length) ++record.seq;
+      record.savedGrant = grant;
+      if (closed && !record.events.length && grant === record.grant) {
+        writers.delete(record);
+        record.release();
+        nextUpload = 0;
+      }
+    })().catch(error => console.warn('netplay recording local save', error)).finally(() => { record.saving = undefined; });
+  };
+
+  const upload = async (db, record) => {
+    const segments = await result(db.transaction('segments').objectStore('segments').getAll(range(record.id)));
+    const events = segments.flatMap(segment => segment.events);
+    if (!record.closed) events.push(['end', 'interrupted', record.elapsed, record.dropped]);
+    const encoder = new TextEncoder();
+    let seq = 0, index = 0;
+    while (index < events.length) {
+      if (writers.size) return;
+      const batch = [];
+      let size = 0;
+      while (index < events.length) {
+        const text = JSON.stringify(events[index]);
+        const bytes = encoder.encode(text).byteLength + 1;
+        if (batch.length && size + bytes > 240_000) break;
+        batch.push(text);
+        size += bytes;
+        ++index;
+      }
+      if (seq >= (record.uploaded ?? 0)) {
+        controller = new AbortController();
+        const timeout = setTimeout(() => controller?.abort(), 15_000);
+        try {
+          const response = await fetch('/api/netplay-recordings/upload', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Netplay-Recording-Grant': record.grant},
+            body: `{"seq":${seq},"events":[${batch.join(',')}]}`,
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } finally {
+          clearTimeout(timeout);
+          controller = undefined;
+        }
+        record.uploaded = seq + 1;
+        const tx = db.transaction('outbox', 'readwrite');
+        const done = committed(tx);
+        tx.objectStore('outbox').put(record);
+        await done;
+      }
+      ++seq;
+    }
+    const tx = db.transaction(['outbox', 'segments'], 'readwrite');
+    const done = committed(tx);
+    tx.objectStore('outbox').delete(record.id);
+    tx.objectStore('segments').delete(range(record.id));
+    await done;
+  };
+
+  const tick = () => {
+    for (const record of writers) {
+      if (!record.ended && !record.grant) record.requestGrant();
+      save(record);
+    }
+    if (writers.size || uploading || !navigator.onLine || performance.now() < nextUpload) return;
+    nextUpload = performance.now() + 5000;
+    uploading = (async () => {
+      const db = await open();
+      const records = await result(db.transaction('outbox').objectStore('outbox').getAll());
+      for (const record of records) {
+        if (writers.size) return;
+        if (!record.grant) continue;
+        await navigator.locks.request('netplay-recording:' + record.id, {ifAvailable: true}, async lock => {
+          if (!lock || writers.size) return;
+          // The outbox entry may have changed while another tab held the lock.
+          const latest = await result(db.transaction('outbox').objectStore('outbox').get(record.id));
+          if (latest) await upload(db, latest);
+        });
+      }
+    })().catch(() => {}).finally(() => { uploading = undefined; });
+  };
+  setInterval(tick, 1000);
+  return {
+    start(record) {
+      record.id = crypto.randomUUID();
+      record.seq = 0;
+      const hold = new Promise(resolve => { record.release = resolve; });
+      record.lock = new Promise((resolve, reject) => {
+        navigator.locks.request('netplay-recording:' + record.id, async () => {
+          resolve();
+          await hold;
+        }).catch(reject);
+      });
+      writers.add(record);
+      controller?.abort();
+      tick();
+    },
+    save,
+  };
+}
+
+const netplayRecordingOutbox = createNetplayRecordingOutbox();
+
 function createNetplay(endpoint, rtcSupported, runtimeBase) {
   if (!endpoint) return;
   const archive = new URL(endpoint).searchParams.get('archive');
@@ -556,41 +703,18 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   let repairPlainInputs;
   let diagnosticsAccepted = false, rtcStats = {}, rtcStatsAt = 0;
   const client = new URL(runtimeBase).pathname.split('/').filter(Boolean).at(-1) || 'unknown';
-  let recordingEnabled = false, recording, recordingTimer;
-  const recordings = new Map();
-  const flushRecord = () => {
-    if (!recordingEnabled || socket?.readyState !== WebSocket.OPEN || socket.bufferedAmount > 16_384) return;
-    for (const record of recordings.values()) {
-      if (!record.started) continue;
-      if (record.events.length && record.pending.size < 16) {
-        const events = record.events.splice(0, 256);
-        const seq = record.sequence++;
-        record.pending.set(seq, {
-          text: 'room:record:' + JSON.stringify({match: record.match, seq, events}),
-          sentAt: -Infinity,
-        });
-      }
-      for (const batch of record.pending.values()) {
-        if (socket.bufferedAmount > 16_384) return;
-        const now = performance.now();
-        if (now - batch.sentAt < 4000) continue;
-        batch.sentAt = now;
-        socket.send(batch.text);
-      }
-    }
-  };
+  let recordingEnabled = false, recording;
   const recordEvent = event => {
     if (!recording || recording.ended) return;
-    // Bounded while the room control connection is down.
+    // Bound the unsaved tail when the device cannot commit a checkpoint.
     if (recording.events.length < 4096) recording.events.push(event);
     else recording.dropped++;
-    if (recording.events.length >= 240) flushRecord();
   };
   const finishRecord = reason => {
     if (recording?.started && !recording.ended) {
       recording.events.push(['end', reason, Math.round(performance.now() - recording.at), recording.dropped]);
       recording.ended = true;
-      flushRecord();
+      netplayRecordingOutbox.save(recording);
     }
   };
   const sendFinish = (packet, peer = false) => {
@@ -759,8 +883,6 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   };
   const close = () => {
     finishRecord('closed');
-    clearInterval(recordingTimer);
-    recordings.clear();
     recording = undefined;
     recordingEnabled = false;
     clearTimeout(finishTimer);
@@ -798,8 +920,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       }
       if (recordingEnabled && sentFrame === -1) {
         finishRecord('next_match');
-        recording = {match: sentMatch, at: performance.now(), events: [], pending: new Map(), sequence: 0, dropped: 0};
-        recordings.set(sentMatch, recording);
+        recording = {match: sentMatch, at: performance.now(), events: [], dropped: 0};
       }
       if (recording?.match === sentMatch && sentFrame >= 0) recordEvent(['local', sentFrame, values[2]]);
       if (inputTransport) {
@@ -846,17 +967,23 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       diagnostics.end(reason);
       if (recording?.terminal && reason === 'match_end') {
         recordEvent(['cleanup', Math.round(performance.now() - recording.at)]);
-        flushRecord();
       } else {
         finishRecord(reason);
       }
     },
     recording: () => recordingEnabled,
     recordStart(match, seed, map, first, second, rounds, maniacSeed, rng) {
-      if (recording?.match !== match) return;
+      if (recording?.match !== match || recording.started) return;
       recording.events.unshift(['start', {client, seed, map, fighters: [first, second], rounds, maniacSeed, rng}]);
       recording.started = true;
-      flushRecord();
+      let requestedAt = -Infinity;
+      recording.requestGrant = () => {
+        const now = performance.now();
+        if (socket?.readyState !== WebSocket.OPEN || now - requestedAt < 3000) return;
+        requestedAt = now;
+        socket.send('room:record:open:' + match);
+      };
+      netplayRecordingOutbox.start(recording);
     },
     recordCheckpoint(frame, digest) {
       recordEvent(['checkpoint', frame, digest]);
@@ -875,7 +1002,6 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       if (!recording) return;
       recording.terminal = true;
       recordEvent(['terminal', frame, first, second, Math.round(performance.now() - recording.at)]);
-      flushRecord();
     },
     recordResult() {
       if (!recording?.terminal) return;
@@ -978,7 +1104,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       address.searchParams.set('heartbeat', '1');
       address.searchParams.set('inputStats', '1');
       address.searchParams.set('diagnostics', '1');
-      address.searchParams.set('recording', '1');
+      if (netplayRecordingOutbox) address.searchParams.set('recording', '2');
       address.searchParams.set('finishSync', '1');
       if (archive) address.searchParams.set('archive', archive);
       address.searchParams.set('routeSelection', '1');
@@ -1072,18 +1198,16 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           receiveFinish(data.slice(12), 'finish_websocket', true);
           return;
         }
-        if (data === 'room:record:1') {
-          recordingEnabled = true;
-          clearInterval(recordingTimer);
-          recordingTimer = setInterval(flushRecord, 1000);
-          flushRecord();
+        if (data === 'room:record:2') {
+          recordingEnabled = !!netplayRecordingOutbox;
           return;
         }
-        if (typeof data === 'string' && data.startsWith('room:record:ack:')) {
-          const [, , , match, sequence] = data.split(':');
-          const record = recordings.get(Number(match));
-          record?.pending.delete(Number(sequence));
-          if (record?.ended && !record.pending.size && !record.events.length) recordings.delete(record.match);
+        if (typeof data === 'string' && data.startsWith('room:record:grant:')) {
+          const [, , , match, grant] = data.split(':');
+          if (recording?.match === Number(match) && recording.started && !recording.grant) {
+            recording.grant = grant;
+            netplayRecordingOutbox.save(recording);
+          }
           return;
         }
         if (typeof data === 'string' && data.startsWith('room:settings:')) {
