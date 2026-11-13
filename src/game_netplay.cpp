@@ -675,6 +675,7 @@ struct Match {
 	bool terminal_presentation_pending = false;
 	bool stall_exit = false;
 	std::array<int, 3> rules{};
+	std::optional<bool> blind_selection;
 	std::optional<InputStream> input_stream;
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
@@ -1035,6 +1036,10 @@ void Game_Netplay::Command(std::string_view comment) {
 			std::string finish_mode;
 			args >> finish_mode;
 			EM_ASM({ Module.netplay?.setFinishSync?.(Boolean($0)); }, finish_mode == "finish_sync");
+			int blind_variable;
+			if (args >> blind_variable && vars.IsValid(blind_variable)) {
+				match->blind_selection = vars.Get(blind_variable) != 0;
+			}
 			if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
 			ClearPreparation();
 		}
@@ -1267,9 +1272,11 @@ bool Game_Netplay::UpdateMap() {
 			const auto state = rng.str();
 			const auto& rules = match->rules;
 			EM_ASM({
-				Module.netplay.recordStart($0, $1, $2, $3, $4, $5, $6, UTF8ToString($7));
+				Module.netplay.recordStart($0, $1, $2, $3, $4, $5, $6, UTF8ToString($7),
+					$8 < 0 ? undefined : Boolean($8));
 			}, match->id, match->seed, match->map_id, rules[0], rules[1], rules[2],
-				Main_Data::maniac_random_seed, state.c_str());
+				Main_Data::maniac_random_seed, state.c_str(),
+				match->blind_selection ? static_cast<int>(*match->blind_selection) : -1);
 		}
 	}
 	match->started = true;

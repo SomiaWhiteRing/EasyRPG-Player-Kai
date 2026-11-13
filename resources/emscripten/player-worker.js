@@ -1046,9 +1046,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       }
     },
     recording: () => recordingEnabled,
-    recordStart(match, seed, map, first, second, rounds, maniacSeed, rng) {
+    recordStart(match, seed, map, first, second, rounds, maniacSeed, rng, blind) {
       if (recording?.match !== match || recording.started) return;
-      recording.events.unshift(['start', {client, seed, map, fighters: [first, second], rounds, maniacSeed, rng}]);
+      recording.events.unshift(['start', {client, seed, map, fighters: [first, second], rounds, maniacSeed, rng, blind}]);
       recording.started = true;
       recordingsAwaitingGrant.set(match, recording);
       let requestedAt = -Infinity;
