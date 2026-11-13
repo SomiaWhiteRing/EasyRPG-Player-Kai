@@ -337,6 +337,8 @@ struct MapWorld {
 	bool Publish(int index, Effects effects, bool record = true) {
 		if (record && effects.checkpoint) {
 			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
+		} else if (!checkpoint_worker && effects.checkpoint) {
+			EM_ASM({ Module.observeInputCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
 		}
 		if (record && effects.stop) {
 			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
@@ -652,6 +654,7 @@ struct Match {
 		int interval = 60;
 		int next = 0;
 		bool stopped = false;
+		std::optional<std::pair<Rand::RNG, uint32_t>> initial_rng;
 	};
 	Match(int id, int seed, int seat, bool continue_rng, int presentation_buffer)
 		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), continue_rng(continue_rng),
@@ -988,8 +991,20 @@ void Game_Netplay::Command(std::string_view comment) {
 	} else if (command == "start_local" && !match && prepare_local && Game_ManiacJs::HasInputFrameDriver()) {
 		int seed;
 		if (!(args >> seed) || !vars.IsValid(seed)) return;
+		std::optional<std::pair<Rand::RNG, uint32_t>> initial_rng;
+		int maniac_seed;
+		if (args >> maniac_seed) {
+			int rng_string;
+			if (!(args >> rng_string) || !vars.IsValid(maniac_seed) || rng_string <= 0) return;
+			const auto saved = Main_Data::game_strings->GetManiacRawSlot(rng_string);
+			if (saved.size() > 8192) return;
+			std::istringstream input{std::string(saved)};
+			Rand::RNG rng;
+			if (!(input >> rng) || !(input >> std::ws).eof()) return;
+			initial_rng.emplace(std::move(rng), static_cast<uint32_t>(vars.Get(maniac_seed)));
+		}
 		match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), 0, true, 1);
-		match->input_stream.emplace();
+		match->input_stream.emplace().initial_rng = std::move(initial_rng);
 		if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
 		ClearPreparation();
 	} else if (command == "start" && !match) {
@@ -1098,6 +1113,11 @@ bool Game_Netplay::UpdateMap() {
 	if (match->input_stream) {
 		auto& stream = *match->input_stream;
 		auto& world = match->world;
+		if (stream.initial_rng) {
+			Rand::GetRNG() = std::move(stream.initial_rng->first);
+			Main_Data::maniac_random_seed = stream.initial_rng->second;
+			stream.initial_rng.reset();
+		}
 		checkpoint_worker = EM_ASM_INT({ return Number(!!Module.replayCheckpoint); });
 		if (checkpoint_worker) {
 			world.opening_pictures.clear();

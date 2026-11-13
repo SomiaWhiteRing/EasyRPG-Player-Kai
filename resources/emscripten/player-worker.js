@@ -556,7 +556,8 @@ function createNetplayRecordingOutbox() {
   };
 
   const save = record => {
-    if (record.saving || (!record.events.length && record.grant === record.savedGrant && !record.ended)) return;
+    if (record.saving) return record.saving;
+    if (!record.events.length && record.grant === record.savedGrant && !record.ended) return;
     const events = record.events.slice();
     const closed = record.ended;
     const grant = record.grant;
@@ -575,11 +576,11 @@ function createNetplayRecordingOutbox() {
       if (events.length) ++record.seq;
       record.savedGrant = grant;
       if (closed && !record.events.length && grant === record.grant) {
-        writers.delete(record);
-        record.release();
+        if (writers.delete(record)) record.release();
         nextUpload = 0;
       }
     })().catch(error => console.warn('netplay recording local save', error)).finally(() => { record.saving = undefined; });
+    return record.saving;
   };
 
   const upload = async (db, record) => {
@@ -669,6 +670,12 @@ function createNetplayRecordingOutbox() {
       tick();
     },
     save,
+    async flush() {
+      for (const record of writers) {
+        await record.saving;
+        if (writers.has(record)) await save(record);
+      }
+    },
   };
 }
 
@@ -754,6 +761,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   let diagnosticsAccepted = false, rtcStats = {}, rtcStatsAt = 0;
   const client = new URL(runtimeBase).pathname.split('/').filter(Boolean).at(-1) || 'unknown';
   let recordingEnabled = false, recording;
+  const recordingsAwaitingGrant = new Map();
   const recordEvent = event => {
     if (!recording || recording.ended) return;
     // Bound the unsaved tail when the device cannot commit a checkpoint.
@@ -799,7 +807,15 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     if (!finishCapable || !finish) return;
     sendFinish({type: 'start', match: finish.match, enabled: finish.enabled});
     if (finish.status < 0) sendFinish({type: 'abort', match: finish.match});
-    else if (finish.terminal && finish.mode !== 'legacy') sendFinish(finish.terminal, true);
+    else if (finish.terminal && !finish.status && finish.mode !== 'legacy') sendFinish(finish.terminal, true);
+  };
+  const retryFinish = () => {
+    if (!finish?.terminal || finish.status || finish.mode === 'legacy') return;
+    const remaining = finish.deadline - performance.now();
+    if (remaining <= 0) return expireFinish();
+    if (finish.mode === 'pending') sendFinish({type: 'start', match: finish.match, enabled: finish.enabled});
+    sendFinish(finish.terminal, true);
+    finishTimer = setTimeout(retryFinish, Math.min(1000, remaining));
   };
   const receiveFinish = (text, path, server) => {
     let packet;
@@ -934,6 +950,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   const close = () => {
     finishRecord('closed');
     recording = undefined;
+    recordingsAwaitingGrant.clear();
     recordingEnabled = false;
     clearTimeout(finishTimer);
     finishCapable = finishOptIn = false;
@@ -1026,6 +1043,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       if (recording?.match !== match || recording.started) return;
       recording.events.unshift(['start', {client, seed, map, fighters: [first, second], rounds, maniacSeed, rng}]);
       recording.started = true;
+      recordingsAwaitingGrant.set(match, recording);
       let requestedAt = -Infinity;
       recording.requestGrant = () => {
         const now = performance.now();
@@ -1045,9 +1063,9 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           inputs.push(finish.history.get(index));
         }
         finish.terminal = {type: 'terminal', match: finish.match, frame, first, second, inputs: inputs.reverse()};
-        sendFinish(finish.terminal, true);
+        finish.deadline = performance.now() + 16_000;
         clearTimeout(finishTimer);
-        finishTimer = setTimeout(expireFinish, 16_000);
+        retryFinish();
       }
       if (!recording) return;
       recording.terminal = true;
@@ -1235,9 +1253,11 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         }
         if (typeof data === 'string' && data.startsWith('room:record:grant:')) {
           const [, , , match, grant] = data.split(':');
-          if (recording?.match === Number(match) && recording.started && !recording.grant) {
-            recording.grant = grant;
-            netplayRecordingOutbox.save(recording);
+          const pending = recordingsAwaitingGrant.get(Number(match));
+          if (pending) {
+            recordingsAwaitingGrant.delete(Number(match));
+            pending.grant = grant;
+            netplayRecordingOutbox.save(pending);
           }
           return;
         }
@@ -1554,6 +1574,8 @@ self.onmessage = async ({data}) => {
         movieSource: storage?.movieSource,
         netplay: createNetplay(data.netplayEndpoint, data.netplayRtc, data.runtimeBase),
         gameServices: createGameServices(data.gameServices, data.workId, data.runtimeBase),
+        observeInputCheckpoint: observe ? (frame, digest) =>
+          postMessage({type: 'player-event', event: {type: 'input-checkpoint', frame, digest}}) : undefined,
         startReplayPrecompute: payload => checkpointWorker.start(JSON.parse(payload)),
         closeReplayPrecompute: () => checkpointWorker.close(),
         findReplayCheckpoint: checkpointWorker.find,
@@ -1623,10 +1645,12 @@ self.onmessage = async ({data}) => {
         checkpointWorker?.close();
         engine.stopping = true;
         engine.netplay?.stopDirectory();
+        engine.netplay?.endMatch('closed');
         cancelNameInput();
         consoleCommand({op: 'close'});
         finishConsoleInput(null);
         finishFileOutputConfirmation(false);
+        await netplayRecordingOutbox?.flush();
         if (engine.stopped) engine.syncSaves().then(() => postMessage({type: 'stopped'})).catch(() => {});
         else engine._web_stop();
       }
