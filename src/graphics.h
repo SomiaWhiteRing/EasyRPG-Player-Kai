@@ -50,7 +50,7 @@ namespace Graphics {
 
 	void Draw(Bitmap& dst);
 
-	void LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z);
+	void LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z, bool terminal_frame = false);
 
 	std::shared_ptr<Scene> UpdateSceneCallback();
 

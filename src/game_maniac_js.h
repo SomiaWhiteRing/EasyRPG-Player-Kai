@@ -22,7 +22,7 @@ namespace Game_ManiacJs {
 	};
 	void Execute(std::string_view source, Span<const int32_t> parameters,
 		const Game_BaseInterpreterContext& caller);
-	void DrawNetplayOverlay(Bitmap& destination, bool above_windows);
+	void DrawNetplayOverlay(Bitmap& destination, bool above_windows, bool terminal_frame = false);
 	void RunNetplayProjection(int seat, bool stopping);
 	bool HasInputFrameDriver();
 	InputFramePlan ReadInputFramePlan(int next, bool stopped, bool precompute = false);

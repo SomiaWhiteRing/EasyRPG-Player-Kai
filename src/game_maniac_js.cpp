@@ -220,14 +220,15 @@ public:
 		JS_FreeValue(context, result);
 		return plan;
 	}
-	void DrawNetplayOverlay(Bitmap& destination, bool above_windows) {
-		if (JS_IsUndefined(overlay) || (above_windows && !overlay_after_windows)) return;
+	void DrawNetplayOverlay(Bitmap& destination, bool above_windows, bool terminal_frame) {
+		if (JS_IsUndefined(overlay) || (above_windows && !overlay_after_windows && !terminal_frame)) return;
 		overlay_target = &destination;
 		JSValue args[] = {
 			canvas, JS_NewInt32(context, destination.GetWidth()), JS_NewInt32(context, destination.GetHeight()),
-			JS_NewFloat64(context, NetplayTimeMs()), JS_NewBool(context, above_windows)
+			JS_NewFloat64(context, NetplayTimeMs()), JS_NewBool(context, above_windows),
+			JS_NewBool(context, terminal_frame)
 		};
-		auto result = JS_Call(context, overlay, JS_UNDEFINED, overlay_after_windows ? 5 : 4, args);
+		auto result = JS_Call(context, overlay, JS_UNDEFINED, terminal_frame ? 6 : overlay_after_windows ? 5 : 4, args);
 		overlay_target = nullptr;
 		JS_FreeValue(context, args[3]);
 		if (JS_IsException(result)) {
@@ -913,8 +914,8 @@ void Game_ManiacJs::Execute(std::string_view source, Span<const int32_t> paramet
 	runtime->Execute(source, parameters, caller);
 }
 
-void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination, bool above_windows) {
-	if (runtime) runtime->DrawNetplayOverlay(destination, above_windows);
+void Game_ManiacJs::DrawNetplayOverlay(Bitmap& destination, bool above_windows, bool terminal_frame) {
+	if (runtime) runtime->DrawNetplayOverlay(destination, above_windows, terminal_frame);
 }
 
 int Game_ManiacJs::TakeNumberInputInitialValue() {

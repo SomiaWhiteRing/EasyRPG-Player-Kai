@@ -32,6 +32,7 @@
 #include "game_clock.h"
 #include "main_data.h"
 #include "game_maniac_js.h"
+#include "game_netplay.h"
 #include "game_screen.h"
 
 using namespace std::chrono_literals;
@@ -119,13 +120,16 @@ void Graphics::Draw(Bitmap& dst) {
 		min_z = transition.GetZ() + 1;
 		dst.Clear();
 	}
-	LocalDraw(dst, min_z, max_z);
+	const bool terminal_frame = min_z == std::numeric_limits<Drawable::Z_t>::min() &&
+		Game_Netplay::HasPendingTerminalPresentation();
+	LocalDraw(dst, min_z, max_z, terminal_frame);
+	if (terminal_frame) Game_Netplay::CompleteTerminalPresentation();
 #ifdef HAVE_ANDROID_MOVIE_PLAYER
 	if (Main_Data::game_screen) Main_Data::game_screen->DrawMovie(dst);
 #endif
 }
 
-void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) {
+void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z, bool terminal_frame) {
 	auto& drawable_list = DrawableMgr::GetLocalList();
 
 	if (!drawable_list.empty() && min_z == std::numeric_limits<Drawable::Z_t>::min()) {
@@ -158,7 +162,7 @@ void Graphics::LocalDraw(Bitmap& dst, Drawable::Z_t min_z, Drawable::Z_t max_z) 
 		Game_ManiacJs::DrawNetplayOverlay(dst, false);
 		if (max_z >= Priority_Window) {
 			draw(Priority_Window, max_z);
-			Game_ManiacJs::DrawNetplayOverlay(dst, true);
+			Game_ManiacJs::DrawNetplayOverlay(dst, true, terminal_frame);
 		}
 	} else {
 		draw(min_z, max_z);

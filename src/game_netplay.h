@@ -27,6 +27,8 @@ namespace Game_Netplay {
 	bool PreparesMap(int map_id);
 	bool UpdatePreparation(MapUpdateAsyncContext& actx);
 	bool UpdateMap();
+	bool HasPendingTerminalPresentation();
+	void CompleteTerminalPresentation();
 	bool HidesLivePicture(int id);
 	struct PictureView {
 		int reflection = 0;

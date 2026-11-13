@@ -672,6 +672,7 @@ struct Match {
 	bool announced = false;
 	bool peer_ready = false;
 	bool started = false;
+	bool terminal_presentation_pending = false;
 	bool stall_exit = false;
 	std::array<int, 3> rules{};
 	std::optional<InputStream> input_stream;
@@ -1054,6 +1055,20 @@ bool Game_Netplay::InMatch() {
 #endif
 }
 
+bool Game_Netplay::HasPendingTerminalPresentation() {
+#ifdef PLAYER_WEB
+	return match && match->terminal_presentation_pending;
+#else
+	return false;
+#endif
+}
+
+void Game_Netplay::CompleteTerminalPresentation() {
+#ifdef PLAYER_WEB
+	if (HasPendingTerminalPresentation()) match.reset();
+#endif
+}
+
 bool Game_Netplay::WaitingForInput() {
 #ifdef PLAYER_WEB
 	return match && match->stall_exit && !match->world.stopping && match->timeline.WaitingForInput();
@@ -1188,8 +1203,10 @@ bool Game_Netplay::UpdateMap() {
 		return true;
 	}
 	if (match->world.stopping) {
-		if (match->world.Present()) match.reset();
-		else match->world.Project(match->world.pending.size());
+		if (!match->terminal_presentation_pending) {
+			match->terminal_presentation_pending = match->world.Present();
+			match->world.Project(match->world.pending.size());
+		}
 		return true;
 	}
 	if (ReadTransportState() != match->seat + 3) {
@@ -1251,8 +1268,8 @@ bool Game_Netplay::UpdateMap() {
 	}
 	match->started = true;
 	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {
-		if (match->world.Present()) match.reset();
-		else match->world.Project(match->world.pending.size());
+		match->terminal_presentation_pending = match->world.Present();
+		match->world.Project(match->world.pending.size());
 		return true;
 	}
 	const int input = (Input::IsPressed(Input::LEFT) ? 1 : 0) |
