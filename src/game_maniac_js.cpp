@@ -175,6 +175,17 @@ public:
 			plan.restart = flag("restart");
 			plan.silent = flag("silent");
 			plan.close = flag("close");
+			auto transfer = JS_GetPropertyStr(context, result, "transfer");
+			if (IsArray(transfer)) {
+				for (uint32_t i = 0; i < plan.transfer.size(); ++i) {
+					auto value = JS_GetPropertyUint32(context, transfer, i);
+					int32_t n = 0;
+					JS_ToInt32(context, &n, value);
+					plan.transfer[i] = n;
+					JS_FreeValue(context, value);
+				}
+			}
+			JS_FreeValue(context, transfer);
 			auto frames = JS_GetPropertyStr(context, result, "frames");
 			if (IsArray(frames)) {
 				auto length = JS_GetPropertyStr(context, frames, "length");

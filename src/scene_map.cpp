@@ -268,6 +268,7 @@ void Scene_Map::vUpdate() {
 			UpdateNetplayOpening({})) return;
 	if (Player::game_config.netplay_enabled && Game_Netplay::UpdateMap()) {
 		UpdateGraphics();
+		if (Main_Data::game_player->IsPendingTeleport()) UpdateStage2();
 		return;
 	}
 	if (maniac_pending_load.IsActive()) {

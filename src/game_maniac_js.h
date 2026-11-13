@@ -15,6 +15,7 @@ namespace Game_ManiacJs {
 		bool restart = false;
 		bool silent = false;
 		bool close = false;
+		std::array<int, 3> transfer{};
 		std::vector<std::array<int, 2>> inputs;
 	};
 	void Execute(std::string_view source, Span<const int32_t> parameters,

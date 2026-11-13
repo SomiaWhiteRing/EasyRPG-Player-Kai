@@ -4,6 +4,7 @@
 #include "game_maniac_js.h"
 #include "game_maniac_self_variables.h"
 #include "game_pictures.h"
+#include "game_player.h"
 #include "game_screen.h"
 #include "game_strings.h"
 #include "game_switches.h"
@@ -805,7 +806,13 @@ bool Game_Netplay::UpdateMap() {
 		auto plan = Game_ManiacJs::ReadInputFramePlan(stream.next, stream.stopped);
 		if (plan.close) {
 			match.reset();
-			return true;
+			if (plan.transfer[0] > 0) {
+				Main_Data::game_player->ReserveTeleport(plan.transfer[0], plan.transfer[1], plan.transfer[2], -1,
+					TeleportTarget::eParallelTeleport);
+				transfer_fade = {6, 6, 0};
+				return true;
+			}
+			return false;
 		}
 		if (plan.restart) {
 			world.Restore(*stream.initial);
