@@ -16,6 +16,7 @@ Module.preRun = [].concat(Module.preRun || [], () => {
   const configPath = '/home/web_user/.config';
   FS.mkdir(configPath);
   const paths = [savePath, configPath];
+  if (Module.replayCheckpoint) return;
   if (Module.mountSaves) Module.mountSaves(FS, paths);
   else for (const path of paths) FS.mount(IDBFS, {}, path);
   addRunDependency('player-storage');

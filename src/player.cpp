@@ -308,7 +308,11 @@ void Player::MainLoop() {
 	}
 
 	Cache::UpdatePicturePreload();
+#ifdef PLAYER_WEB
+	if (!maniac_skip_draw && !EM_ASM_INT({ return Number(!!Module.replayCheckpoint); })) Player::Draw();
+#else
 	if (!maniac_skip_draw) Player::Draw();
+#endif
 
 	Scene::old_instances.clear();
 

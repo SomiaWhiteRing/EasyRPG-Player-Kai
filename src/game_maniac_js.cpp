@@ -116,6 +116,16 @@ public:
 #ifdef PLAYER_WEB
 			JS_SetPropertyStr(context, canvas, "avatar", JS_NewCFunction(context, DrawOverlayAvatar, "avatar", 5));
 			JS_SetPropertyStr(context, canvas, "peerLatency", JS_NewCFunction(context, OverlayPeerLatency, "peerLatency", 2));
+			JS_SetPropertyStr(context, rm2k3, "setInputFrameDriver",
+				JS_NewCFunction(context, SetInputFrameDriver, "setInputFrameDriver", 1));
+			JS_SetPropertyStr(context, rm2k3, "inputFramePrecomputing",
+				JS_NewCFunction(context, InputFramePrecomputing, "inputFramePrecomputing", 0));
+			JS_SetPropertyStr(context, rm2k3, "inputFramePrecompute",
+				JS_NewCFunction(context, InputFramePrecompute, "inputFramePrecompute", 1));
+			JS_SetPropertyStr(context, rm2k3, "inputFramePrecomputeData",
+				JS_NewCFunction(context, InputFramePrecomputeData, "inputFramePrecomputeData", 0));
+			JS_SetPropertyStr(context, rm2k3, "requestHost", JS_NewCFunction(context, RequestHost, "requestHost", 2));
+			JS_SetPropertyStr(context, rm2k3, "pollHost", JS_NewCFunction(context, PollHost, "pollHost", 1));
 #endif
 			JS_SetPropertyStr(context, canvas, "capture", JS_NewCFunctionMagic(context, OverlayFrame, "capture", 0,
 				JS_CFUNC_generic_magic, 0));
@@ -145,12 +155,71 @@ public:
 	~Runtime() {
 		JS_FreeValue(context, overlay);
 		JS_FreeValue(context, projection);
+		JS_FreeValue(context, input_frame_driver);
 		JS_FreeValue(context, canvas);
 		JS_FreeContext(context);
 		JS_FreeRuntime(runtime);
 	}
 
 	int TakeNumberInputInitialValue() { return std::exchange(number_input_initial_value, 0); }
+	bool HasInputFrameDriver() const { return !JS_IsUndefined(input_frame_driver); }
+	Game_ManiacJs::InputFramePlan ReadInputFramePlan(int next, bool stopped, bool precompute) {
+		Game_ManiacJs::InputFramePlan plan;
+		if (!HasInputFrameDriver()) { plan.close = true; return plan; }
+		JSValue args[] = {JS_NewInt32(context, next), JS_NewBool(context, stopped), JS_TRUE, JS_NewBool(context, precompute)};
+		auto result = JS_Call(context, input_frame_driver, JS_UNDEFINED, 4, args);
+		if (JS_IsException(result)) {
+			ReportException();
+			plan.close = true;
+		} else if (JS_IsObject(result)) {
+			const auto flag = [&](const char* name) {
+				auto value = JS_GetPropertyStr(context, result, name);
+				const bool enabled = JS_ToBool(context, value) > 0;
+				JS_FreeValue(context, value);
+				return enabled;
+			};
+			plan.restart = flag("restart");
+			plan.silent = flag("silent");
+			plan.close = flag("close");
+			plan.precompute = flag("precompute");
+			auto seek = JS_GetPropertyStr(context, result, "seek");
+			if (JS_IsNumber(seek)) {
+				int32_t index;
+				if (JS_ToInt32(context, &index, seek) == 0 && index >= 0) plan.seek = index;
+			}
+			JS_FreeValue(context, seek);
+			auto transfer = JS_GetPropertyStr(context, result, "transfer");
+			if (IsArray(transfer)) {
+				for (uint32_t i = 0; i < plan.transfer.size(); ++i) {
+					auto value = JS_GetPropertyUint32(context, transfer, i);
+					int32_t n = 0;
+					JS_ToInt32(context, &n, value);
+					plan.transfer[i] = n;
+					JS_FreeValue(context, value);
+				}
+			}
+			JS_FreeValue(context, transfer);
+			auto frames = JS_GetPropertyStr(context, result, "frames");
+			if (IsArray(frames)) {
+				auto length = JS_GetPropertyStr(context, frames, "length");
+				int32_t count = 0;
+				JS_ToInt32(context, &count, length);
+				JS_FreeValue(context, length);
+				for (int i = 0; i < std::min(count, 120); ++i) {
+					auto value = JS_GetPropertyUint32(context, frames, i);
+					int32_t bits = 0;
+					const bool valid = JS_IsNumber(value) && JS_ToInt32(context, &bits, value) == 0 &&
+						bits >= 0 && bits <= 0xffff;
+					JS_FreeValue(context, value);
+					if (!valid) break;
+					plan.inputs.push_back({bits & 255, bits >> 8});
+				}
+			}
+			JS_FreeValue(context, frames);
+		}
+		JS_FreeValue(context, result);
+		return plan;
+	}
 	void DrawNetplayOverlay(Bitmap& destination, bool above_windows) {
 		if (JS_IsUndefined(overlay) || (above_windows && !overlay_after_windows)) return;
 		overlay_target = &destination;
@@ -461,6 +530,81 @@ private:
 	}
 
 #ifdef PLAYER_WEB
+	static JSValue InputFramePrecomputing(JSContext* context, JSValueConst, int, JSValueConst*) {
+		return JS_NewBool(context, EM_ASM_INT({ return Number(!!Module.replayCheckpoint); }));
+	}
+
+	static JSValue InputFramePrecompute(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		if (!argc || JS_IsNull(argv[0])) {
+			EM_ASM({ Module.closeReplayPrecompute?.(); });
+			return JS_UNDEFINED;
+		}
+		auto value = JS_JSONStringify(context, argv[0], JS_UNDEFINED, JS_UNDEFINED);
+		if (JS_IsException(value)) return value;
+		auto text = JS_ToCString(context, value);
+		JS_FreeValue(context, value);
+		if (!text) return JS_EXCEPTION;
+		EM_ASM({ Module.startReplayPrecompute?.(UTF8ToString($0)); }, text);
+		JS_FreeCString(context, text);
+		return JS_UNDEFINED;
+	}
+
+	static JSValue InputFramePrecomputeData(JSContext* context, JSValueConst, int, JSValueConst*) {
+		const auto raw = reinterpret_cast<char*>(EM_ASM_PTR({
+			const text = Module.replayInput;
+			if (!text) return 0;
+			Module.replayInput = undefined;
+			const size = lengthBytesUTF8(text) + 1;
+			const ptr = _malloc(size);
+			if (ptr) stringToUTF8(text, ptr, size);
+			return ptr;
+		}));
+		if (!raw) return JS_UNDEFINED;
+		auto value = JS_ParseJSON(context, raw, std::strlen(raw), "replay");
+		std::free(raw);
+		return value;
+	}
+
+	static JSValue SetInputFrameDriver(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		if (!argc || (!JS_IsNull(argv[0]) && !JS_IsFunction(context, argv[0])))
+			return JS_ThrowTypeError(context, "Expected a frame driver callback or null");
+		JS_FreeValue(context, self.input_frame_driver);
+		self.input_frame_driver = JS_IsNull(argv[0]) ? JS_UNDEFINED : JS_DupValue(context, argv[0]);
+		return JS_UNDEFINED;
+	}
+
+	static JSValue RequestHost(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		std::string service, payload;
+		if (argc < 2 || !self.Text(argv[0], service)) return JS_EXCEPTION;
+		auto json = JS_JSONStringify(context, argv[1], JS_UNDEFINED, JS_UNDEFINED);
+		if (JS_IsException(json)) return json;
+		const bool valid = self.Text(json, payload);
+		JS_FreeValue(context, json);
+		if (!valid) return JS_EXCEPTION;
+		return JS_NewInt32(context, EM_ASM_INT({
+			return Module.gameServices?.request(UTF8ToString($0), UTF8ToString($1)) ?? 0;
+		}, service.c_str(), payload.c_str()));
+	}
+
+	static JSValue PollHost(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		int32_t request;
+		if (argc < 1 || JS_ToInt32(context, &request, argv[0]) < 0) return JS_EXCEPTION;
+		auto* text = reinterpret_cast<char*>(EM_ASM_PTR({
+			const json = Module.gameServices?.take($0);
+			if (json === undefined) return 0;
+			const length = lengthBytesUTF8(json) + 1;
+			const ptr = _malloc(length);
+			if (ptr) stringToUTF8(json, ptr, length);
+			return ptr;
+		}, request));
+		if (!text) return JS_UNDEFINED;
+		auto result = JS_ParseJSON(context, text, std::strlen(text), "host");
+		std::free(text);
+		return result;
+	}
+
 	static JSValue OverlayPeerLatency(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
 		const bool poll = argc > 0 && JS_ToBool(context, argv[0]);
 		const bool reset = argc > 1 && JS_ToBool(context, argv[1]);
@@ -482,7 +626,8 @@ private:
 			constexpr int size = 48;
 			std::array<uint8_t, size * size * 4> pixels;
 			if (!EM_ASM_INT({
-				return Module.netplay?.avatar?.(UTF8ToString($0), $1, $2) ?? 0;
+				const path = UTF8ToString($0);
+				return Module.netplay?.avatar?.(path, $1, $2) || Module.gameServices?.avatar(path, $1, $2) || 0;
 			}, path.c_str(), pixels.data(), size)) return JS_UNDEFINED;
 			avatar = Bitmap::Create(size, size, true);
 			for (int y = 0; y < size; ++y) {
@@ -750,6 +895,7 @@ private:
 	JSValue overlay = JS_UNDEFINED;
 	bool overlay_after_windows = false;
 	JSValue projection = JS_UNDEFINED;
+	JSValue input_frame_driver = JS_UNDEFINED;
 	JSValue canvas = JS_UNDEFINED;
 	Bitmap* overlay_target = nullptr;
 	BitmapRef overlay_frame;
@@ -777,6 +923,17 @@ int Game_ManiacJs::TakeNumberInputInitialValue() {
 
 void Game_ManiacJs::RunNetplayProjection(int seat, bool stopping) {
 	if (runtime) runtime->RunNetplayProjection(seat, stopping);
+}
+
+bool Game_ManiacJs::HasInputFrameDriver() {
+	return runtime && runtime->HasInputFrameDriver();
+}
+
+Game_ManiacJs::InputFramePlan Game_ManiacJs::ReadInputFramePlan(int next, bool stopped, bool precompute) {
+	if (runtime) return runtime->ReadInputFramePlan(next, stopped, precompute);
+	InputFramePlan plan;
+	plan.close = true;
+	return plan;
 }
 
 void Game_ManiacJs::Reset() {

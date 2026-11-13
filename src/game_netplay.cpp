@@ -1,9 +1,11 @@
 #include "game_netplay.h"
+#include "cache.h"
 #include "game_clock.h"
 #include "game_map.h"
 #include "game_maniac_js.h"
 #include "game_maniac_self_variables.h"
 #include "game_pictures.h"
+#include "game_player.h"
 #include "game_screen.h"
 #include "game_strings.h"
 #include "game_switches.h"
@@ -12,18 +14,24 @@
 #include "input.h"
 #include "main_data.h"
 #include "maniac_picture_renderer.h"
+#include "maniac_string_storage.h"
 #include "netplay_rollback.h"
 #include "player.h"
 #include "rand.h"
 #include "transition.h"
 
 #include <lcf/rpg/save.h>
+#include <lcf/lsd/reader.h>
+#include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <deque>
+#include <iterator>
 #include <map>
 #include <set>
 #include <sstream>
 #include <variant>
+#include <type_traits>
 
 #ifdef PLAYER_WEB
 #include <emscripten.h>
@@ -70,6 +78,62 @@ struct FrameContext {
 FrameContext* frame = nullptr;
 
 #ifdef PLAYER_WEB
+
+bool checkpoint_worker = false;
+
+struct CheckpointBytes {
+	std::string bytes;
+	size_t offset = 0;
+
+	template<class T>
+	void Write(const T& value) {
+		static_assert(std::is_trivially_copyable_v<T>);
+		bytes.append(reinterpret_cast<const char*>(&value), sizeof(value));
+	}
+	template<class T>
+	bool Read(T& value) {
+		static_assert(std::is_trivially_copyable_v<T>);
+		if (bytes.size() - offset < sizeof(value)) return false;
+		std::memcpy(&value, bytes.data() + offset, sizeof(value));
+		offset += sizeof(value);
+		return true;
+	}
+	void WriteString(std::string_view value) {
+		Write(static_cast<uint32_t>(value.size()));
+		bytes.append(value);
+	}
+	bool ReadString(std::string& value) {
+		uint32_t size;
+		if (!Read(size) || size > bytes.size() - offset) return false;
+		value.assign(bytes, offset, size);
+		offset += size;
+		return true;
+	}
+	template<class V>
+	void WriteMap(const std::map<int, V>& values) {
+		Write(static_cast<uint32_t>(values.size()));
+		for (const auto& [key, value] : values) {
+			Write(key);
+			if constexpr (std::is_same_v<V, std::pair<int, int>>) { Write(value.first); Write(value.second); }
+			else Write(value);
+		}
+	}
+	template<class V>
+	bool ReadMap(std::map<int, V>& values) {
+		uint32_t count;
+		if (!Read(count) || count > 100000) return false;
+		for (uint32_t i = 0; i < count; ++i) {
+			int key;
+			V value;
+			if (!Read(key)) return false;
+			if constexpr (std::is_same_v<V, std::pair<int, int>>) {
+				if (!Read(value.first) || !Read(value.second)) return false;
+			} else if (!Read(value)) return false;
+			values.emplace(key, value);
+		}
+		return true;
+	}
+};
 
 bool HasVisibleLivePicture(int id) {
 	const auto* live = Main_Data::game_pictures->GetPicturePtr(id);
@@ -259,6 +323,7 @@ struct MapWorld {
 			}
 		}
 		if (effects.stop) effects.terminal = std::make_unique<Snapshot>(Capture());
+		if (checkpoint_worker) return true;
 		for (auto& pose : opening_pictures) {
 			if (captured_pictures.count(pose.data.ID)) PresentPicture(std::move(pose));
 		}
@@ -269,11 +334,11 @@ struct MapWorld {
 		return true;
 	}
 
-	bool Publish(int index, Effects effects) {
-		if (effects.checkpoint) {
+	bool Publish(int index, Effects effects, bool record = true) {
+		if (record && effects.checkpoint) {
 			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
 		}
-		if (effects.stop) {
+		if (record && effects.stop) {
 			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
 			EM_ASM({ Module.netplay?.recordTerminal?.($0, $1, $2); }, index, score[0], score[1]);
 		}
@@ -284,7 +349,7 @@ struct MapWorld {
 		return stopping;
 	}
 
-	bool Present() {
+	bool Present(bool sound_effects = true, bool record = true) {
 		if (pending.empty()) {
 			presentation_playing = false;
 			return false;
@@ -296,19 +361,36 @@ struct MapWorld {
 		presented_samples = std::move(effects.samples);
 		for (const auto& [id, birth] : effects.picture_retirements)
 			presented_retirements.insert_or_assign(id, birth);
-		for (auto& item : displayed) item.second->SetVisible(false);
-		for (auto& pose : effects.pictures) PresentPicture(std::move(pose));
+		if (!checkpoint_worker) {
+			for (auto& item : displayed) item.second->SetVisible(false);
+			for (auto& pose : effects.pictures) PresentPicture(std::move(pose));
+		}
 		auto& system = *Main_Data::game_system;
 		for (const auto& effect : effects.audio) {
 			if (auto* music = std::get_if<lcf::rpg::Music>(&effect)) system.BgmPlay(*music);
-			else if (auto* sound = std::get_if<lcf::rpg::Sound>(&effect)) system.SePlay(*sound, true);
+			else if (auto* sound = std::get_if<lcf::rpg::Sound>(&effect)) {
+				if (sound_effects) system.SePlay(*sound, true);
+			}
 			else system.BgmFade(std::get<int>(effect));
 		}
 		if (effects.terminal) Restore(std::move(*effects.terminal));
-		if (effects.result) {
+		if (record && effects.result) {
 			EM_ASM({ Module.netplay?.recordResult?.(); });
 		}
 		return effects.stop;
+	}
+
+	void RestartPresentation() {
+		pending.clear();
+		displayed.clear();
+		displayed_continuations.clear();
+		presented_samples.clear();
+		presented_retirements.clear();
+		drawn_pictures.clear();
+		projections.clear();
+		stopping = false;
+		pending_signal = false;
+		presentation_playing = false;
 	}
 
 	std::set<int> captured_pictures;
@@ -333,12 +415,250 @@ struct MapWorld {
 };
 
 struct Match {
+	struct InputStream {
+		struct Checkpoint {
+			MapWorld::Snapshot state;
+			std::vector<Sprite_Picture::NetplayPose> opening;
+			std::map<int, int> samples;
+			std::map<int, int> retirements;
+			std::map<int, std::pair<int, int>> drawn;
+			std::map<int, int> immediate_draws;
+			lcf::rpg::Music music;
+			bool music_stopping;
+		};
+
+		static Checkpoint Capture(const MapWorld& world, const lcf::rpg::Music& music, bool music_stopping) {
+			return {world.Capture(), world.opening_pictures, world.presented_samples,
+				world.presented_retirements, world.drawn_pictures, world.immediate_draws,
+				music, music_stopping};
+		}
+
+		void SaveCheckpoint(const MapWorld& world, int index, const lcf::rpg::Music& music, bool music_stopping) {
+			if (index % interval != 0 || checkpoints.count(index)) return;
+			checkpoints.emplace(index, Capture(world, music, music_stopping));
+			if (checkpoints.size() <= 48) return;
+			// Thin older and newer checkpoints evenly, keeping frame zero.
+			interval *= 2;
+			for (auto it = checkpoints.begin(); it != checkpoints.end();) {
+				if (it->first % interval) it = checkpoints.erase(it);
+				else ++it;
+			}
+		}
+
+		static void RestoreWorld(MapWorld& world, Checkpoint checkpoint) {
+			world.Restore(std::move(checkpoint.state));
+			world.opening_pictures = std::move(checkpoint.opening);
+			world.presented_samples = std::move(checkpoint.samples);
+			world.presented_retirements = std::move(checkpoint.retirements);
+			world.drawn_pictures = std::move(checkpoint.drawn);
+			world.immediate_draws = std::move(checkpoint.immediate_draws);
+		}
+
+		static CheckpointBytes Encode(Checkpoint checkpoint) {
+			auto& state = checkpoint.state;
+			auto& save = state.map;
+			save.system.current_music = checkpoint.music;
+			save.system.music_stopping = checkpoint.music_stopping;
+			auto& extra = save.easyrpg_data;
+			extra.maniac_global_switch_raw = std::move(state.raw_switches);
+			extra.maniac_global_variable_zero = state.variable_zero;
+			extra.maniac_random_seed = state.maniac_seed;
+			for (auto& bank : state.self_variables) {
+				bank.string_vector_size = static_cast<int32_t>(bank.strings.size());
+				bank.string_raw_bytes = ManiacStringStorage::Encode(bank.strings);
+			}
+			extra.maniac_self_variable_banks = std::move(state.self_variables);
+			for (const auto& entry : state.pictures.entries) {
+				save.pictures.push_back(entry.data);
+				save.pictures.back().ID = save.pictures.size();
+			}
+			for (const auto& [id, continuation] : state.continued_pictures) {
+				save.pictures.push_back(continuation.pose.data);
+				save.pictures.back().ID = save.pictures.size();
+			}
+			std::ostringstream lsd, rng;
+			lcf::LSD_Reader::Save(lsd, save, lcf::EngineVersion::e2k3, "UTF-8");
+			rng << state.rng;
+			CheckpointBytes out;
+			out.WriteString(lsd.str());
+			out.WriteString(rng.str());
+			out.Write(state.need_refresh);
+			out.Write(state.pictures.frame_counter);
+			out.Write(static_cast<uint32_t>(state.string_size));
+			out.Write(static_cast<uint32_t>(state.strings.size()));
+			for (const auto& [id, value] : state.strings) { out.Write(id); out.WriteString(value); }
+			out.Write(!state.string_zero.empty());
+			if (!state.string_zero.empty()) out.WriteString(state.string_zero.front());
+			out.Write(static_cast<uint32_t>(state.captured_pictures.size()));
+			for (int id : state.captured_pictures) out.Write(id);
+			out.WriteMap(state.picture_transforms);
+			out.WriteMap(state.picture_births);
+			out.WriteMap(checkpoint.samples);
+			out.WriteMap(checkpoint.retirements);
+			out.WriteMap(checkpoint.drawn);
+			out.WriteMap(checkpoint.immediate_draws);
+			const auto picture = [&](const lcf::rpg::SavePicture& data, const BitmapRef& bitmap, bool chromakey) {
+				out.Write(bool(bitmap));
+				if (!bitmap) return;
+				const bool from_cache = !data.name.empty() && bitmap == Cache::Picture(data.name, chromakey);
+				out.Write(from_cache);
+				if (!from_cache) {
+					std::ostringstream png;
+					bitmap->WritePNG(png, true);
+					out.WriteString(png.str());
+				}
+			};
+			out.Write(static_cast<uint32_t>(state.pictures.entries.size()));
+			for (const auto& entry : state.pictures.entries) {
+				out.Write(entry.data.ID);
+				out.Write(entry.chromakey.has_value() ? (*entry.chromakey ? 1 : 0) : -1);
+				out.Write(entry.origin);
+				out.Write(entry.position_scaled);
+				out.Write(entry.needs_update);
+				out.Write(entry.visible);
+				picture(entry.data, entry.bitmap, entry.chromakey.value_or(entry.data.use_transparent_color));
+			}
+			for (const auto& [id, continuation] : state.continued_pictures) {
+				const auto& pose = continuation.pose;
+				out.Write(id); out.Write(continuation.birth);
+				out.Write(pose.tone); out.Write(pose.flash);
+				out.Write(pose.shake_x); out.Write(pose.shake_y); out.Write(pose.birth);
+				out.Write(pose.maniac_pixels.has_value());
+				if (pose.maniac_pixels) out.Write(*pose.maniac_pixels);
+				out.Write(pose.captured_view.has_value());
+				if (pose.captured_view) out.Write(*pose.captured_view);
+				picture(pose.data, pose.bitmap, pose.data.use_transparent_color);
+			}
+			return out;
+		}
+
+		static std::optional<Checkpoint> Decode(CheckpointBytes in) {
+			Checkpoint checkpoint{};
+			auto& state = checkpoint.state;
+			std::string lsd, rng;
+			uint32_t count, size;
+			if (!in.ReadString(lsd) || !in.ReadString(rng) || !in.Read(state.need_refresh) ||
+					!in.Read(state.pictures.frame_counter) || !in.Read(size) || !in.Read(count) || count > 100000) return {};
+			std::istringstream save_input(lsd), rng_input(rng);
+			auto save = lcf::LSD_Reader::Load(save_input, "UTF-8", true);
+			if (!save || !(rng_input >> state.rng)) return {};
+			state.string_size = size;
+			for (uint32_t i = 0; i < count; ++i) {
+				int id;
+				std::string value;
+				if (!in.Read(id) || !in.ReadString(value)) return {};
+				state.strings.emplace(id, std::move(value));
+			}
+			bool present;
+			if (!in.Read(present)) return {};
+			if (present) {
+				std::string value;
+				if (!in.ReadString(value)) return {};
+				state.string_zero.emplace_back(value);
+			}
+			if (!in.Read(count) || count > 100000) return {};
+			for (uint32_t i = 0; i < count; ++i) {
+				int id;
+				if (!in.Read(id)) return {};
+				state.captured_pictures.insert(id);
+			}
+			if (!in.ReadMap(state.picture_transforms) || !in.ReadMap(state.picture_births) ||
+					!in.ReadMap(checkpoint.samples) || !in.ReadMap(checkpoint.retirements) ||
+					!in.ReadMap(checkpoint.drawn) || !in.ReadMap(checkpoint.immediate_draws)) return {};
+			const auto picture = [&](const lcf::rpg::SavePicture& data, BitmapRef& bitmap, bool chromakey) {
+				bool has_bitmap, from_cache;
+				if (!in.Read(has_bitmap)) return false;
+				if (!has_bitmap) return true;
+				if (!in.Read(from_cache)) return false;
+				if (from_cache) bitmap = Cache::Picture(data.name, chromakey);
+				else {
+					std::string png;
+					if (!in.ReadString(png) || png.empty()) return false;
+					bitmap = Bitmap::Create(reinterpret_cast<const uint8_t*>(png.data()), png.size());
+				}
+				return bool(bitmap);
+			};
+			if (!in.Read(count) || count > save->pictures.size()) return {};
+			for (uint32_t i = 0; i < count; ++i) {
+				auto& entry = state.pictures.entries.emplace_back();
+				entry.data = std::move(save->pictures[i]);
+				int chromakey;
+				if (!in.Read(entry.data.ID) || !in.Read(chromakey) || !in.Read(entry.origin) || !in.Read(entry.position_scaled) ||
+						!in.Read(entry.needs_update) || !in.Read(entry.visible)) return {};
+				if (chromakey >= 0) entry.chromakey = chromakey != 0;
+				if (!picture(entry.data, entry.bitmap, entry.chromakey.value_or(entry.data.use_transparent_color))) return {};
+			}
+			for (size_t i = count; i < save->pictures.size(); ++i) {
+				int id;
+				MapWorld::ContinuedPicture continuation{};
+				auto& pose = continuation.pose;
+				pose.data = std::move(save->pictures[i]);
+				if (!in.Read(id) || !in.Read(continuation.birth) || !in.Read(pose.tone) || !in.Read(pose.flash) ||
+						!in.Read(pose.shake_x) || !in.Read(pose.shake_y) || !in.Read(pose.birth) || !in.Read(present)) return {};
+				if (present && !in.Read(pose.maniac_pixels.emplace())) return {};
+				if (!in.Read(present)) return {};
+				if (present && !in.Read(pose.captured_view.emplace())) return {};
+				pose.data.ID = id;
+				if (!picture(pose.data, pose.bitmap, pose.data.use_transparent_color)) return {};
+				state.continued_pictures.emplace(id, std::move(continuation));
+			}
+			auto& extra = save->easyrpg_data;
+			state.raw_switches = std::move(extra.maniac_global_switch_raw);
+			state.variable_zero = extra.maniac_global_variable_zero;
+			state.maniac_seed = extra.maniac_random_seed;
+			Game_ManiacSelfVariables banks;
+			if (!banks.SetSaveData(std::move(extra.maniac_self_variable_banks))) return {};
+			state.self_variables = std::move(banks.MutableBanks());
+			checkpoint.music = save->system.current_music;
+			checkpoint.music_stopping = save->system.music_stopping;
+			save->pictures.clear();
+			state.map = std::move(*save);
+			return checkpoint;
+		}
+
+		void RestoreCheckpoint(MapWorld& world, int frame) {
+			const auto& checkpoint = checkpoints.at(frame);
+			world.RestartPresentation();
+			RestoreWorld(world, checkpoint);
+			auto& system = *Main_Data::game_system;
+			if (checkpoint.music_stopping) system.BgmStop();
+			else system.BgmPlay(checkpoint.music);
+			next = frame;
+			stopped = false;
+		}
+
+		void PublishWorkerCheckpoint(const MapWorld& world) {
+			const auto& system = Main_Data::game_system->GetSaveData();
+			auto encoded = Encode(Capture(world, system.current_music, system.music_stopping));
+			EM_ASM({ Module.replayCheckpoint?.($0, HEAPU8.slice($1, $1 + $2)); },
+				next, encoded.bytes.data(), encoded.bytes.size());
+		}
+
+		bool RestoreWorkerCheckpoint(MapWorld& world, int index, int minimum) {
+			const int candidate = EM_ASM_INT({ return Module.findReplayCheckpoint?.($0, $1) ?? -1; }, index, minimum);
+			if (candidate < 0) return false;
+			const auto length = EM_ASM_INT({ return Module.replayCheckpointSize?.($0) ?? 0; }, candidate);
+			if (length <= 0 || length > 16 * 1024 * 1024) return false;
+			CheckpointBytes encoded{std::string(length, '\0')};
+			EM_ASM({ Module.copyReplayCheckpoint($0, $1); }, candidate, encoded.bytes.data());
+			auto checkpoint = Decode(std::move(encoded));
+			if (!checkpoint) return false;
+			checkpoints.insert_or_assign(candidate, std::move(*checkpoint));
+			RestoreCheckpoint(world, candidate);
+			return true;
+		}
+
+		std::map<int, Checkpoint> checkpoints;
+		int interval = 60;
+		int next = 0;
+		bool stopped = false;
+	};
 	Match(int id, int seed, int seat, bool continue_rng, int presentation_buffer)
 		: id(id), seed(seed), seat(seat), map_id(Game_Map::GetMapId()), continue_rng(continue_rng),
 		  world(seat, presentation_buffer), timeline(world, seat) {}
 
 	~Match() {
-		EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
+		if (!input_stream) EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
 	}
 
 	int id;
@@ -351,6 +671,7 @@ struct Match {
 	bool started = false;
 	bool stall_exit = false;
 	std::array<int, 3> rules{};
+	std::optional<InputStream> input_stream;
 	MapWorld world;
 	Game_Netplay::Rollback<MapWorld> timeline;
 };
@@ -358,12 +679,14 @@ struct Match {
 std::unique_ptr<Match> match;
 int prepare_map = 0;
 int prepare_fade = 0;
+bool prepare_local = false;
 std::optional<uint32_t> prepare_seed;
 std::map<int, Game_Netplay::PictureView> prepare_picture_transforms;
 Game_Netplay::TransferFade transfer_fade;
 
 void ClearPreparation() {
 	prepare_map = 0;
+	prepare_local = false;
 	prepare_seed.reset();
 	prepare_picture_transforms.clear();
 }
@@ -476,7 +799,7 @@ void Game_Netplay::Command(std::string_view comment) {
 	}
 	if (command == "seat") {
 #ifdef PLAYER_WEB
-		write(variable, frame ? frame->seat + 1 : std::max(0, ReadTransportState() - 2));
+		write(variable, frame ? frame->seat + 1 : prepare_local ? 1 : std::max(0, ReadTransportState() - 2));
 #else
 		write(variable, 0);
 #endif
@@ -652,14 +975,23 @@ void Game_Netplay::Command(std::string_view comment) {
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
 	} else if (command == "seed" && ReadTransportState() >= 3) {
 		SeedRng(static_cast<uint32_t>(vars.Get(variable)));
-	} else if (command == "prepare" && !match && ReadTransportState() >= 3) {
+	} else if (!match && ((command == "prepare" && ReadTransportState() >= 3) ||
+			(command == "prepare_local" && Game_ManiacJs::HasInputFrameDriver()))) {
 		ClearPreparation();
+		prepare_local = command == "prepare_local";
 		prepare_map = std::max(0, vars.Get(variable));
 		int frames = 0;
 		args >> frames;
 		prepare_fade = std::max(0, frames);
 		int seed;
 		if (args >> seed && vars.IsValid(seed)) prepare_seed = static_cast<uint32_t>(vars.Get(seed));
+	} else if (command == "start_local" && !match && prepare_local && Game_ManiacJs::HasInputFrameDriver()) {
+		int seed;
+		if (!(args >> seed) || !vars.IsValid(seed)) return;
+		match = std::make_unique<Match>(vars.Get(variable), vars.Get(seed), 0, true, 1);
+		match->input_stream.emplace();
+		if (PreparesMap(match->map_id)) match->world.picture_transforms = std::move(prepare_picture_transforms);
+		ClearPreparation();
 	} else if (command == "start" && !match) {
 		int seed;
 		if (!(args >> seed) || !vars.IsValid(seed)) return;
@@ -690,11 +1022,12 @@ void Game_Netplay::Command(std::string_view comment) {
 
 void Game_Netplay::Close() {
 #ifdef PLAYER_WEB
-	EM_ASM({ Module.netplay?.endMatch?.('closed'); });
+	const bool local = prepare_local || (match && match->input_stream);
+	if (!local) EM_ASM({ Module.netplay?.endMatch?.('closed'); });
 	match.reset();
 	ClearPreparation();
 	transfer_fade = {};
-	EM_ASM({ Module.netplay?.close(); });
+	if (!local) EM_ASM({ Module.netplay?.close(); });
 #endif
 }
 
@@ -713,6 +1046,7 @@ bool Game_Netplay::WaitingForInput() {
 	return false;
 #endif
 }
+
 
 Game_Netplay::TransferFade Game_Netplay::TakeTransferFade() {
 #ifdef PLAYER_WEB
@@ -733,7 +1067,7 @@ bool Game_Netplay::PreparesMap(int map_id) {
 bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
 #ifdef PLAYER_WEB
 	if (!PreparesMap(Game_Map::GetMapId())) return false;
-	if (ReadTransportState() < 3) {
+	if (!prepare_local && ReadTransportState() < 3) {
 		ClearPreparation();
 		return false;
 	}
@@ -760,6 +1094,78 @@ bool Game_Netplay::UpdateMap() {
 	if (match->map_id != Game_Map::GetMapId()) {
 		Close();
 		return false;
+	}
+	if (match->input_stream) {
+		auto& stream = *match->input_stream;
+		auto& world = match->world;
+		checkpoint_worker = EM_ASM_INT({ return Number(!!Module.replayCheckpoint); });
+		if (checkpoint_worker) {
+			world.opening_pictures.clear();
+			const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(11);
+			while (!stream.stopped && std::chrono::steady_clock::now() < deadline) {
+				const auto plan = Game_ManiacJs::ReadInputFramePlan(stream.next, false, true);
+				if (plan.inputs.empty()) { stream.stopped = true; break; }
+				for (const auto& inputs : plan.inputs) {
+					MapWorld::Effects effects;
+					bool needs_confirmation = false;
+					if (!world.Step(stream.next, inputs, true, effects, needs_confirmation) ||
+							world.Publish(stream.next++, std::move(effects), false)) {
+						stream.stopped = true;
+						break;
+					}
+					world.Present(false, false);
+					if (stream.next % (stream.next < 1200 ? 15 : 60) == 0) stream.PublishWorkerCheckpoint(world);
+					if (std::chrono::steady_clock::now() >= deadline) break;
+				}
+			}
+			if (stream.stopped) EM_ASM({ Module.replayCheckpointDone?.(); });
+			return true;
+		}
+		const auto save_checkpoint = [&] {
+			const auto& system = Main_Data::game_system->GetSaveData();
+			stream.SaveCheckpoint(world, stream.next, system.current_music, system.music_stopping);
+		};
+		if (stream.checkpoints.empty()) save_checkpoint();
+		auto plan = Game_ManiacJs::ReadInputFramePlan(stream.next, stream.stopped);
+		if (plan.close) {
+			match.reset();
+			if (plan.transfer[0] > 0) {
+				Main_Data::game_player->ReserveTeleport(plan.transfer[0], plan.transfer[1], plan.transfer[2], -1,
+					TeleportTarget::eParallelTeleport);
+				transfer_fade = {6, 6, 0};
+				return true;
+			}
+			return false;
+		}
+		if (plan.restart) stream.RestoreCheckpoint(world, 0);
+		if (plan.seek >= 0) {
+			// Restore before the target so its normal step produces all visible effects.
+			const auto checkpoint = std::prev(stream.checkpoints.upper_bound(plan.seek));
+			const int minimum = stream.next <= plan.seek ? std::max(stream.next, checkpoint->first) : checkpoint->first;
+			if (!stream.RestoreWorkerCheckpoint(world, plan.seek, minimum) &&
+					(stream.next > plan.seek || checkpoint->first > stream.next))
+				stream.RestoreCheckpoint(world, checkpoint->first);
+		}
+		// Bound each silent batch by work time as well as by the script's frame count.
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(6);
+		int steps = 0;
+		for (const auto& inputs : plan.inputs) {
+			if (stream.stopped) break;
+			if (plan.silent && steps >= 2 && std::chrono::steady_clock::now() >= deadline) break;
+			MapWorld::Effects effects;
+			bool needs_confirmation = false;
+			if (!world.Step(stream.next, inputs, true, effects, needs_confirmation)) {
+				stream.stopped = true;
+				break;
+			}
+			stream.stopped = world.Publish(stream.next++, std::move(effects), false);
+			world.Present(!plan.silent, false);
+			if (!stream.stopped) save_checkpoint();
+			++steps;
+		}
+		world.Project(0);
+		world.PresentContinuations();
+		return true;
 	}
 	if (match->world.stopping) {
 		if (match->world.Present()) match.reset();
