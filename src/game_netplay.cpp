@@ -801,6 +801,12 @@ void Game_Netplay::Command(std::string_view comment) {
 #endif
 		return;
 	}
+#ifdef PLAYER_WEB
+	if (command == "route_ended") {
+		write(variable, EM_ASM_INT({ return Module.netplay?.takeRouteEnded?.() ? -1 : 0; }));
+		return;
+	}
+#endif
 	if (command == "seat") {
 #ifdef PLAYER_WEB
 		write(variable, frame ? frame->seat + 1 : prepare_local ? 1 : std::max(0, ReadTransportState() - 2));

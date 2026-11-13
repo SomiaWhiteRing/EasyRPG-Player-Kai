@@ -337,7 +337,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         if (backupClosed) backup = undefined;
         send('failed', id);
         dispose(candidate);
-        if (active === candidate || (backupClosed && !socketReady())) disconnect();
+        if (!socketReady() && (active === candidate || backupClosed)) disconnect();
       } else if (data.type === 'ice-pair' && data.final && (active === candidate || backup === candidate)) {
         send('ice-pair', id, {value: data.value});
       } else if (data.type === 'transport-stats' && (active === candidate || backup === candidate)) {
@@ -400,7 +400,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
       } else if (type === 'commit' && selected === candidate && candidate) {
         if (!isOpen(candidate)) {
           send('failed', path);
-          disconnect();
+          if (!socketReady()) disconnect();
           return;
         }
         active = candidate;
@@ -743,7 +743,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   directory.searchParams.set('guest', guest);
   const directoryHttp = new URL(directory);
   directoryHttp.protocol = base.protocol === 'wss:' ? 'https:' : 'http:';
-  let socket, state = 0, joinResult = 0;
+  let socket, state = 0, joinResult = 0, routeEnded = false;
   let rtcPort, rtcRound, rtcSelected = false, routeSelection, inputTransport, peerMatch, pendingReady;
   const directoryTimeout = 5000;
   let subscription, directoryDeadline = 0, nextProbe = 0, retry = 0;
@@ -964,6 +964,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     socket = undefined;
     clear();
     state = joinResult = 0;
+    routeEnded = false;
     roomSettings = '';
     closeRtc();
     old?.close(1000);
@@ -1012,6 +1013,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     close,
     send,
     progress(match, frame, confirmed, received, waiting, pending, ready, replay) {
+      if (routeEnded) return true;
       diagnostics.progress(match, frame, confirmed, received, waiting, pending, ready, replay);
       if (finish?.match !== match) return false;
       if (finish.status < 0) return true;
@@ -1029,7 +1031,12 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       return finish.status < 0;
     },
     setFinishSync: enabled => { finishOptIn = enabled; },
-    finishStatus: () => !finish || finish.mode === 'legacy' ? 1 : finish.status,
+    finishStatus: () => routeEnded ? -1 : !finish || finish.mode === 'legacy' ? 1 : finish.status,
+    takeRouteEnded() {
+      const ended = routeEnded;
+      routeEnded = false;
+      return ended;
+    },
     endMatch(reason) {
       diagnostics.end(reason);
       if (recording?.terminal && reason === 'match_end') {
@@ -1314,8 +1321,19 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           } else if (message) routeSelection?.receive(message);
         } else if (typeof data === 'string' && /^room:resume:[A-Za-z0-9_-]{32}$/.test(data)) {
           resumeToken = data.slice('room:resume:'.length);
+        } else if (data === 'room:route-ended') {
+          routeEnded = true;
+          diagnostics.end('route_closed');
+          finishRecord('route_closed');
+          if (finish && !finish.status) applyFinishDecision(-1, 'route_closed');
+          finishCapable = false;
+          finish = undefined;
+          clear();
+          resumeToken = undefined;
+          closeRtc();
         } else if (data === '2' || data === '3' || data === '4') {
           if (data === '2') {
+            routeEnded = false;
             diagnostics.end('peer_left');
             finishRecord('peer_left');
             if (finish && finish.mode !== 'legacy' && !finish.status) applyFinishDecision(-1, 'peer_left');
@@ -1384,7 +1402,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
               if (data.diagnosticsPending) setTimeout(() => port1.close(), 500);
               else port1.close();
               sendRtc('fail');
-              if (rtcSelected && resumeToken) ended();
+              if (rtcSelected && socket?.readyState !== WebSocket.OPEN) ended();
             }
           };
           postMessage({type: 'netplay-rtc', port: port2, iceServers, offer, diagnostics: iceDiagnostics, relayOnly, compareRelay, inputProtocol}, [port2]);
