@@ -1497,6 +1497,20 @@ function writeStorage(files, callback) {
 let observe;
 let checkpointWorker, videoExportService;
 
+function createBackgroundPlayer(start) {
+  const script = new URL('player-worker.js', start.runtimeBase);
+  if (!start.storage) return new Worker(script);
+  // WebView serves installed scripts through its page resource interceptor.
+  // A nested Worker script request can bypass it, while importScripts uses it.
+  const bootstrap = URL.createObjectURL(new Blob(['importScripts(' + JSON.stringify(script.href) + ');'],
+    {type: 'application/javascript'}));
+  try {
+    return new Worker(bootstrap);
+  } finally {
+    URL.revokeObjectURL(bootstrap);
+  }
+}
+
 function createReplayCheckpoints(start) {
   let worker;
   const checkpoints = new Map();
@@ -1509,7 +1523,7 @@ function createReplayCheckpoints(start) {
     start(payload) {
       close();
       if (typeof Worker !== 'function' || typeof OffscreenCanvas !== 'function') return;
-      try { worker = new Worker(new URL('player-worker.js', start.runtimeBase)); }
+      try { worker = createBackgroundPlayer(start); }
       catch { return; }
       const active = worker;
       worker.onmessage = ({data}) => {
@@ -1562,15 +1576,17 @@ function createVideoExportService(start, services) {
         return 0;
       }
       if ((operation === 'prepare' || operation === 'start') && !active) {
-        const worker = new Worker(new URL('player-worker.js', start.runtimeBase));
-        active = worker;
         const fail = message => {
           filename = undefined;
           status = {error: true};
           postMessage({type: 'log', level: 'warn', message: `Video export: ${message}`});
           close();
         };
-        worker.onerror = event => fail(event.message);
+        let worker;
+        try { worker = createBackgroundPlayer(start); }
+        catch (error) { fail(String(error)); return 0; }
+        active = worker;
+        worker.onerror = event => fail(event.message || 'Background Player could not load its script');
         worker.onmessage = ({data}) => {
           if (active !== worker) return;
           if (data.type === 'video-export-progress') status = {progress: data.progress};
