@@ -4,14 +4,8 @@
   const samplesPerFrame = 800;
   const audioBatchFrames = 8;
   const timestamp = frame => Math.round(frame * 1000000 / 60);
-  const videoConfig = {
-    codec: 'avc1.42001f', width: 640, height: 480, framerate: 60, bitrate: 5000000,
-    latencyMode: 'realtime', avc: {format: 'avc'},
-  };
   async function selectAudioConfig() {
-    if (typeof OffscreenCanvas !== 'function' || typeof VideoEncoder !== 'function' ||
-        typeof AudioEncoder !== 'function' || !(await VideoEncoder.isConfigSupported(videoConfig)).supported)
-      return;
+    if (typeof AudioEncoder !== 'function') return;
     for (const codec of ['mp4a.40.2', 'opus']) {
       const config = {codec, sampleRate, numberOfChannels: 2, bitrate: 128000};
       if ((await AudioEncoder.isConfigSupported(config)).supported) return config;
@@ -49,10 +43,26 @@
     };
   }
 
-  self.createVideoExport = async (options, runtimeBase, createPixelRenderer, preferPlanarFrames, report) => {
+  self.prepareVideoExport = async (options, runtimeBase, createPixelRenderer, preferPlanarFrames, report) => {
     const audioConfig = await selectAudioConfig();
     if (!audioConfig) throw new Error('H.264 or audio encoding unavailable');
     importScripts(new URL('mp4-muxer.js', runtimeBase).href);
+    const mixer = await createEasyRpgEngine({...options, audioOnly: true, noInitialRun: true, sampleRate, videoExportTick: 0});
+    mixer._web_audio_init(sampleRate);
+    return scale => createVideoExport(mixer, audioConfig, scale, createPixelRenderer, preferPlanarFrames, report);
+  };
+
+  async function createVideoExport(mixer, audioConfig, scale, createPixelRenderer, preferPlanarFrames, report) {
+    if (!Number.isInteger(scale) || scale < 1 || scale > 9) throw new Error('Invalid video scale');
+    // AVC levels for 320×240 at 60 FPS, scaled by each integer from 1 to 9.
+    const level = ['1f', '1f', '20', '2a', '2a', '33', '33', '34', '34'][scale - 1];
+    const videoConfig = {
+      codec: 'avc1.4200' + level, width: 320 * scale, height: 240 * scale, framerate: 60,
+      bitrate: Math.max(5000000, 2500000 * scale), latencyMode: 'realtime', avc: {format: 'avc'},
+    };
+    if (typeof OffscreenCanvas !== 'function' || typeof VideoEncoder !== 'function' ||
+        !(await VideoEncoder.isConfigSupported(videoConfig)).supported)
+      throw new Error('H.264 encoding unavailable at the selected scale');
     const muxer = new Mp4Muxer.Muxer({
       target: new Mp4Muxer.ArrayBufferTarget(),
       video: {codec: 'avc', width: videoConfig.width, height: videoConfig.height},
@@ -64,17 +74,15 @@
     video.configure(videoConfig);
     audio.configure(audioConfig);
 
-    const mixer = await createEasyRpgEngine({...options, audioOnly: true, noInitialRun: true, sampleRate, videoExportTick: 0});
-    mixer._web_audio_init(sampleRate);
     const pcm = mixer._malloc(samplesPerFrame * audioBatchFrames * 4);
     let audioFrames = 0;
     const textEncoder = new TextEncoder();
     const {width: outputWidth, height: outputHeight} = videoConfig;
-    const planar = preferPlanarFrames && createPlanarFrames(outputWidth / 2, outputHeight / 2);
+    const planar = preferPlanarFrames && scale === 2 && createPlanarFrames(outputWidth / 2, outputHeight / 2);
     const canvas = new OffscreenCanvas(outputWidth, outputHeight);
     let drawCanvas, usePlanar;
     function createCanvasDraw() {
-      const draw = createPixelRenderer(canvas, 2, true);
+      const draw = createPixelRenderer(canvas, scale, true);
       if (draw) return draw;
       const context = canvas.getContext('2d', {alpha: false});
       context.imageSmoothingEnabled = false;
@@ -83,7 +91,7 @@
           format: 'BGRX', codedWidth: width, codedHeight: height,
           layout: [{offset: 0, stride: pitch}], timestamp: 0,
         });
-        context.drawImage(source, 0, 0, width * 2, height * 2);
+        context.drawImage(source, 0, 0, width * scale, height * scale);
         source.close();
       };
     }
@@ -175,5 +183,5 @@
         } else queueMicrotask(next);
       },
     };
-  };
+  }
 })();

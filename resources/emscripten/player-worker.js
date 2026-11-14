@@ -1660,8 +1660,9 @@ self.onmessage = async ({data}) => {
       };
       if (data.type === 'video-export-prepare') {
         importScripts(new URL('player-video-export.js', runtimeBase).href);
-        preparedExport = self.createVideoExport(options, runtimeBase, createPixelRenderer, Boolean(storage), report).then(capture =>
-          payload => {
+        preparedExport = self.prepareVideoExport(options, runtimeBase, createPixelRenderer, Boolean(storage), report).then(createCapture =>
+          async payload => {
+            const capture = await createCapture(payload.scale ?? 2);
             self.requestAnimationFrame = capture.schedule;
             return start(payload, {
               videoExportTick: 0, audioCapabilities: capture.capabilities, audioCommand: capture.command,
