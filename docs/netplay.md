@@ -143,6 +143,17 @@ numbers and monotonic durations correlate both seats. Client wall-clock times
 remain subject to device clock differences. The client retains up to 32 pending
 events during control reconnection and reports the number discarded.
 
+Clients advertise automatic-route ICE diagnostics with `routeIceDiagnostics=1`.
+The room service enables snapshots by setting `diagnostics` on its `start` message. Each RTC candidate reports at 2 and 6 seconds,
+on selection, and before failure/disposal. Snapshots retain candidate IP addresses,
+ports, related addresses, IPv6 scope, STUN server/error summaries, timed milestones,
+candidate-pair checks and both data-channel states. Full SDP and TURN credentials
+are excluded. Snapshots are scoped by the selection round and path; discarded
+candidates can finish reporting after another path is committed. Collection is
+bounded to 250 ms at disposal and does not hold up selection or gameplay. The
+worker retains the reporting port for up to 500 ms. A closed control connection
+can prevent delivery; an absent final snapshot is not proof of an ICE failure.
+
 During a synchronized map tick, `rm2k3.netplayContinuePicture(id)` captures
 the slot's final pose for an immediate drawing when the native picture is
 absent. `netplayContinuePicture(id, x, y, angle)` updates its position and

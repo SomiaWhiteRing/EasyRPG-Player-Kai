@@ -274,7 +274,7 @@ function createNetplayInputTransport(send, deliver, disconnect) {
   };
 }
 
-function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {sendControl, sendSocket, socketReady, receive, activate, disconnect, transportStats, reportFailure}) {
+function createNetplayRouteSelection({round, paths, offer, inputProtocol, diagnostics = false}, {sendControl, sendSocket, socketReady, receive, activate, disconnect, transportStats, reportFailure}) {
   const candidates = new Map();
   let selected, active, backup;
   const send = (type, path, fields) => sendControl({type, round, path, ...fields});
@@ -286,10 +286,13 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
     clearInterval(candidate.interval);
     clearTimeout(candidate.deadline);
   };
-  const dispose = candidate => {
+  const dispose = (candidate, reason = 'selection_closed') => {
     stopProbe(candidate);
-    closeNetplayPort(candidate.port);
     candidates.delete(candidate.id);
+    if (candidate.port && diagnostics) {
+      candidate.port.postMessage({type: 'finish-diagnostics', reason});
+      setTimeout(() => candidate.port.close(), 500);
+    } else closeNetplayPort(candidate.port);
   };
   const isOpen = candidate => candidate?.id === 'websocket' ? socketReady() : candidate?.open;
   const receiveProbe = (candidate, data) => {
@@ -321,6 +324,11 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
     const {port1, port2} = new MessageChannel();
     candidate.port = port1;
     port1.onmessage = ({data}) => {
+      // A discarded candidate can finish getStats after the selected route starts playing.
+      if (diagnostics && data.type === 'ice-stats') {
+        send('ice-stats', id, {snapshot: {...data.snapshot, negotiationStartedAt: round}});
+        return;
+      }
       if (candidates.get(id) !== candidate) return;
       if (data.type === 'open') {
         candidate.open = true;
@@ -335,7 +343,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         if (active === candidate) reportFailure(data.reason || 'peer_closed');
         const backupClosed = backup === candidate;
         if (backupClosed) backup = undefined;
-        send('failed', id);
+        send('failed', id, {reason: data.reason});
         dispose(candidate);
         if (!socketReady() && (active === candidate || backupClosed)) disconnect();
       } else if (data.type === 'ice-pair' && data.final && (active === candidate || backup === candidate)) {
@@ -344,7 +352,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         transportStats(data.value);
       }
     };
-    postMessage({type: 'netplay-rtc', path: id, port: port2, iceServers, offer, relayOnly, inputProtocol, compareRelay: false}, [port2]);
+    postMessage({type: 'netplay-rtc', path: id, port: port2, iceServers, offer, diagnostics, relayOnly, inputProtocol, compareRelay: false}, [port2]);
   }
 
   return {
@@ -409,7 +417,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol}, {send
         if (isOpen(backupCandidate)) backup = backupCandidate;
         for (const other of candidates.values()) {
           if (other === active || other === backup) stopProbe(other);
-          else dispose(other);
+          else dispose(other, 'route_not_selected');
         }
         const sendMirroredInput = mirror ? data => {
           sendSocket(data);
@@ -1160,6 +1168,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       address.searchParams.set('heartbeat', '1');
       address.searchParams.set('inputStats', '1');
       address.searchParams.set('diagnostics', '1');
+      address.searchParams.set('routeIceDiagnostics', '1');
       if (netplayRecordingOutbox) address.searchParams.set('recording', '2');
       address.searchParams.set('finishSync', '1');
       if (archive) address.searchParams.set('archive', archive);

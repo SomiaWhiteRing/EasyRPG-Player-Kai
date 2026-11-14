@@ -595,7 +595,9 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     let remoteCandidatesApplied = 0;
     const startedAt = performance.now();
     const pendingCandidates = [];
-    const milestones = new Set();
+    const milestones = new Map();
+    const statsTimers = [];
+    let diagnosticReason;
     const candidateNumbers = new Map();
     const localSignals = [];
     const remoteSignals = [];
@@ -606,7 +608,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     const elapsed = () => Math.round(performance.now() - startedAt);
     const mark = milestone => {
       if (!open || milestones.has(milestone)) return;
-      milestones.add(milestone);
+      milestones.set(milestone, elapsed());
       port.postMessage({type: 'diagnostic', milestone});
     };
     const close = () => {
@@ -614,6 +616,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       open = false;
       clearTimeout(finishTimer);
       clearTimeout(inputTimer);
+      for (const timer of statsTimers) clearTimeout(timer);
       for (const complete of probeReplies.values()) complete(false);
       port.close();
       peer?.close();
@@ -622,6 +625,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     const fail = milestone => {
       if (!open || finishing) return;
       mark(milestone);
+      diagnosticReason = milestone;
       port.postMessage({type: 'closed', reason: milestone, diagnosticsPending: diagnostics});
       finishStats('failure');
     };
@@ -647,10 +651,17 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       if (host === 'stun.nextcloud.com') return 'nextcloud-stun';
       if (host === 'stun.hitv.com') return 'hitv-stun';
       if (host === 'turn.cloudflare.com') return 'cloudflare-turn';
+      if (host === 'netplay-hk.viprpg.org' || host === 'netplay-hk-staging.viprpg.org') return 'hong-kong-turn';
     };
     const describeCandidate = (candidate, type) => ({
       type, protocol: candidate.protocol, tcpType: candidate.tcpType,
       addressKind: addressKind(candidate.address ?? candidate.ip), port: candidate.port,
+      address: candidate.address ?? candidate.ip, relatedAddress: candidate.relatedAddress,
+      ipv6Scope: addressKind(candidate.address ?? candidate.ip) !== 'ipv6' ? undefined
+        : (candidate.address ?? candidate.ip) === '::1' ? 'loopback'
+        : /^fe[89ab]/i.test(candidate.address ?? candidate.ip) ? 'link_local'
+        : /^f[cd]/i.test(candidate.address ?? candidate.ip) ? 'unique_local'
+        : /^[23][0-9a-f]{3}:/i.test(candidate.address ?? candidate.ip) ? 'global' : 'other',
       relatedAddressKind: addressKind(candidate.relatedAddress), relatedPort: candidate.relatedPort,
       relayProtocol: candidate.relayProtocol, priority: candidate.priority, iceServer: iceServerName(candidate.url),
     });
@@ -690,7 +701,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       };
     };
     const sendIceStats = (phase, status, stats) => {
-      if (!open || !diagnostics || (finishing && phase !== 'fallback' && phase !== 'failure')) return;
+      if (!open || !diagnostics || (finishing && !['fallback', 'failure', 'discarded'].includes(phase))) return;
       const candidates = new Map();
       const addCandidate = candidate => {
         if (candidate?.type !== 'local-candidate' && candidate?.type !== 'remote-candidate') return;
@@ -725,9 +736,11 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         addCandidate(candidate);
       }
       port.postMessage({type: 'ice-stats', snapshot: {
-        phase, status, elapsedMs: elapsed(),
+        phase, status, elapsedMs: elapsed(), reason: diagnosticReason,
+        milestones: Array.from(milestones, ([name, elapsedMs]) => ({name, elapsedMs})),
         iceState: peer?.iceConnectionState, gatheringState: peer?.iceGatheringState,
         connectionState: peer?.connectionState, signalingState: peer?.signalingState, channelState: channel?.readyState,
+        inputChannelState: inputChannel?.readyState,
         dtlsState: transport?.dtlsState, iceRole: transport?.iceRole,
         localSdp: describeSdp(peer?.localDescription), remoteSdp: describeSdp(peer?.remoteDescription),
         localCandidatesGathered, remoteCandidatesReceived, remoteCandidatesApplied,
@@ -749,6 +762,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       }
       if (finishing) return;
       finishing = true;
+      for (const timer of statsTimers) clearTimeout(timer);
       // The game has already fallen back or received the failure. Bound the lifetime of the old peer.
       finishTimer = setTimeout(() => {
         sendIceStats(phase, 'timeout');
@@ -782,6 +796,9 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       return close;
     }
     mark('peer_created');
+    if (diagnostics) {
+      for (const seconds of [2, 6]) statsTimers.push(setTimeout(() => void sampleStats(seconds + 's'), seconds * 1000));
+    }
     const signal = value => port.postMessage({type: 'signal', value});
     const describe = async () => {
       await peer.setLocalDescription().catch(() => fail('local_description_failed'));
@@ -878,10 +895,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       const kind = addressKind(address ?? undefined);
       const scheme = /^(stun|stuns|turn|turns):/i.exec(url)?.[1]?.toLowerCase();
       const iceServer = iceServerName(url);
-      const key = [errorCode, kind, port, scheme, iceServer].join(':');
+      const key = [errorCode, address, port, scheme, iceServer].join(':');
       const previous = stunErrors.get(key);
       if (previous) previous.count++;
-      else stunErrors.set(key, {code: errorCode, addressKind: kind, port, scheme, iceServer, count: 1});
+      else stunErrors.set(key, {code: errorCode, address, addressKind: kind, port, scheme, iceServer, count: 1});
       mark(errorCode === 701 ? 'stun_unreachable' : 'stun_error');
     };
     peer.oniceconnectionstatechange = () => {
@@ -897,6 +914,9 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     port.onmessage = ({data}) => {
       if (data.type === 'close') {
         close();
+      } else if (data.type === 'finish-diagnostics') {
+        diagnosticReason ??= data.reason;
+        finishStats('discarded');
       } else if (data.type === 'fallback') {
         finishStats('fallback');
       } else if (data.type === 'ice-pair') {
