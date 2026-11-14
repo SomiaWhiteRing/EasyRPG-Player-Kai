@@ -47,7 +47,11 @@ extern "C" EMSCRIPTEN_KEEPALIVE void web_main_loop() {
 		Player::Run();
 		++counter;
 	} else if (counter == 6) {
-		if (!EM_ASM_INT({ return Module.paused ? 1 : 0; })) Player::MainLoop();
+		if (!EM_ASM_INT({ return Module.paused ? 1 : 0; })) {
+			EM_ASM({ if (Module.videoExportTick !== undefined) ++Module.videoExportTick; });
+			Player::MainLoop();
+			EM_ASM({ Module.captureVideoFrame?.(); });
+		}
 		if (!DisplayUi.get()) {
 			EM_ASM({ Module.stopping = true; });
 			// Yield on shutdown to ensure async operations (e.g. IDBFS saving) can finish

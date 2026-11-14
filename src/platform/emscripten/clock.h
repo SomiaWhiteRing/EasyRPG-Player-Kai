@@ -19,6 +19,7 @@
 #define EP_EMSCRIPTEN_CLOCK_H
 
 #include <chrono>
+#include <emscripten.h>
 
 struct EmscriptenClock {
 	using clock = std::chrono::steady_clock;
@@ -41,6 +42,11 @@ struct EmscriptenClock {
 };
 
 inline EmscriptenClock::time_point EmscriptenClock::now() {
+	const double tick = EM_ASM_DOUBLE({ return Module.videoExportTick ?? -1; });
+	if (tick >= 0) {
+		return time_point(std::chrono::duration_cast<duration>(
+			std::chrono::nanoseconds(static_cast<int64_t>(tick) * 16666667)));
+	}
 	return clock::now();
 }
 

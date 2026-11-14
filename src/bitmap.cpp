@@ -19,6 +19,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <type_traits>
 #include <algorithm>
 #include <iostream>
 #include <unordered_map>
@@ -366,11 +367,20 @@ Color Bitmap::GetColorAt(int x, int y) const {
 	return color;
 }
 
+namespace {
+void StorePixel(uint8_t* destination, uint32_t pixel, int bytes) {
+	// The platform display surfaces use 32-bit pixels. A constant-size copy
+	// becomes a single unaligned-safe store even when the format is dynamic.
+	if (bytes == sizeof(pixel)) std::memcpy(destination, &pixel, sizeof(pixel));
+	else std::memcpy(destination, &pixel, bytes);
+}
+}
+
 void Bitmap::SetColorAt(int x, int y, const Color& color) {
 	if (x < 0 || y < 0 || x >= width() || y >= height()) return;
 	const uint32_t pixel = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
 	uint8_t* pos = static_cast<uint8_t*>(pixels()) + static_cast<size_t>(y) * pitch() + x * format.bytes;
-	std::memcpy(pos, &pixel, format.bytes);
+	StorePixel(pos, pixel, format.bytes);
 	if (!maniac_pixels.empty()) {
 		maniac_pixels[static_cast<size_t>(y) * width() + x] = color;
 		++maniac_revision;
@@ -402,9 +412,32 @@ void Bitmap::EnableManiacPixels() {
 	} else {
 		const auto* data = static_cast<const uint8_t*>(pixels());
 		const int image_pitch = pitch();
+		// Use fixed channel layouts for the common 32-bit formats. This also
+		// lets the compiler combine the packed reads and straight color writes.
+		const bool rgba = format.bytes == 4 && format.r.mask == 0x000000ff && format.g.mask == 0x0000ff00
+			&& format.b.mask == 0x00ff0000 && format.a.mask == 0xff000000;
+		const bool bgra = format.bytes == 4 && format.r.mask == 0x00ff0000 && format.g.mask == 0x0000ff00
+			&& format.b.mask == 0x000000ff && format.a.mask == 0xff000000;
 		for (int y = 0; y < bitmap_height; ++y) {
 			const auto* pixel = data + y * image_pitch;
 			auto* output = maniac_pixels.data() + static_cast<size_t>(y) * bitmap_width;
+#ifndef WORDS_BIGENDIAN
+			if (rgba) {
+				static_assert(sizeof(Color) == 4);
+				std::memcpy(output, pixel, static_cast<size_t>(bitmap_width) * 4);
+				continue;
+			}
+#endif
+			if (rgba || bgra) {
+				const int red = bgra ? 16 : 0;
+				const int blue = bgra ? 0 : 16;
+				for (int x = 0; x < bitmap_width; ++x, pixel += 4) {
+					uint32_t packed;
+					std::memcpy(&packed, pixel, sizeof(packed));
+					output[x] = Color(packed >> red, packed >> 8, packed >> blue, packed >> 24);
+				}
+				continue;
+			}
 			for (int x = 0; x < bitmap_width; ++x, pixel += format.bytes) {
 				uint32_t packed;
 				std::memcpy(&packed, pixel, sizeof(packed));
@@ -422,6 +455,109 @@ void Bitmap::SetManiacColorAt(int x, int y, Color color, bool presentation) {
 	MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
 	SetColorAt(x, y, color);
 	maniac_pixels[static_cast<size_t>(y) * width() + x] = straight;
+}
+
+namespace {
+template <bool bgra>
+Color BlendManiacColor(Color source, const uint8_t* pixel, const DynamicFormat& format, int blend, int opacity) {
+	if (blend == 0 && opacity >= 255) return source;
+
+	uint32_t packed;
+	std::memcpy(&packed, pixel, sizeof(packed));
+	Color previous;
+	if constexpr (bgra) {
+		previous = Color(packed >> 16, packed >> 8, packed, packed >> 24);
+	} else {
+		format.uint32_to_rgba(packed, previous.red, previous.green, previous.blue, previous.alpha);
+	}
+	const auto channel = [blend, opacity](int color, int background) {
+		int value = color;
+		if (blend == 1) value = color * background / 255;
+		else if (blend == 2) value = std::min(color + background, 255);
+		else if (blend == 3) value = background < 128 ? 2 * color * background / 255
+			: 2 * (background - color * background / 255 + color) - 255;
+		if (opacity >= 0 && opacity < 255) {
+			value = (value * (opacity + 1) + background * (256 - opacity)) / 256;
+		} else if (opacity < 0) {
+			value = static_cast<int>((static_cast<int64_t>(value) * (static_cast<int64_t>(opacity) + 1)
+				+ static_cast<int64_t>(background) * (256ll - opacity)) / 256);
+		}
+		return static_cast<uint8_t>(value);
+	};
+	return Color(channel(source.red, previous.red), channel(source.green, previous.green),
+		channel(source.blue, previous.blue), 0);
+}
+}
+
+void Bitmap::CompositeManiacPixel(int x, int y, Color source, int blend, int opacity) {
+	if (x < 0 || y < 0 || x >= width() || y >= height()) return;
+	EnableManiacPixels();
+	auto* pixel = static_cast<uint8_t*>(pixels()) + static_cast<size_t>(y) * pitch() + x * format.bytes;
+	const Color color = BlendManiacColor<false>(source, pixel, format, blend, opacity);
+	const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, 255);
+	StorePixel(pixel, packed, format.bytes);
+	maniac_pixels[static_cast<size_t>(y) * width() + x] = color;
+	maniac_presentation = true;
+	++maniac_revision;
+}
+
+void Bitmap::CompositeManiacRow(int x, int y, const Bitmap& source, int source_y, Span<const int> columns,
+		int blend, int opacity, bool chromakey, bool reflect_x) {
+	// The scaled renderer has already clipped the destination row.
+	assert(x >= 0 && y >= 0 && y < height() && static_cast<size_t>(x) + columns.size() <= static_cast<size_t>(width()));
+	EnableManiacPixels();
+	const Bitmap* logical_source = &source;
+	int source_x = 0;
+	while (logical_source->maniac_pixels.empty() && logical_source->pixel_owner) {
+		source_x += logical_source->maniac_view_origin.x;
+		source_y += logical_source->maniac_view_origin.y;
+		logical_source = logical_source->pixel_owner.get();
+	}
+	const auto* input = !logical_source->maniac_pixels.empty() && !logical_source->maniac_presentation
+		? logical_source->maniac_pixels.data() + static_cast<size_t>(source_y) * logical_source->width() + source_x : nullptr;
+	const auto* source_row = static_cast<const uint8_t*>(logical_source->pixels()) + static_cast<size_t>(source_y) * logical_source->pitch();
+	auto* display_row = static_cast<uint8_t*>(pixels()) + static_cast<size_t>(y) * pitch();
+	auto* logical_row = maniac_pixels.data() + static_cast<size_t>(y) * width();
+	const int source_width = source.width();
+	int destination_x = reflect_x ? width() - 1 - x : x;
+	const int destination_step = reflect_x ? -1 : 1;
+	const auto* source_alpha = logical_source->maniac_pixels.empty() ? nullptr :
+		logical_source->maniac_pixels.data() + static_cast<size_t>(source_y) * logical_source->width() + source_x;
+	const auto composite = [&](auto bgra) {
+		for (int column : columns) {
+			const int target = destination_x;
+			destination_x += destination_step;
+			if (static_cast<unsigned>(column) >= static_cast<unsigned>(source_width)) continue;
+			Color color;
+			if (input) {
+				color = input[column];
+			} else {
+				uint32_t packed;
+				std::memcpy(&packed, source_row + (source_x + column) * logical_source->format.bytes, sizeof(packed));
+				logical_source->format.uint32_to_rgba(packed, color.red, color.green, color.blue, color.alpha);
+				if (source_alpha) color.alpha = source_alpha[column].alpha;
+			}
+			if (chromakey && !color.alpha) continue;
+			auto* pixel = display_row + target * format.bytes;
+			color = BlendManiacColor<decltype(bgra)::value>(color, pixel, format, blend, opacity);
+			if constexpr (decltype(bgra)::value) {
+				const uint32_t packed = 0xff000000u | (uint32_t(color.red) << 16) | (uint32_t(color.green) << 8) | color.blue;
+				std::memcpy(pixel, &packed, sizeof(packed));
+			} else {
+				const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, 255);
+				StorePixel(pixel, packed, format.bytes);
+			}
+			logical_row[target] = color;
+			maniac_presentation = true;
+			++maniac_revision;
+		}
+	};
+	if (format.bytes == 4 && format.r.mask == 0x00ff0000 && format.g.mask == 0x0000ff00
+			&& format.b.mask == 0x000000ff && format.a.mask == 0xff000000) {
+		composite(std::true_type{});
+	} else {
+		composite(std::false_type{});
+	}
 }
 
 void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const std::array<int, 4>& tone,
@@ -479,7 +615,7 @@ void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const s
 			output[x] = color;
 			MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
 			const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
-			std::memcpy(pixel, &packed, bytes);
+			StorePixel(pixel, packed, bytes);
 		}
 	}
 	++maniac_revision;
@@ -524,7 +660,7 @@ void Bitmap::CopyManiacPixels(int x, int y, const Bitmap& source, Rect source_re
 			if (presentation) color.alpha = 255;
 			else MultiplyAlpha(color.red, color.green, color.blue, color.alpha);
 			const uint32_t packed = format.rgba_to_uint32_t(color.red, color.green, color.blue, color.alpha);
-			std::memcpy(pixel, &packed, bytes);
+			StorePixel(pixel, packed, bytes);
 		}
 	}
 	if (written) {

@@ -1348,7 +1348,7 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 
 		target_link_libraries(${EXE_NAME} "idbfs.js" "workerfs.js")
 		include(builds/cmake/Modules/PlayerWebMovie.cmake)
-		foreach(web_file player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js)
+		foreach(web_file player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js player-video-export.js mp4-muxer.js mp4-muxer.LICENSE.txt)
 			configure_file(resources/emscripten/${web_file} ${CMAKE_CURRENT_BINARY_DIR}/${web_file} COPYONLY)
 		endforeach()
 
@@ -1386,6 +1386,9 @@ if(PLAYER_BUILD_EXECUTABLE AND (PLAYER_TARGET_PLATFORM MATCHES "^SDL.*$" OR PLAY
 			${CMAKE_CURRENT_BINARY_DIR}/player-files.js
 			${CMAKE_CURRENT_BINARY_DIR}/player-movie.js
 			${CMAKE_CURRENT_BINARY_DIR}/player-movie-worker.js
+			${CMAKE_CURRENT_BINARY_DIR}/player-video-export.js
+			${CMAKE_CURRENT_BINARY_DIR}/mp4-muxer.js
+			${CMAKE_CURRENT_BINARY_DIR}/mp4-muxer.LICENSE.txt
 			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.js
 			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.wasm
 			${CMAKE_CURRENT_BINARY_DIR}/movie-decoder.LICENSE.txt

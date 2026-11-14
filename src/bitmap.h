@@ -37,6 +37,7 @@
 #include "opacity.h"
 #include "filesystem_stream.h"
 #include "string_view.h"
+#include "span.h"
 
 struct Transform;
 namespace ImagePNG { class PictureLoader; }
@@ -260,6 +261,10 @@ public:
 	void SetColorAt(int x, int y, const Color& color);
 	Color GetManiacColorAt(int x, int y) const;
 	void SetManiacColorAt(int x, int y, Color color, bool presentation = false);
+	/** Blends a straight color into an opaque presentation while retaining its logical alpha. */
+	void CompositeManiacPixel(int x, int y, Color source, int blend, int opacity);
+	void CompositeManiacRow(int x, int y, const Bitmap& source, int source_y, Span<const int> columns,
+		int blend, int opacity, bool chromakey, bool reflect_x);
 	/** Copies straight Maniac colors; presentation makes only the display pixels opaque. */
 	void CopyManiacPixels(int x, int y, const Bitmap& source, Rect source_rect,
 		bool chromakey = false, bool presentation = false);

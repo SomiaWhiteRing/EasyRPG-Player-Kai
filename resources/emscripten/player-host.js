@@ -982,7 +982,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     return close;
   }
 
-  worker.onmessage = ({data}) => {
+  worker.onmessage = async ({data}) => {
     if (data.type === 'storage-write') {
       Promise.resolve().then(() => writeStorage(data.files)).then(
         () => send({type: 'storage-written', id: data.id}),
@@ -1048,7 +1048,37 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     else if (data.type === 'screenshot' && screenshot) {
       screenshot.resolve({blob: new Blob([data.bytes], {type: 'image/png'}), width: data.width, height: data.height});
       screenshot = undefined;
-    } else if (data.type === 'download') download(new Blob([data.bytes]), data.filename);
+    } else if (data.type === 'download') {
+      if (data.videoExport) {
+        try {
+          const bridge = window.parent.VIPRPGVideoExport;
+          if (bridge) {
+            const write = message => new Promise((resolve, reject) => {
+              bridge.onmessage = ({data}) => data === 'saved' ? resolve() : reject(new Error('Video could not be saved'));
+              bridge.postMessage(message);
+            });
+            await write('open:' + data.filename);
+            const bytes = new Uint8Array(data.bytes);
+            for (let offset = 0; offset < bytes.length; offset += 192 * 1024) {
+              const part = bytes.subarray(offset, offset + 192 * 1024);
+              let binary = '';
+              for (let index = 0; index < part.length; index += 8192)
+                binary += String.fromCharCode(...part.subarray(index, index + 8192));
+              await write('data:' + btoa(binary));
+            }
+            await write('close');
+          } else if (window.parent.VIPRPGAndroid) {
+            throw new Error('This Android client cannot save an MP4');
+          } else {
+            download(new Blob([data.bytes], {type: data.mimeType}), data.filename);
+          }
+          send({type: 'video-export-saved'});
+        } catch (error) {
+          send({type: 'video-export-saved', error: String(error)});
+          console.warn(error);
+        }
+      } else download(new Blob([data.bytes], {type: data.mimeType}), data.filename);
+    }
     else if (data.type === 'upload') {
       const input = document.createElement('input');
       input.type = 'file';

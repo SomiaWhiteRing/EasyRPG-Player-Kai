@@ -6,7 +6,7 @@ ARTIFACT_DIR="${ARTIFACT_DIR:-build/artifacts}"
 PACKAGE_DIR="${PACKAGE_DIR:-build/package/web}"
 ASSET_NAME="${ASSET_NAME:-EasyRPG-Player-Kai-local-web.zip}"
 
-for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player.data easyrpg-player-asyncify.js easyrpg-player-asyncify.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
+for file in easyrpg-player.js easyrpg-player.wasm easyrpg-player.data easyrpg-player-asyncify.js easyrpg-player-asyncify.wasm player-host.js player-worker.js player-audio.js player-audio-worker.js player-files.js player-movie.js player-movie-worker.js player-video-export.js mp4-muxer.js mp4-muxer.LICENSE.txt movie-decoder.js movie-decoder.wasm movie-decoder.LICENSE.txt; do
 	if [ ! -s "$BUILD_DIR/$file" ]; then
 		echo "Missing required Web build output: $BUILD_DIR/$file" >&2
 		exit 1
@@ -19,6 +19,7 @@ ARTIFACT_PATH="$(cd "$ARTIFACT_DIR" && pwd)/$ASSET_NAME"
 
 cp "$BUILD_DIR/player-host.js" "$BUILD_DIR/player-worker.js" "$BUILD_DIR/player-audio.js" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/player-audio-worker.js" "$BUILD_DIR/player-files.js" "$PACKAGE_DIR/"
+cp "$BUILD_DIR/player-video-export.js" "$BUILD_DIR/mp4-muxer.js" "$BUILD_DIR/mp4-muxer.LICENSE.txt" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/player-movie.js" "$BUILD_DIR/player-movie-worker.js" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/movie-decoder.js" "$BUILD_DIR/movie-decoder.wasm" "$BUILD_DIR/movie-decoder.LICENSE.txt" "$PACKAGE_DIR/"
 cp docs/web-movies.md "$PACKAGE_DIR/"

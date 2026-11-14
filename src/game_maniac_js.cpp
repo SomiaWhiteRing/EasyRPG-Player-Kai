@@ -26,11 +26,13 @@
 #include <cstdlib>
 #include <cmath>
 #include <memory>
+#include <map>
 #include <new>
 #include <unordered_map>
 #include <utility>
 #ifdef PLAYER_WEB
 #include <emscripten.h>
+#include "platform/emscripten/clock.h"
 #endif
 
 namespace {
@@ -91,6 +93,9 @@ public:
 		JS_SetClassProto(context, picture_class, prototype);
 		auto rm2k3 = JS_NewObject(context);
 		JS_SetPropertyStr(context, rm2k3, "getPicture", JS_NewCFunction(context, GetPicture, "getPicture", 1));
+		JS_SetPropertyStr(context, rm2k3, "gameFrame", JS_NewCFunction(context,
+			[](JSContext* ctx, JSValueConst, int, JSValueConst*) { return JS_NewInt32(ctx, Player::GetFrames()); },
+			"gameFrame", 0));
 		JS_SetPropertyStr(context, rm2k3, "setNextNumberInput",
 			JS_NewCFunction(context, SetNextNumberInput, "setNextNumberInput", 1));
 		if (Player::game_config.netplay_enabled) {
@@ -157,6 +162,7 @@ public:
 		JS_FreeValue(context, projection);
 		JS_FreeValue(context, input_frame_driver);
 		JS_FreeValue(context, canvas);
+		for (const auto& script : event_scripts) JS_FreeValue(context, script.second);
 		JS_FreeContext(context);
 		JS_FreeRuntime(runtime);
 	}
@@ -270,8 +276,21 @@ public:
 		const Game_BaseInterpreterContext& binding) {
 		caller = &binding;
 		source = source.substr(0, source.find('\0'));
-		auto result = JS_Eval(context, source.data(), source.size(), "",
-			JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_STRICT);
+		auto result = JS_UNDEFINED;
+		if (auto script = event_scripts.find(source); script != event_scripts.end()) {
+			result = JS_EvalFunction(context, JS_DupValue(context, script->second));
+		} else if (event_scripts.size() < 256 && source.size() <= 4096) {
+			auto compiled = JS_Eval(context, source.data(), source.size(), "",
+				JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_STRICT | JS_EVAL_FLAG_COMPILE_ONLY);
+			if (JS_IsException(compiled)) {
+				result = compiled;
+			} else {
+				event_scripts.emplace(std::string(source), compiled);
+				result = JS_EvalFunction(context, JS_DupValue(context, compiled));
+			}
+		} else {
+			result = JS_Eval(context, source.data(), source.size(), "", JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_STRICT);
+		}
 		if (JS_IsException(result)) {
 			ReportException();
 			result = JS_UNDEFINED;
@@ -306,7 +325,11 @@ private:
 		return JS_UNDEFINED;
 	}
 	static double NetplayTimeMs() {
+#ifdef PLAYER_WEB
+		const auto now = EmscriptenClock::now().time_since_epoch();
+#else
 		const auto now = std::chrono::steady_clock::now().time_since_epoch();
+#endif
 		return std::chrono::duration<double, std::milli>(now).count();
 	}
 
@@ -319,8 +342,9 @@ private:
 	}
 
 	static JSValue NetplayButtons(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		const bool held = argc > 0 && JS_VALUE_GET_TAG(argv[0]) == JS_TAG_INT && JS_VALUE_GET_INT(argv[0]) == 2;
 		const bool repeat = argc > 0 && JS_ToBool(context, argv[0]);
-		auto button = repeat ? Input::IsRepeated : Input::IsTriggered;
+		auto button = held ? Input::IsPressed : repeat ? Input::IsRepeated : Input::IsTriggered;
 		constexpr Input::InputButton menu[] = {
 			Input::DOWN, Input::LEFT, Input::RIGHT, Input::UP, Input::DECISION, Input::CANCEL, Input::SHIFT
 		};
@@ -897,6 +921,7 @@ private:
 	bool overlay_after_windows = false;
 	JSValue projection = JS_UNDEFINED;
 	JSValue input_frame_driver = JS_UNDEFINED;
+	std::map<std::string, JSValue, std::less<>> event_scripts;
 	JSValue canvas = JS_UNDEFINED;
 	Bitmap* overlay_target = nullptr;
 	BitmapRef overlay_frame;

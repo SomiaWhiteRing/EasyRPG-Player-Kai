@@ -91,9 +91,9 @@ function report(error) {
 self.addEventListener('unhandledrejection', event => report(event.reason));
 self.addEventListener('error', event => report(event.error || event.message));
 
-function createRenderer(canvas) {
-  const gl = canvas.getContext('webgl2', {alpha: false, antialias: false, depth: false, stencil: false});
-  if (!gl) throw new Error('当前浏览器无法在 Worker 中创建游戏画面。');
+function createPixelRenderer(canvas, scale = 1, preserveDrawingBuffer = false) {
+  const gl = canvas.getContext('webgl2', {alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer});
+  if (!gl) return;
   const shader = (type, source) => {
     const value = gl.createShader(type);
     gl.shaderSource(value, source);
@@ -128,18 +128,32 @@ function createRenderer(canvas) {
   canvas.addEventListener('webglcontextlost', event => {
     event.preventDefault(); report(new Error('游戏画面上下文已丢失，请重新启动游戏。'));
   });
-  return (pointer, w, h, pitch) => {
+  return (buffer, w, h, pitch) => {
     if (width !== w || height !== h) {
-      width = canvas.width = w;
-      height = canvas.height = h;
-      gl.viewport(0, 0, w, h);
+      width = w;
+      height = h;
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+      gl.viewport(0, 0, canvas.width, canvas.height);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      postMessage({type: 'size', width: w, height: h});
     }
     gl.pixelStorei(gl.UNPACK_ROW_LENGTH, pitch / 4);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE,
-      engine.HEAPU8.subarray(pointer, pointer + pitch * h));
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+}
+
+function createRenderer(canvas) {
+  const draw = createPixelRenderer(canvas);
+  if (!draw) throw new Error('当前浏览器无法在 Worker 中创建游戏画面。');
+  let width = 0, height = 0;
+  return (pointer, w, h, pitch) => {
+    draw(engine.HEAPU8.subarray(pointer, pointer + pitch * h), w, h, pitch);
+    if (width !== w || height !== h) {
+      width = w;
+      height = h;
+      postMessage({type: 'size', width: w, height: h});
+    }
     if (firstFrame && engine.gameReady) {
       firstFrame = false;
       postMessage({type: 'ready', keys: engine.keyNames, width: w, height: h});
@@ -1481,7 +1495,7 @@ function writeStorage(files, callback) {
 }
 
 let observe;
-let checkpointWorker;
+let checkpointWorker, videoExportService;
 
 function createReplayCheckpoints(start) {
   let worker;
@@ -1532,8 +1546,72 @@ function createReplayCheckpoints(start) {
   };
 }
 
+function createVideoExportService(start, services) {
+  let active, status, filename;
+  const close = () => {
+    active?.terminate();
+    active = undefined;
+  };
+  return {
+    request(name, json) {
+      if (name === 'video.capture') return 0;
+      if (name !== 'video.export') return services?.request(name, json) ?? 0;
+      const {operation, payload} = JSON.parse(json);
+      if (operation === 'cancel' && !filename) {
+        close();
+        return 0;
+      }
+      if ((operation === 'prepare' || operation === 'start') && !active) {
+        const worker = new Worker(new URL('player-worker.js', start.runtimeBase));
+        active = worker;
+        const fail = message => {
+          filename = undefined;
+          status = {error: true};
+          postMessage({type: 'log', level: 'warn', message: `Video export: ${message}`});
+          close();
+        };
+        worker.onerror = event => fail(event.message);
+        worker.onmessage = ({data}) => {
+          if (active !== worker) return;
+          if (data.type === 'video-export-progress') status = {progress: data.progress};
+          else if (data.type === 'video-export-ready') {
+            status = {progress: 99};
+            postMessage({type: 'download', bytes: data.bytes, filename, mimeType: 'video/mp4', videoExport: true}, [data.bytes]);
+            close();
+          } else if (data.type === 'error') fail(data.message);
+        };
+        const {storage, packages, arguments: args, runtimeBase, runtimeData, wasmModule, engineName, workId} = start;
+        worker.postMessage({type: 'video-export-prepare', storage, packages, arguments: args,
+          runtimeBase, runtimeData, wasmModule, engineName, workId});
+      }
+      if (operation !== 'start') return 0;
+      if (!active) return 0;
+      status = undefined;
+      filename = payload.filename;
+      active.postMessage({type: 'video-export-start', payload});
+      return -1;
+    },
+    take(id) {
+      if (id !== -1) return services?.take(id);
+      return JSON.stringify(status ?? {progress: 0});
+    },
+    avatar: services?.avatar,
+    saved: error => {
+      filename = undefined;
+      status = error ? {error: true} : {progress: 100, done: true};
+    },
+    close,
+  };
+}
+
+let preparedExport;
+
 self.onmessage = async ({data}) => {
   try {
+    if (data.type === 'video-export-saved') {
+      videoExportService?.saved(data.error);
+      return;
+    }
     if (data.type === 'storage-written') {
       const complete = storageWrites.get(data.id);
       storageWrites.delete(data.id);
@@ -1544,8 +1622,13 @@ self.onmessage = async ({data}) => {
       joystickAvailable = data.available === true;
       return;
     }
-    if (data.type === 'replay-precompute') {
-      const {runtimeBase, engineName, payload} = data;
+    if (data.type === 'video-export-start') {
+      const start = await preparedExport;
+      await start(data.payload);
+      return;
+    }
+    if (data.type === 'replay-precompute' || data.type === 'video-export-prepare') {
+      const {runtimeBase, engineName} = data;
       self.requestAnimationFrame = callback => setTimeout(() => callback(performance.now()), 0);
       importScripts(new URL('player-files.js', runtimeBase).href, new URL(`${engineName}.js`, runtimeBase).href);
       const storage = self.openPlayerStorage(data.storage);
@@ -1553,17 +1636,8 @@ self.onmessage = async ({data}) => {
         !['--start-map-id', '--start-position', '--load-game-id', '--skip-logo', '--new-game'].includes(arg) &&
         !['--start-map-id', '--start-position', '--load-game-id'].includes(args[index - 1]) &&
         args[index - 2] !== '--start-position');
-      engine = await createEasyRpgEngine({
-        canvas: new OffscreenCanvas(1, 1), workId: data.workId, sampleRate: 48000,
-        audioCapabilities: {fluidsynth: false, fluidStatus: ''}, keyNames: {},
-        gamePackages: storage?.packages ?? data.packages, readGameFile: storage?.read,
-        gameArguments: [...argumentsForReplay, '--skip-logo', '--new-game', '--start-map-id', String(payload.map),
-          '--start-position', String(payload.x), String(payload.y)],
-        replayInput: JSON.stringify(payload.data),
-        audioCommand: () => {}, getJoystickAvailable: () => false, present: () => {},
-        replayCheckpoint: (frame, bytes) => postMessage({type: 'replay-checkpoint', frame, bytes}, [bytes.buffer]),
-        replayCheckpointDone: () => postMessage({type: 'replay-checkpoint-done'}),
-        consoleCommand: () => {}, getConsoleGeneration: () => 0,
+      const options = {
+        workId: data.workId, gamePackages: storage?.packages ?? data.packages, readGameFile: storage?.read,
         getPreloadedPackage: () => data.runtimeData,
         instantiateWasm: (imports, receiveInstance) => {
           const instance = new WebAssembly.Instance(data.wasmModule, imports);
@@ -1573,8 +1647,37 @@ self.onmessage = async ({data}) => {
         locateFile: path => new URL(path.replace(/^easyrpg-player\.wasm$/, `${engineName}.wasm`), runtimeBase).href,
         print: () => {}, printErr: () => {},
         onAbort: message => report(new Error(message)),
-      });
-      engine.initApi();
+      };
+      const start = async (payload, mode) => {
+        engine = await createEasyRpgEngine({
+          ...options, ...mode, canvas: new OffscreenCanvas(1, 1), sampleRate: 48000, keyNames: {},
+          gameArguments: [...argumentsForReplay, '--skip-logo', '--new-game', '--start-map-id', String(payload.map),
+            '--start-position', String(payload.x), String(payload.y)],
+          replayInput: JSON.stringify(payload.data),
+          getJoystickAvailable: () => false, consoleCommand: () => {}, getConsoleGeneration: () => 0,
+        });
+        engine.initApi();
+      };
+      if (data.type === 'video-export-prepare') {
+        importScripts(new URL('player-video-export.js', runtimeBase).href);
+        preparedExport = self.createVideoExport(options, runtimeBase, createPixelRenderer, Boolean(storage), report).then(capture =>
+          payload => {
+            self.requestAnimationFrame = capture.schedule;
+            return start(payload, {
+              videoExportTick: 0, audioCapabilities: capture.capabilities, audioCommand: capture.command,
+              gameServices: {request: capture.service},
+              present: (pointer, width, height, pitch) =>
+                capture.present(engine.HEAPU8.subarray(pointer, pointer + pitch * height), width, height, pitch),
+              captureVideoFrame: () => capture.capture(engine),
+            });
+          }, error => () => { throw error; });
+      } else {
+        await start(data.payload, {
+          audioCapabilities: {fluidsynth: false, fluidStatus: ''}, audioCommand: () => {}, present: () => {},
+          replayCheckpoint: (frame, bytes) => postMessage({type: 'replay-checkpoint', frame, bytes}, [bytes.buffer]),
+          replayCheckpointDone: () => postMessage({type: 'replay-checkpoint-done'}),
+        });
+      }
       return;
     }
     if (data.type === 'start') {
@@ -1586,6 +1689,7 @@ self.onmessage = async ({data}) => {
         new URL(`${engineName}.js`, data.runtimeBase).href);
       const storage = self.openPlayerStorage(data.storage);
       checkpointWorker = createReplayCheckpoints(data);
+      videoExportService = createVideoExportService(data, createGameServices(data.gameServices, data.workId, data.runtimeBase));
       observe = data.observe;
       let generation = 0;
       const audioPort = data.audioPort;
@@ -1600,7 +1704,7 @@ self.onmessage = async ({data}) => {
         mountSaves: storage && ((FS, paths) => storage.mountSaves(FS, paths, writeStorage)),
         movieSource: storage?.movieSource,
         netplay: createNetplay(data.netplayEndpoint, data.netplayRtc, data.runtimeBase),
-        gameServices: createGameServices(data.gameServices, data.workId, data.runtimeBase),
+        gameServices: videoExportService,
         observeInputCheckpoint: observe ? (frame, digest) =>
           postMessage({type: 'player-event', event: {type: 'input-checkpoint', frame, digest}}) : undefined,
         startReplayPrecompute: payload => checkpointWorker.start(JSON.parse(payload)),
@@ -1669,6 +1773,7 @@ self.onmessage = async ({data}) => {
         engine.netplay?.runtime(data);
       } else if (data.type === 'capture') engine._web_capture();
       else if (data.type === 'stop') {
+        videoExportService?.close();
         checkpointWorker?.close();
         engine.stopping = true;
         engine.netplay?.stopDirectory();

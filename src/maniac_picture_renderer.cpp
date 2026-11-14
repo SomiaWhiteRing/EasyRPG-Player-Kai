@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace ManiacPicture {
 
@@ -81,27 +82,10 @@ struct Axis {
 	}
 };
 
-int BlendChannel(int source, int destination, int blend, int opacity) {
-	int value = source;
-	if (blend == 1) value = source * destination / 255;
-	else if (blend == 2) value = std::min(source + destination, 255);
-	else if (blend == 3) value = destination < 128 ? 2 * source * destination / 255
-		: 2 * (destination - source * destination / 255 + source) - 255;
-	if (opacity < 255) value = static_cast<int>((static_cast<int64_t>(value) * (static_cast<int64_t>(opacity) + 1)
-		+ static_cast<int64_t>(destination) * (256ll - opacity)) / 256);
-	return value & 255;
-}
-
 void Composite(Bitmap& destination, int x, int y, Color source, int blend, int opacity, bool key, bool reflect_x) {
 	if (key && !source.alpha) return;
 	if (reflect_x) x = destination.GetWidth() - 1 - x;
-	const auto previous = destination.GetColorAt(x, y);
-	Color result(BlendChannel(source.red, previous.red, blend, opacity),
-		BlendChannel(source.green, previous.green, blend, opacity),
-		BlendChannel(source.blue, previous.blue, blend, opacity), blend == 0 && opacity >= 255 ? source.alpha : 0);
-	// The display surface needs opaque presentation. Logical native alpha is
-	// retained separately for pixel access/export rather than premultiplying RGB away.
-	destination.SetManiacColorAt(x, y, result, true);
+	destination.CompositeManiacPixel(x, y, source, blend, opacity);
 }
 
 void Scaled(Bitmap& destination, const Bitmap& source, int x, int y, double percent_x, double percent_y,
@@ -117,13 +101,14 @@ void Scaled(Bitmap& destination, const Bitmap& source, int x, int y, double perc
 	else { bottom = Round(y + (height / 2) * sy); top = bottom - Truncate(height * sy); }
 	Axis horizontal(0, width, left, right), vertical(0, height, top, bottom);
 	if (!horizontal.Clip(width, destination.GetWidth()) || !vertical.Clip(height, destination.GetHeight())) return;
+	// Clipping fixes the horizontal sample sequence for the whole rectangle.
+	std::vector<int> columns(horizontal.length);
+	for (int ix = 0; ix < horizontal.length; ++ix) columns[ix] = horizontal.Sample(ix);
 	for (int iy = 0; iy < vertical.length; ++iy) {
 		const int py = vertical.Sample(iy);
-		for (int ix = 0; ix < horizontal.length; ++ix) {
-			const int px = horizontal.Sample(ix);
-			if (static_cast<unsigned>(px) < static_cast<unsigned>(width) && static_cast<unsigned>(py) < static_cast<unsigned>(height))
-				Composite(destination, horizontal.destination + ix, vertical.destination + iy, source.GetManiacColorAt(px, py), blend, opacity, key, reflect_x);
-		}
+		if (static_cast<unsigned>(py) >= static_cast<unsigned>(height)) continue;
+		destination.CompositeManiacRow(horizontal.destination, vertical.destination + iy, source, py,
+			MakeSpan(columns), blend, opacity, key, reflect_x);
 	}
 }
 
