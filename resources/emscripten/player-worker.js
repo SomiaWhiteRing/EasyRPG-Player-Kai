@@ -437,7 +437,6 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol, diagno
           sendSocket(data);
           backup?.port.postMessage({type: 'input', data}, [data]);
         } : undefined;
-        backup?.port.postMessage({type: 'pace-input'});
         activate(active.port, round, inputProtocol, sendMirroredInput);
         for (const packet of active.early) receive(packet);
         active.early.length = 0;

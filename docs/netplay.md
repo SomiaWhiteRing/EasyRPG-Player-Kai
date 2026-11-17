@@ -76,6 +76,12 @@ use bits 1 through 7. An Escape edge uses bit 8 and the digit buttons use bits
 duration. Omit both arguments to read its state as 0 visible, 1 transitioning,
 or 2 erased.
 
+The input timeline predicts missing remote frames by holding the latest known
+buttons. The confirmed one-frame event signal (bit 7) is never repeated by
+prediction. Actual inputs and confirmation-required replay retain their original
+meaning. In a mirrored WebSocket/TURN session, both paths send input immediately;
+the RTC channel still coalesces pending history and ACKs while its buffer is busy.
+
 ## Synchronized map events
 
 Both games enter the same match map, finish setup, and run

@@ -29,6 +29,7 @@ public:
 	bool Receive(int frame, int input) {
 		if (frame != remote_next || frame > next + window + input_delay) return false;
 		frames[frame].actual = input;
+		last_remote_input = input & 0x7f;
 		++remote_next;
 		return true;
 	}
@@ -89,7 +90,9 @@ private:
 		if (index % checkpoint_interval == 0) {
 			frame.before = std::make_unique<typename World::Snapshot>(world.Capture());
 		}
-		frame.used = known ? *frame.actual : 0;
+		// Actual input can arrive before replay catches up. Only predict missing
+		// frames, carrying held buttons without repeating a confirmed event pulse.
+		frame.used = frame.actual.value_or(last_remote_input);
 		frame.effects = {};
 		frame.needs_confirmation = false;
 		std::array<int, 2> inputs{};
@@ -139,6 +142,7 @@ private:
 	int seat;
 	int send = input_delay;
 	int remote_next = input_delay;
+	int last_remote_input = 0;
 	int next = 0;
 	int confirmed = 0;
 	int last_replay_display = -1;
