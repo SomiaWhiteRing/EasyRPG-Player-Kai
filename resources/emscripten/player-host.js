@@ -580,6 +580,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     let remoteCandidatesReceived = 0;
     let remoteCandidatesApplied = 0;
     const startedAt = performance.now();
+    const connectionId = diagnostics ? Array.from(crypto.getRandomValues(new Uint8Array(16)),
+      byte => byte.toString(16).padStart(2, '0')).join('') : undefined;
+    let snapshotSequence = 0, stateSamples = 0, stateTimer;
+    const pairNumbers = new Map(), previousPairs = new Map();
     const pendingCandidates = [];
     const milestones = new Map();
     const statsTimers = [];
@@ -601,6 +605,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       if (!open) return;
       open = false;
       clearTimeout(finishTimer);
+      clearTimeout(stateTimer);
       for (const timer of statsTimers) clearTimeout(timer);
       for (const complete of probeReplies.values()) complete(false);
       port.close();
@@ -611,7 +616,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       if (!open || finishing) return;
       mark(milestone);
       diagnosticReason = milestone;
-      port.postMessage({type: 'closed', reason: milestone, diagnosticsPending: diagnostics});
+      port.postMessage({type: 'closed', reason: milestone, connectionId, diagnosticsPending: diagnostics});
       finishStats('failure');
     };
     const readStats = async () => {
@@ -629,14 +634,16 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       if (address.includes(':')) return 'ipv6';
       return /^\d+(?:\.\d+){3}$/.test(address) ? 'ipv4' : 'unknown';
     };
-    const iceServerName = url => {
-      if (typeof url !== 'string') return;
-      const host = /^[a-z]+:([^:?]+)/i.exec(url)?.[1].toLowerCase();
-      if (host === 'stun.cloudflare.com') return 'cloudflare-stun';
-      if (host === 'stun.nextcloud.com') return 'nextcloud-stun';
-      if (host === 'stun.hitv.com') return 'hitv-stun';
-      if (host === 'turn.cloudflare.com') return 'cloudflare-turn';
-      if (host === 'netplay-hk.viprpg.org' || host === 'netplay-hk-staging.viprpg.org') return 'hong-kong-turn';
+    const iceEndpoint = url => {
+      const match = typeof url === 'string' && /^(stun|stuns|turn|turns):(\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::(\d+))?(?:\?transport=(udp|tcp))?$/i.exec(url);
+      if (!match) return {};
+      const scheme = match[1].toLowerCase(), host = match[2].replace(/^\[|\]$/g, '').toLowerCase();
+      const hongKong = ['85.189.41.214', '2001:df1:7880:6::953', 'netplay-hk.viprpg.org', 'netplay-hk-staging.viprpg.org'].includes(host);
+      const names = {'stun.cloudflare.com': 'cloudflare-stun', 'stun.nextcloud.com': 'nextcloud-stun',
+        'stun.hitv.com': 'hitv-stun', 'turn.cloudflare.com': 'cloudflare-turn'};
+      return {iceServer: hongKong ? (scheme.startsWith('stun') ? 'hong-kong-stun' : 'hong-kong-turn') : names[host],
+        serverScheme: scheme, serverHost: host, serverPort: Number(match[3] ?? (scheme.endsWith('s') ? 5349 : 3478)),
+        serverTransport: match[4]?.toLowerCase() ?? (scheme.endsWith('s') ? 'tcp' : 'udp')};
     };
     const describeCandidate = (candidate, type) => ({
       type, protocol: candidate.protocol, tcpType: candidate.tcpType,
@@ -648,7 +655,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         : /^f[cd]/i.test(candidate.address ?? candidate.ip) ? 'unique_local'
         : /^[23][0-9a-f]{3}:/i.test(candidate.address ?? candidate.ip) ? 'global' : 'other',
       relatedAddressKind: addressKind(candidate.relatedAddress), relatedPort: candidate.relatedPort,
-      relayProtocol: candidate.relayProtocol, priority: candidate.priority, iceServer: iceServerName(candidate.url),
+      relayProtocol: candidate.relayProtocol, priority: candidate.priority, ...iceEndpoint(candidate.url),
     });
     const rememberCandidate = (signals, candidate) => {
       if (!diagnostics || signals.length >= 32) return;
@@ -685,7 +692,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         endOfCandidates: /^a=end-of-candidates\b/m.test(sdp), candidateCount: sdp.match(/^a=candidate:/gm)?.length ?? 0,
       };
     };
-    const sendIceStats = (phase, status, stats) => {
+    const sendIceStats = (phase, status, stats, stateIndex) => {
       if (!open || !diagnostics || (finishing && !['fallback', 'failure', 'discarded'].includes(phase))) return;
       const candidates = new Map();
       const addCandidate = candidate => {
@@ -706,22 +713,35 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       const rank = pair => (pair.id === selected ? 8 : 0) + (pair.nominated ? 4 : 0) +
         (pair.state === 'succeeded' || pair.state === 'in-progress' ? 2 : 0) +
         (pair.requestsSent || pair.requestsReceived ? 1 : 0);
-      const pairStats = pairs.sort((a, b) => rank(b) - rank(a)).slice(0, 32).map(pair => ({
-        local: addCandidate(stats.get(pair.localCandidateId)), remote: addCandidate(stats.get(pair.remoteCandidateId)),
-        state: pair.state, nominated: pair.nominated, selected: pair.id === selected,
-        requestsSent: pair.requestsSent, requestsReceived: pair.requestsReceived,
-        responsesSent: pair.responsesSent, responsesReceived: pair.responsesReceived,
-        consentRequestsSent: pair.consentRequestsSent, bytesSent: pair.bytesSent, bytesReceived: pair.bytesReceived,
-        packetsSent: pair.packetsSent, packetsReceived: pair.packetsReceived,
-        roundTripMs: pair.currentRoundTripTime === undefined ? undefined : Math.round(pair.currentRoundTripTime * 1000),
-      }));
+      const pairStats = pairs.sort((a, b) => rank(b) - rank(a)).slice(0, 32).map(pair => {
+        if (!pairNumbers.has(pair.id)) pairNumbers.set(pair.id, pairNumbers.size + 1);
+        const previous = previousPairs.get(pair.id), delta = {};
+        if (previous && pair.timestamp > previous.timestamp) {
+          delta.intervalMs = Math.round(pair.timestamp - previous.timestamp);
+          for (const key of ['requestsSent', 'requestsReceived', 'responsesSent', 'responsesReceived', 'bytesSent', 'bytesReceived']) {
+            if (Number.isFinite(pair[key]) && Number.isFinite(previous[key]) && pair[key] >= previous[key]) delta[key] = pair[key] - previous[key];
+          }
+        }
+        if (!previous || pair.timestamp > previous.timestamp) previousPairs.set(pair.id, pair);
+        return {number: pairNumbers.get(pair.id), delta, sampleAtMs: Math.round(pair.timestamp),
+          local: addCandidate(stats.get(pair.localCandidateId)), remote: addCandidate(stats.get(pair.remoteCandidateId)),
+          state: pair.state, nominated: pair.nominated, selected: pair.id === selected,
+          requestsSent: pair.requestsSent, requestsReceived: pair.requestsReceived,
+          responsesSent: pair.responsesSent, responsesReceived: pair.responsesReceived,
+          consentRequestsSent: pair.consentRequestsSent, bytesSent: pair.bytesSent, bytesReceived: pair.bytesReceived,
+          packetsSent: pair.packetsSent, packetsReceived: pair.packetsReceived,
+          roundTripMs: pair.currentRoundTripTime === undefined ? undefined : Math.round(pair.currentRoundTripTime * 1000),
+        };
+      });
       const candidateRows = rows.filter(stat => stat.type === 'local-candidate' || stat.type === 'remote-candidate');
       for (const candidate of candidateRows) {
         if (candidates.size >= 72) break;
         addCandidate(candidate);
       }
       port.postMessage({type: 'ice-stats', snapshot: {
-        phase, status, elapsedMs: elapsed(), reason: diagnosticReason,
+        phase, status, elapsedMs: elapsed(), reason: diagnosticReason, connectionId,
+        sequence: ++snapshotSequence, stateIndex,
+        configuredServers: iceServers.flatMap(server => (Array.isArray(server.urls) ? server.urls : [server.urls]).map(iceEndpoint)),
         milestones: Array.from(milestones, ([name, elapsedMs]) => ({name, elapsedMs})),
         iceState: peer?.iceConnectionState, gatheringState: peer?.iceGatheringState,
         connectionState: peer?.connectionState, signalingState: peer?.signalingState, channelState: channel?.readyState,
@@ -736,9 +756,17 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         candidates: Array.from(candidates.values()), pairs: pairStats,
       }});
     };
-    const sampleStats = async phase => {
+    const sampleStats = async (phase, stateIndex) => {
       const {status, stats} = await readStats();
-      sendIceStats(phase, status, stats);
+      sendIceStats(phase, status, stats, stateIndex);
+    };
+    const sampleState = () => {
+      if (!diagnostics || !open || finishing || stateTimer || stateSamples >= 12) return;
+      stateTimer = setTimeout(() => {
+        stateTimer = undefined;
+        ++stateSamples;
+        void sampleStats('state', stateSamples);
+      }, 100);
     };
     const finishStats = phase => {
       if (!diagnostics) {
@@ -747,6 +775,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       }
       if (finishing) return;
       finishing = true;
+      clearTimeout(stateTimer);
       for (const timer of statsTimers) clearTimeout(timer);
       // The game has already fallen back or received the failure. Bound the lifetime of the old peer.
       finishTimer = setTimeout(() => {
@@ -842,6 +871,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       dataChannel.binaryType = 'arraybuffer';
       dataChannel.onopen = () => {
         mark(dataChannel === inputChannel ? 'input_channel_open' : 'channel_open');
+        sampleState();
         void readyChannel().catch(() => fail('channel_error'));
       };
       dataChannel.onmessage = ({data}) => {
@@ -875,23 +905,28 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     };
     peer.onicegatheringstatechange = () => {
       if (peer.iceGatheringState === 'complete') mark('gathering_complete');
+      sampleState();
     };
     peer.onicecandidateerror = ({errorCode, address, port, url}) => {
       const kind = addressKind(address ?? undefined);
       const scheme = /^(stun|stuns|turn|turns):/i.exec(url)?.[1]?.toLowerCase();
-      const iceServer = iceServerName(url);
-      const key = [errorCode, address, port, scheme, iceServer].join(':');
+      const endpoint = iceEndpoint(url);
+      const key = [errorCode, address, port, endpoint.serverHost, endpoint.serverPort, endpoint.serverScheme, endpoint.serverTransport].join(':');
       const previous = stunErrors.get(key);
-      if (previous) previous.count++;
-      else stunErrors.set(key, {code: errorCode, address, addressKind: kind, port, scheme, iceServer, count: 1});
+      const at = elapsed();
+      if (previous) { previous.count++; previous.lastAtMs = at; }
+      else stunErrors.set(key, {code: errorCode, address, addressKind: kind, port, scheme, ...endpoint,
+        count: 1, firstAtMs: at, lastAtMs: at});
       mark(errorCode === 701 ? 'stun_unreachable' : 'stun_error');
     };
     peer.oniceconnectionstatechange = () => {
       const state = peer.iceConnectionState;
       if (state !== 'new' && state !== 'closed') mark('ice_' + state);
       if (state === 'connected' || state === 'completed') void reportIcePair(false);
+      sampleState();
     };
     peer.onconnectionstatechange = () => {
+      sampleState();
       if (peer.connectionState === 'failed') fail('peer_connection_failed');
     };
     peer.ondatachannel = ({channel}) => attach(channel);
@@ -903,6 +938,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
         diagnosticReason ??= data.reason;
         finishStats('discarded');
       } else if (data.type === 'fallback') {
+        diagnosticReason = 'websocket_fallback';
         finishStats('fallback');
       } else if (data.type === 'ice-pair') {
         void reportIcePair(true);

@@ -160,6 +160,24 @@ bounded to 250 ms at disposal and does not hold up selection or gameplay. The
 worker retains the reporting port for up to 500 ms. A closed control connection
 can prevent delivery; an absent final snapshot is not proof of an ICE failure.
 
+Diagnostic snapshots also carry a per-peer `connectionId`, snapshot `sequence`,
+stable candidate-pair numbers and counter deltas for increasing statistics
+timestamps. State changes are coalesced over 100 ms and emit at most twelve
+`state` snapshots per connection; final/failure snapshots retain their existing
+bounded cleanup. STUN/TURN endpoint summaries include the scheme, host, port and
+transport when the browser provides the source URL, including Hong Kong IPv4
+and IPv6 literals. Configured servers are listed separately from observed
+candidate sources; credentials and full SDP are not included.
+
+Before closing an available control socket, the worker sends a diagnostic
+`room:leaving:REASON:ROUND` marker. Local leave, replacement and transport end
+have distinct reasons. This adds no acknowledgement or wait to room departure;
+an unavailable control socket cannot deliver the marker. Candidate disposal
+also records selection/replacement/peer-departure reasons where its final
+snapshot can still be delivered. Absence of a marker is not proof of a network
+failure. Room services derive observed connection stages, not NAT or carrier
+fault diagnoses, from the filtered snapshots.
+
 During a synchronized map tick, `rm2k3.netplayContinuePicture(id)` captures
 the slot's final pose for an immediate drawing when the native picture is
 absent. `netplayContinuePicture(id, x, y, angle)` updates its position and

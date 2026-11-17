@@ -357,7 +357,7 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol, diagno
         if (active === candidate) reportFailure(data.reason || 'peer_closed');
         const backupClosed = backup === candidate;
         if (backupClosed) backup = undefined;
-        send('failed', id, {reason: data.reason});
+        send('failed', id, {reason: data.reason, connectionId: data.connectionId});
         dispose(candidate);
         if (!socketReady() && (active === candidate || backupClosed)) disconnect();
       } else if (data.type === 'ice-pair' && data.final && (active === candidate || backup === candidate)) {
@@ -377,8 +377,8 @@ function createNetplayRouteSelection({round, paths, offer, inputProtocol, diagno
       port?.postMessage({type: 'data', data}, [data]);
     },
     requestBackupStats: () => backup?.port.postMessage({type: 'transport-stats'}),
-    close() {
-      for (const candidate of candidates.values()) dispose(candidate);
+    close(reason = 'selection_closed') {
+      for (const candidate of candidates.values()) dispose(candidate, reason);
     },
     receiveSocket(data) {
       return receiveProbe(candidates.get('websocket'), data);
@@ -956,10 +956,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     peerMatch = undefined;
     pendingReady = undefined;
   };
-  const closeRtc = () => {
+  const closeRtc = (reason = 'connection_replaced') => {
     inputTransport?.close();
     inputTransport = undefined;
-    if (routeSelection) routeSelection.close();
+    if (routeSelection) routeSelection.close(reason);
     else closeNetplayPort(rtcPort);
     routeSelection = undefined;
     rtcPort = undefined;
@@ -968,7 +968,11 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     rtcStats = {};
     rtcStatsAt = 0;
   };
-  const close = () => {
+  const close = (reason = 'local_leave') => {
+    // Send on the existing ordered control socket before closing RTC or the socket.
+    // This is diagnostic evidence, not an acknowledgement or a new leave handshake.
+    if (diagnosticsAccepted && socket?.readyState === WebSocket.OPEN)
+      socket.send(`room:leaving:${reason}:${routeSelection?.round ?? rtcRound ?? 0}`);
     finishRecord('closed');
     recording = undefined;
     recordingsAwaitingGrant.clear();
@@ -987,7 +991,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     state = joinResult = 0;
     routeEnded = false;
     roomSettings = '';
-    closeRtc();
+    closeRtc(reason);
     old?.close(1000);
   };
   const send = (...values) => {
@@ -1169,7 +1173,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     avatar: createAvatarReader(avatarPaths, directoryHttp),
     open(room, mode, password = null) {
       if (room < 1 || room > 999999) return;
-      close();
+      close('room_replaced');
       const address = new URL(String(room), base);
       address.searchParams.set('guest', guest);
       address.searchParams.set('roomAccess', '1');
@@ -1197,7 +1201,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       state = 1;
       const ended = (result = 0) => {
         const inRoom = state >= 2;
-        close();
+        close('transport_ended');
         state = -1;
         joinResult = result;
         if (inRoom || (result && result !== 4 && result !== 5)) refreshDirectory();
@@ -1352,7 +1356,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           finish = undefined;
           clear();
           resumeToken = undefined;
-          closeRtc();
+          closeRtc('route_ended');
         } else if (data === '2' || data === '3' || data === '4') {
           if (data === '2') {
             routeEnded = false;
@@ -1362,7 +1366,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
             finishCapable = false;
             clear();
             resumeToken = undefined;
-            closeRtc();
+            closeRtc('peer_left');
           }
           state = Number(data);
           resumeDeadline = 0;
