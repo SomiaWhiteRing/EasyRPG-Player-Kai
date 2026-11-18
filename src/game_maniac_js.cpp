@@ -18,6 +18,12 @@
 #include "player.h"
 #include "text.h"
 #include "transition.h"
+#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+#include "netplay_lan.h"
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#endif
 #include <quickjs.h>
 #include <algorithm>
 #include <array>
@@ -118,11 +124,13 @@ public:
 			JS_SetPropertyStr(context, canvas, "textWidth", JS_NewCFunction(context, OverlayTextWidth, "textWidth", 1));
 			JS_SetPropertyStr(context, canvas, "text", JS_NewCFunction(context, DrawOverlayText, "text", 5));
 			JS_SetPropertyStr(context, canvas, "picture", JS_NewCFunction(context, DrawOverlayPicture, "picture", 11));
-#ifdef PLAYER_WEB
+#if defined(PLAYER_WEB) || (defined(_WIN32) && defined(HAVE_NLOHMANN_JSON))
 			JS_SetPropertyStr(context, canvas, "avatar", JS_NewCFunction(context, DrawOverlayAvatar, "avatar", 5));
 			JS_SetPropertyStr(context, canvas, "peerLatency", JS_NewCFunction(context, OverlayPeerLatency, "peerLatency", 2));
 			JS_SetPropertyStr(context, rm2k3, "setInputFrameDriver",
 				JS_NewCFunction(context, SetInputFrameDriver, "setInputFrameDriver", 1));
+#endif
+#ifdef PLAYER_WEB
 			JS_SetPropertyStr(context, rm2k3, "inputFramePrecomputing",
 				JS_NewCFunction(context, InputFramePrecomputing, "inputFramePrecomputing", 0));
 			JS_SetPropertyStr(context, rm2k3, "inputFramePrecompute",
@@ -131,6 +139,17 @@ public:
 				JS_NewCFunction(context, InputFramePrecomputeData, "inputFramePrecomputeData", 0));
 			JS_SetPropertyStr(context, rm2k3, "requestHost", JS_NewCFunction(context, RequestHost, "requestHost", 2));
 			JS_SetPropertyStr(context, rm2k3, "pollHost", JS_NewCFunction(context, PollHost, "pollHost", 1));
+#endif
+#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+			auto files = JS_NewObject(context);
+			JS_SetPropertyStr(context, files, "read", JS_NewCFunction(context, ReadNetplayFile, "read", 2));
+			JS_SetPropertyStr(context, files, "write", JS_NewCFunction(context, WriteNetplayFile, "write", 2));
+			JS_SetPropertyStr(context, files, "list", JS_NewCFunction(context, ListNetplayFiles, "list", 1));
+			JS_SetPropertyStr(context, rm2k3, "netplayFiles", files);
+			JS_SetPropertyStr(context, rm2k3, "setNetplayProfile",
+				JS_NewCFunction(context, SetNetplayProfile, "setNetplayProfile", 3));
+			JS_SetPropertyStr(context, rm2k3, "takeNetplayReplay",
+				JS_NewCFunction(context, TakeNetplayReplay, "takeNetplayReplay", 0));
 #endif
 			JS_SetPropertyStr(context, canvas, "capture", JS_NewCFunctionMagic(context, OverlayFrame, "capture", 0,
 				JS_CFUNC_generic_magic, 0));
@@ -590,6 +609,9 @@ private:
 		return value;
 	}
 
+#endif
+
+#if defined(PLAYER_WEB) || (defined(_WIN32) && defined(HAVE_NLOHMANN_JSON))
 	static JSValue SetInputFrameDriver(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
 		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
 		if (!argc || (!JS_IsNull(argv[0]) && !JS_IsFunction(context, argv[0])))
@@ -599,6 +621,9 @@ private:
 		return JS_UNDEFINED;
 	}
 
+#endif
+
+#ifdef PLAYER_WEB
 	static JSValue RequestHost(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
 		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
 		std::string service, payload;
@@ -630,12 +655,21 @@ private:
 		return result;
 	}
 
+#endif
+
+#if defined(PLAYER_WEB) || (defined(_WIN32) && defined(HAVE_NLOHMANN_JSON))
 	static JSValue OverlayPeerLatency(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+#ifdef PLAYER_WEB
 		const bool poll = argc > 0 && JS_ToBool(context, argv[0]);
 		const bool reset = argc > 1 && JS_ToBool(context, argv[1]);
 		return JS_NewInt32(context, EM_ASM_INT({
 			return Module.netplay?.peerLatency?.($0, $1) ?? -1;
 		}, poll, reset));
+#else
+		(void)argc;
+		(void)argv;
+		return JS_NewInt32(context, NetplayLan::Latency());
+#endif
 	}
 
 	static JSValue DrawOverlayAvatar(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
@@ -646,8 +680,12 @@ private:
 		if (!ReadOverlayNumbers(context, argv + 1, args)) return JS_EXCEPTION;
 		std::string path;
 		if (!self.Text(argv[0], path)) return JS_EXCEPTION;
+#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		if (self.overlay_avatars.size() >= 32 && !self.overlay_avatars.count(path)) self.overlay_avatars.clear();
+#endif
 		auto& avatar = self.overlay_avatars[path];
 		if (!avatar) {
+#ifdef PLAYER_WEB
 			constexpr int size = 48;
 			std::array<uint8_t, size * size * 4> pixels;
 			if (!EM_ASM_INT({
@@ -661,9 +699,189 @@ private:
 					avatar->SetManiacColorAt(x, y, Color(pixel[0], pixel[1], pixel[2], pixel[3]));
 				}
 			}
+#else
+			if (path != "default") avatar = DecodeNetplayAvatar(path);
+			if (!avatar) avatar = Cache::Picture("NetplayDefaultAvatar", true);
+			if (!avatar) {
+				avatar = Bitmap::Create(48, 48, Color(21, 32, 51, 255));
+				const Color foreground(106, 153, 185, 255);
+				for (int y = 0; y < 48; ++y) {
+					for (int x = 0; x < 48; ++x) {
+						const int dx = x - 24;
+						const int head = y - 16;
+						const int body = y - 40;
+						if (dx * dx + head * head <= 64 || (body <= 0 && dx * dx + body * body <= 225))
+							avatar->SetManiacColorAt(x, y, foreground);
+					}
+				}
+			}
+#endif
 		}
 		target->StretchBlit(Rect(args[0], args[1], args[2], args[3]), *avatar, avatar->GetRect(), Opacity::Opaque());
 		return JS_UNDEFINED;
+	}
+#endif
+
+
+#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+	static constexpr size_t netplay_file_limit = 8 * 1024 * 1024;
+
+	static std::filesystem::path NetplayPath(std::string_view relative) {
+		namespace fs = std::filesystem;
+		if (relative.empty() || relative.front() == '/' ||
+				relative.find_first_of("\\:*?\"<>|") != std::string_view::npos) return {};
+		const auto suffix = fs::u8path(relative);
+		for (const auto& part : suffix) {
+			const auto name = part.native();
+			if (name.empty() || name.back() == L'.' || name.back() == L' ') return {};
+		}
+		const auto game = FileFinder::Game();
+		if (!game || !game.IsFeatureSupported(Filesystem::Feature::Write)) return {};
+		std::error_code error;
+		const auto game_path = FileFinder::GetFullFilesystemPath(game);
+		// The native game filesystem represents the working directory with an empty path.
+		const auto directory = fs::canonical(game_path.empty() ? fs::path(L".") : fs::u8path(game_path), error);
+		if (error || !directory.is_absolute()) {
+			Output::Debug("Netplay game directory could not be resolved for {} ({})", game_path, error.message());
+			return {};
+		}
+
+		auto root = directory / L"Netplay";
+		root.make_preferred();
+		auto path = fs::weakly_canonical(root / suffix, error);
+		path.make_preferred();
+		const auto prefix = root.native() + L'\\';
+		if (error || path.native().size() <= prefix.size() ||
+				_wcsnicmp(path.c_str(), prefix.c_str(), prefix.size()) != 0) {
+			Output::Debug("Netplay path {} outside {} or unavailable ({})",
+				path.u8string(), root.u8string(), error.message());
+			return {};
+		}
+		return path;
+	}
+
+	static JSValue ReadNetplayFile(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		std::string name;
+		if (!argc || !self.Text(argv[0], name)) return JS_UNDEFINED;
+		const auto path = NetplayPath(name);
+		if (path.empty()) return JS_UNDEFINED;
+		std::error_code error;
+		const auto size = std::filesystem::file_size(path, error);
+		if (error || size > netplay_file_limit) return JS_UNDEFINED;
+		std::ifstream input(path, std::ios::binary);
+		std::string data(static_cast<size_t>(size), '\0');
+		if (!input.read(data.data(), data.size())) return JS_UNDEFINED;
+		if (argc > 1 && JS_ToBool(context, argv[1]))
+			return JS_NewArrayBufferCopy(context, reinterpret_cast<const uint8_t*>(data.data()), data.size());
+		return JS_NewStringLen(context, data.data(), data.size());
+	}
+
+	static JSValue WriteNetplayFile(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		std::string name;
+		if (argc < 2 || !self.Text(argv[0], name)) return JS_FALSE;
+		const auto path = NetplayPath(name);
+		if (path.empty()) {
+			Output::Debug("Netplay destination path rejected for {}", name);
+			return JS_FALSE;
+		}
+		size_t length = 0;
+		const char* text = nullptr;
+		const char* bytes;
+		if (JS_IsString(argv[1])) {
+			text = JS_ToCStringLen(context, &length, argv[1]);
+			bytes = text;
+		} else {
+			bytes = reinterpret_cast<const char*>(JS_GetArrayBuffer(context, &length, argv[1]));
+		}
+		if (!bytes) return JS_EXCEPTION;
+		std::error_code error;
+		bool saved = false;
+		if (length <= netplay_file_limit) {
+			std::filesystem::create_directories(path.parent_path(), error);
+			if (!error) {
+				const auto temporary = NetplayPath(name + ".tmp");
+				if (!temporary.empty()) {
+					auto output = FileFinder::Root().OpenOutputStream(temporary.u8string());
+					const bool written = output.write(bytes, length).flush().good();
+					output.Close();
+					if (written) {
+						std::filesystem::rename(temporary, path, error);
+						saved = !error;
+					} else {
+						error = std::make_error_code(std::errc::io_error);
+					}
+					if (!saved) {
+						std::error_code cleanup_error;
+						std::filesystem::remove(temporary, cleanup_error);
+					}
+				} else {
+					error = std::make_error_code(std::errc::invalid_argument);
+				}
+			}
+		}
+		if (text) JS_FreeCString(context, text);
+		if (!saved) Output::Debug("Netplay file write failed for {} ({})", name, error.message());
+		return JS_NewBool(context, saved);
+	}
+
+	static JSValue ListNetplayFiles(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		std::string name;
+		if (!argc || !self.Text(argv[0], name)) return JS_UNDEFINED;
+		auto result = JS_NewArray(context);
+		const auto path = NetplayPath(name);
+		if (path.empty()) return result;
+		std::error_code error;
+		std::filesystem::directory_iterator it(path, error), end;
+		for (uint32_t index = 0; !error && it != end; it.increment(error)) {
+			if (!it->is_regular_file(error)) continue;
+			const auto filename = it->path().filename().u8string();
+			JS_SetPropertyUint32(context, result, index++, JS_NewStringLen(context,
+				reinterpret_cast<const char*>(filename.data()), filename.size()));
+		}
+		return result;
+	}
+
+	static BitmapRef DecodeNetplayAvatar(std::string_view hex) {
+		if (hex.size() < 48 || hex.size() > 131072 || hex.size() % 2) return {};
+		std::string png;
+		png.reserve(hex.size() / 2);
+		constexpr std::string_view digits = "0123456789abcdef";
+		for (size_t i = 0; i < hex.size(); i += 2) {
+			const auto high = digits.find(hex[i]), low = digits.find(hex[i + 1]);
+			if (high == digits.npos || low == digits.npos) return {};
+			png.push_back(static_cast<char>((high << 4) | low));
+		}
+		if (png.compare(0, 8, "\x89PNG\r\n\x1a\n", 8) != 0 || png.compare(12, 4, "IHDR") != 0) return {};
+		for (size_t offset : {16u, 20u}) {
+			uint32_t size = 0;
+			for (size_t i = 0; i < 4; ++i) size = (size << 8) | static_cast<uint8_t>(png[offset + i]);
+			if (size == 0 || size > 256) return {};
+		}
+		return Bitmap::Create(Filesystem_Stream::InputStream(
+			new std::stringbuf(std::move(png), std::ios::in | std::ios::binary), "Avatar.png"));
+	}
+
+	static JSValue SetNetplayProfile(JSContext* context, JSValueConst, int argc, JSValueConst* argv) {
+		auto& self = *static_cast<Runtime*>(JS_GetContextOpaque(context));
+		std::string version, name, avatar;
+		if (argc < 3 || !self.Text(argv[0], version) || !self.Text(argv[1], name) ||
+				!self.Text(argv[2], avatar)) return JS_EXCEPTION;
+		if (version.empty() || version.size() > 64 || name.empty() || name.size() > 80) return JS_FALSE;
+		if (avatar != "default") {
+			auto bitmap = DecodeNetplayAvatar(avatar);
+			if (bitmap) self.overlay_avatars.insert_or_assign(avatar, std::move(bitmap));
+			else avatar = "default";
+		}
+		NetplayLan::SetProfile(std::move(version), std::move(name), std::move(avatar));
+		return JS_TRUE;
+	}
+
+	static JSValue TakeNetplayReplay(JSContext* context, JSValueConst, int, JSValueConst*) {
+		const auto replay = NetplayLan::TakeReplay();
+		return replay.empty() ? JS_UNDEFINED : JS_NewStringLen(context, replay.data(), replay.size());
 	}
 #endif
 
@@ -925,7 +1143,7 @@ private:
 	JSValue canvas = JS_UNDEFINED;
 	Bitmap* overlay_target = nullptr;
 	BitmapRef overlay_frame;
-#ifdef PLAYER_WEB
+#if defined(PLAYER_WEB) || (defined(_WIN32) && defined(HAVE_NLOHMANN_JSON))
 	std::unordered_map<std::string, BitmapRef> overlay_avatars;
 #endif
 };

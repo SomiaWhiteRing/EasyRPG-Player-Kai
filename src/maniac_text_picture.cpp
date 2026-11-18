@@ -269,6 +269,7 @@ std::array<int32_t, 2> OriginOffset(int32_t origin, int width, int height) {
 namespace {
 FontRef LoadFont(const Parsed& parsed, const Format& format) {
     const std::string& name = parsed.font;
+    if (name == "EasyRPG Bitmap") return Font::DefaultBitmapFont();
     Filesystem_Stream::InputStream stream;
     const bool bold = format.Style() & 0x80;
     if (bold) stream = FileFinder::OpenFont(name + "-Bold");

@@ -16,7 +16,7 @@ it so players that ignore these comments follow the offline event path.
 
 | Comment | Operation |
 | --- | --- |
-| `@netplay available V` | Set variable V to 1 when the Web host supplies a relay, or 0 otherwise. |
+| `@netplay available V` | Set variable V to 1 when the Web host supplies a relay, or 0 otherwise. Append `local` to opt the same event into Windows LAN support. |
 | `@netplay open V` | Open the room numbered by V. Valid room numbers range from 1 to 999999. |
 | `@netplay create V` | Open a new room numbered by V. An occupied room is rejected. |
 | `@netplay join V [T]` | Join an existing room numbered by V, optionally using the password in Maniac string T. Admission is checked before occupying a seat. |
@@ -196,3 +196,27 @@ source for an already tracked slot range and adds offsets. Source 0 keeps
 the track's current policy, 1 selects immediate drawing and 2 selects
 confirmed drawing. The last two arguments are optional extra offsets for
 the confirmed drawing. These overrides do not change simulation or capture.
+
+
+## Windows LAN and game files
+
+Windows discovers rooms over IPv4 UDP port 39219 and joins with a TCP
+connection on a port selected by the host. A room is listed for projects with
+the same compatibility version. The game sets that version and the local
+display profile before it opens the directory.
+
+For extracted games, Maniac JavaScript can use the following interfaces.
+
+| JavaScript call | Result |
+| --- | --- |
+| `rm2k3.netplayFiles.read(path, binary = false)` | Returns a UTF-8 string or, with `binary`, an ArrayBuffer. Returns undefined when the file cannot be read. |
+| `rm2k3.netplayFiles.write(path, data)` | Writes a UTF-8 string or an ArrayBuffer and returns success. Creates parent directories when needed. |
+| `rm2k3.netplayFiles.list(path)` | Returns the filenames of regular files in the directory, or an empty array. |
+| `rm2k3.setNetplayProfile(version, name, avatar)` | Sets the game's compatibility version and the local display profile. Pass `default` or a hex-encoded PNG up to 256 by 256 pixels and 64 KiB. |
+| `rm2k3.takeNetplayReplay()` | Returns a completed match as JSON once both peers agree on the terminal frame and score. Returns undefined when there is no completed match to take. |
+
+File paths are relative to `Netplay/` under the game directory and use
+forward slashes. Each file may be up to 8 MiB. Games choose how to name and
+store player files and completed replays. For playback, the same
+`rm2k3.setInputFrameDriver`, `@netplay prepare_local` and
+`@netplay start_local` interface is available on Windows.

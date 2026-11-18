@@ -944,6 +944,8 @@ endif()
 if(WIN32)
 	target_compile_definitions(${PROJECT_NAME} PUBLIC SUPPORT_MOVIES=1 HAVE_DIRECTSHOW=1)
 	target_sources(${PROJECT_NAME} PRIVATE
+		src/netplay_lan.cpp
+		src/netplay_lan.h
 		src/registry.cpp
 		src/platform/windows/utils.cpp
 		src/platform/windows/utils.h
@@ -951,7 +953,7 @@ if(WIN32)
 		src/platform/windows/movie_player_dshow.h
 		src/platform/windows/midiout_device_win32.cpp
 		src/platform/windows/midiout_device_win32.h)
-	target_link_libraries(${PROJECT_NAME} ole32 strmiids gdi32)
+	target_link_libraries(${PROJECT_NAME} ole32 strmiids gdi32 ws2_32 iphlpapi)
 endif()
 
 if(APPLE)

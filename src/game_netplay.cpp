@@ -35,6 +35,12 @@
 
 #ifdef PLAYER_WEB
 #include <emscripten.h>
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+#include "netplay_lan.h"
+#endif
+
+#if defined(PLAYER_WEB) || (defined(_WIN32) && defined(HAVE_NLOHMANN_JSON))
+#define PLAYER_NETPLAY
 #endif
 
 namespace {
@@ -43,6 +49,9 @@ using Audio = std::variant<lcf::rpg::Music, lcf::rpg::Sound, int>;
 constexpr int confirmed_signal_bit = 128;
 
 struct Effects {
+#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+	std::array<int, 2> inputs{};
+#endif
 	std::vector<Audio> audio;
 	std::map<int, int> samples;
 	std::map<int, int> picture_retirements;
@@ -77,10 +86,11 @@ struct FrameContext {
 
 FrameContext* frame = nullptr;
 
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 
 bool checkpoint_worker = false;
 
+#ifdef PLAYER_WEB
 struct CheckpointBytes {
 	std::string bytes;
 	size_t offset = 0;
@@ -134,6 +144,7 @@ struct CheckpointBytes {
 		return true;
 	}
 };
+#endif
 
 bool HasVisibleLivePicture(int id) {
 	const auto* live = Main_Data::game_pictures->GetPicturePtr(id);
@@ -294,6 +305,9 @@ struct MapWorld {
 	}
 
 	bool Step(int index, std::array<int, 2> inputs, bool known, Effects& effects, bool& needs_confirmation) {
+		#if defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		effects.inputs = inputs;
+#endif
 		FrameContext context{index, seat, inputs, known, effects, needs_confirmation,
 			captured_pictures, picture_transforms, picture_births, presented_samples, drawn_pictures, {}};
 		frame = &context;
@@ -335,6 +349,7 @@ struct MapWorld {
 	}
 
 	bool Publish(int index, Effects effects, bool record = true) {
+#ifdef PLAYER_WEB
 		if (record && effects.checkpoint) {
 			EM_ASM({ Module.netplay?.recordCheckpoint?.($0, $1 >>> 0); }, index, *effects.checkpoint);
 		} else if (!checkpoint_worker && effects.checkpoint) {
@@ -344,6 +359,12 @@ struct MapWorld {
 			const auto score = effects.score.value_or(std::array<int, 2>{-1, -1});
 			EM_ASM({ Module.netplay?.recordTerminal?.($0, $1, $2); }, index, score[0], score[1]);
 		}
+#else
+		if (record) {
+			NetplayLan::RecordFrame(index, effects.inputs);
+			if (effects.stop && effects.score) NetplayLan::Terminal(index, (*effects.score)[0], (*effects.score)[1]);
+		}
+#endif
 		stopping = effects.stop;
 		if (stopping) PresentContinuations();
 		pending_signal |= effects.input_signal;
@@ -376,9 +397,11 @@ struct MapWorld {
 			else system.BgmFade(std::get<int>(effect));
 		}
 		if (effects.terminal) Restore(std::move(*effects.terminal));
+#ifdef PLAYER_WEB
 		if (record && effects.result) {
 			EM_ASM({ Module.netplay?.recordResult?.(); });
 		}
+#endif
 		return effects.stop;
 	}
 
@@ -456,6 +479,7 @@ struct Match {
 			world.immediate_draws = std::move(checkpoint.immediate_draws);
 		}
 
+#ifdef PLAYER_WEB
 		static CheckpointBytes Encode(Checkpoint checkpoint) {
 			auto& state = checkpoint.state;
 			auto& save = state.map;
@@ -618,6 +642,8 @@ struct Match {
 			return checkpoint;
 		}
 
+#endif
+
 		void RestoreCheckpoint(MapWorld& world, int frame) {
 			const auto& checkpoint = checkpoints.at(frame);
 			world.RestartPresentation();
@@ -629,6 +655,7 @@ struct Match {
 			stopped = false;
 		}
 
+#ifdef PLAYER_WEB
 		void PublishWorkerCheckpoint(const MapWorld& world) {
 			const auto& system = Main_Data::game_system->GetSaveData();
 			auto encoded = Encode(Capture(world, system.current_music, system.music_stopping));
@@ -649,6 +676,9 @@ struct Match {
 			RestoreCheckpoint(world, candidate);
 			return true;
 		}
+#else
+		bool RestoreWorkerCheckpoint(MapWorld&, int, int) { return false; }
+#endif
 
 		std::map<int, Checkpoint> checkpoints;
 		int interval = 60;
@@ -661,7 +691,9 @@ struct Match {
 		  world(seat, presentation_buffer), timeline(world, seat) {}
 
 	~Match() {
+#ifdef PLAYER_WEB
 		if (!input_stream) EM_ASM({ Module.netplay?.endMatch?.('match_end'); });
+#endif
 	}
 
 	int id;
@@ -702,7 +734,11 @@ void SeedRng(uint32_t seed) {
 }
 
 int ReadTransportState() {
+#ifdef PLAYER_WEB
 	return EM_ASM_INT({ return Module.netplay?.state() ?? 0; });
+#else
+	return NetplayLan::State();
+#endif
 }
 
 #endif
@@ -746,13 +782,17 @@ void Game_Netplay::Command(std::string_view comment) {
 		return;
 	}
 	if (command == "stop_directory" && !frame) {
+#ifdef PLAYER_NETPLAY
 #ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.stopDirectory?.(); });
+#else
+		NetplayLan::StopDirectory();
+#endif
 #endif
 		return;
 	}
 	if (command == "fade_transfer" && !frame) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 		int erase, show;
 		if (args >> erase >> show && erase > 0 && show > 0) {
 			int delay = 0;
@@ -763,9 +803,10 @@ void Game_Netplay::Command(std::string_view comment) {
 		return;
 	}
 	if ((command == "rooms" || command == "identity" || command == "room_settings") && !frame) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 		int string_id;
 		if (!(args >> string_id) || string_id <= 0) return;
+#ifdef PLAYER_WEB
 		auto* data = reinterpret_cast<char*>(EM_ASM_PTR({
 			const text = $0 === 2 ? Module.netplay?.roomSettings?.() : $0 === 1 ? Module.netplay?.identity?.() : Module.netplay?.rooms();
 			if (text === undefined) return 0;
@@ -778,6 +819,11 @@ void Game_Netplay::Command(std::string_view comment) {
 			Main_Data::game_strings->SetManiacRawSlot(string_id, data);
 			std::free(data);
 		}
+#else
+		const auto data = command == "room_settings" ? NetplayLan::RoomSettings() :
+			command == "identity" ? NetplayLan::Identity() : NetplayLan::Rooms();
+		if (!data.empty()) Main_Data::game_strings->SetManiacRawSlot(string_id, data);
+#endif
 #endif
 		return;
 	}
@@ -797,26 +843,32 @@ void Game_Netplay::Command(std::string_view comment) {
 	if (command == "finish") {
 #ifdef PLAYER_WEB
 		write(variable, frame ? 0 : EM_ASM_INT({ return Module.netplay?.finishStatus?.() ?? 1; }));
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		write(variable, frame ? 0 : NetplayLan::Finish());
 #else
 		write(variable, 1);
 #endif
 		return;
 	}
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (command == "route_ended") {
+#ifdef PLAYER_WEB
 		write(variable, EM_ASM_INT({ return Module.netplay?.takeRouteEnded?.() ? -1 : 0; }));
+#else
+		write(variable, NetplayLan::TakeRouteEnded() ? -1 : 0);
+#endif
 		return;
 	}
 #endif
 	if (command == "seat") {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 		write(variable, frame ? frame->seat + 1 : prepare_local ? 1 : std::max(0, ReadTransportState() - 2));
 #else
 		write(variable, 0);
 #endif
 		return;
 	}
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (command == "track" && (frame || prepare_map > 0)) {
 		constexpr int confirmed = 1, fallback = 8, record = 16, per_pose = 32, unseen = 64;
 		int last_var, flags;
@@ -877,7 +929,7 @@ void Game_Netplay::Command(std::string_view comment) {
 				write(destination + i, found == frame->presented_samples.end() ? 0 : found->second);
 			}
 		} else if (command == "upcoming") {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 			int delay, related, value;
 			if (!(args >> delay >> related >> value) || !vars.IsValid(delay) || !vars.IsValid(related) ||
 					!vars.IsValid(value) || delay == value) return;
@@ -928,11 +980,15 @@ void Game_Netplay::Command(std::string_view comment) {
 	if (command == "available") {
 #ifdef PLAYER_WEB
 		write(variable, EM_ASM_INT({ return !!Module.netplay; }));
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		std::string mode;
+		args >> mode;
+		write(variable, mode == "local" && NetplayLan::Available());
 #else
 		write(variable, 0);
 #endif
 	} else if (command == "state") {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 		write(variable, ReadTransportState());
 #else
 		write(variable, 0);
@@ -940,12 +996,16 @@ void Game_Netplay::Command(std::string_view comment) {
 	} else if (command == "join_result") {
 #ifdef PLAYER_WEB
 		write(variable, EM_ASM_INT({ return Module.netplay?.joinResult?.() ?? 0; }));
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		write(variable, NetplayLan::JoinResult());
 #else
 		write(variable, 0);
 #endif
 	} else if (command == "online") {
 #ifdef PLAYER_WEB
 		write(variable, EM_ASM_INT({ return Module.netplay?.online?.() ?? -1; }));
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		write(variable, NetplayLan::Online());
 #else
 		write(variable, -1);
 #endif
@@ -962,28 +1022,52 @@ void Game_Netplay::Command(std::string_view comment) {
 		}, &value);
 		if (pending) write(variable, value);
 		write(received, pending);
+#elif defined(_WIN32) && defined(HAVE_NLOHMANN_JSON)
+		const auto value = NetplayLan::Receive();
+		if (value) write(variable, *value);
+		write(received, value.has_value());
 #else
 		write(received, 0);
 #endif
 	}
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	else if (command == "open") {
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.open($0); }, vars.Get(variable));
+#else
+		NetplayLan::Open(vars.Get(variable), false);
+#endif
 	} else if (command == "create") {
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.open($0, 'create'); }, vars.Get(variable));
+#else
+		NetplayLan::Open(vars.Get(variable), false);
+#endif
 	} else if (command == "join") {
 		int string_id = 0;
 		args >> string_id;
 		const auto code = string_id > 0 ? Main_Data::game_strings->GetManiacRawSlot(string_id) : std::string_view();
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.open($0, 'join', $3 ? UTF8ToString($1, $2) : null); },
 			vars.Get(variable), code.data(), code.size(), string_id > 0);
+#else
+		NetplayLan::Open(vars.Get(variable), true, code);
+#endif
 	} else if (command == "password") {
 		int string_id;
 		if (!(args >> string_id) || string_id <= 0) return;
 		const auto code = Main_Data::game_strings->GetManiacRawSlot(string_id);
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.setPassword($0 !== 0, UTF8ToString($1, $2)); }, vars.Get(variable), code.data(), code.size());
+#else
+		NetplayLan::SetPassword(vars.Get(variable) != 0, code);
+#endif
 	} else if (command == "send") {
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.send($0); }, vars.Get(variable));
+#else
+		NetplayLan::Send(vars.Get(variable));
+#endif
 	} else if (command == "seed" && ReadTransportState() >= 3) {
 		SeedRng(static_cast<uint32_t>(vars.Get(variable)));
 	} else if (!match && ((command == "prepare" && ReadTransportState() >= 3) ||
@@ -1035,7 +1119,9 @@ void Game_Netplay::Command(std::string_view comment) {
 			}
 			std::string finish_mode;
 			args >> finish_mode;
+#ifdef PLAYER_WEB
 			EM_ASM({ Module.netplay?.setFinishSync?.(Boolean($0)); }, finish_mode == "finish_sync");
+#endif
 			int blind_variable;
 			if (args >> blind_variable && vars.IsValid(blind_variable)) {
 				match->blind_selection = vars.Get(blind_variable) != 0;
@@ -1048,18 +1134,24 @@ void Game_Netplay::Command(std::string_view comment) {
 }
 
 void Game_Netplay::Close() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	const bool local = prepare_local || (match && match->input_stream);
+#ifdef PLAYER_WEB
 	if (!local) EM_ASM({ Module.netplay?.endMatch?.('closed'); });
+#endif
 	match.reset();
 	ClearPreparation();
 	transfer_fade = {};
+#ifdef PLAYER_WEB
 	if (!local) EM_ASM({ Module.netplay?.close(); });
+#else
+	if (!local) NetplayLan::Close();
+#endif
 #endif
 }
 
 bool Game_Netplay::InMatch() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	return match != nullptr;
 #else
 	return false;
@@ -1067,7 +1159,7 @@ bool Game_Netplay::InMatch() {
 }
 
 bool Game_Netplay::HasPendingTerminalPresentation() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	return match && match->terminal_presentation_pending;
 #else
 	return false;
@@ -1075,13 +1167,13 @@ bool Game_Netplay::HasPendingTerminalPresentation() {
 }
 
 void Game_Netplay::CompleteTerminalPresentation() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (HasPendingTerminalPresentation()) match.reset();
 #endif
 }
 
 bool Game_Netplay::WaitingForInput() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	return match && match->stall_exit && !match->world.stopping && match->timeline.WaitingForInput();
 #else
 	return false;
@@ -1090,7 +1182,7 @@ bool Game_Netplay::WaitingForInput() {
 
 
 Game_Netplay::TransferFade Game_Netplay::TakeTransferFade() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	return std::exchange(transfer_fade, {});
 #else
 	return {};
@@ -1098,7 +1190,7 @@ Game_Netplay::TransferFade Game_Netplay::TakeTransferFade() {
 }
 
 bool Game_Netplay::PreparesMap(int map_id) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	return prepare_map > 0 && prepare_map == map_id;
 #else
 	return false;
@@ -1106,7 +1198,7 @@ bool Game_Netplay::PreparesMap(int map_id) {
 }
 
 bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (!PreparesMap(Game_Map::GetMapId())) return false;
 	if (!prepare_local && ReadTransportState() < 3) {
 		ClearPreparation();
@@ -1130,7 +1222,7 @@ bool Game_Netplay::UpdatePreparation(MapUpdateAsyncContext& actx) {
 }
 
 bool Game_Netplay::UpdateMap() {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (!match) return false;
 	if (match->map_id != Game_Map::GetMapId()) {
 		Close();
@@ -1144,6 +1236,7 @@ bool Game_Netplay::UpdateMap() {
 			Main_Data::maniac_random_seed = stream.initial_rng->second;
 			stream.initial_rng.reset();
 		}
+#ifdef PLAYER_WEB
 		checkpoint_worker = EM_ASM_INT({ return Number(!!Module.replayCheckpoint); });
 		if (checkpoint_worker) {
 			world.opening_pictures.clear();
@@ -1167,6 +1260,7 @@ bool Game_Netplay::UpdateMap() {
 			if (stream.stopped) EM_ASM({ Module.replayCheckpointDone?.(); });
 			return true;
 		}
+#endif
 		const auto save_checkpoint = [&] {
 			const auto& system = Main_Data::game_system->GetSaveData();
 			stream.SaveCheckpoint(world, stream.next, system.current_music, system.music_stopping);
@@ -1225,10 +1319,15 @@ bool Game_Netplay::UpdateMap() {
 		return true;
 	}
 	if (!match->announced) {
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay.send($0, -1, $1); }, match->id, match->seed);
+#else
+		NetplayLan::SendFrame(match->id, -1, match->seed);
+#endif
 		match->announced = true;
 	}
 	std::array<int32_t, 3> packet;
+#ifdef PLAYER_WEB
 	while (EM_ASM_INT({
 		const packet = Module.netplay.receiveFrame();
 		if (!packet) return 0;
@@ -1238,6 +1337,9 @@ bool Game_Netplay::UpdateMap() {
 		HEAP32[offset + 2] = packet[2];
 		return 1;
 	}, packet.data())) {
+#else
+	while (NetplayLan::ReceiveFrame(packet)) {
+#endif
 		if (packet[0] != match->id) continue;
 		const bool accepted = packet[1] == -1
 			? !match->peer_ready && packet[2] == match->seed
@@ -1249,6 +1351,7 @@ bool Game_Netplay::UpdateMap() {
 		}
 		match->peer_ready = true;
 	}
+#ifdef PLAYER_WEB
 	const bool finish_aborted = EM_ASM_INT({
 		return Number(Module.netplay?.progress?.($0, $1, $2, $3, $4, $5, $6, $7) ?? false);
 	}, match->id, match->timeline.VisibleFrame(), match->timeline.ConfirmedFrame(),
@@ -1258,14 +1361,18 @@ bool Game_Netplay::UpdateMap() {
 		match.reset();
 		return true;
 	}
+#endif
 	if (!match->peer_ready) return true;
 	if (WaitingForInput() && Input::IsTriggered(Input::CANCEL)) {
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay?.endMatch?.('user_cancel'); });
+#endif
 		Close();
 		return true;
 	}
 	if (!match->started) {
 		if (!match->continue_rng) SeedRng(static_cast<uint32_t>(match->seed));
+#ifdef PLAYER_WEB
 		if (EM_ASM_INT({ return Number(Module.netplay?.recording?.() ?? false); })) {
 			std::ostringstream rng;
 			rng << Rand::GetRNG();
@@ -1278,6 +1385,13 @@ bool Game_Netplay::UpdateMap() {
 				Main_Data::maniac_random_seed, state.c_str(),
 				match->blind_selection ? static_cast<int>(*match->blind_selection) : -1);
 		}
+#else
+		std::ostringstream rng;
+		rng << Rand::GetRNG();
+		NetplayLan::StartRecording(match->id, match->seed, match->map_id, match->rules,
+			Main_Data::maniac_random_seed, rng.str(), match->blind_selection.value_or(false),
+			Main_Data::game_variables->GetData());
+#endif
 	}
 	match->started = true;
 	if (match->world.presentation_buffer > 1 && match->timeline.CommitReady()) {
@@ -1295,7 +1409,11 @@ bool Game_Netplay::UpdateMap() {
 		(match->world.pending_signal ? confirmed_signal_bit : 0);
 	if (auto index = match->timeline.QueueLocal(input)) {
 		match->world.pending_signal = false;
+#ifdef PLAYER_WEB
 		EM_ASM({ Module.netplay.send($0, $1, $2); }, match->id, *index, input);
+#else
+		NetplayLan::SendFrame(match->id, *index, input);
+#endif
 	}
 	// Event projections read the confirmed pose that will be drawn on this tick.
 	match->world.Present();
@@ -1312,7 +1430,7 @@ bool Game_Netplay::UpdateMap() {
 }
 
 bool Game_Netplay::UsesConfirmedPicture(int id, const PictureView* captured_view, int birth) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (!match) return false;
 	if (!captured_view && match->world.captured_pictures.count(id) == 0) return false;
 	const auto projection = match->world.projections.find(id);
@@ -1346,7 +1464,7 @@ bool Game_Netplay::UsesConfirmedPicture(int id, const PictureView* captured_view
 
 Game_Netplay::PictureView Game_Netplay::PictureTransform(int id, const PictureView* captured_view) {
 	PictureView view = captured_view ? *captured_view : PictureView{};
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	const auto& transforms = match ? match->world.picture_transforms : prepare_picture_transforms;
 	if (!captured_view && !transforms.empty() && (match || PreparesMap(Game_Map::GetMapId()))) {
 		const auto it = transforms.find(id);
@@ -1369,7 +1487,7 @@ Game_Netplay::PictureView Game_Netplay::PictureTransform(int id, const PictureVi
 }
 
 bool Game_Netplay::HidesLivePicture(int id) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match) {
 		const auto& world = match->world;
 		const auto birth = world.picture_births.find(id);
@@ -1388,7 +1506,7 @@ void Game_Netplay::ContinuePicture(int id, PictureContinuation action, int x, in
 }
 
 int Game_Netplay::ProjectionSample(int id, bool shown) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match) {
 		if (!shown) return Main_Data::game_variables->Get(id);
 		const auto& samples = match->world.presented_samples;
@@ -1403,7 +1521,7 @@ int Game_Netplay::ProjectionSample(int id, bool shown) {
 }
 
 std::pair<int, int> Game_Netplay::UpcomingSample(int id, int related) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match) {
 		size_t distance = 0;
 		for (const auto& queued : match->world.pending) {
@@ -1422,7 +1540,7 @@ std::pair<int, int> Game_Netplay::UpcomingSample(int id, int related) {
 }
 
 std::optional<std::pair<int, int>> Game_Netplay::ProjectionPosition(int id, int source) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match) {
 		const auto& world = match->world;
 		if (source == 0) {
@@ -1449,7 +1567,7 @@ std::optional<std::pair<int, int>> Game_Netplay::ProjectionPosition(int id, int 
 }
 
 void Game_Netplay::ProjectPictures(int first, int last, int source, int x, int y, int shown_x, int shown_y) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match && first > 0 && first <= last && last <= Main_Data::game_pictures->GetMaxPictureId() &&
 			source >= 0 && source <= 2) {
 		for (int id = first; id <= last; ++id)
@@ -1467,7 +1585,7 @@ void Game_Netplay::ProjectPictures(int first, int last, int source, int x, int y
 }
 
 void Game_Netplay::RecordPictureDraw(int id, int x, int y, bool immediate) {
-#ifdef PLAYER_WEB
+#ifdef PLAYER_NETPLAY
 	if (match) {
 		auto& world = match->world;
 		world.drawn_pictures.insert_or_assign(id, std::pair{x, y});
