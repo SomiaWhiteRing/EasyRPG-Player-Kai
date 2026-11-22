@@ -15,7 +15,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   const controller = new AbortController();
   const signal = controller.signal;
   const page = window.parent;
-  const context = new AudioContext({latencyHint: 'interactive'});
+  const profile = options.audioProfile;
+  const buffered = profile === 'buffered' || profile === 'reduced';
+  let context;
+  if (profile === 'reduced') {
+    try { context = new AudioContext({latencyHint: 'interactive', sampleRate: 22050}); }
+    catch (error) { if (error.name !== 'NotSupportedError') throw error; }
+  }
+  context ??= new AudioContext({latencyHint: 'interactive'});
   const masterVolume = context.createGain();
   masterVolume.connect(context.destination);
   const worker = new Worker(new URL('player-worker.js', base));
@@ -1009,12 +1016,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     } else if (data.type === 'player-event') options.onEvent?.(data.event);
     else if (data.type === 'ready') {
       keys = data.keys; width = data.width; height = data.height;
+      options.onSize?.(width, height);
       mouse();
       started = true;
       node.port.postMessage({type: 'start'});
       readyResolve();
     } else if (data.type === 'size') {
       width = data.width; height = data.height;
+      options.onSize?.(width, height);
       applyVideoLayout();
     }
     else if (data.type === 'window-zoom') {
@@ -1068,6 +1077,14 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       screenshot.resolve({blob: new Blob([data.bytes], {type: 'image/png'}), width: data.width, height: data.height});
       screenshot = undefined;
     } else if (data.type === 'download') {
+      if (/^screenshot_.+\.png$/i.test(data.filename) && options.onScreenshotFile) {
+        options.onScreenshotFile(data.filename, data.bytes);
+        return;
+      }
+      if (/\.lsd$/i.test(data.filename) && options.onSaveFile) {
+        options.onSaveFile(data.filename, data.bytes);
+        return;
+      }
       if (data.videoExport) {
         try {
           const bridge = window.parent.VIPRPGVideoExport;
@@ -1367,7 +1384,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       loadRuntimeAsset('easyrpg-player.data').then(response => response.arrayBuffer()),
       context.audioWorklet.addModule(new URL('player-audio.js', base)),
     ]), ready]);
-    node = new AudioWorkletNode(context, 'easyrpg-audio', {numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2]});
+    node = new AudioWorkletNode(context, 'easyrpg-audio', {numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: {buffered}});
     const audioChannel = new MessageChannel();
     const controlChannel = new MessageChannel();
     node.port.postMessage({type: 'connect', port: audioChannel.port1}, [audioChannel.port1]);

@@ -25,6 +25,13 @@ cp "$BUILD_DIR/movie-decoder.js" "$BUILD_DIR/movie-decoder.wasm" "$BUILD_DIR/mov
 cp docs/web-movies.md "$PACKAGE_DIR/"
 cp docs/web-audio.md "$PACKAGE_DIR/"
 cp COPYING "$PACKAGE_DIR/"
+cp resources/pinyin/LICENSE-rime-pinyin-simp.txt "$PACKAGE_DIR/"
+cp resources/smallfonts/SOURCE-NOTICE.md "$PACKAGE_DIR/NOTICE-Zfull.txt"
+for notice in resources/smallfonts/README.md resources/smallfonts/SOURCE-NOTICE.md $(find resources/smallfonts/licenses -type f | LC_ALL=C sort); do
+    printf '%s\n' "$notice"
+    cat "$notice"
+    printf '\n'
+done > "$PACKAGE_DIR/LICENSE-smallfonts.txt"
 cp "$BUILD_DIR/easyrpg-player.js" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.wasm" "$PACKAGE_DIR/"
 cp "$BUILD_DIR/easyrpg-player.data" "$PACKAGE_DIR/"
