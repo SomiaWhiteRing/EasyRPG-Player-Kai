@@ -1,7 +1,9 @@
 // PCM is produced by the dedicated audio Worker, with no game/page relay.
 class PlayerAudio extends AudioWorkletProcessor {
-  constructor() {
+  constructor({processorOptions} = {}) {
     super();
+    this.maxBlocks = processorOptions?.buffered ? 10 : 3;
+    this.resumeBlocks = processorOptions?.buffered ? 5 : 2;
     this.queue = [];
     this.offset = 0;
     this.pending = 0;
@@ -23,7 +25,7 @@ class PlayerAudio extends AudioWorkletProcessor {
   }
   process(_inputs, outputs) {
     const channels = outputs[0];
-    if (this.rebuffering && this.queue.length >= 2) this.rebuffering = false;
+    if (this.rebuffering && this.queue.length >= this.resumeBlocks) this.rebuffering = false;
     for (let i = 0; i < channels[0].length; i++) {
       const pcm = this.rebuffering ? null : this.queue[0];
       if (!pcm) {
@@ -41,8 +43,7 @@ class PlayerAudio extends AudioWorkletProcessor {
       channels[1][i] = this.last[1] * this.gain;
       if (this.offset === pcm.length) { this.queue.shift(); this.offset = 0; }
     }
-    // About 64 ms at 48 kHz, at most three queued or in-flight blocks.
-    while (this.started && this.audioPort && this.queue.length + this.pending < 3) {
+    while (this.started && this.audioPort && this.queue.length + this.pending < this.maxBlocks) {
       this.pending++;
       this.audioPort.postMessage({type: 'audio'});
     }

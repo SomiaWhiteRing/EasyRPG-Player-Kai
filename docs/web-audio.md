@@ -17,7 +17,10 @@ and saves.
 The mixer supplies stereo signed-16 PCM directly to AudioWorklet through a
 second MessagePort. Neither game rendering nor the page relays PCM requests.
 At most three 1024-frame blocks are queued or in flight (64 ms at 48 kHz).
-Startup/recovery waits for two available blocks; a 64-sample ramp softens rare
+With the optional host audioProfile 'buffered' or 'reduced', the queue holds
+up to ten blocks and resumes with five. 'reduced' also requests 22050 Hz and
+falls back to the output device rate if unavailable. The default profile
+resumes with two available blocks; a 64-sample ramp softens rare
 underruns. This is not an unlimited buffer and does not hide arbitrarily slow
 decoders or devices. Worker isolation prevents *game/page* stalls from starving
 the audio producer; a very expensive audio operation can still exceed its

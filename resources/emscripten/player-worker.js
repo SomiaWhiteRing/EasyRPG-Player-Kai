@@ -771,7 +771,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
   let fallback = false, nextPoll = 0, poll;
   let rooms, identity, roomSettings, online = -1;
   let probe = 0, probeSent = 0, latency = -1;
-  let resumeToken, resumeTimer, resumeDeadline = 0;
+  let resumeToken, resumeTimer, controlTimer, resumeDeadline = 0;
   let inputMatch, lastInputAt = 0, inputs = 0, peakInputGap = 0;
   let sentMatch = 0, sentFrame = -1;
   const avatarPaths = new Set();
@@ -983,6 +983,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
     diagnostics.reset();
     diagnosticsAccepted = false;
     clearTimeout(resumeTimer);
+    clearTimeout(controlTimer);
     resumeToken = undefined;
     resumeDeadline = 0;
     const old = socket;
@@ -1270,6 +1271,13 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
       const sendRouteControl = message => {
         if (socket?.readyState === WebSocket.OPEN) socket.send('route:' + JSON.stringify(message));
       };
+      const watchControl = connection => {
+        clearTimeout(controlTimer);
+        if (!resumeToken) return;
+        controlTimer = setTimeout(() => {
+          if (socket === connection && resumeToken) reconnect(connection);
+        }, 10_000);
+      };
       const receiveRoomMessage = ({data, target: connection}) => {
         if (socket !== connection) return;
         if (data === 'room:finish:1') {
@@ -1319,6 +1327,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
         }
         if (data === 'room:ping' || data === 'room:ping:stats') {
           connection.send('room:pong');
+          watchControl(connection);
           if (data === 'room:ping:stats' && inputs) {
             connection.send(`room:input:${inputs}:${Math.round(peakInputGap)}:${latency}`);
           }
@@ -1347,6 +1356,7 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           } else if (message) routeSelection?.receive(message);
         } else if (typeof data === 'string' && /^room:resume:[A-Za-z0-9_-]{32}$/.test(data)) {
           resumeToken = data.slice('room:resume:'.length);
+          watchControl(connection);
         } else if (data === 'room:route-ended') {
           routeEnded = true;
           diagnostics.end('route_closed');
@@ -1375,7 +1385,10 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
             connection.send(pendingReady);
             pendingReady = undefined;
           }
-          if (state >= 3) announceFinish();
+          if (state >= 3) {
+            watchControl(connection);
+            announceFinish();
+          }
         } else if (data === 'rtc:webrtc') {
           rtcSelected = true;
           rtcPort?.postMessage({type: 'ice-pair'});
@@ -1445,6 +1458,23 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           receiveMatchData(data);
         }
       };
+      const reconnect = connection => {
+        if (socket !== connection) return;
+        clearTimeout(controlTimer);
+        if (!resumeToken || !(rtcSelected || routeSelection?.hasBackup())) return ended();
+        diagnostics.failure('control_disconnected');
+        socket = undefined;
+        diagnosticsAccepted = false;
+        connection.close(4000);
+        if (!resumeDeadline) {
+          resumeDeadline = performance.now() + 15_000;
+          connect();
+        } else if (performance.now() < resumeDeadline) {
+          resumeTimer = setTimeout(connect, 1000);
+        } else {
+          ended();
+        }
+      };
       const connect = () => {
         const url = new URL(address);
         if (resumeToken) {
@@ -1457,19 +1487,11 @@ function createNetplay(endpoint, rtcSupported, runtimeBase) {
           if (socket === connection && !resumeToken) connection.send('room:join:' + JSON.stringify({code: password}));
         };
         connection.onmessage = receiveRoomMessage;
-        connection.onclose = connection.onerror = () => {
-          if (socket !== connection) return;
-          if (resumeToken && (rtcSelected || routeSelection?.hasBackup())) {
-            diagnostics.failure('control_disconnected');
-            socket = undefined;
-            diagnosticsAccepted = false;
-            connection.close();
-            resumeDeadline ||= performance.now() + 15_000;
-            if (performance.now() < resumeDeadline) resumeTimer = setTimeout(connect, 1000);
-          } else {
-            ended();
-          }
-        };
+        connection.onclose = connection.onerror = () => reconnect(connection);
+        if (resumeDeadline) {
+          // A stalled upgrade may produce neither an error nor a close event.
+          controlTimer = setTimeout(() => reconnect(connection), Math.min(5000, Math.max(0, resumeDeadline - performance.now())));
+        }
       };
       connect();
     },
