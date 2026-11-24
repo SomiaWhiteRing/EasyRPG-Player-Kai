@@ -19,6 +19,7 @@
 #define EP_FONT_H
 
 // Headers
+#include <iosfwd>
 #include "filesystem_stream.h"
 #include "point.h"
 #include "system.h"
@@ -239,6 +240,9 @@ class Font {
 	static FontRef CreateSystemFont(std::string_view name, int size, bool bold, bool italic);
 	static FontRef Default();
 	static FontRef Default(bool use_mincho);
+	// Export the default 12px bitmap advances (Gothic and Mincho).
+	// Sparse full-table output omits characters whose advance is 12 in both.
+	static bool WriteBitmapWidths(std::istream& input, std::ostream& output);
 	static FontRef DefaultBitmapFont();
 	static FontRef DefaultBitmapFont(bool use_mincho);
 	static void SetDefault(FontRef new_default, bool use_mincho);

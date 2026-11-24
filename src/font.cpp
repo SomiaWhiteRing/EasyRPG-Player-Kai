@@ -40,6 +40,8 @@
 #endif
 
 #include <lcf/reader_util.h>
+#include <set>
+#include <iostream>
 #include "bitmapfont.h"
 #include "generated/bitmapfont_small.h"
 
@@ -685,6 +687,49 @@ FontRef Font::Default(bool const use_mincho) {
 	}
 
 	return DefaultBitmapFont(use_mincho);
+}
+
+bool Font::WriteBitmapWidths(std::istream& input, std::ostream& output) {
+	std::set<char32_t> codes;
+	input >> std::ws;
+	const bool all = input.peek() == '*';
+	if (all) {
+		input.get();
+		input >> std::ws;
+		if (!input.eof()) return false;
+		// A full-width glyph (including the missing glyph) advances by 12.
+		auto collect_narrow = [&](const auto& table) {
+			for (const auto& glyph : table) {
+				if (!glyph.is_full) codes.insert(glyph.code);
+			}
+		};
+		collect_narrow(BITMAPFONT_RMG2000);
+		collect_narrow(BITMAPFONT_TTYP0);
+		collect_narrow(BITMAPFONT_WQY_SYMBOLS);
+		collect_narrow(BITMAPFONT_WQY);
+		collect_narrow(SHINONOME_GOTHIC);
+		collect_narrow(SHINONOME_MINCHO);
+		for (char32_t cp = 0; cp < 32; ++cp) codes.insert(cp);
+		codes.insert(127);
+	} else {
+		while (!input.eof()) {
+			uint32_t cp;
+			if (!(input >> cp) || cp > 0x10ffff || (cp >= 0xd800 && cp <= 0xdfff)) return false;
+			codes.insert(cp);
+			input >> std::ws;
+		}
+	}
+	auto gothic_font = DefaultBitmapFont(false);
+	auto mincho_font = DefaultBitmapFont(true);
+	output << "KAI-WIDTHS-1 " << Player::encoding << '\n';
+	for (auto cp : codes) {
+		int g = gothic_font->GetSize(cp).width;
+		int m = mincho_font->GetSize(cp).width;
+		if (!all || g != 12 || m != 12) {
+			output << static_cast<uint32_t>(cp) << ' ' << g << ' ' << m << '\n';
+		}
+	}
+	return static_cast<bool>(output);
 }
 
 FontRef Font::DefaultBitmapFont() {

@@ -38,6 +38,7 @@
 #include "cmdline_parser.h"
 #include "game_dynrpg.h"
 #include "filefinder.h"
+#include "font.h"
 #include "filefinder_rtp.h"
 #include "fileext_guesser.h"
 #include "filesystem_hook.h"
@@ -174,6 +175,15 @@ namespace {
 }
 
 void Player::Init(std::vector<std::string> args) {
+	auto measure = std::find(args.begin(), args.end(), "--measure-widths");
+	if (measure != args.end()) {
+		if (++measure == args.end() || measure->find_first_not_of("0123456789") != std::string::npos || measure->empty()) {
+			std::cerr << "--measure-widths requires a numeric output encoding\n";
+			exit(EXIT_FAILURE);
+		}
+		encoding = *measure;
+		exit(Font::WriteBitmapWidths(std::cin, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
+	}
 	if (std::find(args.begin(), args.end(), "--detect-encoding") != args.end()) {
 		exit(DetectEncodingFromCurrentDirectory());
 	}
@@ -1578,6 +1588,9 @@ Engine options:
  --encoding N         Instead of autodetecting the encoding or using the one in
                       RPG_RT.ini, the encoding N is used.
  --detect-encoding    Print the detected encoding and exit.
+ --measure-widths CP  Read decimal Unicode scalars from stdin, or * for all.
+                      Print KAI-WIDTHS-1 CP, then scalar/gothic/mincho pixel
+                      advances. With *, omitted scalars advance by 12 pixels.
  --enemyai-algo A     Which EnemyAI algorithm to use.
                       Options:
                        RPG_RT  - The default RPG_RT compatible algo, including
