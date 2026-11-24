@@ -689,11 +689,12 @@ FontRef Font::Default(bool const use_mincho) {
 	return DefaultBitmapFont(use_mincho);
 }
 
-bool Font::WriteBitmapWidths(std::istream& input, std::ostream& output) {
+bool Font::WriteFontWidths(std::istream& input, std::ostream& output) {
 	std::set<char32_t> codes;
 	input >> std::ws;
 	const bool all = input.peek() == '*';
 	if (all) {
+		if (default_gothic || default_mincho) return false;
 		input.get();
 		input >> std::ws;
 		if (!input.eof()) return false;
@@ -719,8 +720,8 @@ bool Font::WriteBitmapWidths(std::istream& input, std::ostream& output) {
 			input >> std::ws;
 		}
 	}
-	auto gothic_font = DefaultBitmapFont(false);
-	auto mincho_font = DefaultBitmapFont(true);
+	auto gothic_font = Default(false);
+	auto mincho_font = Default(true);
 	output << "KAI-WIDTHS-1 " << Player::encoding << '\n';
 	for (auto cp : codes) {
 		int g = gothic_font->GetSize(cp).width;

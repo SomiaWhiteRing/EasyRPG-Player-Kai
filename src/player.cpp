@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <fstream>
 #include <memory>
 
@@ -68,6 +69,7 @@
 #include "input.h"
 #include <lcf/ldb/reader.h>
 #include <lcf/lmt/reader.h>
+#include <lcf/lmu/reader.h>
 #include <lcf/lsd/reader.h>
 #include "main_data.h"
 #include "output.h"
@@ -169,6 +171,65 @@ namespace {
 		return EXIT_SUCCESS;
 	}
 
+	// Report only local, unambiguous font selections. A page may inherit either
+	// slot when another event can change the database default.
+	bool WriteMessageFontSlots(const FilesystemView& fs, std::ostream& out) {
+		auto input = fs.OpenFile("RPG_RT.ldb");
+		auto db = input ? lcf::LDB_Reader::Load(input) : nullptr;
+		if (!db) return false;
+		const char db_slot = db->system.font_id == lcf::rpg::System::Font_mincho ? '1' : '0';
+		bool can_switch = false;
+		std::ostringstream pages;
+		auto scan = [&](const std::string& source, int event, int page, const auto& commands) {
+			using Code = lcf::rpg::EventCommand::Code;
+			char slot = '?';
+			std::string slots;
+			for (const auto& cmd : commands) {
+				auto code = static_cast<Code>(cmd.code);
+				if (code == Code::ChangeSystemGraphics) {
+					char selected = '?';
+					if (cmd.parameters.size() >= 2)
+						selected = cmd.parameters[1] == lcf::rpg::System::Font_mincho ? '1' : '0';
+					bool variable = cmd.parameters.size() > 3 && (cmd.parameters[2] == 1 || cmd.parameters[2] == 2);
+					if (variable)
+						slot = selected == db_slot ? db_slot : '?';
+					else
+						slot = cmd.string.empty() ? db_slot : selected;
+					can_switch |= slot != db_slot;
+				} else if (code == Code::ShowMessage || code == Code::END) {
+					// RPGRewriter marks inserted pages and removed messages with parameter 1374.
+					bool marked = !cmd.parameters.empty() && cmd.parameters.front() == 1374;
+					if ((code == Code::ShowMessage && !marked) || (code == Code::END && marked))
+						slots += slot;
+				} else if (code == Code::Label || code == Code::Loop || code == Code::CallEvent ||
+						code == Code::CallCommonEvent || code == Code::EasyRpg_TriggerEventAt || code == Code::EnemyEncounter ||
+						code == Code::Maniac_CallCommand || code == Code::Maniac_JavaScript ||
+						(cmd.code >= 20000 && code != Code::ShowMessage_2 && code != Code::Comment_2)) {
+					slot = '?';
+				}
+				if (code == Code::Maniac_CallCommand || code == Code::Maniac_JavaScript) can_switch = true;
+			}
+			if (slots.find_first_of("01") != std::string::npos)
+				pages << source << ' ' << event << ' ' << page << ' ' << slots << '\n';
+		};
+		for (const auto& event : db->commonevents) scan("Common", event.ID, 0, event.event_commands);
+		for (const auto& troop : db->troops)
+			for (const auto& page : troop.pages) scan("Troop", troop.ID, page.ID, page.event_commands);
+		for (const auto& entry : *fs.ListDirectory()) {
+			const auto& file = entry.first;
+			if (file.size() < 8 || file.compare(0, 3, "map") || file.substr(file.size() - 4) != ".lmu") continue;
+			auto stream = fs.OpenFile(entry.second.name);
+			auto map = stream ? lcf::LMU_Reader::Load(stream) : nullptr;
+			if (!map) return false;
+			for (const auto& event : map->events)
+				for (const auto& page : event.pages)
+					scan(file.substr(0, file.size() - 4), event.ID, page.ID, page.event_commands);
+		}
+		out << "FONT " << (can_switch ? '?' : db_slot) << '\n';
+		if (can_switch) out << pages.str();
+		return static_cast<bool>(out);
+	}
+
 	FileRequestBinding system_request_id;
 	FileRequestBinding save_request_id;
 	FileRequestBinding map_request_id;
@@ -182,7 +243,20 @@ void Player::Init(std::vector<std::string> args) {
 			exit(EXIT_FAILURE);
 		}
 		encoding = *measure;
-		exit(Font::WriteBitmapWidths(std::cin, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
+		auto project = std::find(args.begin(), args.end(), "--project-path");
+		if (project != args.end()) {
+			if (++project == args.end()) exit(EXIT_FAILURE);
+			auto fs = FileFinder::Root().Create(FileFinder::MakeCanonical(*project, 0));
+			if (!fs || !FileFinder::IsRPG2kProject(fs)) {
+				std::cerr << "Invalid --project-path for font measurement\n";
+				exit(EXIT_FAILURE);
+			}
+			FileFinder::SetGameFilesystem(fs);
+			if (std::find(args.begin(), args.end(), "--message-font-slots") != args.end())
+				exit(WriteMessageFontSlots(fs, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
+			LoadFonts();
+		}
+		exit(Font::WriteFontWidths(std::cin, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 	if (std::find(args.begin(), args.end(), "--detect-encoding") != args.end()) {
 		exit(DetectEncodingFromCurrentDirectory());
@@ -1590,7 +1664,10 @@ Engine options:
  --detect-encoding    Print the detected encoding and exit.
  --measure-widths CP  Read decimal Unicode scalars from stdin, or * for all.
                       Print KAI-WIDTHS-1 CP, then scalar/gothic/mincho pixel
-                      advances. With *, omitted scalars advance by 12 pixels.
+                      advances. --project-path loads the game's Font and Font2.
+                      * requires bitmap fonts; omitted scalars advance by 12.
+                      With --project-path and --message-font-slots, report the
+                      inherited slot and local message slots instead (0, 1, ?).
  --enemyai-algo A     Which EnemyAI algorithm to use.
                       Options:
                        RPG_RT  - The default RPG_RT compatible algo, including
