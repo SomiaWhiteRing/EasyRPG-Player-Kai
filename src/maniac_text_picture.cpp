@@ -223,8 +223,7 @@ Parsed Parse(const Game_Interpreter& context, std::u16string text,
     if (!row.empty()) flush();
     auto system = Config(cursor, context, resolved_tokens).value_or(Main_Data::game_system
         ? Utils::DecodeUTF16(Main_Data::game_system->GetSystemName(), true) : std::u16string{});
-    auto font = Config(cursor, context, resolved_tokens).value_or(Main_Data::game_system
-        && Main_Data::game_system->GetFontId() == lcf::rpg::System::Font_mincho ? u"RPG2000" : u"RPG2000G");
+    auto font = Config(cursor, context, resolved_tokens).value_or(std::u16string{});
     result.system = Utils::EncodeUTF(system, true);
     result.font = Utils::EncodeUTF(font, true);
     result.canonical = std::u16string(1, char16_t(1)) + processed + char16_t(1) + system + char16_t(1) + font;
@@ -269,6 +268,7 @@ std::array<int32_t, 2> OriginOffset(int32_t origin, int width, int height) {
 namespace {
 FontRef LoadFont(const Parsed& parsed, const Format& format) {
     const std::string& name = parsed.font;
+    if (name.empty()) return Font::Default();
     if (name == "EasyRPG Bitmap") return Font::DefaultBitmapFont();
     Filesystem_Stream::InputStream stream;
     const bool bold = format.Style() & 0x80;
@@ -429,9 +429,11 @@ void Operation::Start() {
         pending.push_back(file);
     };
     const auto& name = parsed.font;
-    if (format.Style() & 0x80) request("Font", name + "-Bold", false);
-    request("Font", name + "-Regular", false);
-    request("Font", name, false);
+    if (!name.empty() && name != "EasyRPG Bitmap") {
+        if (format.Style() & 0x80) request("Font", name + "-Bold", false);
+        request("Font", name + "-Regular", false);
+        request("Font", name, false);
+    }
     request("System", parsed.system, true);
     if (pending.empty()) { Render(); return; }
     for (auto* file : pending) file->Start();
