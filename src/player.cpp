@@ -244,6 +244,11 @@ void Player::Init(std::vector<std::string> args) {
 		}
 		encoding = *measure;
 		auto project = std::find(args.begin(), args.end(), "--project-path");
+		auto language = std::find(args.begin(), args.end(), "--font-language");
+		if (language != args.end() && (project == args.end() || ++language == args.end() || language->empty() || language->front() == '-')) {
+			std::cerr << "--font-language requires a language code and --project-path\n";
+			exit(EXIT_FAILURE);
+		}
 		if (project != args.end()) {
 			if (++project == args.end()) exit(EXIT_FAILURE);
 			auto fs = FileFinder::Root().Create(FileFinder::MakeCanonical(*project, 0));
@@ -254,6 +259,7 @@ void Player::Init(std::vector<std::string> args) {
 			FileFinder::SetGameFilesystem(fs);
 			if (std::find(args.begin(), args.end(), "--message-font-slots") != args.end())
 				exit(WriteMessageFontSlots(fs, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
+			translation.InitTranslations(language == args.end() ? std::string_view{} : *language);
 			LoadFonts();
 		}
 		exit(Font::WriteFontWidths(std::cin, std::cout) ? EXIT_SUCCESS : EXIT_FAILURE);
@@ -1665,6 +1671,7 @@ Engine options:
  --measure-widths CP  Read decimal Unicode scalars from stdin, or * for all.
                       Print KAI-WIDTHS-1 CP, then scalar/gothic/mincho pixel
                       advances. --project-path loads the game's Font and Font2.
+                      --font-language CODE overrides the project's default language.
                       * requires bitmap fonts; omitted scalars advance by 12.
                       With --project-path and --message-font-slots, report the
                       inherited slot and local message slots instead (0, 1, ?).

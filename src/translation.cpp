@@ -85,7 +85,7 @@ void Translation::Reset()
 	default_language = {};
 }
 
-void Translation::InitTranslations()
+void Translation::InitTranslations(std::string_view default_language_code)
 {
 	// Reset
 	Reset();
@@ -130,6 +130,7 @@ void Translation::InitTranslations()
 			languages.push_back(item);
 		}
 	}
+	if (!default_language_code.empty()) default_language.lang_code = default_language_code;
 }
 
 const Language& Translation::GetCurrentLanguage() const

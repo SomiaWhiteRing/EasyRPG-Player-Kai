@@ -164,7 +164,7 @@ public:
 	/**
 	 * Scan the Languages directory and build up a list of known languages.
 	 */
-	void InitTranslations();
+	void InitTranslations(std::string_view default_language_code = {});
 
 	/**
 	 * Do any translations besides the default exist?

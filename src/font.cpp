@@ -87,8 +87,20 @@ namespace {
 		}
 	}
 
+	enum class BitmapLocale { Western, Cjk, SimplifiedChinese };
+
+	BitmapLocale GetBitmapLocale() {
+		const auto& active = Player::translation.GetCurrentLanguage().lang_code;
+		const auto& language = active.empty() ? Player::translation.GetDefaultLanguage().lang_code : active;
+		if (language == "zh_CN") return BitmapLocale::SimplifiedChinese;
+		if (language == "ja_JP" || language == "ko_KR" || language == "zh_TW") return BitmapLocale::Cjk;
+		if (!language.empty()) return BitmapLocale::Western;
+		if (Player::IsCP936()) return BitmapLocale::SimplifiedChinese;
+		return Player::IsCJK() ? BitmapLocale::Cjk : BitmapLocale::Western;
+	}
+
 	BitmapFontGlyph const* find_gothic_glyph(char32_t code) {
-		if (Player::IsCP936()) {
+		if (GetBitmapLocale() == BitmapLocale::SimplifiedChinese) {
 			if (auto* symbol = find_glyph(BITMAPFONT_WQY_SYMBOLS, code)) return symbol;
 			auto* wqy = find_glyph(BITMAPFONT_WQY, code);
 			if (wqy != NULL) {
@@ -100,7 +112,7 @@ namespace {
 	}
 
 	BitmapFontGlyph const* find_mincho_glyph(char32_t code) {
-		if (Player::IsCP936()) {
+		if (GetBitmapLocale() == BitmapLocale::SimplifiedChinese) {
 			if (auto* symbol = find_glyph(BITMAPFONT_WQY_SYMBOLS, code)) return symbol;
 			auto* wqy = find_glyph(BITMAPFONT_WQY, code);
 			if (wqy != NULL) {
@@ -739,7 +751,7 @@ FontRef Font::DefaultBitmapFont() {
 }
 
 FontRef Font::DefaultBitmapFont(bool use_mincho) {
-	if (Player::IsCJK()) {
+	if (GetBitmapLocale() != BitmapLocale::Western) {
 		return use_mincho ? mincho : gothic;
 	}
 	else {
