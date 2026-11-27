@@ -973,6 +973,20 @@ bool Game_Interpreter::ExecuteOtherCommand(lcf::rpg::EventCommand const& com) {
 			return CmdSetup<&Game_Interpreter::CommandChangeClass, 7>(com);
 		case Cmd::ChangeBattleCommands:
 			return CmdSetup<&Game_Interpreter::CommandChangeBattleCommands, 4>(com);
+		case Cmd::ConditionalBranch_B:
+			// Maniac shares the switch form of the battle condition with
+			// map scripts (e.g. SDW Map1669). Battle-specific selectors
+			// continue to live in the battle interpreter.
+			if (Player::IsPatchManiac()) {
+				const auto arg = [&](size_t i) { return i < com.parameters.size() ? com.parameters[i] : 0; };
+				if (arg(0) == 0 && ((ReadSwitch(arg(1)) != 0) == (arg(2) != 0))) {
+					return SkipManiacMapBattleBranch(com, true);
+				}
+			}
+			return true;
+		case Cmd::ElseBranch_B:
+			if (Player::IsPatchManiac()) return SkipManiacMapBattleBranch(com, false);
+			return true;
 		case Cmd::ElseBranch:
 			return CmdSetup<&Game_Interpreter::CommandElseBranch, 0>(com);
 		case Cmd::EndBranch:
@@ -1201,15 +1215,16 @@ bool Game_Interpreter::CommandMessageOptions(lcf::rpg::EventCommand const& com) 
 	if (Player::IsPatchManiac()) {
 		const auto dimension = [&](size_t index, int shift) {
 			if (index >= com.parameters.size()) return 0;
-			const int mode = (com.parameters[4] >> shift) & 15;
+			const auto flags = static_cast<uint32_t>(com.parameters[4]);
+			const auto mode = index == 8 ? flags >> shift : (flags >> shift) & 15;
 			const int value = com.parameters[index];
 			return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
 		};
 		Main_Data::game_system->SetManiacMessageWindowSize(dimension(5, 0), dimension(6, 4));
+		Main_Data::game_system->SetManiacMessageFontSize(dimension(8, 12));
 	}
 
-	// TODO: Maniac Patch message font options
-	// see https://jetrotal.github.io/CSA/#Display%20Text%20Options
+	// Font family and custom spacing are separate Maniac message options.
 
 	return true;
 }
@@ -4673,6 +4688,21 @@ bool Game_Interpreter::CommandConditionalBranch(lcf::rpg::EventCommand const& co
 	}
 
 	return CompleteConditionalBranch(com, result, maniac);
+}
+
+bool Game_Interpreter::SkipManiacMapBattleBranch(lcf::rpg::EventCommand const& com, bool enter_else) {
+	auto& frame = GetFrame();
+	for (int i = frame.current_command + 1; i < static_cast<int>(frame.commands.size()); ++i) {
+		const auto& marker = frame.commands[i];
+		if (marker.indent != com.indent) continue;
+		frame.current_command = i;
+		if (enter_else && (marker.code == static_cast<int>(Cmd::ElseBranch_B)
+				|| marker.code == static_cast<int>(Cmd::EndBranch_B))) {
+			++frame.current_command;
+		}
+		break;
+	}
+	return true;
 }
 
 bool Game_Interpreter::CompleteConditionalBranch(lcf::rpg::EventCommand const& com, bool result, bool maniac) {

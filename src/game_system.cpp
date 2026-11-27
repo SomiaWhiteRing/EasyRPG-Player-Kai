@@ -90,6 +90,17 @@ void Game_System::SetManiacMessageWindowSize(int width, int height) {
 	if (height != 0) data.maniac_message_window_height = std::max(0, height);
 }
 
+void Game_System::SetManiacMessageFontSize(int size) {
+	// A short record or explicit zero retains the active override. A
+	// negative size restores the host's unmodified message font.
+	if (size != 0) data.maniac_message_font_size = std::max(0, size);
+}
+
+int Game_System::GetManiacMessageFontSize() const {
+	// Preserve the raw SaveSystem 0x30 value; bound only the renderer.
+	return std::clamp(data.maniac_message_font_size, 0, 255);
+}
+
 Point Game_System::GetMessageWindowSize() const {
 	if (!Player::IsPatchManiac()) return {MESSAGE_BOX_WIDTH, MESSAGE_BOX_HEIGHT};
 	const int width = data.maniac_message_window_width;

@@ -334,6 +334,8 @@ public:
 	 */
 	int GetMessageFaceIndex();
 	void SetManiacMessageWindowSize(int width, int height);
+	void SetManiacMessageFontSize(int size);
+	int GetManiacMessageFontSize() const;
 	Point GetMessageWindowSize() const;
 	int GetMessageLinesPerPage() const;
 	int GetMessageFaceWidth() const;

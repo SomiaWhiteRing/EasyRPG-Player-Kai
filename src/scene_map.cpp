@@ -18,6 +18,7 @@
 // Headers
 #include "scene_gameover.h"
 #include "scene_map.h"
+#include "scene_battle.h"
 #include "scene_menu.h"
 #include "scene_save.h"
 #include "scene_debug.h"
@@ -217,7 +218,10 @@ void Scene_Map::TransitionOut(SceneType next_scene) {
 			} else {
 				transition.InitErase(tt, this);
 			}
-			transition.PrependFlashes(31, 31, 31, 31, 10, 2);
+			const auto* battle = dynamic_cast<const Scene_Battle*>(Scene::instance.get());
+			if (!battle || !battle->SuppressesStartFlash()) {
+				transition.PrependFlashes(31, 31, 31, 31, 10, 2);
+			}
 		} else {
 			// If screen is already erased, RPG_RT does nothing for 40 frames.
 			transition.InitErase(Transition::TransitionNone, this, 40);

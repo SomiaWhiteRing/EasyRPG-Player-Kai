@@ -285,6 +285,7 @@ protected:
 	bool CommandChangeMainMenuAccess(lcf::rpg::EventCommand const& com);
 	bool CommandConditionalBranch(lcf::rpg::EventCommand const& com);
 	bool CompleteConditionalBranch(lcf::rpg::EventCommand const& com, bool result, bool maniac);
+	bool SkipManiacMapBattleBranch(lcf::rpg::EventCommand const& com, bool enter_else);
 	bool CommandElseBranch(lcf::rpg::EventCommand const& com);
 	bool CommandEndBranch(lcf::rpg::EventCommand const& com);
 	bool CommandJumpToLabel(lcf::rpg::EventCommand const& com);
