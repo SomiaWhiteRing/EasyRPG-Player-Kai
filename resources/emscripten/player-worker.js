@@ -1804,7 +1804,7 @@ self.onmessage = async ({data}) => {
         if (consoleOwned && data.generation === consoleGeneration) consoleCommand({op: 'close'});
       }
       else if (data.type === 'key') engine._web_key(data.key, data.pressed ? 1 : 0);
-      else if (data.type === 'mouse') engine._web_mouse(data.x, data.y, data.focus ? 1 : 0);
+      else if (data.type === 'mouse') engine._web_mouse(data.x, data.y, data.focus ? 1 : 0, data.absolute ? 1 : 0);
       else if (data.type === 'touch') engine._web_touch(data.id, data.x, data.y, data.pressed ? 1 : 0);
       else if (data.type === 'gamepad') engine._web_gamepad(...data.axes, ...data.triggers);
       else if (data.type === 'netplay-network-change') engine.netplay?.refreshDirectory();

@@ -186,13 +186,13 @@ public:
 	 */
 	const Point& GetMousePosition() const;
 
-	/** Windows client dimensions for commands that use native cursor coordinates. */
-	bool GetMouseClientSize(Point& size) const;
-	/** Read the system cursor in native window client coordinates when available. */
-	bool GetMouseClientPosition(Point& position) const;
+	/** Client dimensions for Maniac cursor commands. */
+	virtual bool GetMouseClientSize(Point& size) const;
+	/** Read the Maniac cursor in client coordinates when available. */
+	virtual bool GetMouseClientPosition(Point& position) const;
 
-	/** Attempt to move the system cursor from client coordinates. */
-	bool SetMouseClientPosition(Point position) const;
+	/** Attempt to reposition the Maniac cursor in client coordinates. */
+	virtual bool SetMouseClientPosition(Point position);
 
 	/**
 	 * @return Axis of the analog controller inputs

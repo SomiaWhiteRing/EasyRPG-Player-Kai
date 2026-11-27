@@ -3,6 +3,7 @@
 
 #include "baseui.h"
 #include "platform/emscripten/audio.h"
+#include <optional>
 
 // The browser owns the window; mixing runs independently in the audio Worker.
 class WebUi final : public BaseUi {
@@ -11,7 +12,7 @@ public:
 	bool ProcessEvents() override;
 	void RefreshFocusPolicy() override;
 	bool IsFocusPaused() const override;
-	void SetWindowFocus(bool value) { window_focused = value; }
+	void SetWindowFocus(bool value);
 	bool HasInputFocus() const override { return window_focused; }
 	bool IsJoystickAvailable() const override;
 	bool ConfirmManiacFileOutput() override;
@@ -26,7 +27,10 @@ public:
 	bool ShowCursor(bool visible) override;
 	bool OpenURL(std::string_view url) override;
 	AudioInterface& GetAudio() override { return audio; }
-	void Mouse(int x, int y, bool focus) { mouse_pos = {x, y}; mouse_focus = focus; }
+	bool GetMouseClientSize(Point& size) const override;
+	bool GetMouseClientPosition(Point& position) const override;
+	bool SetMouseClientPosition(Point position) override;
+	void Mouse(int x, int y, bool focus, bool absolute);
 	void Fullscreen(bool value) { SetIsFullscreen(value); }
 	void Gamepad(float x, float y, float rx, float ry, float lt, float rt) {
 		analog_input.primary = {x, y}; analog_input.secondary = {rx, ry};
@@ -35,5 +39,8 @@ public:
 private:
 	WebAudio audio;
 	bool window_focused = true;
+	// Separate from mouse_pos: browser UI and normal absolute hit-testing
+	// still use the physical input, not the repositioned Maniac cursor.
+	std::optional<Point> maniac_cursor;
 };
 #endif
