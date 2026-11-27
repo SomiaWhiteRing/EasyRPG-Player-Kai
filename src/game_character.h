@@ -35,6 +35,11 @@
  */
 class Game_Character {
 public:
+	// Player's own move codes carry the small absolute value in the opcode.
+	// liblcf preserves the IDs when saving an active route.
+	static constexpr int ManiacRouteSetSpeed = 0x100; // + 1..6
+	static constexpr int ManiacRouteSetTranslucent = 0x110; // + 0..1
+
 	using AnimType = lcf::rpg::EventPage::AnimType;
 
 	enum Type {
