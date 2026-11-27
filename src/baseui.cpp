@@ -73,7 +73,7 @@ bool BaseUi::GetMouseClientPosition(Point& position) const {
 	return false;
 }
 
-bool BaseUi::SetMouseClientPosition(Point position) const {
+bool BaseUi::SetMouseClientPosition(Point position) {
 #ifdef _WIN32
 	const auto hwnd = static_cast<HWND>(GetNativeWindowHandle());
 	if (hwnd) {

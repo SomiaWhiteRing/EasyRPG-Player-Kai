@@ -26,6 +26,51 @@ bool WebUi::vChangeDisplaySurfaceResolution(int width, int height) {
 	return bool(main_surface);
 }
 
+void WebUi::SetWindowFocus(bool value) {
+	window_focused = value;
+	if (!value) {
+		maniac_cursor.reset();
+		mouse_focus = false;
+	}
+}
+
+bool WebUi::GetMouseClientSize(Point& size) const {
+	// Emulate RPG_RT's client coordinate space, independent of CSS sizing.
+	const int zoom = std::clamp(GetManiacWindowZoom(), 1, 4);
+	size = {320 * zoom, 240 * zoom};
+	return true;
+}
+
+bool WebUi::GetMouseClientPosition(Point& position) const {
+	if (!maniac_cursor) return false;
+	position = *maniac_cursor;
+	return true;
+}
+
+bool WebUi::SetMouseClientPosition(Point position) {
+	// The browser cannot move the system pointer. Only change the position
+	// visible to Maniac scripts, including a read later in this same frame.
+	maniac_cursor = position;
+	return true;
+}
+
+void WebUi::Mouse(int x, int y, bool focus, bool absolute) {
+	if (!focus || absolute) {
+		maniac_cursor.reset();
+	} else if (maniac_cursor && mouse_focus) {
+		Point size;
+		GetMouseClientSize(size);
+		const auto relative = [](int virtual_coord, int previous, int current, int limit, long surface_size) {
+			const int64_t delta = (int64_t(current) - previous) * limit / std::max(1L, surface_size);
+			return static_cast<int>(std::clamp(int64_t(virtual_coord) + delta, int64_t(0), int64_t(limit - 1)));
+		};
+		maniac_cursor->x = relative(maniac_cursor->x, mouse_pos.x, x, size.x, GetWidth());
+		maniac_cursor->y = relative(maniac_cursor->y, mouse_pos.y, y, size.y, GetHeight());
+	}
+	mouse_pos = {x, y};
+	mouse_focus = focus;
+}
+
 bool WebUi::ProcessEvents() {
 	RefreshFocusPolicy();
 	return true;
@@ -62,6 +107,12 @@ void WebUi::vGetConfig(Game_ConfigVideo& cfg) const {
 void WebUi::ToggleFullscreen() { EM_ASM({ postMessage({type: 'fullscreen'}); }); }
 
 bool WebUi::SetManiacWindowZoom(int zoom) {
+	if (maniac_cursor) {
+		const int old_scale = std::clamp(GetManiacWindowZoom(), 1, 4);
+		const int new_scale = std::clamp(zoom, 1, 4);
+		maniac_cursor->x = maniac_cursor->x * new_scale / old_scale;
+		maniac_cursor->y = maniac_cursor->y * new_scale / old_scale;
+	}
 	maniac_window_zoom = zoom;
 	EM_ASM({ postMessage({type: 'window-zoom', zoom: $0, width: $1, height: $2}); },
 		zoom, GetWidth(), GetHeight());
@@ -110,8 +161,8 @@ EMSCRIPTEN_KEEPALIVE void web_key(int key, int pressed) {
 		DisplayUi->GetKeyStates().set(key, pressed != 0);
 }
 
-EMSCRIPTEN_KEEPALIVE void web_mouse(int x, int y, int focus) {
-	if (DisplayUi) static_cast<WebUi&>(*DisplayUi).Mouse(x, y, focus != 0);
+EMSCRIPTEN_KEEPALIVE void web_mouse(int x, int y, int focus, int absolute) {
+	if (DisplayUi) static_cast<WebUi&>(*DisplayUi).Mouse(x, y, focus != 0, absolute != 0);
 }
 
 EMSCRIPTEN_KEEPALIVE void web_gamepad(float x, float y, float rx, float ry, float lt, float rt) {

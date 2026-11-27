@@ -126,10 +126,10 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
   void ready.catch(() => {});
   const send = data => { if (!closed) worker.postMessage(data); };
   // Keep a position even when no physical pointer is hovering the canvas.
-  const mouse = (position, focus = true) => {
+  const mouse = (position, focus = true, absolute = false) => {
     if (position) mousePosition = position;
     const current = mousePosition ?? {x: Math.floor(width / 2), y: Math.floor(height / 2)};
-    send({type: 'mouse', ...current, focus});
+    send({type: 'mouse', ...current, focus, absolute});
     return current;
   };
   const report = message => {
@@ -1217,7 +1217,7 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
     return {x: Math.floor((event.clientX-rect.left)*width/rect.width), y: Math.floor((event.clientY-rect.top)*height/rect.height)};
   };
   listen(canvas, 'pointermove', event => {
-    mouse(pointerPosition(event));
+    mouse(pointerPosition(event), true, event.pointerType !== 'mouse');
   });
   for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'lostpointercapture']) listen(canvas, type, event => {
     const pressed = type === 'pointerdown';
@@ -1226,7 +1226,8 @@ window.createEasyRpgPlayer = async function createEasyRpgPlayer(options) {
       void context.resume().catch(() => {});
     }
     // Capture-loss and cancellation events need not contain usable coordinates.
-    const position = mouse(type === 'pointerdown' || type === 'pointerup' ? pointerPosition(event) : undefined);
+    const position = mouse(type === 'pointerdown' || type === 'pointerup' ? pointerPosition(event) : undefined,
+      true, event.pointerType !== 'mouse');
     if (event.pointerType === 'touch') {
       send({type: 'touch', ...position, id: event.pointerId, pressed});
     } else if (type === 'pointercancel' || type === 'lostpointercapture') {
