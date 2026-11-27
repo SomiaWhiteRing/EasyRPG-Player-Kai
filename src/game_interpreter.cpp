@@ -3931,9 +3931,96 @@ bool Game_Interpreter::CommandPlayerVisibility(lcf::rpg::EventCommand const& com
 	return true;
 }
 
+// A Maniac AddAction record is a continuation of SetAction, not an
+// independently scheduled event command. Resolve operands before applying
+// the route so later writes cannot change queued actions.
+void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const lcf::rpg::EventCommand& action) {
+	using Code = lcf::rpg::MoveCommand::Code;
+	const auto raw = [&action](size_t i) {
+		return i < action.parameters.size() ? action.parameters[i] : 0;
+	};
+	const auto number = [&](int i) { return ValueOrVariableBitfield(raw(0), i - 1, raw(i)); };
+	const auto id = [](Code code) { return static_cast<int>(code); };
+	const auto append = [&](auto code) -> lcf::rpg::MoveCommand& {
+		auto& move = route.move_commands.emplace_back();
+		move.command_id = static_cast<int>(code);
+		return move;
+	};
+	// Real maps use small counts and offsets. Cap malformed/huge operands
+	// before expanding a single record into ordinary movement commands.
+	constexpr int max_steps = 4096;
+	const auto steps = [&](auto code, int count) {
+		for (int i = 0; i < Utils::Clamp(count, 0, max_steps); ++i) append(code);
+	};
+
+	switch (raw(1)) {
+		case 0: { // Move in a direction (or relative to the character).
+			const int dir = number(2);
+			if (dir >= 0 && dir <= id(Code::move_forward) - id(Code::move_up)) {
+				steps(id(Code::move_up) + dir, number(3));
+			}
+			break;
+		}
+		case 1: { // Face/turn, where omitted parameters select up.
+			const int dir = number(2);
+			if (dir >= 0 && dir <= id(Code::face_away_from_hero) - id(Code::face_up)) {
+				append(id(Code::face_up) + dir);
+			}
+			break;
+		}
+		case 2:
+			append(Code::wait);
+			break;
+		case 3: { // Relative jump. The stock jump executor uses the sequence
+			// between begin/end to calculate the displacement.
+			const int x = Utils::Clamp(number(2), -max_steps, max_steps);
+			const int y = Utils::Clamp(number(3), -max_steps, max_steps);
+			append(Code::begin_jump);
+			steps(x < 0 ? Code::move_left : Code::move_right, std::abs(x));
+			steps(y < 0 ? Code::move_up : Code::move_down, std::abs(y));
+			append(Code::end_jump);
+			break;
+		}
+		case 4: {
+			const bool on = number(3) != 0;
+			switch (number(2)) {
+				case 0: append(on ? Code::lock_facing : Code::unlock_facing); break;
+				case 1: append(on ? Code::stop_animation : Code::start_animation); break;
+				case 2: append(on ? Code::walk_everywhere_on : Code::walk_everywhere_off); break;
+				case 3: append(Game_Character::ManiacRouteSetTranslucent + on); break;
+			}
+			break;
+		}
+		case 5:
+			if (number(2) == 0) {
+				// 0 = normal (8 frames per tile); signed exponents
+				// halve/double the speed instead of modifying it relatively.
+				append(Game_Character::ManiacRouteSetSpeed + 4 + Utils::Clamp(number(3), -3, 2));
+			}
+			break;
+		case 7: {
+			auto& move = append(Code::change_graphic);
+			move.parameter_string = lcf::DBString(CommandStringOrVariableBitfield(action, 0, 0, 5));
+			move.parameter_a = number(2);
+			break;
+		}
+	}
+}
+
 bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // code 11330
 	int event_id = ValueOrVariableBitfield(com.parameters[2], 2, com.parameters[0]);
 	int repeat = ManiacBitmask(com.parameters[2], 0x1);
+
+	auto& frame = GetFrame();
+	const int first_action = frame.current_command + 1;
+	int after_route = first_action;
+	if (Player::IsPatchManiac()) {
+		while (after_route < static_cast<int>(frame.commands.size())) {
+			const auto& action = frame.commands[after_route];
+			if (action.code != 3027 || action.indent != com.indent) break;
+			++after_route;
+		}
+	}
 
 	Game_Character* event = GetCharacter(event_id, "MoveEvent");
 	if (event != NULL) {
@@ -3957,8 +4044,13 @@ bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // 
 			route.move_commands.push_back(DecodeMove(it));
 		}
 
+		for (int i = first_action; i < after_route; ++i) {
+			AppendManiacMoveAction(route, frame.commands[i]);
+		}
+
 		event->ForceMoveRoute(route, move_freq);
 	}
+	if (after_route != first_action) frame.current_command = after_route;
 	return true;
 }
 

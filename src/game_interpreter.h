@@ -268,6 +268,7 @@ protected:
 	bool CommandMovePicture(lcf::rpg::EventCommand const& com);
 	bool CommandErasePicture(lcf::rpg::EventCommand const& com);
 	bool CommandPlayerVisibility(lcf::rpg::EventCommand const& com);
+	void AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const lcf::rpg::EventCommand& action);
 	bool CommandMoveEvent(lcf::rpg::EventCommand const& com);
 	bool CommandMemorizeBGM(lcf::rpg::EventCommand const& com);
 	bool CommandPlayMemorizedBGM(lcf::rpg::EventCommand const& com);

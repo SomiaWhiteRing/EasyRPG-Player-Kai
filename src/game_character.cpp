@@ -359,6 +359,12 @@ void Game_Character::UpdateMoveRoute(int32_t& current_index, const lcf::rpg::Mov
 			SetFacing(GetDirection());
 			SetMaxStopCountForTurn();
 			SetStopCount(0);
+		} else if (Player::IsPatchManiac() && move_command.command_id > ManiacRouteSetSpeed
+				&& move_command.command_id <= ManiacRouteSetSpeed + 6) {
+			SetMoveSpeed(move_command.command_id - ManiacRouteSetSpeed);
+		} else if (Player::IsPatchManiac() && (move_command.command_id == ManiacRouteSetTranslucent
+				|| move_command.command_id == ManiacRouteSetTranslucent + 1)) {
+			SetTransparency(move_command.command_id == ManiacRouteSetTranslucent ? 0 : 3);
 		} else {
 			switch (cmd) {
 				case Code::wait:
