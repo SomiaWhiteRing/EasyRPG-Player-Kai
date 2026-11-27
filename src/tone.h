@@ -42,6 +42,11 @@ public:
 	 */
 	constexpr Tone(int red, int green, int blue, int gray);
 
+	/** Screen tint in native Maniac percentages (100 = unchanged). */
+	static constexpr Tone Maniac(int red, int green, int blue, int saturation);
+
+	bool maniac = false;
+
 	/** Red component. */
 	int red = 128;
 
@@ -66,7 +71,8 @@ inline bool operator==(const Tone &l, const Tone& r) {
 	return l.red == r.red
 		&& l.green == r.green
 		&& l.blue == r.blue
-		&& l.gray == r.gray;
+		&& l.gray == r.gray
+		&& l.maniac == r.maniac;
 }
 
 inline bool operator!=(const Tone &l, const Tone& r) {
@@ -89,6 +95,17 @@ constexpr Tone::Tone(int red, int green, int blue, int gray) :
 	green(std::min(255, std::max(0, green))),
 	blue(std::min(255, std::max(0, blue))),
 	gray(std::min(255, std::max(0, gray))) {
+}
+
+constexpr Tone Tone::Maniac(int red, int green, int blue, int saturation) {
+	if (red == 100 && green == 100 && blue == 100 && saturation == 100) return Tone();
+	Tone tone;
+	tone.maniac = true;
+	tone.red = std::clamp(red, 0, 200);
+	tone.green = std::clamp(green, 0, 200);
+	tone.blue = std::clamp(blue, 0, 200);
+	tone.gray = std::clamp(saturation, 0, 200);
+	return tone;
 }
 
 #endif
