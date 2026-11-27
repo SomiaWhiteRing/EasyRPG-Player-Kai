@@ -858,7 +858,7 @@ bool Game_Map::CheckOrMakeWayEx(const Game_Character& self,
 		// Check for self conflict.
 		// If this event has a tile graphic and the tile itself has passage blocked in the direction
 		// we want to move, flag it as "self conflicting" for use later.
-		if (self.GetLayer() == lcf::rpg::EventPage::Layers_below && self.GetTileId() != 0) {
+		if (self.GetLayer() == lcf::rpg::EventPage::Layers_below && self.GetTileId() > 0 && self.GetTileId() < BLOCK_F_TILES) {
 			int tile_id = self.GetTileId();
 			if ((passages_up[tile_id] & bit_from) == 0) {
 				self_conflict = true;
@@ -1085,7 +1085,7 @@ bool Game_Map::IsPassableTile(
 
 		// If there was a below tile event, and the tile is not above
 		// Override the chipset with event tile behavior.
-		if (event_tile_id > 0
+		if (event_tile_id > 0 && event_tile_id < BLOCK_F_TILES
 				&& ((passages_up[event_tile_id] & Passable::Above) == 0)) {
 			switch (vehicle_type) {
 				case Game_Vehicle::None:
