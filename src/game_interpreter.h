@@ -155,7 +155,7 @@ protected:
 	 * This is just a helper (private) method
 	 * to avoid repeating code.
 	 *
-	 * @param max_num_choices The maximum number of choices to allow. Any choice with id >= this value (cancel handler) is ignored.
+	 * @param max_num_choices The number of visible choices that fit on one page.
 	 */
 	std::vector<std::string> GetChoices(int max_num_choices);
 

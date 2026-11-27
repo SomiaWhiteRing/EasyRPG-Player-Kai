@@ -1100,7 +1100,8 @@ std::vector<std::string> Game_Interpreter::GetChoices(int max_num_choices) {
 	auto& index = frame.current_command;
 
 	// Let's find the choices
-	int current_indent = list[index + 1].indent;
+	const int current_indent = list[index].indent;
+	const bool maniac = Player::IsPatchManiac();
 	std::vector<std::string> s_choices;
 	for (int index_temp = index + 1; index_temp < static_cast<int>(list.size()); ++index_temp) {
 		const auto& com = list[index_temp];
@@ -1108,12 +1109,13 @@ std::vector<std::string> Game_Interpreter::GetChoices(int max_num_choices) {
 			continue;
 		}
 
-		if (static_cast<Cmd>(com.code) == Cmd::ShowChoiceOption && com.parameters.size() > 0 && com.parameters[0] < max_num_choices) {
-			// Choice found
-			s_choices.push_back(ToString(list[index_temp].string));
-		}
-
-		if (static_cast<Cmd>(com.code) == Cmd::ShowChoiceEnd) {
+		if (static_cast<Cmd>(com.code) == Cmd::ShowChoiceOption) {
+			const int branch = com.parameters.empty() ? 0 : com.parameters[0];
+			if (maniac ? branch != 4 : !com.parameters.empty() && branch < 4) {
+				s_choices.push_back(ToString(com.string));
+				if (static_cast<int>(s_choices.size()) == max_num_choices) break;
+			}
+		} else if (maniac || static_cast<Cmd>(com.code) == Cmd::ShowChoiceEnd) {
 			break;
 		}
 	}
@@ -1156,13 +1158,14 @@ bool Game_Interpreter::CommandShowMessage(lcf::rpg::EventCommand const& com) { /
 		++index;
 	}
 
+	const int lines_per_page = Main_Data::game_system->GetMessageLinesPerPage();
 	// Handle Choices or number
 	if (index < static_cast<int>(list.size())) {
 		// If next event command is show choices
 		if (static_cast<Cmd>(list[index].code) == Cmd::ShowChoice) {
-			std::vector<std::string> s_choices = GetChoices(4);
+			std::vector<std::string> s_choices = GetChoices(lines_per_page);
 			// If choices fit on screen
-			if (static_cast<int>(s_choices.size()) <= (4 - pm.NumLines())) {
+			if (static_cast<int>(s_choices.size()) <= (lines_per_page - pm.NumLines())) {
 				pm.SetChoiceCancelType(list[index].parameters[0]);
 				SetupChoices(s_choices, com.indent, pm);
 				++index;
@@ -1170,7 +1173,7 @@ bool Game_Interpreter::CommandShowMessage(lcf::rpg::EventCommand const& com) { /
 		} else if (static_cast<Cmd>(list[index].code) == Cmd::InputNumber) {
 			// If next event command is input number
 			// If input number fits on screen
-			if (pm.NumLines() < 4) {
+			if (pm.NumLines() < lines_per_page) {
 				int digits = list[index].parameters[0];
 				int variable_id = list[index].parameters[1];
 				pm.PushNumInput(variable_id, digits);
@@ -1195,7 +1198,17 @@ bool Game_Interpreter::CommandMessageOptions(lcf::rpg::EventCommand const& com) 
 	Main_Data::game_system->SetMessagePositionFixed(com.parameters[2] == 0);
 	Main_Data::game_system->SetMessageContinueEvents(com.parameters[3] != 0);
 
-	// TODO: Maniac Patch Message Box Size and Font not implemented
+	if (Player::IsPatchManiac()) {
+		const auto dimension = [&](size_t index, int shift) {
+			if (index >= com.parameters.size()) return 0;
+			const int mode = (com.parameters[4] >> shift) & 15;
+			const int value = com.parameters[index];
+			return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+		};
+		Main_Data::game_system->SetManiacMessageWindowSize(dimension(5, 0), dimension(6, 4));
+	}
+
+	// TODO: Maniac Patch message font options
 	// see https://jetrotal.github.io/CSA/#Display%20Text%20Options
 
 	return true;
@@ -1251,8 +1264,8 @@ bool Game_Interpreter::CommandChangeFaceGraphic(lcf::rpg::EventCommand const& co
 void Game_Interpreter::SetupChoices(const std::vector<std::string>& choices, int indent, PendingMessage& pm) {
 	// Set choices to message text
 	pm.SetChoiceResetColors(false);
-	for (int i = 0; i < 4 && i < static_cast<int>(choices.size()); i++) {
-		pm.PushChoice(choices[i]);
+	for (const auto& choice : choices) {
+		pm.PushChoice(choice);
 	}
 
 	pm.SetChoiceContinuation([this, indent](int choice_result) {
@@ -1276,7 +1289,7 @@ bool Game_Interpreter::CommandShowChoices(lcf::rpg::EventCommand const& com) { /
 	pm.SetFromForegroundInterpreter(main_flag);
 
 	// Choices setup
-	std::vector<std::string> choices = GetChoices(4);
+	std::vector<std::string> choices = GetChoices(Main_Data::game_system->GetMessageLinesPerPage());
 	pm.SetChoiceCancelType(com.parameters[0]);
 	SetupChoices(choices, com.indent, pm);
 

@@ -333,6 +333,9 @@ public:
 	 * @return face index
 	 */
 	int GetMessageFaceIndex();
+	void SetManiacMessageWindowSize(int width, int height);
+	Point GetMessageWindowSize() const;
+	int GetMessageLinesPerPage() const;
 	int GetMessageFaceWidth() const;
 	int GetMessageFaceHeight() const;
 	void SetManiacFaceSize(int32_t width, int32_t height);

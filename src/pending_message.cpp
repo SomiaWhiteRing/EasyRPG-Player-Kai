@@ -61,7 +61,7 @@ int PendingMessage::PushChoice(std::string msg, bool enabled) {
 	if (!HasChoices()) {
 		choice_start = NumLines();
 	}
-	choice_enabled[GetNumChoices()] = enabled;
+	choice_enabled.push_back(enabled);
 	return PushLineImpl(std::move(msg));
 }
 

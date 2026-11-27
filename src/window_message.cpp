@@ -214,6 +214,22 @@ void Window_Message::StartMessageProcessing(PendingMessage pm) {
 		return;
 	}
 
+	int lines_per_page = GetMaxLinesPerPage();
+	if (Player::IsPatchManiac()) {
+		const bool event = pending_message.IsEventMessage();
+		const auto size = event ? Main_Data::game_system->GetMessageWindowSize()
+			: Point{MESSAGE_BOX_WIDTH, 16 + lines_per_page * 16};
+		if (event) lines_per_page = Main_Data::game_system->GetMessageLinesPerPage();
+		SetWidth(size.x);
+		SetHeight(size.y);
+		const int content_width = std::max(0, width - 16);
+		const int content_height = std::max(0, height - 16);
+		if (contents->GetWidth() != content_width || contents->GetHeight() != content_height) {
+			SetContents(Bitmap::Create(content_width, content_height));
+		}
+		if (!Game_Battle::IsBattleRunning()) SetX((Player::screen_width - width) / 2);
+	}
+
 	const auto& lines = pending_message.GetLines();
 
 	int num_lines = 0;
@@ -226,7 +242,7 @@ void Window_Message::StartMessageProcessing(PendingMessage pm) {
 		}
 		++num_lines;
 
-		if (num_lines == GetMaxLinesPerPage() || force_page_break) {
+		if (num_lines == lines_per_page || force_page_break) {
 			text.push_back('\f');
 			num_lines = 0;
 		}
@@ -253,7 +269,7 @@ void Window_Message::StartMessageProcessing(PendingMessage pm) {
 		text.push_back('\f');
 	}
 
-	item_max = min(4, pending_message.GetNumChoices());
+	item_max = pending_message.GetNumChoices();
 
 	text_index = text.data();
 
@@ -295,7 +311,7 @@ void Window_Message::StartNumberInputProcessing() {
 	number_input_window->SetMaxDigits(pending_message.GetNumberInputDigits());
 	number_input_window->SetNumber(pending_message.GetNumberInputInitialValue());
 	if (IsFaceEnabled() && !Main_Data::game_system->IsMessageFaceRightPosition()) {
-		number_input_window->SetX(Player::message_box_offset_x + LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin);
+		number_input_window->SetX(x + LeftMargin + Main_Data::game_system->GetMessageFaceWidth() + RightFaceMargin);
 	} else {
 		number_input_window->SetX(x);
 	}
@@ -361,10 +377,10 @@ void Window_Message::InsertNewPage(bool resume_text) {
 			y = Player::menu_offset_y;
 		}
 		else if (Game_Message::GetRealPosition() == 1) {
-			y = static_cast<int>((Player::screen_height - MESSAGE_BOX_HEIGHT) / 2.f);
+			y = (Player::screen_height - height) / 2;
 		}
 		else if (Game_Message::GetRealPosition() == 2) {
-			y = Player::screen_height - Player::menu_offset_y - MESSAGE_BOX_HEIGHT ;
+			y = Player::screen_height - Player::menu_offset_y - (Player::IsPatchManiac() ? height : MESSAGE_BOX_HEIGHT);
 		}
 	}
 	maniac_face_x = x + (Main_Data::game_system->IsMessageFaceRightPosition()
@@ -522,7 +538,7 @@ void Window_Message::InsertNewLine() {
 	contents_y += 16;
 	++line_count;
 
-	if (pending_message.HasChoices() && line_count >= pending_message.GetChoiceStartLine()) {
+	if (pending_message.HasChoices() && line_count >= pending_message.GetChoiceStartLine() && line_count < pending_message.NumLines()) {
 		unsigned choice_index = line_count - pending_message.GetChoiceStartLine();
 		if (pending_message.GetChoiceResetColor()) {
 			// Check for disabled choices
@@ -1289,7 +1305,8 @@ void Window_Message::InputChoice() {
 		}
 
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Decision));
-		choice_result = index;
+		// Maniac reserves event branch 4 for cancel, even with five or more choices.
+		choice_result = maniac && index >= 4 ? index + 1 : index;
 	} else if (cancel && pending_message.GetChoiceCancelType() > 0) {
 		Main_Data::game_system->SePlay(Main_Data::game_system->GetSystemSE(Main_Data::game_system->SFX_Cancel));
 		choice_result = pending_message.GetChoiceCancelType() - 1;

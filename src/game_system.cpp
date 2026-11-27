@@ -84,6 +84,24 @@ void Game_System::SetMessageFaceIndex(int index) {
 	if (Player::IsPatchManiac()) data.maniac_face_start = index;
 }
 
+void Game_System::SetManiacMessageWindowSize(int width, int height) {
+	// Zero keeps that dimension, a negative operand restores its default.
+	if (width != 0) data.maniac_message_window_width = std::max(0, width);
+	if (height != 0) data.maniac_message_window_height = std::max(0, height);
+}
+
+Point Game_System::GetMessageWindowSize() const {
+	if (!Player::IsPatchManiac()) return {MESSAGE_BOX_WIDTH, MESSAGE_BOX_HEIGHT};
+	const int width = data.maniac_message_window_width;
+	const int height = data.maniac_message_window_height;
+	return {std::min(width > 0 ? width : MESSAGE_BOX_WIDTH, Player::screen_width),
+		std::min(height > 0 ? height : MESSAGE_BOX_HEIGHT, Player::screen_height)};
+}
+
+int Game_System::GetMessageLinesPerPage() const {
+	return std::max(1, (GetMessageWindowSize().y - 16) / 16);
+}
+
 int Game_System::GetMessageFaceWidth() const {
 	return Player::IsPatchManiac() && data.maniac_face_width > 0 ? data.maniac_face_width : 48;
 }

@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <bitset>
 #include <functional>
 #include <optional>
 #include "async_op.h"
@@ -84,7 +83,7 @@ class PendingMessage {
 		int num_input_variable = 0;
 		int num_input_digits = 0;
 		int num_input_initial_value = 0;
-		std::bitset<8> choice_enabled = {};
+		std::vector<bool> choice_enabled;
 		bool word_wrapped = false;
 		bool choice_reset_color = false;
 		bool show_gold_window = false;
