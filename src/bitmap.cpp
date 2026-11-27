@@ -560,6 +560,26 @@ void Bitmap::CompositeManiacRow(int x, int y, const Bitmap& source, int source_y
 	}
 }
 
+namespace {
+void ApplyManiacSaturation(int& r, int& g, int& b, int saturation) {
+	if (saturation < 100) {
+		const int luminance = 3 * (r + g + b) / 10;
+		r = (r * saturation + luminance * (100 - saturation)) / 100;
+		g = (g * saturation + luminance * (100 - saturation)) / 100;
+		b = (b * saturation + luminance * (100 - saturation)) / 100;
+	} else if (saturation > 100) {
+		const int luminance = (b + 3 * (g + r)) / 10;
+		r = std::clamp(((3 * r - 2 * luminance) * (saturation - 100) + r * (200 - saturation)) / 100, 0, 255);
+		g = std::clamp(((3 * g - 2 * luminance) * (saturation - 100) + g * (200 - saturation)) / 100, 0, 255);
+		b = std::clamp(((3 * b - 2 * luminance) * (saturation - 100) + b * (200 - saturation)) / 100, 0, 255);
+	}
+}
+
+int ApplyManiacToneChannel(int value, int tone) {
+	return tone < 100 ? value * tone / 100 : value + (255 - value) * (tone - 100) / 100;
+}
+}
+
 void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const std::array<int, 4>& tone,
 		bool flip_x, bool flip_y, int flash, const std::array<int, 3>& flash_color, bool chromakey) {
 	// The complete destination is overwritten. Do not read/convert its previous
@@ -569,9 +589,7 @@ void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const s
 	std::array<std::array<uint8_t, 256>, 3> channels;
 	for (size_t c = 0; c < channels.size(); ++c) {
 		for (int value = 0; value < 256; ++value) {
-			int result = value;
-			if (tone[c] < 100) result = tone[c] * result / 100;
-			else if (tone[c] > 100) result += (255 - result) * (tone[c] - 100) / 100;
+			int result = ApplyManiacToneChannel(value, tone[c]);
 			if (flash > 0) result = static_cast<int>((static_cast<int64_t>(256 - flash) * result
 				+ static_cast<int64_t>(flash) * flash_color[c]) / 256);
 			channels[c][value] = static_cast<uint8_t>(result);
@@ -599,17 +617,7 @@ void Bitmap::PrepareManiacFrame(const Bitmap& source, const Rect& frame, const s
 			Color color = input ? input[sx] : source.GetManiacColorAt(frame.x + sx, frame.y + sy);
 			if (color.alpha || !chromakey) {
 				int r = color.red, g = color.green, b = color.blue;
-				if (saturation < 100) {
-					const int luminance = 3 * (r + g + b) / 10;
-					r = (r * saturation + luminance * (100 - saturation)) / 100;
-					g = (g * saturation + luminance * (100 - saturation)) / 100;
-					b = (b * saturation + luminance * (100 - saturation)) / 100;
-				} else if (saturation > 100) {
-					const int luminance = (b + 3 * (g + r)) / 10;
-					r = std::clamp(((3 * r - 2 * luminance) * (saturation - 100) + r * (200 - saturation)) / 100, 0, 255);
-					g = std::clamp(((3 * g - 2 * luminance) * (saturation - 100) + g * (200 - saturation)) / 100, 0, 255);
-					b = std::clamp(((3 * b - 2 * luminance) * (saturation - 100) + b * (200 - saturation)) / 100, 0, 255);
-				}
+				ApplyManiacSaturation(r, g, b, saturation);
 				color.red = channels[0][r]; color.green = channels[1][g]; color.blue = channels[2][b];
 			}
 			output[x] = color;
@@ -1280,7 +1288,7 @@ void Bitmap::ToneBlit(int x, int y, Bitmap const& src, Rect const& src_rect, con
 		return;
 	}
 
-	if (tone == Tone(128,128,128,128)) {
+	if (tone == Tone()) {
 		if (&src != this) {
 			Blit(x, y, src, src_rect, opacity);
 		}
@@ -1299,6 +1307,34 @@ void Bitmap::ToneBlit(int x, int y, Bitmap const& src, Rect const& src_rect, con
 		0, 0,
 		x, y,
 		src_rect.width, src_rect.height);
+	}
+
+	if (tone.maniac) {
+		const int rows = std::min(src_rect.height, height() - y);
+		const int cols = std::min(src_rect.width, width() - x);
+		auto* row = static_cast<uint8_t*>(this->pixels()) + y * pitch() + x * format.bytes;
+		for (int i = 0; i < rows; ++i, row += pitch()) {
+			auto* pixel = row;
+			for (int j = 0; j < cols; ++j, pixel += format.bytes) {
+				uint32_t packed = 0;
+				std::memcpy(&packed, pixel, format.bytes);
+				uint8_t red, green, blue, alpha;
+				format.uint32_to_rgba(packed, red, green, blue, alpha);
+				if (format.alpha_type == PF::NoAlpha) alpha = 255;
+				if (!alpha) continue;
+				const auto unpremultiply = [alpha](int value) {
+					return alpha == 255 ? value : std::min(255, (value * 255 + alpha / 2) / alpha);
+				};
+				int r = unpremultiply(red), g = unpremultiply(green), b = unpremultiply(blue);
+				ApplyManiacSaturation(r, g, b, tone.gray);
+				red = ApplyManiacToneChannel(r, tone.red);
+				green = ApplyManiacToneChannel(g, tone.green);
+				blue = ApplyManiacToneChannel(b, tone.blue);
+				MultiplyAlpha(red, green, blue, alpha);
+				StorePixel(pixel, format.rgba_to_uint32_t(red, green, blue, alpha), format.bytes);
+			}
+		}
+		return;
 	}
 
 	const int as = pixel_format.a.shift;

@@ -264,13 +264,6 @@ inline int Game_Screen::GetShakeOffsetY() const {
 	return data.shake_position_y;
 }
 
-inline Tone Game_Screen::GetTone() {
-	return Tone((int)((data.tint_current_red) * 128 / 100),
-		(int)((data.tint_current_green) * 128 / 100),
-		(int)((data.tint_current_blue) * 128 / 100),
-		(int)((data.tint_current_sat) * 128 / 100));
-}
-
 inline Color Game_Screen::GetFlashColor() const {
 	return Flash::MakeColor(data.flash_red, data.flash_green, data.flash_blue, data.flash_current_level);
 }

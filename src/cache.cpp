@@ -33,6 +33,7 @@
 #include "bitmap.h"
 #include "output.h"
 #include "player.h"
+#include "map_data.h"
 #include <lcf/data.h>
 #include "game_clock.h"
 #include "translation.h"
@@ -504,7 +505,18 @@ BitmapRef Cache::Tile(std::string_view filename, int tile_id) {
 
 		int sub_tile_id = 0;
 
-		if (tile_id > 0 && tile_id < 48) {
+		// Maniac encodes a static lower-layer chip (block E) as its
+		// zero-based index minus 5000. This changes the source rectangle,
+		// not the event's draw priority.
+		if (Player::IsPatchManiac() && tile_id >= -BLOCK_E && tile_id < -BLOCK_E + BLOCK_E_TILES) {
+			sub_tile_id = tile_id + BLOCK_E;
+			if (sub_tile_id < 96) {
+				rect.x = 192;
+			} else {
+				rect.x = 288;
+				sub_tile_id -= 96;
+			}
+		} else if (tile_id > 0 && tile_id < 48) {
 			sub_tile_id = tile_id;
 			rect.x += 288;
 			rect.y += 128;

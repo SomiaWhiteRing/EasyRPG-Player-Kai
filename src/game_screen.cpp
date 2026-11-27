@@ -111,6 +111,17 @@ void Game_Screen::OnMapChange() {
 	data.easyrpg_maniac_animations.clear();
 }
 
+Tone Game_Screen::GetTone() {
+	if (Player::IsPatchManiac()) {
+		return Tone::Maniac(std::lround(data.tint_current_red), std::lround(data.tint_current_green),
+			std::lround(data.tint_current_blue), std::lround(data.tint_current_sat));
+	}
+	return Tone((int)((data.tint_current_red) * 128 / 100),
+		(int)((data.tint_current_green) * 128 / 100),
+		(int)((data.tint_current_blue) * 128 / 100),
+		(int)((data.tint_current_sat) * 128 / 100));
+}
+
 void Game_Screen::TintScreen(int r, int g, int b, int s, int tenths) {
 	data.tint_finish_red = r;
 	data.tint_finish_green = g;
