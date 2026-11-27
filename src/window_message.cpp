@@ -45,6 +45,13 @@
 
 // FIXME: Off by 1 bug in window base class
 constexpr int message_animation_frames = 7;
+
+static Font::StyleScopeGuard ApplyMessageFontSize(Font* font, int size) {
+	if (!font || size == 0 || font->GetCurrentStyle().size == size) return {};
+	auto style = font->GetCurrentStyle();
+	style.size = size;
+	return font->ApplyStyle(style);
+}
 constexpr int gold_window_width = 88;
 constexpr int gold_window_height = 32;
 
@@ -365,6 +372,8 @@ void Window_Message::InsertNewPage(bool resume_text) {
 	} else {
 		page_font = Font::Default();
 	}
+	page_font_size = Player::IsPatchManiac() && pending_message.IsEventMessage()
+		? Main_Data::game_system->GetManiacMessageFontSize() : 0;
 
 	if (Player::IsPatchManiac() && Game_Battle::IsBattleRunning()) {
 		const auto display_offset = Main_Data::game_system->GetBattleDisplayOffset();
@@ -747,6 +756,7 @@ void Window_Message::Update() {
 }
 
 void Window_Message::UpdateMessage() {
+	auto font_size_scope = ApplyMessageFontSize(page_font.get(), page_font_size);
 	// Message Box Show Message rendering loop
 	bool instant_speed_forced = false;
 
@@ -1148,6 +1158,7 @@ bool Window_Message::DrawGlyph(Font& font, const Bitmap& system, char32_t glyph,
 
 void Window_Message::RenderManiacGlyph(Font& font, const Bitmap& system, char32_t glyph, bool is_exfont,
 	std::string_view token, bool maniac_icon, Point position, const std::array<int32_t, 2>& colors) {
+	auto font_size_scope = ApplyMessageFontSize(&font, page_font_size);
 	const auto cell = ManiacColorCell(system, colors);
 	Point rect;
 	const auto size = font.GetCurrentStyle().size;

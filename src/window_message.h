@@ -207,6 +207,7 @@ protected:
 	bool prev_char_printable = false;
 	/** Active font for the current page */
 	FontRef page_font;
+	int page_font_size = 0;
 
 	/** Used by the number input event. */
 	std::unique_ptr<Window_NumberInput> number_input_window;

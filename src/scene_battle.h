@@ -59,6 +59,7 @@ struct BattleArgs {
 	lcf::rpg::System::BattleCondition condition = lcf::rpg::System::BattleCondition_none;
 	bool first_strike = false;
 	bool allow_escape = true;
+	bool suppress_start_flash = false;
 };
 
 constexpr int option_command_mov = 76;
@@ -137,6 +138,7 @@ public:
 	};
 
 	static void SelectionFlash(Game_Battler* battler);
+	bool SuppressesStartFlash() const { return suppress_start_flash; }
 
 protected:
 	explicit Scene_Battle(const BattleArgs& args);
@@ -190,6 +192,7 @@ protected:
 	int escape_chance = 0;
 	bool allow_escape = false;
 	bool first_strike = false;
+	bool suppress_start_flash = false;
 	bool maniac_force_flee_accepted = false;
 
 	Game_Actor* active_actor = nullptr;

@@ -57,6 +57,7 @@ Scene_Battle::Scene_Battle(const BattleArgs& args)
 	: troop_id(args.troop_id),
 	allow_escape(args.allow_escape),
 	first_strike(args.first_strike),
+	suppress_start_flash(args.suppress_start_flash),
 	on_battle_end(args.on_battle_end)
 {
 	SetUseSharedDrawables(true);

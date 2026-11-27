@@ -339,6 +339,7 @@ bool Game_Interpreter_Map::CommandEnemyEncounter(lcf::rpg::EventCommand const& c
 
 	args.allow_escape = maniac ? escape_mode > 0 : escape_mode != 0;
 	args.first_strike = maniac ? (param(5) & 0xff) != 0 : param(5) != 0;
+	args.suppress_start_flash = maniac && param(9) != 0;
 
 	if (Player::IsRPG2k3()) {
 		args.condition = static_cast<lcf::rpg::System::BattleCondition>(param(6));
