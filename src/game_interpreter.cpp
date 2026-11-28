@@ -501,21 +501,30 @@ void Game_Interpreter::Update(bool reset_loop_count) {
 					break;
 				}
 
+				const bool maniac = Player::IsPatchManiac();
 				const int key = _keyinput.CheckInput();
-				Main_Data::game_variables->Set(_keyinput.variable, key);
-				Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
-				if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
-				if (key == 0) {
+				WriteKeyInputVariable(_keyinput.variable, key);
+				if (maniac) {
+					const int destination = _keyinput.variable;
+					Game_Map::RefreshAfterManiacChange();
+					// An im page refresh may have canceled this parallel interpreter.
+					if (!_keyinput.wait) break;
+					// RT rereads the stored value after refresh, not the input sample.
+					if (destination == 0 || ReadVariable(destination) == 0) {
+						++_keyinput.wait_frames;
+						break;
+					}
+				} else if (key == 0) {
 					++_keyinput.wait_frames;
 					break;
 				}
-				if (_keyinput.timed) {
-					// 10 per second
-					Main_Data::game_variables->Set(_keyinput.time_variable,
-							(_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps());
-					Game_Map::SetNeedRefreshForVarChange(_keyinput.time_variable);
-				}
 				_keyinput.wait = false;
+				if (_keyinput.timed) {
+					const int elapsed = maniac ? _keyinput.wait_frames / 6
+							: (_keyinput.wait_frames * 10) / Game_Clock::GetTargetGameFps();
+					// Write the time last in case both outputs refer to the same variable.
+					WriteKeyInputVariable(_keyinput.time_variable, elapsed);
+				}
 			}
 		}
 
@@ -4161,30 +4170,46 @@ int Game_Interpreter::KeyInputState::CheckInput() const {
 	if (keys[Keys::eDecision] && check(Input::DECISION)) {
 		return 5;
 	}
-	if (keys[Keys::eUp] && check(Input::UP)) {
-		return 4;
-	}
-	if (keys[Keys::eRight] && check(Input::RIGHT)) {
-		return 3;
-	}
-	if (keys[Keys::eLeft] && check(Input::LEFT)) {
-		return 2;
-	}
-	if (keys[Keys::eDown] && check(Input::DOWN)) {
-		return 1;
-	}
+	const bool maniac = Player::IsPatchManiac();
+	if (maniac && keys[Keys::eDown] && check(Input::DOWN)) return 1;
+	if (!maniac && keys[Keys::eUp] && check(Input::UP)) return 4;
+	if (keys[Keys::eRight] && check(Input::RIGHT)) return 3;
+	if (keys[Keys::eLeft] && check(Input::LEFT)) return 2;
+	if (maniac && keys[Keys::eUp] && check(Input::UP)) return 4;
+	if (!maniac && keys[Keys::eDown] && check(Input::DOWN)) return 1;
 
 	return 0;
+}
+
+void Game_Interpreter::WriteKeyInputVariable(int id, int value) {
+	if (Player::IsPatchManiac()) {
+		if (id == 0 || id == INT32_MIN) return;
+		if (id < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (bank) {
+				const size_t slot = -static_cast<int64_t>(id);
+				bank->numbers.resize(std::max(bank->numbers.size(), slot + 1));
+				bank->numbers[slot] = value;
+			}
+			return;
+		}
+		*Main_Data::game_variables->GetManiacWritable(id) = value;
+	} else {
+		Main_Data::game_variables->Set(id, value);
+	}
+	Game_Map::SetNeedRefreshForVarChange(id);
 }
 
 bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { // code 11610
 	int var_id = com.parameters[0];
 	bool wait = com.parameters[1] != 0;
+	const bool is_maniac = Player::IsPatchManiac();
 
-	if (wait) {
-		// While waiting the variable is reset to 0 each frame.
-		Main_Data::game_variables->Set(var_id, 0);
-		Game_Map::SetNeedRefreshForVarChange(var_id);
+	if (wait && !is_maniac) {
+		WriteKeyInputVariable(var_id, 0);
 	}
 
 	if (wait && Game_Message::IsMessageActive()) {
@@ -4199,7 +4224,6 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 
 	// Maniac Patch aware check functions for parameters that handle
 	// keyboard and mouse through a bitmask
-	bool is_maniac = Player::IsPatchManiac();
 	auto check_key = [&](auto idx, bool handle_maniac = false) {
 		if (param_size <= idx) {
 			return false;
@@ -4235,7 +4259,7 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 		}
 	} else {
 		if (param_size != 10 || Player::IsRPG2k3Legacy()) {
-			if ((param_size < 10 || Player::IsRPG2k3Legacy()) && com.parameters[2] != 0) {
+			if ((param_size < 10 || (!is_maniac && Player::IsRPG2k3Legacy())) && com.parameters[2] != 0) {
 				// For RPG2k3 <1.05 (later versions got individual key checks)
 				_keyinput.keys[Keys::eDown] = true;
 				_keyinput.keys[Keys::eLeft] = true;
@@ -4297,9 +4321,7 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 		return true;
 	}
 
-	int key = _keyinput.CheckInput();
-	Main_Data::game_variables->Set(_keyinput.variable, key);
-	Game_Map::SetNeedRefreshForVarChange(_keyinput.variable);
+	WriteKeyInputVariable(_keyinput.variable, _keyinput.CheckInput());
 	if (Player::IsPatchManiac()) Game_Map::RefreshAfterManiacChange();
 
 	return true;
