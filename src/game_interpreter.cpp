@@ -8612,7 +8612,7 @@ bool Game_Interpreter::CommandManiacCallCommand(lcf::rpg::EventCommand const& co
 
 	const int text_mode = (modes >> 12) & 15;
 	cmd.string = lcf::DBString(text_mode == 0 ? std::string_view(com.string)
-		: text_mode == 1 ? ReadString(parameter(4)) : ReadString(ReadVariable(parameter(4))));
+		: ReadString(text_mode == 1 ? parameter(4) : ResolveVariableIndirectAddress(parameter(4))));
 
 	// Determine processing mode
 	auto processing_mode = static_cast<ProcessingMode>((modes >> 4) & 15);
