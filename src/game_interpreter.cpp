@@ -3999,10 +3999,10 @@ void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const 
 		case 4: {
 			const bool on = number(3) != 0;
 			switch (number(2)) {
-				case 0: append(on ? Code::lock_facing : Code::unlock_facing); break;
-				case 1: append(on ? Code::stop_animation : Code::start_animation); break;
+				case 0: append(on ? Code::begin_jump : Code::end_jump); break;
+				case 1: append(on ? Code::lock_facing : Code::unlock_facing); break;
 				case 2: append(on ? Code::walk_everywhere_on : Code::walk_everywhere_off); break;
-				case 3: append(Game_Character::ManiacRouteSetTranslucent + on); break;
+				case 3: append(on ? Code::stop_animation : Code::start_animation); break;
 			}
 			break;
 		}
