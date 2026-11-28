@@ -3954,7 +3954,11 @@ void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const 
 	const auto raw = [&action](size_t i) {
 		return i < action.parameters.size() ? action.parameters[i] : 0;
 	};
-	const auto number = [&](int i) { return ValueOrVariableBitfield(raw(0), i - 1, raw(i)); };
+	const auto number = [&](int i) {
+		const int mode = (static_cast<uint32_t>(raw(0)) >> ((i - 1) * 4)) & 15;
+		const int value = raw(i);
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
 	const auto id = [](Code code) { return static_cast<int>(code); };
 	const auto append = [&](auto code) -> lcf::rpg::MoveCommand& {
 		auto& move = route.move_commands.emplace_back();
@@ -4049,7 +4053,13 @@ void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const 
 }
 
 bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // code 11330
-	int event_id = ValueOrVariableBitfield(com.parameters[2], 2, com.parameters[0]);
+	const auto operand = [&](int index, int shift) {
+		const int value = com.parameters[index];
+		const int mode = (static_cast<uint32_t>(com.parameters[2]) >> shift) & 15;
+		return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+	};
+	int event_id = Player::IsPatchManiac()
+		? operand(0, 8) : ValueOrVariableBitfield(com.parameters[2], 2, com.parameters[0]);
 	int repeat = ManiacBitmask(com.parameters[2], 0x1);
 
 	auto& frame = GetFrame();
@@ -4073,7 +4083,7 @@ bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // 
 
 		lcf::rpg::MoveRoute route;
 		int move_freq = Player::IsPatchManiac()
-			? ValueOrVariableBitfield(com.parameters[2], 3, com.parameters[1])
+			? operand(1, 12)
 			: com.parameters[1];
 
 		if (move_freq <= 0 || move_freq > 8) {
