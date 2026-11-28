@@ -363,6 +363,8 @@ protected:
 		eMouseScrollUp
 	};
 
+	void WriteKeyInputVariable(int id, int value);
+
 	struct KeyInputState {
 		lcf::FlagSet<Keys> keys = {};
 		int variable = 0;
