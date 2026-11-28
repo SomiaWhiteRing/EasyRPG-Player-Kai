@@ -4307,6 +4307,12 @@ bool Game_Interpreter::CommandKeyInputProc(lcf::rpg::EventCommand const& com) { 
 
 bool Game_Interpreter::CommandChangeMapTileset(lcf::rpg::EventCommand const& com) { // code 11710
 	int chipset_id = com.parameters[0];
+	if (Player::IsPatchManiac() && com.parameters.size() >= 2) {
+		const int mode = com.parameters[1] & 15;
+		if (mode != 0) {
+			chipset_id = mode == 1 ? ReadVariable(chipset_id) : ReadVariableIndirect(chipset_id);
+		}
+	}
 
 	if (chipset_id == Game_Map::GetChipset()) {
 		return true;
