@@ -252,6 +252,7 @@ protected:
 	bool CommandChangeSystemSFX(lcf::rpg::EventCommand const& com);
 	bool CommandChangeSystemGraphics(lcf::rpg::EventCommand const& com);
 	bool CommandChangeScreenTransitions(lcf::rpg::EventCommand const& com);
+	void WriteManiacMapQueryResult(int id, int value);
 	bool CommandMemorizeLocation(lcf::rpg::EventCommand const& com);
 	bool CommandSetVehicleLocation(lcf::rpg::EventCommand const& com);
 	bool CommandChangeEventLocation(lcf::rpg::EventCommand const& com);

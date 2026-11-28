@@ -272,13 +272,18 @@ bool Game_Interpreter_Map::CommandRecallToLocation(lcf::rpg::EventCommand const&
 	int var_map_id = com.parameters[0];
 	int var_x = com.parameters[1];
 	int var_y = com.parameters[2];
-	int map_id = Main_Data::game_variables->Get(var_map_id);
-	int x = Main_Data::game_variables->Get(var_x);
-	int y = Main_Data::game_variables->Get(var_y);
+	int map_id = ReadVariable(var_map_id);
+	int x = ReadVariable(var_x);
+	int y = ReadVariable(var_y);
+	int direction = -1;
+	if (Player::IsPatchManiac() && com.parameters.size() > 3 && com.parameters[3] != 0) {
+		const int facing = ReadVariable(com.parameters[3]);
+		if (facing >= 1 && facing <= 4) direction = facing - 1;
+	}
 
 	auto tt = main_flag ? TeleportTarget::eForegroundTeleport : TeleportTarget::eParallelTeleport;
 
-	Main_Data::game_player->ReserveTeleport(map_id, x, y, -1, tt);
+	Main_Data::game_player->ReserveTeleport(map_id, x, y, direction, tt);
 
 	// Parallel events should keep on running in 2k and 2k3, unlike in later versions
 	if (!main_flag)
