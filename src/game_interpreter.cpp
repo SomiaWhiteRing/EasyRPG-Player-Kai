@@ -3968,7 +3968,7 @@ void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const 
 		for (int i = 0; i < Utils::Clamp(count, 0, max_steps); ++i) append(code);
 	};
 
-	switch (raw(1)) {
+	switch (number(1)) {
 		case 0: { // Move in a direction (or relative to the character).
 			const int dir = number(2);
 			if (dir >= 0 && dir <= id(Code::move_forward) - id(Code::move_up)) {
@@ -4006,17 +4006,43 @@ void Game_Interpreter::AppendManiacMoveAction(lcf::rpg::MoveRoute& route, const 
 			}
 			break;
 		}
-		case 5:
-			if (number(2) == 0) {
-				// 0 = normal (8 frames per tile); signed exponents
-				// halve/double the speed instead of modifying it relatively.
-				append(Game_Character::ManiacRouteSetSpeed + 4 + Utils::Clamp(number(3), -3, 2));
+		case 5: {
+			switch (number(2)) {
+				case 0:
+					// 0 = normal (8 frames per tile); signed exponents
+					// halve/double the speed instead of modifying it relatively.
+					append(Game_Character::ManiacRouteSetSpeed + 4 + Utils::Clamp(number(3), -3, 2));
+					break;
+				case 1:
+				case 2: {
+					const bool frequency = number(2) == 1;
+					const int level = Utils::Clamp(number(3), 0, 7);
+					const auto increase = frequency ? Code::increase_movement_frequence : Code::increase_transp;
+					const auto decrease = frequency ? Code::decrease_movement_frequence : Code::decrease_transp;
+					// RT sets absolute levels by saturating to an endpoint before
+					// stepping back. Frequency level 0 corresponds to frequency 1.
+					steps(level < 4 ? decrease : increase, 7);
+					steps(level < 4 ? increase : decrease, level < 4 ? level : 7 - level);
+					break;
+				}
 			}
+			break;
+		}
+		case 6:
+			append(number(3) != 0 ? Code::switch_on : Code::switch_off).parameter_a = number(2);
 			break;
 		case 7: {
 			auto& move = append(Code::change_graphic);
-			move.parameter_string = lcf::DBString(CommandStringOrVariableBitfield(action, 0, 0, 5));
+			move.parameter_string = lcf::DBString(CommandStringOrVariableBitfield(action, 0, 4, 5));
 			move.parameter_a = number(2);
+			break;
+		}
+		case 8: {
+			auto& move = append(Code::play_sound_effect);
+			move.parameter_string = lcf::DBString(CommandStringOrVariableBitfield(action, 0, 4, 5));
+			move.parameter_a = number(2); // volume
+			move.parameter_b = number(3); // tempo
+			move.parameter_c = number(4); // balance
 			break;
 		}
 	}
@@ -4032,7 +4058,8 @@ bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // 
 	if (Player::IsPatchManiac()) {
 		while (after_route < static_cast<int>(frame.commands.size())) {
 			const auto& action = frame.commands[after_route];
-			if (action.code != 3027 || action.indent != com.indent) break;
+			// RT consumes the contiguous continuation records regardless of indent.
+			if (action.code != 3027) break;
 			++after_route;
 		}
 	}
@@ -4045,7 +4072,9 @@ bool Game_Interpreter::CommandMoveEvent(lcf::rpg::EventCommand const& com) { // 
 				event = Main_Data::game_player.get();
 
 		lcf::rpg::MoveRoute route;
-		int move_freq = com.parameters[1];
+		int move_freq = Player::IsPatchManiac()
+			? ValueOrVariableBitfield(com.parameters[2], 3, com.parameters[1])
+			: com.parameters[1];
 
 		if (move_freq <= 0 || move_freq > 8) {
 			// Invalid values
