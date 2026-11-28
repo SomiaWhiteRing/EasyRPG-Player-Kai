@@ -212,7 +212,7 @@ std::string CtrAudio::BGM_GetType() const {
 	return "";
 }
 
-void CtrAudio::SE_Play(std::unique_ptr<AudioSeCache> se_cache, int volume, int pitch) {
+void CtrAudio::SE_Play(std::unique_ptr<AudioSeCache> se_cache, int volume, int pitch, int balance) {
 	if (!dsp_inited)
 		return;
 
@@ -287,7 +287,10 @@ void CtrAudio::SE_Play(std::unique_ptr<AudioSeCache> se_cache, int volume, int p
 	DSP_FlushDataCache(se.buf[chan].data_pcm16, aligned_bsize);
 
 	float mix[12] = {0};
-	mix[0] = mix[1] = volume / 100.0f * cfg.sound_volume.Get() / 100.0f;
+	const auto [left, right] = SeBalanceGains(balance);
+	const float gain = volume / 100.0f * cfg.sound_volume.Get() / 100.0f;
+	mix[0] = gain * left;
+	mix[1] = gain * right;
 	ndspChnSetMix(chan, mix);
 	ndspChnWaveBufAdd(chan, &se.buf[chan]);
 }

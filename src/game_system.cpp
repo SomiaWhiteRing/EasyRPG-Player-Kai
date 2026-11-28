@@ -439,6 +439,7 @@ void Game_System::SePlay(const lcf::rpg::Sound& se, bool stop_sounds) {
 	lcf::rpg::Sound se_adj = se;
 	se_adj.volume = volume;
 	se_adj.tempo = tempo;
+	if (!Player::IsPatchManiac()) se_adj.balance = 50;
 	se_request_ids[se.name] = request->Bind(&Game_System::OnSeReady, this, se_adj, stop_sounds);
 	if (EndsWith(se.name, ".script")) {
 		// Is a Ineluki Script File
@@ -860,7 +861,7 @@ void Game_System::OnSeReady(FileRequestResult* result, lcf::rpg::Sound se, bool 
 		return;
 	}
 
-	Audio().SE_Play(std::move(se_cache), se.volume, se.tempo);
+	Audio().SE_Play(std::move(se_cache), se.volume, se.tempo, se.balance);
 }
 
 void Game_System::OnSeInelukiReady(FileRequestResult* result, lcf::rpg::Sound se) {
@@ -880,7 +881,7 @@ void Game_System::OnSeInelukiReady(FileRequestResult* result, lcf::rpg::Sound se
 		return;
 	}
 
-	Audio().SE_Play(std::move(se_cache), se.volume, se.tempo);
+	Audio().SE_Play(std::move(se_cache), se.volume, se.tempo, se.balance);
 }
 
 bool Game_System::IsMessageTransparent() {
