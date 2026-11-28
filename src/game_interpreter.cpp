@@ -2985,11 +2985,34 @@ bool Game_Interpreter::CommandChangeScreenTransitions(lcf::rpg::EventCommand con
 	return true;
 }
 
+void Game_Interpreter::WriteManiacMapQueryResult(int id, int value) {
+	if (id == 0 || id == INT32_MIN) return;
+	if (id > 0) {
+		*Main_Data::game_variables->GetManiacWritable(id) = value;
+		Game_Map::SetNeedRefreshForVarChange(id);
+		return;
+	}
+	const auto* frame = GetFramePtr();
+	auto* state = Main_Data::game_maniac_self_variables.get();
+	auto* bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+		frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+	if (!bank) return;
+	const size_t slot = -static_cast<int64_t>(id);
+	bank->numbers.resize(std::max(bank->numbers.size(), slot + 1));
+	bank->numbers[slot] = value;
+}
+
 bool Game_Interpreter::CommandMemorizeLocation(lcf::rpg::EventCommand const& com) { // code 10820
 	Game_Character *player = Main_Data::game_player.get();
 	int var_map_id = com.parameters[0];
 	int var_x = com.parameters[1];
 	int var_y = com.parameters[2];
+	if (Player::IsPatchManiac()) {
+		WriteManiacMapQueryResult(var_map_id, Game_Map::GetMapId());
+		WriteManiacMapQueryResult(var_x, player->GetX());
+		WriteManiacMapQueryResult(var_y, player->GetY());
+		return true;
+	}
 	Main_Data::game_variables->Set(var_map_id, Game_Map::GetMapId());
 	Main_Data::game_variables->Set(var_x, player->GetX());
 	Main_Data::game_variables->Set(var_y, player->GetY());
@@ -3115,7 +3138,14 @@ bool Game_Interpreter::CommandTradeEventLocations(lcf::rpg::EventCommand const& 
 	return true;
 }
 
-bool Game_Interpreter::CommandStoreTerrainID(lcf::rpg::EventCommand const& com) { // code 10820
+bool Game_Interpreter::CommandStoreTerrainID(lcf::rpg::EventCommand const& com) { // code 10910
+	if (Player::IsPatchManiac()) {
+		const bool direct = com.parameters[0] != 0;
+		const int x = direct ? ReadVariable(com.parameters[1]) : com.parameters[1];
+		const int y = direct ? ReadVariable(com.parameters[2]) : com.parameters[2];
+		WriteManiacMapQueryResult(com.parameters[3], Game_Map::GetTerrainTag(x, y));
+		return true;
+	}
 	int x = ValueOrVariable(com.parameters[0], com.parameters[1]);
 	int y = ValueOrVariable(com.parameters[0], com.parameters[2]);
 	int var_id = com.parameters[3];
@@ -3125,6 +3155,55 @@ bool Game_Interpreter::CommandStoreTerrainID(lcf::rpg::EventCommand const& com) 
 }
 
 bool Game_Interpreter::CommandStoreEventID(lcf::rpg::EventCommand const& com) { // code 10920
+	if (Player::IsPatchManiac()) {
+		const int flags = com.parameters.size() > 4 ? com.parameters[4] : 0;
+		const auto coord = [&](int mode, int address) {
+			return mode == 0 ? address : mode == 1 ? ReadVariable(address) : ReadVariableIndirect(address);
+		};
+		const int x_mode = com.parameters[0];
+		const int y_mode = (flags & 2) == 0 ? x_mode : (com.parameters.size() > 5 ? com.parameters[5] : 0);
+		const int x = coord(x_mode, com.parameters[1]);
+		const int y = coord(y_mode, com.parameters[2]);
+		const int first = com.parameters[3];
+		if ((flags & 1) == 0) {
+			const auto* event = Game_Map::GetEventAt(x, y, false);
+			WriteManiacMapQueryResult(first, event ? event->GetId() : 0);
+			return true;
+		}
+
+		const auto& events = Game_Map::GetEvents();
+		const auto first_slot = std::abs(static_cast<int64_t>(first));
+		const auto end_slot = first_slot + events.size() + 1;
+		if (end_slot > INT32_MAX) return true;
+		Game_ManiacSelfVariables::Bank* bank = nullptr;
+		if (first < 0) {
+			const auto* frame = GetFramePtr();
+			auto* state = Main_Data::game_maniac_self_variables.get();
+			bank = frame && state ? state->Ensure(frame->easyrpg_self_scope,
+				frame->easyrpg_self_map_id, frame->easyrpg_self_event_id) : nullptr;
+			if (!bank) return true;
+			bank->numbers.resize(std::max(bank->numbers.size(), static_cast<size_t>(end_slot + 1)));
+		} else {
+			Main_Data::game_variables->EnsureSize(static_cast<size_t>(end_slot));
+		}
+
+		// List results use the physical slots, including global slot zero,
+		// and preserve the map's event iteration order and the untouched tail.
+		const auto write = [&](int slot, int value) {
+			if (bank) {
+				bank->numbers[slot] = value;
+			} else {
+				*Main_Data::game_variables->GetManiacWritable(slot) = value;
+				if (slot > 0) Game_Map::SetNeedRefreshForVarChange(slot);
+			}
+		};
+		int count = 0;
+		for (const auto& event : events) {
+			if (event.IsInPosition(x, y)) write(static_cast<int>(first_slot) + ++count, event.GetId());
+		}
+		write(static_cast<int>(first_slot), count);
+		return true;
+	}
 	int x = ValueOrVariable(com.parameters[0], com.parameters[1]);
 	int y = ValueOrVariable(com.parameters[0], com.parameters[2]);
 	int var_id = com.parameters[3];
