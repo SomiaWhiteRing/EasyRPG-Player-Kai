@@ -21,6 +21,7 @@
 // Headers
 #include <string>
 #include <atomic>
+#include <utility>
 #include "audio_generic_midiout.h"
 #include "filesystem_stream.h"
 #include "audio_secache.h"
@@ -130,13 +131,16 @@ struct AudioInterface {
 	 * @param se se to play.
 	 * @param volume volume.
 	 * @param pitch pitch.
+	 * @param balance stereo balance, from 0 (left) through 50 (neutral) to 100 (right).
 	 */
-	virtual void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) = 0;
+	virtual void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch, int balance) = 0;
 
 	/**
 	 * Stops the currently playing sound effect.
 	 */
 	virtual void SE_Stop() = 0;
+
+	static std::pair<float, float> SeBalanceGains(int balance);
 
 	int BGM_GetGlobalVolume() const;
 	void BGM_SetGlobalVolume(int volume);
@@ -180,7 +184,7 @@ public:
 	void BGM_Volume(int) override {}
 	void BGM_Pitch(int) override {};
 	std::string BGM_GetType() const override { return {}; };
-	void SE_Play(std::unique_ptr<AudioSeCache>, int, int) override {}
+	void SE_Play(std::unique_ptr<AudioSeCache>, int, int, int) override {}
 	void SE_Stop() override {}
 	void Update() override {}
 	void vGetConfig(Game_ConfigAudio& cfg) const override;

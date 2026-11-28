@@ -56,7 +56,7 @@ public:
 	void BGM_Pitch(int pitch) override;
 	std::string BGM_GetType() const override;
 
-	void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) override;
+	void SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch, int balance) override;
 	void SE_Stop() override;
 	bool SetManiacVolume(int volume) override;
 	int GetManiacVolume() const override;
@@ -100,6 +100,7 @@ private:
 		GenericAudio* instance = nullptr;
 		bool paused;
 		bool stopped;
+		std::pair<float, float> balance_gains{1.0f, 1.0f};
 	};
 	struct Format {
 		int frequency;
@@ -109,7 +110,7 @@ private:
 	Format output_format = {};
 
 	bool PlayOnChannel(BgmChannel& chan, Filesystem_Stream::InputStream stream, int volume, int pitch, int fadein, bool maniac);
-	bool PlayOnChannel(SeChannel& chan, std::unique_ptr<AudioSeCache> se, int volume, int pitch);
+	bool PlayOnChannel(SeChannel& chan, std::unique_ptr<AudioSeCache> se, int volume, int pitch, int balance);
 
 	static constexpr unsigned nr_of_se_channels = 31;
 	static constexpr unsigned nr_of_bgm_channels = 2;

@@ -65,9 +65,9 @@ std::string WebAudio::BGM_GetType() const {
   EM_ASM({stringToUTF8(Module.audioState?.musicType || String(), $0, $1);}, value, sizeof(value));
   return value;
 }
-void WebAudio::SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch) {
+void WebAudio::SE_Play(std::unique_ptr<AudioSeCache> se, int volume, int pitch, int balance) {
   Update();
-  Command({{"op","se"},{"path",se->GetName()},{"volume",volume},{"pitch",pitch}});
+  Command({{"op","se"},{"path",se->GetName()},{"volume",volume},{"pitch",pitch},{"balance",balance}});
 }
 void WebAudio::SE_Stop() { Command({{"op","se-stop"}}); }
 bool WebAudio::SetManiacVolume(int volume) {
@@ -117,7 +117,7 @@ EMSCRIPTEN_KEEPALIVE void web_audio_command(const char* text) {
     const auto path = c.at("path").get<std::string>();
     auto se = AudioSeCache::GetCachedSe(path);
     if (!se) se = AudioSeCache::Create(OpenAudio(path), path);
-    if (se) mixer->SE_Play(std::move(se), c.at("volume"), c.at("pitch"));
+    if (se) mixer->SE_Play(std::move(se), c.at("volume"), c.at("pitch"), c.value("balance", 50));
   } else if (op == "stop") mixer->BGM_Stop();
   else if (op == "pause") mixer->BGM_Pause();
   else if (op == "resume") mixer->BGM_Resume();

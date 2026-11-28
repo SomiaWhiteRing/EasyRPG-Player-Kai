@@ -23,6 +23,15 @@
 #include "player.h"
 #include "game_clock.h"
 #include <algorithm>
+#include <cmath>
+
+std::pair<float, float> AudioInterface::SeBalanceGains(int balance) {
+	const int pan = std::clamp(balance, 0, 100) - 50;
+	if (pan == 0) return {1.0f, 1.0f};
+	// Maniacs uses 60 hundredths of a dB per step, attenuating the opposite side.
+	const float reduced = std::pow(10.0f, -0.03f * std::abs(pan));
+	return pan < 0 ? std::make_pair(1.0f, reduced) : std::make_pair(reduced, 1.0f);
+}
 #ifdef _WIN32
 #include <mmdeviceapi.h>
 #include <audiopolicy.h>

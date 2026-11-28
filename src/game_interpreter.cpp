@@ -866,7 +866,9 @@ bool Game_Interpreter::ExecuteOtherCommand(lcf::rpg::EventCommand const& com) {
 		case Cmd::FadeOutBGM:
 			return CmdSetup<&Game_Interpreter::CommandFadeOutBGM, 1>(com);
 		case Cmd::PlaySound:
-			return CmdSetup<&Game_Interpreter::CommandPlaySound, 3>(com);
+			return Player::IsPatchManiac()
+				? CmdSetup<&Game_Interpreter::CommandPlaySound, 0>(com)
+				: CmdSetup<&Game_Interpreter::CommandPlaySound, 3>(com);
 		case Cmd::EndEventProcessing:
 			return CmdSetup<&Game_Interpreter::CommandEndEventProcessing, 0>(com);
 		case Cmd::Comment:
@@ -2591,11 +2593,29 @@ bool Game_Interpreter::CommandFadeOutBGM(lcf::rpg::EventCommand const& com) { //
 
 bool Game_Interpreter::CommandPlaySound(lcf::rpg::EventCommand const& com) { // code 11550
 	lcf::rpg::Sound sound;
-	sound.name = ToString(CommandStringOrVariableBitfield(com, 3, 0, 4));
-
-	sound.volume = ValueOrVariableBitfield(com, 3, 1, 0);
-	sound.tempo = ValueOrVariableBitfield(com, 3, 2, 1);
-	sound.balance = ValueOrVariableBitfield(com, 3, 3, 2);
+	if (Player::IsPatchManiac()) {
+		const auto parameter = [&](size_t index) {
+			return index < com.parameters.size() ? com.parameters[index] : 0;
+		};
+		const uint32_t modes = parameter(3);
+		const auto number = [&](int index, int shift) {
+			const int mode = (modes >> shift) & 15;
+			const int value = parameter(index);
+			return mode == 0 ? value : mode == 1 ? ReadVariable(value) : ReadVariableIndirect(value);
+		};
+		const int name_mode = modes & 15;
+		const int name_ref = parameter(4);
+		sound.name = ToString(name_mode == 0 ? std::string_view(com.string)
+			: ReadString(name_mode == 1 ? name_ref : ResolveVariableIndirectAddress(name_ref)));
+		sound.volume = number(0, 4);
+		sound.tempo = number(1, 8);
+		sound.balance = number(2, 12);
+	} else {
+		sound.name = ToString(com.string);
+		sound.volume = com.parameters[0];
+		sound.tempo = com.parameters[1];
+		sound.balance = com.parameters[2];
+	}
 
 	if (!Game_Netplay::QueueAudio(sound)) Main_Data::game_system->SePlay(sound, true);
 	return true;
